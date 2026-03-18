@@ -1,0 +1,14 @@
+{
+  "properties": [
+    {
+      "name": "app.jwt.secret",
+      "type": "java.lang.String",
+      "description": "Description for app.jwt.secret."
+    },
+    {
+      "name": "app.jwt.access-token-validity-in-seconds",
+      "type": "java.lang.String",
+      "description": "Description for app.jwt.access-token-validity-in-seconds."
+    }
+  ]
+}
