@@ -9,7 +9,7 @@
         <relativePath/>
     </parent>
     <groupId>com.store</groupId>
-    <artifactId>huyen</artifactId>
+    <artifactId>mmo</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>huyen</name>
     <description>huyen</description>
