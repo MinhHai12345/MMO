@@ -1,4 +1,4 @@
-package com.mmo.entity;
+package com.mmo.entity.abs;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -13,7 +13,5 @@ public abstract class AbstractEntity extends AbstractAuditingEntity {
     @Column(unique = true, nullable = false)
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-
 
 }

@@ -1,4 +1,4 @@
-package com.mmo.entity;
+package com.mmo.entity.abs;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
