@@ -1,49 +1,41 @@
 package com.mmo.entity;
 
 import com.mmo.entity.abs.AbstractEntity;
-import jakarta.persistence.*;
+import com.mmo.entity.enums.MatchStatus;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.experimental.FieldNameConstants;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
+@Entity
+@Table(name = "matches", indexes = {
+        @Index(name = "idx_match_time", columnList = "matchTime"),
+        @Index(name = "idx_status", columnList = "status")
+})
 @Getter
 @Setter
-@Entity
-@Table(name = "matches")
-@FieldNameConstants
 public class Match extends AbstractEntity {
-    public static final String COMPETITION_ID = "competition_id";
-
-    @Column
-    private String season;
-
-    @Column
-    private LocalDateTime matchTime;
-
-    @Column
-    private String status;
 
     @ManyToOne
-    @JoinColumn(name = COMPETITION_ID)
     private Competition competition;
 
     @ManyToOne
-    @JoinColumn(name = "home_team_id")
     private Team homeTeam;
 
     @ManyToOne
-    @JoinColumn(name = "away_team_id")
     private Team awayTeam;
 
-    @OneToMany(mappedBy = "match")
-    private List<MatchStat> stats;
+    private LocalDateTime matchTime;
 
-    @OneToMany(mappedBy = "match")
-    private List<OddsRaw> odds;
+    @Enumerated(EnumType.STRING)
+    private MatchStatus status;
 
-    @OneToMany(mappedBy = "match")
-    private List<Prediction> predictions;
+    private Integer homeScore;
+    private Integer awayScore;
 }

@@ -1,30 +1,33 @@
 package com.mmo.entity;
 
 import com.mmo.entity.abs.AbstractEntity;
-import jakarta.persistence.Column;
+import com.mmo.entity.enums.PredictionType;
 import jakarta.persistence.Entity;
-import jakarta.persistence.JoinColumn;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
-@Setter
-@Getter
 @Entity
 @Table(name = "predictions")
+@Getter
+@Setter
 public class Prediction extends AbstractEntity {
 
-    @Column
+    @ManyToOne
+    private Match match;
+
     private String modelVersion;
 
-    @Column
-    private String prediction;
+    @Enumerated(EnumType.STRING)
+    private PredictionType predictionType;
 
-    @Column
-    private Double confidence;
+    private Double probabilityHome;
+    private Double probabilityDraw;
+    private Double probabilityAway;
 
-    @ManyToOne
-    @JoinColumn(name = "match_id")
-    private Match match;
+    private Double confidenceScore;
+
 }
