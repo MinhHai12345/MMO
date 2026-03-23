@@ -8,14 +8,20 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "competitions")
+@Table(name = "leagues")
 @Getter
 @Setter
-public class Competition extends AbstractEntity {
+public class League extends AbstractEntity {
 
     @Column
     private String name;
 
     @Column
+    private String slug;
+
+    @Column
     private String country;
+
+    @Column
+    private String season;
 }

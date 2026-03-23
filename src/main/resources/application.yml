@@ -5,6 +5,5 @@ spring:
     name: mmo
 
 app:
-  jwt:
-    secret: haivo
-    access-token-validity-in-seconds: 3600
+  initial-data:
+    auto-import: true

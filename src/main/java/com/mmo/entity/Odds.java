@@ -1,10 +1,7 @@
 package com.mmo.entity;
 
 import com.mmo.entity.abs.AbstractEntity;
-import com.mmo.entity.enums.MarketType;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Index;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -22,11 +19,11 @@ public class Odds extends AbstractEntity {
     @ManyToOne
     private Match match;
 
-    @ManyToOne
-    private OddsProvider provider;
+//    @ManyToOne
+//    private OddsProvider provider;
 
-    @Enumerated(EnumType.STRING)
-    private MarketType marketType;
+//    @Enumerated(EnumType.STRING)
+//    private MarketType marketType;
 
     private Double homeOdds;
     private Double drawOdds;
