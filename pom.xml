@@ -30,7 +30,7 @@
         <java.version>17</java.version>
         <jakarta.validation.version>3.0.2</jakarta.validation.version>
         <org.hibernate.validator.version>8.0.0.Final</org.hibernate.validator.version>
-        <org.projectlombok.version>1.18.28</org.projectlombok.version>
+        <org.projectlombok.version>1.18.32</org.projectlombok.version>
     </properties>
     <dependencies>
         <dependency>

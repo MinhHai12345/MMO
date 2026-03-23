@@ -15,8 +15,7 @@ public class SpringDataRestConfig implements RepositoryRestConfigurer {
     private final EntityManager entityManager;
 
     @Override
-    public void configureRepositoryRestConfiguration(RepositoryRestConfiguration config,
-                                                     CorsRegistry cors) {
+    public void configureRepositoryRestConfiguration(RepositoryRestConfiguration config, CorsRegistry cors) {
         config.setPageParamName("_currentPage");
         config.setLimitParamName("_pageSize");
         config.setSortParamName("_sort");

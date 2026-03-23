@@ -1,10 +1,12 @@
 package com.mmo.understat.initialize;
 
+import com.mmo.entity.League;
 import com.mmo.initialize.DataInitializer;
 import com.mmo.repository.LeagueRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Component
@@ -21,6 +23,24 @@ public class LeagueInitial implements DataInitializer {
 
     @Override
     public void initialize() {
+        LocalDate now = LocalDate.now();
+        int currentYear = now.getYear();
+        int currentMonth = now.getMonthValue();
+        if (currentMonth < 8) {
+            return;
+        }
+        String currentSeason = currentYear + "/" + (currentYear + 1);
+
+        for (String leagueName : LEAGUES) {
+            boolean exists = leagueRepository.existsByNameAndSeason(leagueName, currentSeason);
+            if (!exists) {
+                League league = League.builder()
+                        .name(leagueName)
+                        .season(currentSeason)
+                        .build();
+                leagueRepository.save(league);
+            }
+        }
 
     }
 }

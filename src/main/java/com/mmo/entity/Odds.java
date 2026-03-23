@@ -9,9 +9,10 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "odds", indexes = {
-        @Index(name = "idx_match_provider", columnList = "match_id,provider_id")
-})
+@Table(name = "odds")
+//@Table(name = "odds", indexes = {
+//        @Index(name = "idx_match_provider", columnList = "match_id,provider_id")
+//})
 @Getter
 @Setter
 public class Odds extends AbstractEntity {

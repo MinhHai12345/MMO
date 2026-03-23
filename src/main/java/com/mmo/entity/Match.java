@@ -33,7 +33,7 @@ public class Match extends AbstractEntity {
     private Integer awayScore;
 
     @Column
-    private LocalDateTime matchTime;
+    private String matchTime;
 
     @ManyToOne
     private League league;
