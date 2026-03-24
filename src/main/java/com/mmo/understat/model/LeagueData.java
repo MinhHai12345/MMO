@@ -27,6 +27,7 @@ public class LeagueData {
         public TeamInfo a;
         public Map<String, String> goals;
         public Map<String, String> xG;
+        public Map<String, String> forecast;
         public String datetime;
 
         @Getter
@@ -49,8 +50,10 @@ public class LeagueData {
     @Setter
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class PlayerData {
+        public String id;
         public String player_name;
         public String team_title;
+        public String position;
         public double xG;
         public double xA;
         public int goals;
@@ -80,6 +83,9 @@ public class LeagueData {
 
             private String result;
             private String date;
+            private double npxG;
+            private double npxGA;
+            private double npxGD;
 
             private Ppda ppda;
             @JsonProperty("ppda_allowed")

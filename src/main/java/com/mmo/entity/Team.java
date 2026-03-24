@@ -8,7 +8,10 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.HashSet;
@@ -18,17 +21,15 @@ import java.util.Set;
 @Table(name = "teams")
 @Getter
 @Setter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class Team extends AbstractEntity {
 
     private String name;
 
-    private String shortName;
-
     @Column
-    private String understatId;
-
-//    private String sofascoreId;
-//    private String whoscoredId;
+    private String underStatId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "league_id")
@@ -36,5 +37,9 @@ public class Team extends AbstractEntity {
 
     @OneToMany(mappedBy = "team", fetch = FetchType.LAZY)
     private Set<Player> players = new HashSet<>();
+
+
+    @OneToMany(mappedBy = "team", fetch = FetchType.LAZY)
+    private Set<PerformanceHistory> histories = new HashSet<>();
 
 }

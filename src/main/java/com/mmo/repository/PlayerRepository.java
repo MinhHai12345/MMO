@@ -1,6 +1,6 @@
 package com.mmo.repository;
 
-import com.mmo.entity.Match;
+import com.mmo.entity.Player;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -8,6 +8,6 @@ import java.util.Collection;
 import java.util.List;
 
 @Repository
-public interface MatchRepository extends JpaRepository<Match, Long> {
-    List<Match> findAllByUnderStatMatchIdIn(Collection<String> underStatIds);
+public interface PlayerRepository extends JpaRepository<Player, Long> {
+    List<Player> findAllByUnderStatIdIn(Collection<String> underStatIds);
 }

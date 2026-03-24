@@ -2,17 +2,17 @@ package com.mmo.entity;
 
 import com.mmo.entity.abs.AbstractEntity;
 import com.mmo.entity.enums.MatchStatus;
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
@@ -24,16 +24,34 @@ import java.time.LocalDateTime;
 })
 @Getter
 @Setter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class Match extends AbstractEntity {
 
     @Column
-    private Integer homeScore;
+    private String homeScore;
 
     @Column
-    private Integer awayScore;
+    private String awayScore;
 
     @Column
-    private String matchTime;
+    private LocalDateTime matchTime;
+
+    @Column
+    private String homeXG;
+
+    @Column
+    private String awayXG;
+
+    @Column
+    private String winProbability;
+
+    @Column
+    private String drawProbability;
+
+    @Column
+    private String lossProbability;
 
     @ManyToOne
     private League league;
@@ -46,9 +64,6 @@ public class Match extends AbstractEntity {
 
     @Enumerated(EnumType.STRING)
     private MatchStatus status;
-
-    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private MatchAdvanceStats advanceStats;
 
     @Column
     private String underStatMatchId;

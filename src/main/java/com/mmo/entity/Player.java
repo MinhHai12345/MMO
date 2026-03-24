@@ -7,7 +7,10 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.context.annotation.Lazy;
 
@@ -15,6 +18,9 @@ import org.springframework.context.annotation.Lazy;
 @Table(name = "players")
 @Getter
 @Setter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class Player extends AbstractEntity {
 
     @Column
