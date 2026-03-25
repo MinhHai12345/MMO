@@ -3,6 +3,7 @@ package com.mmo.module.fb.entity;
 import com.mmo.entity.AbstractEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -23,9 +24,12 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class PerformanceHistory extends AbstractEntity {
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "team_id")
     private Team team;
+
+    @Column(name = "team_id", updatable = false, insertable = false)
+    private Long teamId;
 
     @Column
     private String homeAway;

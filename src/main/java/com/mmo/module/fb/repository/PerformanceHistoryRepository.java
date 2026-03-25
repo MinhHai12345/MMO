@@ -18,4 +18,6 @@ public interface PerformanceHistoryRepository extends JpaRepository<PerformanceH
            "AND ph.date >= :seasonStart ")
     List<PerformanceHistory> findByTeamIdAndDateGreaterThan(@Param("teamId") Long teamId,
                                                             @Param("seasonStart") LocalDateTime seasonStart);
+
+    List<PerformanceHistory> findTop10ByTeamIdOrderByDateDesc(@Param("teamId") Long teamId);
 }

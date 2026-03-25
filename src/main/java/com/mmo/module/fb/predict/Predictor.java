@@ -1,24 +1,72 @@
 package com.mmo.module.fb.predict;
 
 import com.mmo.module.fb.entity.PerformanceHistory;
+import com.mmo.module.fb.model.MatchOddsInsight;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class Predictor {
+    private static final int MAX_GOALS = 8;
 
-    // 1. Tính toán xG kỳ vọng (Weighted Average)
     public static double getExpectedXG(List<PerformanceHistory> histories) {
-        double sum = 0;
-        double weights = 0;
-        for (int i = 0; i < histories.size(); i++) {
-            double w = i + 1;
-            sum += histories.get(i).getXG() * w;
-            weights += w;
+        if (histories == null || histories.isEmpty()) {
+            return 0.0;
         }
-        return sum / weights;
+        histories.sort(Comparator.comparing(PerformanceHistory::getDate).reversed());
+        double weightedSum = 0;
+        double totalWeights = 0;
+        // Sử dụng hệ số giảm thiểu (Decay Factor). Ví dụ: 0.8
+        double decayFactor = 0.8;
+        for (int i = 0; i < histories.size(); i++) {
+            double w = Math.pow(decayFactor, i);
+            weightedSum += histories.get(i).getXG() * w;
+            totalWeights += w;
+        }
+        return weightedSum / totalWeights;
+    }
+
+    public static MatchOddsInsight calculateOddsInsight(double homeXG, double awayXG) {
+        double homeWinProb = 0;
+        double awayWinProb = 0;
+        double drawProb = 0;
+        double over25Prob = 0;
+        Map<String, Double> scoreMap = new HashMap<>();
+
+        // Khởi tạo phân phối Poisson cho từng đội
+        PoissonDistribution homeDist = new PoissonDistribution(homeXG);
+        PoissonDistribution awayDist = new PoissonDistribution(awayXG);
+
+        for (int h = 0; h <= MAX_GOALS; h++) {
+            for (int a = 0; a <= MAX_GOALS; a++) {
+                // Xác suất xảy ra tỉ số h - a
+                double prob = homeDist.probability(h) * awayDist.probability(a);
+
+                // 1. Phân loại kết quả (W-D-L)
+                if (h > a) homeWinProb += prob;
+                else if (h < a) awayWinProb += prob;
+                else drawProb += prob;
+
+                // 2. Tính Tài/Xỉu 2.5
+                if (h + a > 2.5) over25Prob += prob;
+
+                // 3. Lưu xác suất tỉ số chính xác (Chỉ lấy các tỉ số khả thi 0-4 bàn)
+                if (h <= 4 && a <= 4) {
+                    scoreMap.put(h + "-" + a, prob);
+                }
+            }
+        }
+
+        return MatchOddsInsight.builder()
+                .homeOdds(homeWinProb)
+                .awayOdds(awayWinProb)
+                .drawOdds(drawProb)
+                .over25Odds(over25Prob)
+                .scoreMap(scoreMap)
+                .build();
     }
 
     // 2. Dự đoán xác suất dựa trên Poisson
