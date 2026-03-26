@@ -19,5 +19,8 @@ public class League extends AbstractEntity {
     private String name;
 
     @Column
+    private String code;
+
+    @Column
     private String season;
 }

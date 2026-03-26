@@ -11,7 +11,7 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 
 @Configuration
 @RequiredArgsConstructor
-public class SpringDataRestConfig implements RepositoryRestConfigurer {
+public class SpringDataRestConfiguration implements RepositoryRestConfigurer {
     private final EntityManager entityManager;
 
     @Override

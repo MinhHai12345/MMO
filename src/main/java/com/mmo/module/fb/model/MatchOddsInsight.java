@@ -30,6 +30,25 @@ public class MatchOddsInsight {
                 .collect(Collectors.toList());
     }
 
+    public String buildScoreContent() {
+        StringBuilder sb = new StringBuilder();
+
+        scoreMap.entrySet()
+                .stream()
+                .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
+                .limit(3)
+                .forEach(e -> {
+                    sb.append(" ")
+                            .append(e.getKey())
+                            .append(" (")
+                            .append(Math.round(e.getValue() * 100))
+                            .append("%)\n");
+                });
+
+        return sb.toString();
+    }
+
+
     /**
      * Xác định kèo sáng nhất dựa trên xác suất cao nhất
      */

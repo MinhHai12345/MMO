@@ -44,7 +44,7 @@ public class CrawlerServiceImpl implements CrawlerService {
             return;
         }
         leagues.forEach(league -> {
-            LeagueData data = underStatService.getLeagueData(league.getName().replaceAll(" ", "%20"), league.getSeason().split("/")[0]);
+            LeagueData data = underStatService.getLeagueData(league.getCode().replaceAll(" ", "%20"), league.getSeason().split("/")[0]);
             List<Team> teams = storeTeams(data, league);
 //            TODO: storePlayers
             storeHistories(data, teams);

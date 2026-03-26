@@ -7,3 +7,9 @@ spring:
 app:
   initial-data:
     auto-import: true
+  telegram:
+    bot:
+      token: 8782482405:AAFT-LBvXCka4-WljvAOeWUqJ8M48K_MQ4o
+      username: H2_FB_Bot
+    channel:
+        id: -1003881100511
