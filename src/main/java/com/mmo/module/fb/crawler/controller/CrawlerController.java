@@ -24,4 +24,10 @@ public class CrawlerController {
         telegramService.publish();
     }
 
+
+    @GetMapping("/plash-score")
+    public void crawlerFlashScore() {
+        crawlerService.crawlerFlashScore();
+    }
+
 }
