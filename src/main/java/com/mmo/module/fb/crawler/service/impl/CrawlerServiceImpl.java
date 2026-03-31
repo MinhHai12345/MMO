@@ -8,37 +8,20 @@ import com.microsoft.playwright.BrowserType;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.Response;
-import com.mmo.converter.DynamicConverter;
-import com.mmo.module.fb.channel.model.Platform;
-import com.mmo.module.fb.channel.strategy.ContentStrategy;
 import com.mmo.module.fb.crawler.model.Provider;
 import com.mmo.module.fb.crawler.service.CrawlerService;
 import com.mmo.module.fb.crawler.strategy.CrawlerStrategy;
 import com.mmo.module.fb.crawler.strategy.CrawlerStrategyRegistry;
 import com.mmo.module.fb.entity.League;
-import com.mmo.module.fb.entity.Match;
-import com.mmo.module.fb.entity.PerformanceHistory;
-import com.mmo.module.fb.entity.Team;
-import com.mmo.module.fb.repository.LeagueRepository;
-import com.mmo.module.fb.repository.MatchRepository;
-import com.mmo.module.fb.repository.PerformanceHistoryRepository;
-import com.mmo.module.fb.repository.TeamRepository;
-import com.mmo.module.fb.understat.model.LeagueData;
-import com.mmo.module.fb.understat.service.UnderStatService;
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -51,7 +34,7 @@ public class CrawlerServiceImpl implements CrawlerService {
     @Transactional
     public void crawler() {
         CrawlerStrategy strategy = crawlerStrategyRegistry.getStrategy(Provider.SOFA_SCORE);
-        List<League> leagues = strategy.crawlLeague();
+        List<League> leagues = strategy.fetchLeague();
     }
 
     @Override
