@@ -19,9 +19,13 @@ public class AppProperties {
     @NotNull
     private Telegram telegram;
 
+    @NotNull
+    private SofaScore sofaScore;
+
     @Getter
     @Setter
     public static class InitialData {
+
         @NotBlank
         private boolean autoImport;
     }
@@ -51,5 +55,12 @@ public class AppProperties {
             @NotBlank
             private String id;
         }
+    }
+
+    @Getter
+    @Setter
+    public static class SofaScore {
+        @NotBlank
+        private String api;
     }
 }

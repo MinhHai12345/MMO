@@ -13,3 +13,5 @@ app:
       username: H2_FB_Bot
     channel:
         id: ${CHANNEL_ID}
+  sofa-score:
+    api: https://api.sofascore.com/api/v1/

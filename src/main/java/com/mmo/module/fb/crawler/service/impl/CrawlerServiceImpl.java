@@ -9,7 +9,12 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.Response;
 import com.mmo.converter.DynamicConverter;
+import com.mmo.module.fb.channel.model.Platform;
+import com.mmo.module.fb.channel.strategy.ContentStrategy;
+import com.mmo.module.fb.crawler.model.Provider;
 import com.mmo.module.fb.crawler.service.CrawlerService;
+import com.mmo.module.fb.crawler.strategy.CrawlerStrategy;
+import com.mmo.module.fb.crawler.strategy.CrawlerStrategyRegistry;
 import com.mmo.module.fb.entity.League;
 import com.mmo.module.fb.entity.Match;
 import com.mmo.module.fb.entity.PerformanceHistory;
@@ -39,36 +44,19 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CrawlerServiceImpl implements CrawlerService {
     private final ObjectMapper objectMapper;
-    private final UnderStatService underStatService;
-    private final DynamicConverter dynamicConverter;
-    private final LeagueRepository leagueRepository;
-    private final TeamRepository teamRepository;
-    private final MatchRepository matchRepository;
-    private final PerformanceHistoryRepository performanceHistoryRepository;
-    //    private final PlayerRepository playerRepository;
-    private static final DateTimeFormatter UNDERSTAT_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     DateTimeFormatter vnFormatter = DateTimeFormatter.ofPattern("EEEE, dd/MM/yyyy HH:mm", new Locale("vi", "VN"));
+    private final CrawlerStrategyRegistry crawlerStrategyRegistry;
 
     @Override
     @Transactional
     public void crawler() {
-        List<League> leagues = leagueRepository.findBySeason("2025/2026");
-        if (CollectionUtils.isEmpty(leagues)) {
-            return;
-        }
-        leagues.forEach(league -> {
-            LeagueData data = underStatService.getLeagueData(league.getCode().replaceAll(" ", "%20"), league.getSeason().split("/")[0]);
-            List<Team> teams = storeTeams(data, league);
-//            TODO: storePlayers
-            storeHistories(data, teams);
-            storeMatches(data, teams, league);
-        });
+        CrawlerStrategy strategy = crawlerStrategyRegistry.getStrategy(Provider.SOFA_SCORE);
+        List<League> leagues = strategy.crawlLeague();
     }
 
     @Override
     public void crawlerFlashScore() {
         try (Playwright playwright = Playwright.create()) {
-            // 1. Khởi tạo trình duyệt (Headless = true để chạy ngầm)
             Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
             BrowserContext context = browser.newContext(new Browser.NewContextOptions()
                     .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"));
@@ -96,7 +84,7 @@ public class CrawlerServiceImpl implements CrawlerService {
                             .format(vnFormatter);
                     System.out.println(String.format("\n⚽ Trận: %s vs %s -- Giờ đá: %s (ID: %d)  status %s ", homeTeam, awayTeam, vnTime, matchId, status));
 
-                    // 3. Cào Odds cho trận đấu này
+                    // 3. Cào MatchOdds cho trận đấu này
                     getMatchOdds(page, matchId);
                 }
             }
@@ -104,7 +92,6 @@ public class CrawlerServiceImpl implements CrawlerService {
         } catch (Exception e) {
             System.err.println("Lỗi cào dữ liệu: " + e.getMessage());
         }
-
     }
 
     private void getMatchOdds(Page page, long matchId) {
@@ -115,7 +102,7 @@ public class CrawlerServiceImpl implements CrawlerService {
                 JsonNode odds = objectMapper.readTree(res.text());
                 // Lấy kèo 1X2 (thường là market đầu tiên)
                 JsonNode choices = odds.get("markets").get(0).get("choices");
-                System.out.println(String.format("   💰 Odds: 1[%s] X[%s] 2[%s]",
+                System.out.println(String.format("   💰 MatchOdds: 1[%s] X[%s] 2[%s]",
                         choices.get(0).get("fractionalValue").asText(),
                         choices.get(1).get("fractionalValue").asText(),
                         choices.get(2).get("fractionalValue").asText()));
@@ -125,119 +112,4 @@ public class CrawlerServiceImpl implements CrawlerService {
         }
     }
 
-
-    private void storeMatches(LeagueData data, List<Team> teams, League league) {
-        List<LeagueData.MatchDate> apiMatches = data.getDates();
-        Set<String> apiMatchIds = apiMatches.stream()
-                .map(LeagueData.MatchDate::getId)
-                .collect(Collectors.toSet());
-
-        Map<String, Match> existingMatchMap = matchRepository.findAllByUnderStatMatchIdIn(apiMatchIds)
-                .stream()
-                .collect(Collectors.toMap(Match::getUnderStatMatchId, m -> m));
-
-        Map<String, Team> teamMap = teams.stream()
-                .collect(Collectors.toMap(
-                        t -> t.getName().toLowerCase().trim().replaceAll("\\s+", ""),
-                        t -> t
-                ));
-
-        List<Match> matchesToSave = apiMatches.stream()
-                .map(dto -> {
-                    Match target = existingMatchMap.getOrDefault(dto.getId(), new Match());
-                    target.setLeague(league);
-                    target.setAwayTeam(teamMap.get(dto.getA().getTitle().toLowerCase().trim().replaceAll("\\s+", "")));
-                    target.setHomeTeam(teamMap.get(dto.getH().getTitle().toLowerCase().trim().replaceAll("\\s+", "")));
-                    return dynamicConverter.convert(dto, target);
-                })
-                .collect(Collectors.toList());
-
-        if (CollectionUtils.isNotEmpty(matchesToSave)) {
-            matchRepository.saveAll(matchesToSave);
-        }
-    }
-
-
-    private void storeHistories(LeagueData data, List<Team> teams) {
-        Map<String, Team> teamMap = teams.stream()
-                .collect(Collectors.toMap(
-                        t -> standardizeName(t.getName()),
-                        t -> t
-                ));
-        data.getTeams().values().forEach(teamData -> {
-            String teamKey = standardizeName(teamData.getTitle());
-            Team team = teamMap.get(teamKey);
-            if (team == null) {
-                return;
-            }
-            Set<String> existingDates = performanceHistoryRepository.findByTeamIdAndDateGreaterThan(team.getId(),
-                            LocalDateTime.of(2025, 7, 1, 0, 0))
-                    .stream()
-                    .map(it -> it.getDate().format(UNDERSTAT_FORMATTER))
-                    .collect(Collectors.toSet());
-
-            List<PerformanceHistory> newPerformances = teamData.getHistory().stream()
-                    .filter(historyDto -> !existingDates.contains(historyDto.getDate()))
-                    .map(historyDto -> {
-                        PerformanceHistory performance = dynamicConverter.convert(historyDto, PerformanceHistory.class);
-                        performance.setTeam(team);
-                        return performance;
-                    })
-                    .collect(Collectors.toList());
-
-            if (CollectionUtils.isNotEmpty(newPerformances)) {
-                performanceHistoryRepository.saveAll(newPerformances);
-            }
-        });
-    }
-
-    private List<Team> storeTeams(LeagueData data, League league) {
-        Set<String> apiTeamIds = data.getTeams().values().stream()
-                .map(LeagueData.TeamData::getId)
-                .collect(Collectors.toSet());
-        List<Team> teams = teamRepository.findAllByUnderStatIdIn(apiTeamIds);
-
-        Set<String> existingTeamIds = teams.stream()
-                .map(Team::getUnderStatId)
-                .collect(Collectors.toSet());
-
-        List<Team> newTeams = data.getTeams().values().stream()
-                .filter(t -> !existingTeamIds.contains(t.getId()))
-                .map(t -> dynamicConverter.convert(t, Team.class))
-                .collect(Collectors.toList());
-
-        if (CollectionUtils.isNotEmpty(newTeams)) {
-            newTeams.forEach(newTeam -> {
-                newTeam.setLeague(league);
-            });
-            newTeams = teamRepository.saveAll(newTeams);
-            teams.addAll(newTeams);
-        }
-        return teams;
-    }
-
-    private String standardizeName(String name) {
-        return name != null ? name.toLowerCase().trim().replaceAll("\\s+", "") : "";
-    }
-
-
-    //    private void storePlayers(LeagueData data) {
-//        Set<String> apiPlayerIds = data.getPlayers().stream()
-//                .map(LeagueData.PlayerData::getId)
-//                .collect(Collectors.toSet());
-//
-//        Set<String> existingPlayerIds = playerRepository.findAllByUnderStatIdIn(apiPlayerIds)
-//                .stream()
-//                .map(Player::getUnderStatId)
-//                .collect(Collectors.toSet());
-//
-//        List<Player> newPlayers = data.getPlayers().stream()
-//                .filter(p -> !existingPlayerIds.contains(p.getId()))
-//                .map(p -> dynamicConverter.convert(p, Player.class))
-//                .collect(Collectors.toList());
-//
-//        if (!newPlayers.isEmpty()) {
-//            playerRepository.saveAll(newPlayers);
-//        }
-//    }
 }

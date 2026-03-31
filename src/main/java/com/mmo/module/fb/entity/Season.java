@@ -14,36 +14,25 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "players")
+@Table(name = "seasons")
 @Getter
 @Setter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class Player extends AbstractEntity {
-
-    @Column
-    private String name;
-
-    @Column
-    private String position; // F, M, D, G
+public class Season extends AbstractEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "team_id")
-    private Team team;
+    @JoinColumn(name = "league_id")
+    private League league;
 
     @Column
-    private String underStatId;
+    private Long sofaScoreId;
 
     @Column
-    private double xG;
+    private String year;
 
     @Column
-    private double xA;
+    private boolean isCurrent;
 
-    @Column
-    private int goals;
-
-    @Column
-    private int assists;
 }

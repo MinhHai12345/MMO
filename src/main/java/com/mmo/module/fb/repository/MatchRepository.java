@@ -9,5 +9,4 @@ import java.util.List;
 
 @Repository
 public interface MatchRepository extends JpaRepository<Match, Long> {
-    List<Match> findAllByUnderStatMatchIdIn(Collection<String> underStatIds);
 }

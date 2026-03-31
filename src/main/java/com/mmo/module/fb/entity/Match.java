@@ -6,7 +6,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.Index;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -15,13 +14,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Entity
-@Table(name = "matches", indexes = {
-        @Index(name = "idx_match_time", columnList = "matchTime"),
-        @Index(name = "idx_status", columnList = "status")
-})
+@Table(name = "matches")
 @Getter
 @Setter
 @Builder
@@ -30,28 +26,19 @@ import java.time.LocalDateTime;
 public class Match extends AbstractEntity {
 
     @Column
-    private String homeScore;
+    private Integer homeScore;
 
     @Column
-    private String awayScore;
+    private Integer awayScore;
 
     @Column
-    private LocalDateTime matchTime;
+    private Long matchTime;
 
-    @Column
-    private String homeXG;
+    @Column(precision = 5, scale = 2)
+    private BigDecimal homeXG;
 
-    @Column
-    private String awayXG;
-
-    @Column
-    private String winProbability;
-
-    @Column
-    private String drawProbability;
-
-    @Column
-    private String lossProbability;
+    @Column(precision = 5, scale = 2)
+    private BigDecimal awayXG;
 
     @ManyToOne
     private League league;
@@ -66,6 +53,12 @@ public class Match extends AbstractEntity {
     private MatchStatus status;
 
     @Column
-    private String underStatMatchId;
+    private Long sofaScoreId;
+
+    @Column
+    private boolean notifiedPredict = false;
+
+    @Column
+    private boolean notifiedResult = false;
 
 }
