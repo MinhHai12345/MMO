@@ -6,7 +6,9 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,6 +26,9 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Match extends AbstractEntity {
+
+    @Column
+    private String slug;
 
     @Column
     private Integer homeScore;
@@ -56,9 +61,15 @@ public class Match extends AbstractEntity {
     private Long sofaScoreId;
 
     @Column
+    private int round;
+
+    @Column
     private boolean notifiedPredict = false;
 
     @Column
     private boolean notifiedResult = false;
+
+    @OneToOne(mappedBy = "match")
+    private MatchOdds matchOdds;
 
 }

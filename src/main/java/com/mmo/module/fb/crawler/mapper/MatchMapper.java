@@ -1,34 +1,35 @@
-//package com.mmo.module.fb.crawler.mapper;
-//
-//import com.mmo.converter.AbstractMapper;
-//import com.mmo.module.fb.entity.Match;
-//import com.mmo.module.fb.entity.enums.MatchStatus;
-//import com.mmo.module.fb.understat.model.LeagueData;
-//import lombok.RequiredArgsConstructor;
-//import org.springframework.stereotype.Component;
-//
-//import java.time.LocalDateTime;
-//import java.time.format.DateTimeFormatter;
-//
-//@Component
-//@RequiredArgsConstructor
-//public class MatchMapper extends AbstractMapper<LeagueData.MatchDate, Match> {
-//
-//    @Override
-//    public Match map(LeagueData.MatchDate source, Match target) {
-//        target.setUnderStatMatchId(source.getId());
-//        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-//        target.setMatchTime(LocalDateTime.parse(source.getDatetime(), formatter));
-//        target.setStatus(source.isResult() ? MatchStatus.FINISHED : MatchStatus.UPCOMING);
-//        target.setAwayScore(source.getGoals().get("a"));
-//        target.setHomeScore(source.getGoals().get("h"));
-//        target.setHomeXG(source.getXG().get("h"));
-//        target.setAwayXG(source.getXG().get("a"));
-//        if (source.getForecast() != null) {
-//            target.setWinProbability(source.getForecast().get("w"));
-//            target.setDrawProbability(source.getForecast().get("d"));
-//            target.setLossProbability(source.getForecast().get("l"));
-//        }
-//        return target;
-//    }
-//}
+package com.mmo.module.fb.crawler.mapper;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.mmo.converter.AbstractMapper;
+import com.mmo.module.fb.entity.Match;
+import com.mmo.module.fb.entity.enums.MatchStatus;
+import com.mmo.module.fb.repository.TeamRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+public class MatchMapper extends AbstractMapper<JsonNode, Match> {
+    private final TeamRepository teamRepository;
+
+    @Override
+    public Match map(JsonNode source, Match target) {
+        JsonNode homeScoreNode = source.path("homeScore");
+        JsonNode awayScoreNode = source.path("awayScore");
+
+        String status = source.path("status").path("type").asText();
+
+        return Match.builder()
+                .homeTeam(teamRepository.findBySofaScoreId(source.path("homeTeam").path("id").asLong()))
+                .awayTeam(teamRepository.findBySofaScoreId(source.path("awayTeam").path("id").asLong()))
+                .sofaScoreId(source.path("id").asLong())
+                .slug(source.path("slug").asText())
+                .homeScore(homeScoreNode.has("current") ? homeScoreNode.path("current").asInt() : null)
+                .awayScore(awayScoreNode.has("current") ? awayScoreNode.path("current").asInt() : null)
+                .status("finished".equals(status) ? MatchStatus.FINISHED : MatchStatus.UPCOMING)
+                .matchTime(source.path("startTimestamp").asLong())
+                .round(source.path("roundInfo").path("round").asInt(0))
+                .build();
+    }
+}

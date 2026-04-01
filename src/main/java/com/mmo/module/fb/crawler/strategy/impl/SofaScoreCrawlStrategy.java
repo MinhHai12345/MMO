@@ -5,10 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Response;
 import com.mmo.configuration.AppProperties;
+import com.mmo.converter.DynamicConverter;
 import com.mmo.module.fb.crawler.model.Provider;
 import com.mmo.module.fb.crawler.strategy.AbstractCrawler;
 import com.mmo.module.fb.entity.League;
+import com.mmo.module.fb.entity.Match;
+import com.mmo.module.fb.entity.MatchOdds;
 import com.mmo.module.fb.entity.Season;
+import com.mmo.module.fb.entity.Team;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -22,9 +26,13 @@ import java.util.List;
 public class SofaScoreCrawlStrategy extends AbstractCrawler {
     private final AppProperties appProperties;
     private final ObjectMapper objectMapper;
+    private final DynamicConverter dynamicConverter;
 
     private static final String LEAGUE_URI = "config/default-unique-tournaments/VN/football";
-    private static final String SEASON_URI = "unique-tournament/%d/seasons";
+    private static final String SEASON_URI = "%sunique-tournament/%d/seasons";
+    private static final String MATCH_BY_ROUND_URI = "%sunique-tournament/%d/season/%d/events/round/%d";
+    private static final String MATCH_ODDS_ALL_URI = "%sevent/%d/odds/1/all";
+    private static final String TEAM_OF_LEAGUE_URI = "%sunique-tournament/%d/season/%d/standings/total";
 
     @Override
     public List<League> fetchLeague() {
@@ -60,7 +68,7 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
         List<Season> seasons = new ArrayList<>();
 
         try (Page page = createPage()) {
-            String url = String.format(appProperties.getSofaScore().getApi().concat(SEASON_URI), league.getSofaScoreId());
+            String url = String.format(SEASON_URI, appProperties.getSofaScore().getApi(), league.getSofaScoreId());
 
             randomDelay();
             Response response = page.navigate(url);
@@ -87,6 +95,70 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
         return seasons;
     }
 
+    @Override
+    public List<Match> fetchMatchesByRound(Page page, League league, int round) {
+        List<Match> matches = new ArrayList<>();
+        try {
+            randomDelay();
+            String url = String.format(MATCH_BY_ROUND_URI, appProperties.getSofaScore().getApi(),
+                    league.getSofaScoreId(), league.getCurrentSeason().getSofaScoreId(), round);
+            Response response = page.navigate(url);
+            if (response != null && response.status() == 200) {
+                JsonNode root = objectMapper.readTree(response.text());
+                JsonNode events = root.path("events");
+                if (events.isArray() && !events.isEmpty()) {
+                    events.forEach(node -> {
+                        Match match = dynamicConverter.convert(node, Match.class);
+                        match.setLeague(league);
+                        matches.add(match);
+                    });
+                }
+            }
+        } catch (Exception e) {
+            log.error("❌ Lỗi cào Round {} của giải {}: {}", round, league.getName(), e.getMessage());
+        }
+        return matches;
+    }
+
+    @Override
+    public MatchOdds fetchMatchOddByMatchId(Page page, Match match) {
+        MatchOdds matchOdds = null;
+        try {
+            String oddsUrl = String.format(MATCH_ODDS_ALL_URI, appProperties.getSofaScore().getApi(), match.getSofaScoreId());
+            Response res = page.navigate(oddsUrl);
+            if (res.status() == 200) {
+                JsonNode odds = objectMapper.readTree(res.text());
+                matchOdds = dynamicConverter.convert(odds, MatchOdds.class);
+                matchOdds.setMatch(match);
+            }
+        } catch (Exception e) {
+            System.out.println("   ⚠️ Chưa có tỷ lệ kèo.");
+        }
+        return matchOdds;
+    }
+
+    @Override
+    public List<Team> fetchTeamsByLeague(Page page, League league) {
+        List<Team> teams = new ArrayList<>();
+        try {
+            randomDelay();
+            String url = String.format(TEAM_OF_LEAGUE_URI, appProperties.getSofaScore().getApi(), league.getSofaScoreId(),
+                    league.getCurrentSeason().getSofaScoreId());
+            Response response = page.navigate(url);
+            if (response.status() == 200) {
+                JsonNode root = objectMapper.readTree(response.text());
+                JsonNode rows = root.path("standings").get(0).path("rows");
+                if (rows.isArray()) {
+                    rows.forEach(row -> {
+                        teams.add(dynamicConverter.convert(row, Team.class));
+                    });
+                }
+            }
+        } catch (Exception e) {
+            log.error("❌ Lỗi cào danh sách Team cho giải {}: {}", league.getName(), e.getMessage());
+        }
+        return teams;
+    }
 
     @Override
     public Provider getProvider() {

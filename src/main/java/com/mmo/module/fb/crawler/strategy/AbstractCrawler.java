@@ -21,6 +21,7 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
     protected Playwright playwright;
 
     protected Browser browser;
+    protected BrowserContext browserContext;
     private int usageCount = 0;
     private static final int MAX_USAGE_THRESHOLD = 250;
     private final Random random = new Random();
@@ -33,7 +34,7 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
 
     protected synchronized void ensureBrowser() {
         if (browser == null || !browser.isConnected() || usageCount >= MAX_USAGE_THRESHOLD) {
-            closeBrowser();
+            closeEverything();
             log.info("🔄 [{}] Đang khởi tạo/làm mới Browser riêng biệt...", getProvider().name());
 
             this.browser = playwright.chromium().launch(new BrowserType.LaunchOptions()
@@ -44,20 +45,17 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
                             "--disable-gpu",
                             "--blink-settings=imagesEnabled=false"
                     )));
+            this.browserContext = browser.newContext(new Browser.NewContextOptions()
+                    .setUserAgent(USER_AGENTS.get(random.nextInt(USER_AGENTS.size()))));
             this.usageCount = 0;
         }
     }
 
-    protected Page createPage() {
+    @Override
+    public synchronized Page createPage() {
         ensureBrowser();
         usageCount++;
-        String randomUA = USER_AGENTS.get(random.nextInt(USER_AGENTS.size()));
-
-        BrowserContext context = browser.newContext(new Browser.NewContextOptions()
-                .setUserAgent(randomUA)
-        );
-
-        return context.newPage();
+        return browserContext.newPage();
     }
 
     protected void randomDelay() {
@@ -69,8 +67,12 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
         }
     }
 
-    private void closeBrowser() {
+    private void closeEverything() {
         try {
+            if (browserContext != null) {
+                browserContext.close();
+                browserContext = null;
+            }
             if (browser != null) {
                 browser.close();
                 log.info("🧹 Đã đóng Browser của Strategy: {}", getProvider().name());
@@ -82,6 +84,6 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
 
     @PreDestroy
     public void shutdown() {
-        closeBrowser();
+        closeEverything();
     }
 }

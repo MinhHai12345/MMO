@@ -4,7 +4,7 @@ import com.mmo.entity.AbstractEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,8 +22,8 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @NoArgsConstructor
 public class MatchOdds extends AbstractEntity {
-
-    @ManyToOne
+    
+    @OneToOne
     @JoinColumn(name = "match_id")
     private Match match;
 
