@@ -110,6 +110,7 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
                     events.forEach(node -> {
                         Match match = dynamicConverter.convert(node, Match.class);
                         match.setLeague(league);
+                        match.setSeason(league.getCurrentSeason());
                         matches.add(match);
                     });
                 }

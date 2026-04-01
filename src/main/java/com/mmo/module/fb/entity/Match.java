@@ -2,14 +2,7 @@ package com.mmo.module.fb.entity;
 
 import com.mmo.entity.AbstractEntity;
 import com.mmo.module.fb.entity.enums.MatchStatus;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -71,5 +64,10 @@ public class Match extends AbstractEntity {
 
     @OneToOne(mappedBy = "match")
     private MatchOdds matchOdds;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "season_id")
+    private Season season;
+
 
 }
