@@ -11,16 +11,16 @@ import com.mmo.module.fb.repository.LeagueRepository;
 import com.mmo.module.fb.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.collections4.CollectionUtils;
-import org.springframework.context.annotation.DependsOn;
-import org.springframework.stereotype.Component;
+import org.springframework.core.annotation.Order;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@Component
-@DependsOn("seasonInitial")
+//@Component
+@Order(3)
 @RequiredArgsConstructor
 public class TeamInitial implements DataInitializer {
     private final LeagueRepository leagueRepository;
@@ -39,10 +39,15 @@ public class TeamInitial implements DataInitializer {
         Page page = strategy.createPage();
 
         leagues.forEach(league -> {
-            List<Team> teams = strategy.fetchTeamsByLeague(page, league).stream()
+            Set<Team> teams = new HashSet<>(strategy.fetchTeamsByLeague(page, league).stream()
                     .filter(Objects::nonNull)
                     .filter(season -> !existingSofaSeasonIds.contains(season.getSofaScoreId()))
-                    .toList();
+                    .collect(Collectors.toMap(
+                            Team::getSofaScoreId,
+                            team -> team,
+                            (existing, replacement) -> existing
+                    ))
+                    .values());
 
             if (CollectionUtils.isNotEmpty(teams)) {
                 teamRepository.saveAll(teams);

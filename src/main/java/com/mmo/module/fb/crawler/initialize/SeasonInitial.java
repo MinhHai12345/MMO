@@ -19,8 +19,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@Component
-@DependsOn("leagueInitial")
+//@Component
+//@DependsOn("leagueInitial")
 @RequiredArgsConstructor
 public class SeasonInitial implements DataInitializer {
     private final LeagueRepository leagueRepository;

@@ -4,14 +4,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.mmo.converter.AbstractMapper;
 import com.mmo.module.fb.entity.Match;
 import com.mmo.module.fb.entity.enums.MatchStatus;
-import com.mmo.module.fb.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
 public class MatchMapper extends AbstractMapper<JsonNode, Match> {
-    private final TeamRepository teamRepository;
 
     @Override
     public Match map(JsonNode source, Match target) {
@@ -21,8 +19,8 @@ public class MatchMapper extends AbstractMapper<JsonNode, Match> {
         String status = source.path("status").path("type").asText();
 
         return Match.builder()
-                .homeTeam(teamRepository.findBySofaScoreId(source.path("homeTeam").path("id").asLong()))
-                .awayTeam(teamRepository.findBySofaScoreId(source.path("awayTeam").path("id").asLong()))
+                .sofaScoreHomeTeamId(source.path("homeTeam").path("id").asLong())
+                .sofaScoreAwayTeamId(source.path("awayTeam").path("id").asLong())
                 .sofaScoreId(source.path("id").asLong())
                 .slug(source.path("slug").asText())
                 .homeScore(homeScoreNode.has("current") ? homeScoreNode.path("current").asInt() : null)

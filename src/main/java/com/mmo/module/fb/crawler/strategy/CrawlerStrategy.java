@@ -9,6 +9,7 @@ import com.mmo.module.fb.entity.Season;
 import com.mmo.module.fb.entity.Team;
 
 import java.util.List;
+import java.util.Set;
 
 public interface CrawlerStrategy {
 
@@ -18,9 +19,13 @@ public interface CrawlerStrategy {
 
     List<Match> fetchMatchesByRound(Page page, League league, int round);
 
-    MatchOdds fetchMatchOddByMatchId(Page page, Match match);
+    MatchOdds fetchMatchOddsByMatch(Page page, Match match);
+
+    Match fetchMatchXG(Page page, Match match);
 
     List<Team> fetchTeamsByLeague(Page page, League league);
+
+    Set<Long> fetchDailyUpComingMatches(Page page);
 
     Provider getProvider();
 

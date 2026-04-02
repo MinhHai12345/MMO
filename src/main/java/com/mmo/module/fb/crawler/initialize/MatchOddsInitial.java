@@ -13,14 +13,13 @@ import com.mmo.module.fb.repository.MatchOddsRepository;
 import com.mmo.module.fb.repository.MatchRepository;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.collections4.CollectionUtils;
-import org.springframework.context.annotation.DependsOn;
-import org.springframework.stereotype.Component;
+import org.springframework.core.annotation.Order;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@Component
-@DependsOn("matchInitial")
+//@Component
+@Order(6)
 @RequiredArgsConstructor
 public class MatchOddsInitial implements DataInitializer {
     private final LeagueRepository leagueRepository;
@@ -38,8 +37,10 @@ public class MatchOddsInitial implements DataInitializer {
                 List<MatchOdds> newMatchOdds = new ArrayList<>();
                 List<Match> matchesWithoutOdds = matchRepository.findMatchesByLeagueAndMatchOddsIsNull(league);
                 for (Match match : matchesWithoutOdds) {
-                    MatchOdds matchOdds = strategy.fetchMatchOddByMatchId(page, match);
-                    newMatchOdds.add(matchOdds);
+                    MatchOdds matchOdds = strategy.fetchMatchOddsByMatch(page, match);
+                    if (matchOdds != null) {
+                        newMatchOdds.add(matchOdds);
+                    }
                 }
                 if (CollectionUtils.isNotEmpty(newMatchOdds)) {
                     oddsRepository.saveAll(newMatchOdds);

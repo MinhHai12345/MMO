@@ -69,5 +69,11 @@ public class Match extends AbstractEntity {
     @JoinColumn(name = "season_id")
     private Season season;
 
+    @Transient
+    private Long sofaScoreHomeTeamId;
+
+    @Transient
+    private Long sofaScoreAwayTeamId;
+
 
 }

@@ -38,6 +38,11 @@ public class TelegramContentStrategy implements ContentStrategy {
         );
     }
 
+    @Override
+    public void dailyMatchesInformation() {
+
+    }
+
     private String escape(String text) { return TelegramUtils.escape(text); }
 
     @Override

@@ -17,8 +17,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -33,6 +36,8 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
     private static final String MATCH_BY_ROUND_URI = "%sunique-tournament/%d/season/%d/events/round/%d";
     private static final String MATCH_ODDS_ALL_URI = "%sevent/%d/odds/1/all";
     private static final String TEAM_OF_LEAGUE_URI = "%sunique-tournament/%d/season/%d/standings/total";
+    private static final String MATCH_XG_URI = "%sevent/%d/statistics";
+    private static final String DAILY_MATCH_UP_COMING_URI = "%sodds/1/featured-events-by-popularity/football";
 
     @Override
     public List<League> fetchLeague() {
@@ -122,7 +127,7 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
     }
 
     @Override
-    public MatchOdds fetchMatchOddByMatchId(Page page, Match match) {
+    public MatchOdds fetchMatchOddsByMatch(Page page, Match match) {
         MatchOdds matchOdds = null;
         try {
             String oddsUrl = String.format(MATCH_ODDS_ALL_URI, appProperties.getSofaScore().getApi(), match.getSofaScoreId());
@@ -139,6 +144,34 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
     }
 
     @Override
+    public Match fetchMatchXG(Page page, Match match) {
+        try {
+            String url = String.format(MATCH_XG_URI, appProperties.getSofaScore().getApi(), match.getSofaScoreId());
+            Response response = page.navigate(url);
+            if (response.status() == 200) {
+                JsonNode root = objectMapper.readTree(response.text());
+                JsonNode statistics = root.path("statistics");
+                if (statistics.isArray() && !statistics.isEmpty()) {
+                    JsonNode allStats = statistics.get(0);
+                    JsonNode groups = allStats.path("groups");
+
+                    for (JsonNode group : groups) {
+                        for (JsonNode item : group.path("statisticsItems")) {
+                            if ("expectedGoals".equalsIgnoreCase(item.path("key").asText())) {
+                                match.setHomeXG(new BigDecimal(item.path("home").asText()));
+                                match.setAwayXG(new BigDecimal(item.path("away").asText()));
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("❌ Lỗi cào xG trận {}: {}", match.getSofaScoreId(), e.getMessage());
+        }
+        return match;
+    }
+
+    @Override
     public List<Team> fetchTeamsByLeague(Page page, League league) {
         List<Team> teams = new ArrayList<>();
         try {
@@ -148,10 +181,15 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
             Response response = page.navigate(url);
             if (response.status() == 200) {
                 JsonNode root = objectMapper.readTree(response.text());
-                JsonNode rows = root.path("standings").get(0).path("rows");
+                JsonNode rows = root.path("standings");
                 if (rows.isArray()) {
                     rows.forEach(row -> {
-                        teams.add(dynamicConverter.convert(row, Team.class));
+                        JsonNode jsonTeams = row.path("rows");
+                        if (jsonTeams.isArray() && !jsonTeams.isEmpty()) {
+                            jsonTeams.forEach(jsonTeam -> {
+                                teams.add(dynamicConverter.convert(jsonTeam, Team.class));
+                            });
+                        }
                     });
                 }
             }
@@ -159,6 +197,25 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
             log.error("❌ Lỗi cào danh sách Team cho giải {}: {}", league.getName(), e.getMessage());
         }
         return teams;
+    }
+
+    @Override
+    public Set<Long> fetchDailyUpComingMatches(Page page) {
+        Set<Long> matchIds = new HashSet<>();
+        try {
+            String url = String.format(DAILY_MATCH_UP_COMING_URI, appProperties.getSofaScore().getApi());
+            Response response = page.navigate(url);
+            if (response.status() == 200) {
+                JsonNode root = objectMapper.readTree(response.text());
+                JsonNode featuredEvents = root.path("featuredEvents");
+                featuredEvents.forEach(event -> {
+                    matchIds.add(event.path("id").asLong());
+                });
+            }
+        } catch (Exception e) {
+            log.error("❌ Lỗi lấy trận đấu phổ biến: {}", e.getMessage());
+        }
+        return matchIds;
     }
 
     @Override

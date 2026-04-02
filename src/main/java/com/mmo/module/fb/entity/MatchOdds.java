@@ -44,4 +44,11 @@ public class MatchOdds extends AbstractEntity {
 
     @Column(precision = 5, scale = 2)
     private BigDecimal handicap;
+
+    @Column(precision = 5, scale = 2)
+    private BigDecimal homeHandicapOdds;
+
+    @Column(precision = 5, scale = 2)
+    private BigDecimal awayHandicapOdds;
+
 }

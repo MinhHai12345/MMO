@@ -7,6 +7,8 @@ public interface ContentStrategy {
 
     String content(MatchPrediction prediction);
 
+    void dailyMatchesInformation();
+
     Platform getPlatform();
 
 }
