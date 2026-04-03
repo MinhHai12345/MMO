@@ -135,7 +135,11 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
             if (res.status() == 200) {
                 JsonNode odds = objectMapper.readTree(res.text());
                 matchOdds = dynamicConverter.convert(odds, MatchOdds.class);
-                matchOdds.setMatch(match);
+                if (match.getMatchOdds() == null) {
+                    matchOdds.setMatch(match);
+                } else {
+                    matchOdds.setId(match.getMatchOdds().getId());
+                }
             }
         } catch (Exception e) {
             System.out.println("   ⚠️ Chưa có tỷ lệ kèo.");

@@ -1,5 +1,13 @@
 🚀 <b>H2 FOOTBALL DATA INSIGHT</b>
+🔥 <i>UPCOMING MATCH</i> 🔥
 📅 Ngày: <i>[(${date})]</i>
-<b>🏆 [(${leagueName})]</b>
-<i>⚽ *[(${home})] vs [(${away})]*</i>
+<th:block th:each="entry : ${matchesByLeague}">
+    ────────────────
+🏆 <b>[(${entry.key.name})]</b>
+<th:block th:each="m : ${entry.value}">
+⏰ <code th:text="${#dates.format(new java.util.Date(m.matchTime * 1000), 'HH:mm')}">22:00</code> <b>[(${m.homeTeam.shortName})]</b>-<b>[(${m.awayTeam.shortName})]</b>
+</th:block>
+</th:block>
+
 🤖 <i>H2 System Insight</i>
+#H2Football #SportsData #LiveUpdate

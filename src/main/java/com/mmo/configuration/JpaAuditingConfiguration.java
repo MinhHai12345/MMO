@@ -16,7 +16,7 @@ public class JpaAuditingConfiguration {
     @Bean
     public AuditorAware<String> auditorProvider() {
         // TODO: after define spring security. Handle get username for it
-        return () -> Optional.of("unknown");
+        return () -> Optional.of("system");
     }
 
     @Bean

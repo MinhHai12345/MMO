@@ -31,6 +31,7 @@ public class MatchXGInitial implements DataInitializer {
             for (Match match : matches) {
                 match = strategy.fetchMatchXG(page, match);
                 if (match != null && match.getHomeXG() != null && match.getAwayXG() != null) {
+                    match.setStatus(MatchStatus.FINISHED);
                     updatedMatches.add(match);
                 }
             }
