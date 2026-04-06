@@ -22,7 +22,7 @@ public class CrawlerController {
     @GetMapping("/bot")
     public void pushBot() {
         jobRunner.fetchDailyMatchesJob();
-        jobRunner.notifyProcessMatchesJob();
+        jobRunner.notifyMatchesDailyJob();
     }
 
 }

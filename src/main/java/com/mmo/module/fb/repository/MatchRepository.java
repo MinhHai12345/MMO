@@ -29,6 +29,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     List<Match> findBySofaScoreIdIn(@Param("sofaScoreIds") Set<Long> sofaScoreIds);
 
     @Query("SELECT m FROM Match m LEFT JOIN FETCH m.league " +
-           " WHERE m.status = com.mmo.module.fb.entity.enums.MatchStatus.PROCESSING")
+           " WHERE m.status = com.mmo.module.fb.entity.enums.MatchStatus.PROCESSING " +
+           " AND m.notifiedPredict = false ")
     List<Match> findProcessMatch();
 }

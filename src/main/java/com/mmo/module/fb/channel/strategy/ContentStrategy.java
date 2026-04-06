@@ -9,7 +9,9 @@ import java.util.Map;
 
 public interface ContentStrategy {
 
-    String buildProcessMatchesContent(Map<League, List<Match>> matchesByLeague);
+    String buildMatchesDailyContent(Map<League, List<Match>> matchesByLeague);
+
+    String buildMatchInsightsContent(Map<League, List<Match>> matchesByLeague);
 
     Platform getPlatform();
 

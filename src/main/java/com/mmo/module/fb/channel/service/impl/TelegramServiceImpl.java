@@ -23,9 +23,16 @@ public class TelegramServiceImpl extends AbstractTelegramService implements Tele
     private final ContentStrategyRegistry strategyRegistry;
 
     @Override
-    public void notifyProcessMatches(Map<League, List<Match>> matchesByLeague) {
+    public void notifyMatchesDaily(Map<League, List<Match>> matchesByLeague) {
         ContentStrategy contentStrategy = strategyRegistry.getStrategy(Platform.TELEGRAM);
-        String content = contentStrategy.buildProcessMatchesContent(matchesByLeague);
+        String content = contentStrategy.buildMatchesDailyContent(matchesByLeague);
+        publish(appProperties.getTelegram().getChannel().getId(), content);
+    }
+
+    @Override
+    public void notifyMatchInsights(Map<League, List<Match>> matchesByLeague) {
+        ContentStrategy contentStrategy = strategyRegistry.getStrategy(Platform.TELEGRAM);
+        String content = contentStrategy.buildMatchInsightsContent(matchesByLeague);
         publish(appProperties.getTelegram().getChannel().getId(), content);
     }
 }

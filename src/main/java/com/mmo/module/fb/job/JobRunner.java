@@ -30,16 +30,30 @@ public class JobRunner {
     }
 
     @Scheduled(cron = "0 0 5 * * *", zone = "Asia/Ho_Chi_Minh")
-    public void notifyProcessMatchesJob() {
+    public void notifyMatchesDailyJob() {
         log.info("📱 Đang tạo nội dung thông báo lịch thi đấu...");
         List<Match> todayMatches = matchRepository.findProcessMatch();
-
         if (CollectionUtils.isNotEmpty(todayMatches)) {
             Map<League, List<Match>> groupedMatches = todayMatches.stream()
                     .collect(Collectors.groupingBy(Match::getLeague));
-
-            telegramService.notifyProcessMatches(groupedMatches);
+            telegramService.notifyMatchesDaily(groupedMatches);
             log.info("✅ Đã push nội dung lên các nền tảng.");
+        }
+    }
+
+    @Scheduled(cron = "0 5 5 * * *", zone = "Asia/Ho_Chi_Minh")
+    public void notifyMatchInsightsJob() {
+        log.info("📱 Đang tạo nội dung thông báo dữ liệu bóng đá...");
+        List<Match> todayMatches = matchRepository.findProcessMatch();
+        if (CollectionUtils.isNotEmpty(todayMatches)) {
+            Map<League, List<Match>> groupedMatches = todayMatches.stream()
+                    .collect(Collectors.groupingBy(Match::getLeague));
+            telegramService.notifyMatchInsights(groupedMatches);
+            log.info("✅ Đã push nội dung lên các nền tảng.");
+            todayMatches.forEach(todayMatch -> {
+                todayMatch.setNotifiedPredict(true);
+            });
+            matchRepository.saveAll(todayMatches);
         }
     }
 

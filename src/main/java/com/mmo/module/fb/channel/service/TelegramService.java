@@ -7,5 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 public interface TelegramService {
-    void notifyProcessMatches(Map<League, List<Match>> matchesByLeague);
+    void notifyMatchesDaily(Map<League, List<Match>> matchesByLeague);
+
+    void notifyMatchInsights(Map<League, List<Match>> matchesByLeague);
 }

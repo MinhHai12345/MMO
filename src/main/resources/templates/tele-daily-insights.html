@@ -1,0 +1,24 @@
+🚀 <b>H2 FOOTBALL DATA INSIGHT</b>
+📅 Ngày: <i>[(${date})]</i>
+
+<th:block th:each="entry : ${matchesByLeague}">
+    ────────────────
+🏆 <b>[(${entry.key.name.toUpperCase()})]</b>
+<th:block th:each="m : ${entry.value}">
+⚽️ <b>[(${m.homeTeam.shortName})]</b> vs <b>[(${m.awayTeam.shortName})]</b>
+⏰ <code th:text="${#dates.format(new java.util.Date(m.matchTime * 1000), 'HH:mm')}"></code>
+
+🔹 <b>Win Probability:</b>
+🏠 <code>[(${m.matchOdds.homeOdds})]%</code> | 🤝 <code>[(${m.matchOdds.drawOdds})]%</code> | 🚀 <code>[(${m.matchOdds.awayOdds})]%</code>
+
+🔹 <b>Key Metrics:</b>
+- Expected Goals (xG): <code>[(${m.homeXG})]</code> - <code>[(${m.awayXG})]</code>
+<!-- - Confidence Score: 🛡 <b>[(${m.confidence})]%</b>-->
+</th:block>
+</th:block>
+
+---
+🤖 <b>H2 Analysis:</b> High xG expected in top-tier fixtures today.
+👉 <a th:href="'https://h2football.com/m/' + [(${m.sofaScoreId})]">Deep Dive Tactical Map</a>
+
+#H2Football #OptaStyle #xGInsight #PremierLeague
