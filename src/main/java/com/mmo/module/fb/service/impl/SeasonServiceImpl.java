@@ -1,6 +1,5 @@
-package com.mmo.module.fb.crawler.initialize;
+package com.mmo.module.fb.service.impl;
 
-import com.mmo.initialize.DataInitializer;
 import com.mmo.module.fb.crawler.model.Provider;
 import com.mmo.module.fb.crawler.strategy.CrawlerStrategy;
 import com.mmo.module.fb.crawler.strategy.CrawlerStrategyRegistry;
@@ -8,10 +7,10 @@ import com.mmo.module.fb.entity.League;
 import com.mmo.module.fb.entity.Season;
 import com.mmo.module.fb.repository.LeagueRepository;
 import com.mmo.module.fb.repository.SeasonRepository;
+import com.mmo.module.fb.service.SeasonService;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.collections4.CollectionUtils;
-import org.springframework.context.annotation.DependsOn;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
 import java.util.List;
@@ -19,17 +18,16 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-//@Component
-//@DependsOn("leagueInitial")
+@Service
 @RequiredArgsConstructor
-public class SeasonInitial implements DataInitializer {
+public class SeasonServiceImpl implements SeasonService {
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
     private final CrawlerStrategyRegistry crawlerStrategyRegistry;
 
     @Override
-    public void initialize() {
-        List<League> leagues = leagueRepository.findAll();
+    public void storeAllSeasons() {
+        List<League> leagues = leagueRepository.findByActiveIsTrue();
         CrawlerStrategy strategy = crawlerStrategyRegistry.getStrategy(Provider.SOFA_SCORE);
 
         Set<Long> existingSofaSeasonIds = seasonRepository.findAll().stream()

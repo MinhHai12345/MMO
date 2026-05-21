@@ -1,7 +1,6 @@
-package com.mmo.module.fb.crawler.initialize;
+package com.mmo.module.fb.service.impl;
 
 import com.microsoft.playwright.Page;
-import com.mmo.initialize.DataInitializer;
 import com.mmo.module.fb.crawler.model.Provider;
 import com.mmo.module.fb.crawler.strategy.CrawlerStrategy;
 import com.mmo.module.fb.crawler.strategy.CrawlerStrategyRegistry;
@@ -9,9 +8,10 @@ import com.mmo.module.fb.entity.League;
 import com.mmo.module.fb.entity.Team;
 import com.mmo.module.fb.repository.LeagueRepository;
 import com.mmo.module.fb.repository.TeamRepository;
+import com.mmo.module.fb.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.collections4.CollectionUtils;
-import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
 import java.util.List;
@@ -19,17 +19,16 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-//@Component
-@Order(3)
+@Service
 @RequiredArgsConstructor
-public class TeamInitial implements DataInitializer {
+public class TeamServiceImpl implements TeamService {
     private final LeagueRepository leagueRepository;
     private final TeamRepository teamRepository;
     private final CrawlerStrategyRegistry crawlerStrategyRegistry;
 
     @Override
-    public void initialize() {
-        List<League> leagues = leagueRepository.findAll();
+    public void storeAllTeams() {
+        List<League> leagues = leagueRepository.findByActiveIsTrue();
         CrawlerStrategy strategy = crawlerStrategyRegistry.getStrategy(Provider.SOFA_SCORE);
 
         Set<Long> existingSofaSeasonIds = teamRepository.findAll().stream()

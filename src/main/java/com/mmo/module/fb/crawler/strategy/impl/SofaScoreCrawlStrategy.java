@@ -56,7 +56,7 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
                                 .sofaScoreId(node.path("id").asLong())
                                 .name(node.path("name").asText())
                                 .slug(node.path("slug").asText())
-                                .isActive(true)
+                                .active(true)
                                 .build());
                     }
                 }

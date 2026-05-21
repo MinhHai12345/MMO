@@ -33,7 +33,7 @@ public class League extends AbstractEntity {
     private String slug;
 
     @Column
-    private boolean isActive;
+    private boolean active;
 
     @Column
     private Long sofaScoreId;

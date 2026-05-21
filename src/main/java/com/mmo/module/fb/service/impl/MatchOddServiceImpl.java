@@ -1,7 +1,6 @@
-package com.mmo.module.fb.crawler.initialize;
+package com.mmo.module.fb.service.impl;
 
 import com.microsoft.playwright.Page;
-import com.mmo.initialize.DataInitializer;
 import com.mmo.module.fb.crawler.model.Provider;
 import com.mmo.module.fb.crawler.strategy.CrawlerStrategy;
 import com.mmo.module.fb.crawler.strategy.CrawlerStrategyRegistry;
@@ -11,25 +10,25 @@ import com.mmo.module.fb.entity.MatchOdds;
 import com.mmo.module.fb.repository.LeagueRepository;
 import com.mmo.module.fb.repository.MatchOddsRepository;
 import com.mmo.module.fb.repository.MatchRepository;
+import com.mmo.module.fb.service.MatchOddService;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.collections4.CollectionUtils;
-import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 
-//@Component
-@Order(6)
+@Service
 @RequiredArgsConstructor
-public class MatchOddsInitial implements DataInitializer {
+public class MatchOddServiceImpl implements MatchOddService {
     private final LeagueRepository leagueRepository;
     private final MatchRepository matchRepository;
     private final MatchOddsRepository oddsRepository;
     private final CrawlerStrategyRegistry crawlerStrategyRegistry;
 
     @Override
-    public void initialize() {
-        List<League> leagues = leagueRepository.findAll();
+    public void storeAllMatchOdds() {
+        List<League> leagues = leagueRepository.findByActiveIsTrue();
         CrawlerStrategy strategy = crawlerStrategyRegistry.getStrategy(Provider.SOFA_SCORE);
 
         try (Page page = strategy.createPage()) {
@@ -48,5 +47,4 @@ public class MatchOddsInitial implements DataInitializer {
             }
         }
     }
-
 }
