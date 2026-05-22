@@ -9,7 +9,7 @@ import com.mmo.module.fb.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-@Component
+//@Component
 @RequiredArgsConstructor
 public class InitializeData implements DataInitializer {
     private final LeagueService leagueService;

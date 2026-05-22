@@ -11,6 +11,7 @@ import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.quartz.QuartzJobBean;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +21,6 @@ import java.time.ZonedDateTime;
 @RequiredArgsConstructor
 @Service
 public class CronJobServiceImpl implements CronJobService {
-
     private static final Logger LOGGER = LoggerFactory.getLogger(CronJobServiceImpl.class);
     private final Scheduler scheduler;
     private final ApplicationContext context;

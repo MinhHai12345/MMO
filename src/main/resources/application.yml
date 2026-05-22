@@ -4,6 +4,15 @@ spring:
   application:
     name: mmo
 
+  quartz:
+    job-store-type: jdbc
+    jdbc:
+      initialize-schema: never
+    properties:
+      org:
+        quartz:
+          jobStore:
+            driverDelegateClass: org.quartz.impl.jdbcjobstore.StdJDBCDelegate
 app:
   initial-data:
     auto-import: true
@@ -12,6 +21,6 @@ app:
       token: ${TELEGRAM_TOKEN}
       username: H2_FB_Bot
     channel:
-        id: ${CHANNEL_ID}
+      id: ${CHANNEL_ID}
   sofa-score:
     api: https://api.sofascore.com/api/v1/

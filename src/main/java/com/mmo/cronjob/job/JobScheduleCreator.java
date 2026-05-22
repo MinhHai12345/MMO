@@ -1,7 +1,7 @@
 package com.mmo.cronjob.job;
 
-import digi.ecomm.platformservice.cronjob.exception.InvalidCronJobException;
-import digi.ecomm.platformservice.util.DateTimeUtils;
+import com.mmo.cronjob.exception.InvalidCronJobException;
+import com.mmo.utils.DateTimeUtils;
 import org.quartz.CronTrigger;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;

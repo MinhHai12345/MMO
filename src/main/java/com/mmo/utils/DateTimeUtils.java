@@ -3,8 +3,10 @@ package com.mmo.utils;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZonedDateTime;
+import java.util.Date;
 
-public class TimeUtil {
+public class DateTimeUtils {
 
     public static boolean isUpcoming(String time) {
         return time != null && time.contains(":");
@@ -17,5 +19,9 @@ public class TimeUtil {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    public static Date convertToDate(final ZonedDateTime dateToConvert) {
+        return Date.from(dateToConvert.toInstant());
     }
 }

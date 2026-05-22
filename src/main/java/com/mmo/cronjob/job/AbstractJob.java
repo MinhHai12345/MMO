@@ -6,7 +6,6 @@ import com.mmo.cronjob.service.CronJobService;
 import jakarta.annotation.Resource;
 import org.quartz.InterruptableJob;
 import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.quartz.QuartzJobBean;
@@ -27,7 +26,7 @@ public abstract class AbstractJob<T extends CronJob> extends QuartzJobBean imple
 
     @Override
     @SuppressWarnings("unchecked")
-    protected final void executeInternal(final JobExecutionContext context) throws JobExecutionException {
+    protected final void executeInternal(final JobExecutionContext context) {
         final String jobName = context.getJobDetail().getKey().getName();
         final String jobGroup = context.getJobDetail().getKey().getGroup();
         final T cronjob = (T) cronJobService.getJob(jobName, jobGroup);
