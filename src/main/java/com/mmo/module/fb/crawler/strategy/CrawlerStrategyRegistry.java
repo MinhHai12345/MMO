@@ -1,8 +1,6 @@
 package com.mmo.module.fb.crawler.strategy;
 
-import com.mmo.module.fb.channel.model.Platform;
-import com.mmo.module.fb.channel.strategy.ContentStrategy;
-import com.mmo.module.fb.crawler.model.Provider;
+import com.mmo.module.fb.crawler.model.enums.Provider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

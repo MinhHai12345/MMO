@@ -6,7 +6,8 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Response;
 import com.mmo.configuration.AppProperties;
 import com.mmo.converter.DynamicConverter;
-import com.mmo.module.fb.crawler.model.Provider;
+import com.mmo.module.fb.crawler.model.enums.Provider;
+import com.mmo.module.fb.crawler.model.sofa.SofaOddsData;
 import com.mmo.module.fb.crawler.strategy.AbstractCrawler;
 import com.mmo.module.fb.entity.League;
 import com.mmo.module.fb.entity.Match;
@@ -18,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -34,10 +36,12 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
     private static final String LEAGUE_URI = "config/default-unique-tournaments/VN/football";
     private static final String SEASON_URI = "%sunique-tournament/%d/seasons";
     private static final String MATCH_BY_ROUND_URI = "%sunique-tournament/%d/season/%d/events/round/%d";
-    private static final String MATCH_ODDS_ALL_URI = "%sevent/%d/odds/1/all";
+    private static final String MATCH_ODDS_URI = "%sevent/%d/odds/1/all";
     private static final String TEAM_OF_LEAGUE_URI = "%sunique-tournament/%d/season/%d/standings/total";
     private static final String MATCH_XG_URI = "%sevent/%d/statistics";
     private static final String DAILY_MATCH_UP_COMING_URI = "%sodds/1/featured-events-by-popularity/football";
+    private static final String DAILY_ALL_MATCH_ODDS_URI = "%ssport/football/odds/1/%s";
+    private static final String MATCH_UPCOMING_BY_TEAM_AND_DATE_URI = "%sunique-tournament/%d/scheduled-events/%s";
 
     @Override
     public List<League> fetchLeague() {
@@ -130,7 +134,7 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
     public MatchOdds fetchMatchOddsByMatch(Page page, Match match) {
         MatchOdds matchOdds = null;
         try {
-            String oddsUrl = String.format(MATCH_ODDS_ALL_URI, appProperties.getSofaScore().getApi(), match.getSofaScoreId());
+            String oddsUrl = String.format(MATCH_ODDS_URI, appProperties.getSofaScore().getApi(), match.getSofaScoreId());
             Response res = page.navigate(oddsUrl);
             if (res.status() == 200) {
                 JsonNode odds = objectMapper.readTree(res.text());
@@ -220,6 +224,20 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
             log.error("❌ Lỗi lấy trận đấu phổ biến: {}", e.getMessage());
         }
         return matchIds;
+    }
+
+    @Override
+    public SofaOddsData fetchDailyMatchOdds(Page page) {
+        try {
+            String url = String.format(DAILY_ALL_MATCH_ODDS_URI, appProperties.getSofaScore().getApi(), LocalDate.now());
+            Response response = page.navigate(url);
+            if (response.status() == 200) {
+                return objectMapper.readValue(response.text(), SofaOddsData.class);
+            }
+        } catch (Exception e) {
+            log.error("❌ Fetch all match odds daily error: {}", e.getMessage());
+        }
+        return null;
     }
 
     @Override

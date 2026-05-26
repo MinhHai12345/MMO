@@ -1,6 +1,6 @@
 package com.mmo.module.fb.service.impl;
 
-import com.mmo.module.fb.crawler.model.Provider;
+import com.mmo.module.fb.crawler.model.enums.Provider;
 import com.mmo.module.fb.crawler.strategy.CrawlerStrategy;
 import com.mmo.module.fb.crawler.strategy.CrawlerStrategyRegistry;
 import com.mmo.module.fb.entity.League;

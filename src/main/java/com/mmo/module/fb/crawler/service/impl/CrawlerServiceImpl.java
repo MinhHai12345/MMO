@@ -1,7 +1,7 @@
 package com.mmo.module.fb.crawler.service.impl;
 
 import com.microsoft.playwright.Page;
-import com.mmo.module.fb.crawler.model.Provider;
+import com.mmo.module.fb.crawler.model.enums.Provider;
 import com.mmo.module.fb.crawler.service.CrawlerService;
 import com.mmo.module.fb.crawler.strategy.CrawlerStrategy;
 import com.mmo.module.fb.crawler.strategy.CrawlerStrategyRegistry;

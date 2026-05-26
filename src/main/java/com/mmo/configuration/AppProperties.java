@@ -53,7 +53,10 @@ public class AppProperties {
         @Setter
         public static class Channel {
             @NotBlank
-            private String id;
+            private String free;
+            @NotBlank
+            private String premium;
+
         }
     }
 

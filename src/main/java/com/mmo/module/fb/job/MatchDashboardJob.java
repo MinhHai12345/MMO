@@ -6,11 +6,12 @@ import org.quartz.JobExecutionContext;
 import org.springframework.stereotype.Component;
 
 @Component
-public class TextStorageJob extends AbstractJob<CronJob> {
+public class MatchDashboardJob extends AbstractJob<CronJob> {
 
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
-        System.out.println("-----Text  storage-----");
+        System.out.println("-----Fetch Match Upcoming Dashboard Job-----");
     }
 
 }
+
