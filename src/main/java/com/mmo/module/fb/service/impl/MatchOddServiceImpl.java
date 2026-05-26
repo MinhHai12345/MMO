@@ -28,23 +28,23 @@ public class MatchOddServiceImpl implements MatchOddService {
 
     @Override
     public void storeAllMatchOdds() {
-        List<League> leagues = leagueRepository.findByActiveIsTrue();
-        CrawlerStrategy strategy = crawlerStrategyRegistry.getStrategy(Provider.SOFA_SCORE);
-
-        try (Page page = strategy.createPage()) {
-            for (League league : leagues) {
-                List<MatchOdds> newMatchOdds = new ArrayList<>();
-                List<Match> matchesWithoutOdds = matchRepository.findMatchesByLeagueAndMatchOddsIsNull(league);
-                for (Match match : matchesWithoutOdds) {
-                    MatchOdds matchOdds = strategy.fetchMatchOddsByMatch(page, match);
-                    if (matchOdds != null) {
-                        newMatchOdds.add(matchOdds);
-                    }
-                }
-                if (CollectionUtils.isNotEmpty(newMatchOdds)) {
-                    oddsRepository.saveAll(newMatchOdds);
-                }
-            }
-        }
+//        List<League> leagues = leagueRepository.findByActiveIsTrue();
+//        CrawlerStrategy strategy = crawlerStrategyRegistry.getStrategy(Provider.SOFA_SCORE);
+//
+//        try (Page page = strategy.createPage()) {
+//            for (League league : leagues) {
+//                List<MatchOdds> newMatchOdds = new ArrayList<>();
+//                List<Match> matchesWithoutOdds = matchRepository.findMatchesByLeagueAndMatchOddsIsNull(league);
+//                for (Match match : matchesWithoutOdds) {
+//                    MatchOdds matchOdds = strategy.fetchMatchOddsByMatch(page, match);
+//                    if (matchOdds != null) {
+//                        newMatchOdds.add(matchOdds);
+//                    }
+//                }
+//                if (CollectionUtils.isNotEmpty(newMatchOdds)) {
+//                    oddsRepository.saveAll(newMatchOdds);
+//                }
+//            }
+//        }
     }
 }

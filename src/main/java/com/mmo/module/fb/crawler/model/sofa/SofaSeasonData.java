@@ -19,5 +19,6 @@ public class SofaSeasonData {
         private Long id;
         private String name;
         private String year;
+        private boolean isCurrent;
     }
 }

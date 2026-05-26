@@ -14,27 +14,42 @@ import java.util.Set;
 
 public interface CrawlerStrategy {
 
-    List<League> fetchLeague();
-
-    List<Season> fetchSeasonByLeague(League league);
-
-    List<Team> fetchTeamsByLeague(Page page, League league);
-
-    List<Match> fetchMatchesByRound(Page page, League league, int round);
-
-    MatchOdds fetchMatchOddsByMatch(Page page, Match match);
+    /**
+     * Store Leagues to system
+     */
+    void storeLeagues();
 
     /**
-     * Get match XG by match id
+     * Store seasons to system
      */
-    Match fetchMatchXG(Page page, Match match);
-
-    Set<Long> fetchDailyUpComingMatches(Page page);
+    void storeSeasons();
 
     /**
-     * Get all match odds by today
+     * Store teams to system
      */
-    SofaOddsData fetchDailyMatchOdds(Page page);
+    void storeTeams();
+
+//    List<League> fetchLeague();
+//
+//    List<Season> fetchSeasonByLeague(League league);
+//
+//    List<Team> fetchTeamsByLeague(Page page, League league);
+//
+//    List<Match> fetchMatchesByRound(Page page, League league, int round);
+//
+//    MatchOdds fetchMatchOddsByMatch(Page page, Match match);
+//
+//    /**
+//     * Get match XG by match id
+//     */
+//    Match fetchMatchXG(Page page, Match match);
+//
+//    Set<Long> fetchDailyUpComingMatches(Page page);
+//
+//    /**
+//     * Get all match odds by today
+//     */
+//    SofaOddsData fetchDailyMatchOdds(Page page);
 
     Provider getProvider();
 
