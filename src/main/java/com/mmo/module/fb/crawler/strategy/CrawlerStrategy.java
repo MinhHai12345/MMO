@@ -29,27 +29,15 @@ public interface CrawlerStrategy {
      */
     void storeTeams();
 
-//    List<League> fetchLeague();
-//
-//    List<Season> fetchSeasonByLeague(League league);
-//
-//    List<Team> fetchTeamsByLeague(Page page, League league);
-//
-//    List<Match> fetchMatchesByRound(Page page, League league, int round);
-//
-//    MatchOdds fetchMatchOddsByMatch(Page page, Match match);
-//
-//    /**
-//     * Get match XG by match id
-//     */
-//    Match fetchMatchXG(Page page, Match match);
-//
-//    Set<Long> fetchDailyUpComingMatches(Page page);
-//
-//    /**
-//     * Get all match odds by today
-//     */
-//    SofaOddsData fetchDailyMatchOdds(Page page);
+    /**
+     * Store matches to system
+     */
+    void storeMatches();
+
+    /**
+     * Store match statistics to system
+     */
+    void storeMatchStatistics();
 
     Provider getProvider();
 

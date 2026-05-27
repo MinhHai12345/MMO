@@ -26,8 +26,8 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements SofaCrawlerService {
-    private final AppProperties appProperties;
     private final ObjectMapper objectMapper;
+    private final AppProperties appProperties;
 
     private static final String FETCH_ALL_UNIQUE_TOURNAMENTS_URI = "config/default-unique-tournaments/VN/football";
     private static final String FETCH_SEASON_BY_TOURNAMENT_URI = "%sunique-tournament/%d/seasons";
@@ -82,7 +82,7 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
         try {
             randomDelay();
             String url = String.format(FETCH_STANDINGS_TOTAL_BY_TOURNAMENT_AND_SEASON_URI,
-                    appProperties.getSofaScore().getApi(), sofaTournamentId, sofaTournamentId);
+                    appProperties.getSofaScore().getApi(), sofaTournamentId, sofaSeasonId);
             Response response = page.navigate(url);
             if (response.status() == 200) {
                 SofaStandingsData sofaStandingsData = objectMapper.readValue(response.text(), SofaStandingsData.class);

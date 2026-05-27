@@ -43,16 +43,9 @@ public interface SofaCrawlerService {
      */
     SofaOddsData fetchDailyMatchOdds(Page page);
 
-
     /**
      * Fetch Match Daily by tournament id
      */
     List<SofaMatchData.SofaEventDTO> fetchMatchesDailyByTournamentId(Long sofaTournamentId, Page page);
 
-//
-//    MatchOdds fetchMatchOddsByMatch(Page page, Match match);
-//
-//
-//    Set<Long> fetchDailyUpComingMatches(Page page);
-//
 }

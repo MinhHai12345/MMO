@@ -12,7 +12,7 @@ public class SofaMatchData {
     @JsonProperty("events")
     private List<SofaEventDTO> events;
 
-    @JsonProperty("events")
+    @JsonProperty("hasNextPage")
     private boolean hasNextPage;
 
     @Data
@@ -20,7 +20,7 @@ public class SofaMatchData {
     public static class SofaEventDTO {
 
         @JsonProperty("id")
-        private String id;
+        private Long id;
 
         private String slug;
         private Long startTimestamp;
@@ -33,6 +33,7 @@ public class SofaMatchData {
         private ScoreDetailDTO homeScore;
         private ScoreDetailDTO awayScore;
         private StatusDTO status;
+        private RoundInfo roundInfo;
     }
 
     @Data
@@ -52,6 +53,7 @@ public class SofaMatchData {
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class TeamDTO {
+        private Long id;
         private String name;
         private String slug;
         private String shortName;
@@ -64,6 +66,12 @@ public class SofaMatchData {
         private Integer code;
         private String description;
         private String type;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class RoundInfo {
+        private Integer round;
     }
 
     @Data

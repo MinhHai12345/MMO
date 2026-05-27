@@ -1,5 +1,0 @@
-package com.mmo.module.fb.crawler.service;
-
-public interface CrawlerService {
-    void fetchDailyMatches();
-}

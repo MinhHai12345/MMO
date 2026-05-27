@@ -4,6 +4,7 @@ import com.mmo.cronjob.entity.CronJob;
 import com.mmo.cronjob.repository.CronJobRepository;
 import com.mmo.cronjob.service.CronJobService;
 import com.mmo.initialize.DataInitializer;
+import com.mmo.module.fb.job.InitialFBDataJob;
 import com.mmo.module.fb.job.MatchInsightJob;
 import com.mmo.module.fb.job.MatchUpcomingJob;
 import com.mmo.module.fb.job.MatchDashboardJob;
@@ -49,5 +50,16 @@ public class CronJobInitial implements DataInitializer {
             matchInsightJob.setDescription("Fetch Match Upcoming Insights Job");
             cronJobService.saveJob(matchInsightJob);
         }
+
+        if (cronJobRepository.findByJobNameAndJobGroup(InitialFBDataJob.class.getSimpleName(), FB_JOB_GROUP).isEmpty()) {
+            final CronJob initialDataJob = new CronJob();
+            initialDataJob.setJobName(InitialFBDataJob.class.getSimpleName());
+            initialDataJob.setJobGroup(FB_JOB_GROUP);
+            initialDataJob.setJobClass(InitialFBDataJob.class.getName());
+            initialDataJob.setCronExpression("0 0 0 1 8 ?");
+            initialDataJob.setDescription("Initial All Data FB Job");
+            cronJobService.saveJob(initialDataJob);
+        }
+
     }
 }

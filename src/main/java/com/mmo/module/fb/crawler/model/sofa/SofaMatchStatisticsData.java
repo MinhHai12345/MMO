@@ -3,6 +3,8 @@ package com.mmo.module.fb.crawler.model.sofa;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+
+import java.math.BigDecimal;
 import java.util.List;
 
 @Data
@@ -33,8 +35,8 @@ public class SofaMatchStatisticsData {
         private String key;
         private String home;
         private String away;
-        private Double homeValue;
-        private Double awayValue;
+        private BigDecimal homeValue;
+        private BigDecimal awayValue;
         private Integer compareCode;
         private String statisticsType;
         private String valueType;

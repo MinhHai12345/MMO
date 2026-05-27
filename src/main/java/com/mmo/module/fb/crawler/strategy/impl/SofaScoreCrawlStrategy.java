@@ -3,15 +3,20 @@ package com.mmo.module.fb.crawler.strategy.impl;
 import com.microsoft.playwright.Page;
 import com.mmo.converter.DynamicConverter;
 import com.mmo.module.fb.crawler.model.enums.Provider;
+import com.mmo.module.fb.crawler.model.sofa.SofaMatchData;
+import com.mmo.module.fb.crawler.model.sofa.SofaMatchStatisticsData;
 import com.mmo.module.fb.crawler.model.sofa.SofaSeasonData;
 import com.mmo.module.fb.crawler.model.sofa.SofaStandingsData;
 import com.mmo.module.fb.crawler.model.sofa.SofaUniqueTournamentsData;
 import com.mmo.module.fb.crawler.service.SofaCrawlerService;
 import com.mmo.module.fb.crawler.strategy.AbstractCrawler;
 import com.mmo.module.fb.entity.League;
+import com.mmo.module.fb.entity.Match;
 import com.mmo.module.fb.entity.Season;
 import com.mmo.module.fb.entity.Team;
+import com.mmo.module.fb.entity.enums.MatchStatus;
 import com.mmo.module.fb.repository.LeagueRepository;
+import com.mmo.module.fb.repository.MatchRepository;
 import com.mmo.module.fb.repository.SeasonRepository;
 import com.mmo.module.fb.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,20 +24,24 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class SofaScoreCrawlStrategy extends AbstractCrawler {
-    private final SofaCrawlerService sofaCrawlerService;
+    private final TeamRepository teamRepository;
+    private final MatchRepository matchRepository;
     private final DynamicConverter dynamicConverter;
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
-    private final TeamRepository teamRepository;
+    private final SofaCrawlerService sofaCrawlerService;
 
     @Override
     public void storeLeagues() {
@@ -98,8 +107,9 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
 
         leagues.forEach(league -> {
             List<SofaStandingsData.StandingGroupDTO> standings = sofaCrawlerService.fetchStandingTotal(league.getSofaScoreId(),
-                    league.getCurrentSeasonId(), page);
+                    league.getCurrentSeason().getSofaScoreId(), page);
             List<SofaStandingsData.TeamDTO> teamDTOS = standings.stream()
+                    .filter(Objects::nonNull)
                     .map(SofaStandingsData.StandingGroupDTO::getRows)
                     .flatMap(List::stream)
                     .map(SofaStandingsData.StandingRowDTO::getTeam)
@@ -122,93 +132,80 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
         });
     }
 
+    @Override
+    public void storeMatches() {
+        List<League> leagues = leagueRepository.findByActiveIsTrue();
+        Set<Long> existingSofaMatchIds = matchRepository.findDistinctSofaScoreIds();
+        Page page = createPage();
+        Map<Long, Team> teamMap = getTeamMap();
+        leagues.forEach(league -> {
+            int emptyCount = 0;
+            for (int round = 1; round <= 50; round++) {
+                List<SofaMatchData.SofaEventDTO> events = sofaCrawlerService.fetchMatchesByRound(league.getSofaScoreId(),
+                        league.getCurrentSeason().getSofaScoreId(), round, page);
+                if (events.isEmpty()) {
+                    emptyCount++;
+                    if (emptyCount > 3 && round > 10) {
+                        break;
+                    }
+                    continue;
+                }
+                emptyCount = 0;
+                events = events.stream()
+                        .filter(eventDTO -> !existingSofaMatchIds.contains(eventDTO.getId()))
+                        .toList();
+                if (CollectionUtils.isNotEmpty(events)) {
+                    List<Match> matches = dynamicConverter.convertAll(events, Match.class);
+                    populateMatchInfo(matches, teamMap, league);
+                    matchRepository.saveAll(matches);
+                    existingSofaMatchIds.addAll(matches.stream().map(Match::getSofaScoreId).collect(Collectors.toSet()));
+                }
+            }
+        });
+    }
 
-//    public List<Match> fetchMatchesByRound(Page page, League league, int round) {
-//        List<Match> matches = new ArrayList<>();
-//        try {
-//            randomDelay();
-//            String url = String.format(MATCH_BY_ROUND_URI, appProperties.getSofaScore().getApi(),
-//                    league.getSofaScoreId(), league.getCurrentSeason().getSofaScoreId(), round);
-//            Response response = page.navigate(url);
-//            if (response != null && response.status() == 200) {
-//                JsonNode root = objectMapper.readTree(response.text());
-//                JsonNode events = root.path("events");
-//                if (events.isArray() && !events.isEmpty()) {
-//                    events.forEach(node -> {
-//                        Match match = dynamicConverter.convert(node, Match.class);
-//                        match.setLeague(league);
-//                        match.setSeason(league.getCurrentSeason());
-//                        matches.add(match);
-//                    });
-//                }
-//            }
-//        } catch (Exception e) {
-//            log.error("❌ Lỗi cào Round {} của giải {}: {}", round, league.getName(), e.getMessage());
-//        }
-//        return matches;
-//    }
+    @Override
+    public void storeMatchStatistics() {
+        List<Match> matches = matchRepository.findByStatusAndHomeXGIsNullAndAwayXGIsNull(MatchStatus.FINISHED);
+        Page page = createPage();
 
+        for (Match match : matches) {
+            List<SofaMatchStatisticsData.PeriodStatisticsDTO> statistics = sofaCrawlerService.fetchMatchStatistics(match.getSofaScoreId(), page);
+            SofaMatchStatisticsData.StatisticItemDTO statisticItemDTO = statistics.stream()
+                    .filter(Objects::nonNull)
+                    .map(SofaMatchStatisticsData.PeriodStatisticsDTO::getGroups)
+                    .flatMap(List::stream)
+                    .map(SofaMatchStatisticsData.GroupDTO::getStatisticsItems)
+                    .flatMap(List::stream)
+                    .filter(dto -> "expectedGoals".equalsIgnoreCase(dto.getKey()))
+                    .findFirst().orElse(null);
 
-//    public Match fetchMatchXG(Page page, Match match) {
-//        try {
-//            String url = String.format(MATCH_XG_URI, appProperties.getSofaScore().getApi(), match.getSofaScoreId());
-//            Response response = page.navigate(url);
-//            if (response.status() == 200) {
-//                JsonNode root = objectMapper.readTree(response.text());
-//                JsonNode statistics = root.path("statistics");
-//                if (statistics.isArray() && !statistics.isEmpty()) {
-//                    JsonNode allStats = statistics.get(0);
-//                    JsonNode groups = allStats.path("groups");
-//
-//                    for (JsonNode group : groups) {
-//                        for (JsonNode item : group.path("statisticsItems")) {
-//                            if ("expectedGoals".equalsIgnoreCase(item.path("key").asText())) {
-//                                match.setHomeXG(new BigDecimal(item.path("home").asText()));
-//                                match.setAwayXG(new BigDecimal(item.path("away").asText()));
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//        } catch (Exception e) {
-//            log.error("❌ Lỗi cào xG trận {}: {}", match.getSofaScoreId(), e.getMessage());
-//        }
-//        return match;
-//    }
-//
-//    public Set<Long> fetchDailyUpComingMatches(Page page) {
-//        Set<Long> matchIds = new HashSet<>();
-//        try {
-//            String url = String.format(DAILY_MATCH_UP_COMING_URI, appProperties.getSofaScore().getApi());
-//            Response response = page.navigate(url);
-//            if (response.status() == 200) {
-//                JsonNode root = objectMapper.readTree(response.text());
-//                JsonNode featuredEvents = root.path("featuredEvents");
-//                featuredEvents.forEach(event -> {
-//                    matchIds.add(event.path("id").asLong());
-//                });
-//            }
-//        } catch (Exception e) {
-//            log.error("❌ Lỗi lấy trận đấu phổ biến: {}", e.getMessage());
-//        }
-//        return matchIds;
-//    }
-//
-//    public SofaOddsData fetchDailyMatchOdds(Page page) {
-//        try {
-//            String url = String.format(DAILY_ALL_MATCH_ODDS_URI, appProperties.getSofaScore().getApi(), LocalDate.now());
-//            Response response = page.navigate(url);
-//            if (response.status() == 200) {
-//                return objectMapper.readValue(response.text(), SofaOddsData.class);
-//            }
-//        } catch (Exception e) {
-//            log.error("❌ Fetch all match odds daily error: {}", e.getMessage());
-//        }
-//        return null;
-//    }
+            if (statisticItemDTO != null && statisticItemDTO.getAwayValue() != null && statisticItemDTO.getHomeValue() != null) {
+                match.setStatus(MatchStatus.FINISHED);
+                match.setAwayXG(statisticItemDTO.getAwayValue());
+                match.setHomeXG(statisticItemDTO.getHomeValue());
+                matchRepository.save(match);
+            }
+        }
+    }
 
     @Override
     public Provider getProvider() {
         return Provider.SOFA_SCORE;
+    }
+
+    private Map<Long, Team> getTeamMap() {
+        List<Team> teams = teamRepository.findAll();
+        return CollectionUtils.isNotEmpty(teams) ? teams.stream()
+                .collect(Collectors.toMap(Team::getSofaScoreId, Function.identity())) : new HashMap<>();
+    }
+
+    private void populateMatchInfo(List<Match> matches, Map<Long, Team> teamMap, League league) {
+        matches.forEach(match -> {
+            match.setLeague(league);
+            match.setSeason(league.getCurrentSeason());
+            match.setHomeTeam(teamMap.get(match.getSofaScoreHomeTeamId()));
+            match.setAwayTeam(teamMap.get(match.getSofaScoreAwayTeamId()));
+        });
     }
 }

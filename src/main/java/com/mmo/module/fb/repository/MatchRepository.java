@@ -19,9 +19,10 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             "AND m.sofaScoreId IS NOT NULL")
     List<Match> findMatchesByLeagueAndMatchOddsIsNull(@Param("league") League league);
 
-    @Query("SELECT m.sofaScoreId FROM Match m WHERE m.sofaScoreId IS NOT NULL")
-    Set<Long> findAllSofaScoreIdIsNull();
+    @Query("SELECT DISTINCT m.sofaScoreId FROM Match m")
+    Set<Long> findDistinctSofaScoreIds();
 
+    @Query(value = "SELECT m FROM Match m WHERE m.homeXG IS NULL AND m.awayXG IS NULL AND m.status = :status")
     List<Match> findByStatusAndHomeXGIsNullAndAwayXGIsNull(MatchStatus status);
 
     @Query("SELECT m FROM Match m LEFT JOIN FETCH m.matchOdds mo WHERE m.sofaScoreId IN (:sofaScoreIds) " +
