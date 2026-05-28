@@ -1,8 +1,6 @@
 package com.mmo.module.fb.crawler.service.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microsoft.playwright.Page;
-import com.microsoft.playwright.Response;
 import com.mmo.configuration.AppProperties;
 import com.mmo.module.fb.crawler.model.sofa.SofaMatchData;
 import com.mmo.module.fb.crawler.model.sofa.SofaMatchStatisticsData;
@@ -21,12 +19,12 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements SofaCrawlerService {
-    private final ObjectMapper objectMapper;
     private final AppProperties appProperties;
 
     private static final String FETCH_ALL_UNIQUE_TOURNAMENTS_URI = "config/default-unique-tournaments/VN/football";
@@ -43,130 +41,55 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
 
     @Override
     public List<SofaUniqueTournamentsData.UniqueTournamentDTO> fetchLeagues(Page page) {
-        try {
-            String url = appProperties.getSofaScore().getApi().concat(FETCH_ALL_UNIQUE_TOURNAMENTS_URI);
-            randomDelay();
-            Response response = page.navigate(url);
-            if (response.status() == 200) {
-                SofaUniqueTournamentsData tournamentsResponse = objectMapper.readValue(response.text(), SofaUniqueTournamentsData.class);
-                if (tournamentsResponse != null) {
-                    return tournamentsResponse.getUniqueTournaments();
-                }
-            }
-        } catch (Exception e) {
-            log.error("❌ Fetch all unique tournaments error: {}", e.getMessage());
-        }
-        return Collections.emptyList();
+        String url = appProperties.getSofaScore().getApi().concat(FETCH_ALL_UNIQUE_TOURNAMENTS_URI);
+        SofaUniqueTournamentsData tournamentsResponse = safeFetch(url, page, SofaUniqueTournamentsData.class);
+        return tournamentsResponse != null ? tournamentsResponse.getUniqueTournaments() : Collections.emptyList();
     }
 
     @Override
     public List<SofaSeasonData.SeasonDTO> fetchSeasonByTournamentId(Long sofaTournamentId, Page page) {
-        try {
-            String url = String.format(FETCH_SEASON_BY_TOURNAMENT_URI, appProperties.getSofaScore().getApi(), sofaTournamentId);
-            randomDelay();
-            Response response = page.navigate(url);
-            if (response != null && response.status() == 200) {
-                SofaSeasonData seasonData = objectMapper.readValue(response.text(), SofaSeasonData.class);
-                if (seasonData != null) {
-                    return seasonData.getSeasons();
-                }
-            }
-        } catch (Exception e) {
-            log.error("❌ Fetch season for tournament id {} error: {}", sofaTournamentId, e.getMessage());
-        }
-        return Collections.emptyList();
+        String url = String.format(FETCH_SEASON_BY_TOURNAMENT_URI, appProperties.getSofaScore().getApi(), sofaTournamentId);
+        SofaSeasonData seasonData = safeFetch(url, page, SofaSeasonData.class);
+        return seasonData != null ? seasonData.getSeasons() : Collections.emptyList();
     }
 
     @Override
     public List<SofaStandingsData.StandingGroupDTO> fetchStandingTotal(Long sofaTournamentId, Long sofaSeasonId, Page page) {
-        try {
-            randomDelay();
-            String url = String.format(FETCH_STANDINGS_TOTAL_BY_TOURNAMENT_AND_SEASON_URI,
-                    appProperties.getSofaScore().getApi(), sofaTournamentId, sofaSeasonId);
-            Response response = page.navigate(url);
-            if (response.status() == 200) {
-                SofaStandingsData sofaStandingsData = objectMapper.readValue(response.text(), SofaStandingsData.class);
-                if (sofaStandingsData != null) {
-                    return sofaStandingsData.getStandings();
-                }
-            }
-        } catch (Exception e) {
-            log.error("❌ Fetch standings total by tournament id {} and season id {} error: {}",
-                    sofaTournamentId, sofaSeasonId, e.getMessage());
-        }
-        return Collections.emptyList();
+        String url = String.format(FETCH_STANDINGS_TOTAL_BY_TOURNAMENT_AND_SEASON_URI,
+                appProperties.getSofaScore().getApi(), sofaTournamentId, sofaSeasonId);
+        SofaStandingsData sofaStandingsData = safeFetch(url, page, SofaStandingsData.class);
+        return sofaStandingsData != null ? sofaStandingsData.getStandings() : Collections.emptyList();
     }
 
     @Override
     public List<SofaMatchData.SofaEventDTO> fetchMatchesByRound(Long sofaTournamentId, Long sofaSeasonId, int round, Page page) {
-        try {
-            randomDelay();
-            String url = String.format(FETCH_MATCH_BY_ROUND_URI, appProperties.getSofaScore().getApi(),
-                    sofaTournamentId, sofaSeasonId, round);
-            Response response = page.navigate(url);
-            if (response != null && response.status() == 200) {
-                SofaMatchData matchData = objectMapper.readValue(response.text(), SofaMatchData.class);
-                if (matchData != null) {
-                    return matchData.getEvents();
-                }
-            }
-        } catch (Exception e) {
-            log.error("❌ Fetch Match of Round {}, tournament id {}, season id {} error: {}", round, sofaTournamentId, sofaSeasonId, e.getMessage());
-        }
-        return Collections.emptyList();
+        String url = String.format(FETCH_MATCH_BY_ROUND_URI, appProperties.getSofaScore().getApi(),
+                sofaTournamentId, sofaSeasonId, round);
+        SofaMatchData matchData = safeFetch(url, page, SofaMatchData.class);
+        return matchData != null ? matchData.getEvents() : Collections.emptyList();
     }
 
     @Override
     public List<SofaMatchStatisticsData.PeriodStatisticsDTO> fetchMatchStatistics(Long sofaMatchId, Page page) {
-        try {
-            randomDelay();
-            String url = String.format(FETCH_MATCH_STATISTICS_URI, appProperties.getSofaScore().getApi(), sofaMatchId);
-            Response response = page.navigate(url);
-            if (response != null && response.status() == 200) {
-                SofaMatchStatisticsData matchData = objectMapper.readValue(response.text(), SofaMatchStatisticsData.class);
-                if (matchData != null) {
-                    return matchData.getStatistics();
-                }
-            }
-        } catch (Exception e) {
-            log.error("❌ Fetch Match Statistics of match id {} error: {}", sofaMatchId, e.getMessage());
-        }
-        return Collections.emptyList();
+        String url = String.format(FETCH_MATCH_STATISTICS_URI, appProperties.getSofaScore().getApi(), sofaMatchId);
+        SofaMatchStatisticsData matchData = safeFetch(url, page, SofaMatchStatisticsData.class);
+        return matchData != null ? matchData.getStatistics() : Collections.emptyList();
     }
 
     @Override
-    public SofaOddsData fetchDailyMatchOdds(Page page) {
-        try {
-            randomDelay();
-            String url = String.format(DAILY_ALL_MATCH_ODDS_URI, appProperties.getSofaScore().getApi(), LocalDate.now());
-            Response response = page.navigate(url);
-            if (response.status() == 200) {
-                return objectMapper.readValue(response.text(), SofaOddsData.class);
-            }
-        } catch (Exception e) {
-            log.error("❌ Fetch all match odds daily error: {}", e.getMessage());
-        }
-        return null;
+    public Map<String, SofaOddsData.MatchOddDetailDTO> fetchDailyMatchOdds(Page page) {
+        String url = String.format(DAILY_ALL_MATCH_ODDS_URI, appProperties.getSofaScore().getApi(), LocalDate.now());
+        SofaOddsData oddsData = safeFetch(url, page, SofaOddsData.class);
+        return oddsData != null ? oddsData.getOdds() : Collections.emptyMap();
     }
 
     @Override
     public List<SofaMatchData.SofaEventDTO> fetchMatchesDailyByTournamentId(Long sofaTournamentId, Page page) {
         String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        try {
-            randomDelay();
-            String url = String.format(MATCH_UPCOMING_BY_TEAM_AND_DATE_URI, appProperties.getSofaScore().getApi(),
-                    sofaTournamentId, today);
-            Response response = page.navigate(url);
-            if (response != null && response.status() == 200) {
-                SofaMatchData matchData = objectMapper.readValue(response.text(), SofaMatchData.class);
-                if (matchData != null) {
-                    return matchData.getEvents();
-                }
-            }
-        } catch (Exception e) {
-            log.error("❌ Fetch Match Daily by tournament id {}, today {} error: {}", sofaTournamentId, today, e.getMessage());
-        }
-        return Collections.emptyList();
+        String url = String.format(MATCH_UPCOMING_BY_TEAM_AND_DATE_URI, appProperties.getSofaScore().getApi(),
+                sofaTournamentId, today);
+        SofaMatchData matchData = safeFetch(url, page, SofaMatchData.class);
+        return matchData != null ? matchData.getEvents() : Collections.emptyList();
     }
 
 }

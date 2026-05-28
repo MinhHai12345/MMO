@@ -22,8 +22,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     @Query("SELECT DISTINCT m.sofaScoreId FROM Match m")
     Set<Long> findDistinctSofaScoreIds();
 
-    @Query(value = "SELECT m FROM Match m WHERE m.homeXG IS NULL AND m.awayXG IS NULL AND m.status = :status")
-    List<Match> findByStatusAndHomeXGIsNullAndAwayXGIsNull(MatchStatus status);
+    List<Match> findTop30ByStatusAndHomeXGIsNullAndAwayXGIsNullAndXgRetryCountLessThanOrderByXgRetryCountAsc(MatchStatus matchStatus, int retryCount);
 
     @Query("SELECT m FROM Match m LEFT JOIN FETCH m.matchOdds mo WHERE m.sofaScoreId IN (:sofaScoreIds) " +
            " AND m.status = com.mmo.module.fb.entity.enums.MatchStatus.UPCOMING")

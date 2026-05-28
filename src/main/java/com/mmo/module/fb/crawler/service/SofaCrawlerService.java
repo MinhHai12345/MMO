@@ -9,6 +9,7 @@ import com.mmo.module.fb.crawler.model.sofa.SofaStandingsData;
 import com.mmo.module.fb.crawler.model.sofa.SofaUniqueTournamentsData;
 
 import java.util.List;
+import java.util.Map;
 
 public interface SofaCrawlerService {
 
@@ -41,7 +42,7 @@ public interface SofaCrawlerService {
     /**
      * Get all match odds by today
      */
-    SofaOddsData fetchDailyMatchOdds(Page page);
+    Map<String, SofaOddsData.MatchOddDetailDTO> fetchDailyMatchOdds(Page page);
 
     /**
      * Fetch Match Daily by tournament id

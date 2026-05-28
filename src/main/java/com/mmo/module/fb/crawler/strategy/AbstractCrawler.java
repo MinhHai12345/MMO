@@ -5,9 +5,12 @@ import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.BrowserType;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
+import com.microsoft.playwright.PlaywrightException;
+import com.mmo.module.fb.crawler.TransactionHelper;
 import jakarta.annotation.PreDestroy;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -15,52 +18,85 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 @Slf4j
 @Component
 public abstract class AbstractCrawler implements CrawlerStrategy {
     @Resource
-    protected Playwright playwright;
+    private TransactionHelper transactionHelper;
 
-    protected Browser browser;
-    private int usageCount = 0;
+    protected volatile Playwright playwright;
+    protected volatile Browser browser;
+    private final AtomicInteger usageCount = new AtomicInteger(0);
     private static final int MAX_USAGE_THRESHOLD = 150;
     private final Random random = new Random();
 
-    // Cập nhật danh sách User-Agent thực tế và mới hơn
     private static final List<String> USER_AGENTS = Arrays.asList(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0"
     );
 
-    protected synchronized void ensureBrowser() {
-        if (browser == null || !browser.isConnected() || usageCount >= MAX_USAGE_THRESHOLD) {
-            closeEverything();
-            log.info("🔄 [{}] Khởi tạo/Làm mới instance Browser sạch...", getProvider().name());
+    protected void ensureBrowser() {
+        if (playwright == null || browser == null || !browser.isConnected() || usageCount.get() >= MAX_USAGE_THRESHOLD) {
+            synchronized (this) {
+                if (playwright == null || browser == null || !browser.isConnected() || usageCount.get() >= MAX_USAGE_THRESHOLD) {
+                    if (browser != null) {
+                        log.info("🔄 [{}] Đạt ngưỡng {} requests hoặc mất kết nối. Tách biệt browser cũ...", getProvider().name(), MAX_USAGE_THRESHOLD);
+                        Browser oldBrowser = this.browser;
+                        new Thread(() -> {
+                            try {
+                                Thread.sleep(30000);
+                                if (oldBrowser.isConnected()) {
+                                    oldBrowser.close();
+                                    log.info("🧹 Đã dọn dẹp an toàn instance Browser cũ sau thời gian chờ hoãn.");
+                                }
+                            } catch (Exception e) {
+                                log.error("Lỗi khi dọn dẹp browser cũ ngầm: {}", e.getMessage());
+                            }
+                        }).start();
+                    }
 
-            this.browser = playwright.chromium().launch(new BrowserType.LaunchOptions()
-                    .setHeadless(true)
-                    .setArgs(Arrays.asList(
-                            "--no-sandbox",
-                            "--disable-dev-shm-usage",
-                            "--disable-blink-features=AutomationControlled",
-                            "--disable-infobars",
-                            "--window-size=1920,1080",
-                            "--disable-gpu"
-                    )));
-            this.usageCount = 0;
+                    if (playwright == null || !browser.isConnected()) {
+                        closeEverythingInternal();
+                    }
+                    try {
+                        log.info("🔄 [{}] Tiến hành khởi tạo lại hệ thống Driver và Browser sạch...", getProvider().name());
+                        if (this.playwright == null) {
+                            this.playwright = Playwright.create();
+                        }
+                        this.browser = this.playwright.chromium().launch(new BrowserType.LaunchOptions()
+                                .setHeadless(true)
+                                .setArgs(Arrays.asList(
+                                        "--no-sandbox",
+                                        "--disable-dev-shm-usage",
+                                        "--disable-blink-features=AutomationControlled",
+                                        "--disable-infobars",
+                                        "--window-size=1920,1080",
+                                        "--disable-gpu"
+                                )));
+                        usageCount.set(0);
+                    } catch (Exception e) {
+                        log.error("🚨 Thất bại nghiêm trọng khi tạo mới Playwright/Browser: {}", e.getMessage());
+                        this.browser = null;
+                        this.playwright = null;
+                        throw e;
+                    }
+                }
+            }
         }
     }
 
     @Override
     public synchronized Page createPage() {
         ensureBrowser();
-        usageCount++;
-
+        usageCount.incrementAndGet();
         String selectedUserAgent = USER_AGENTS.get(random.nextInt(USER_AGENTS.size()));
-
-        // Thiết lập các Header chuẩn của trình duyệt thật để bypass Cloudflare WAF
         Map<String, String> extraHeaders = new HashMap<>();
         extraHeaders.put("Accept", "*/*");
         extraHeaders.put("Accept-Language", "en-US,en;q=0.9,vi;q=0.8");
@@ -70,8 +106,6 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
         extraHeaders.put("Sec-Fetch-Mode", "cors");
         extraHeaders.put("Sec-Fetch-Site", "same-origin");
 
-        // 🔥 Tối ưu: Tạo BrowserContext riêng biệt cho TỪNG Page.
-        // Việc này giúp cách ly Cookie, Cache và giả lập hành vi thiết bị độc lập tuyệt đối.
         BrowserContext context = browser.newContext(new Browser.NewContextOptions()
                 .setUserAgent(selectedUserAgent)
                 .setViewportSize(1920, 1080)
@@ -80,21 +114,8 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
                 .setTimezoneId("Asia/Ho_Chi_Minh"));
 
         Page page = context.newPage();
-
-        // Thêm một lớp bảo mật Script chống các hàm kiểm tra Bot phổ biến
         page.addInitScript("delete Object.getPrototypeOf(navigator).webdriver;");
-
         return page;
-    }
-
-    protected void randomDelay() {
-        try {
-            // Tăng độ trễ ngẫu nhiên từ 1.5s -> 3.5s để đánh lừa thuật toán phát hiện tần suất
-            long delay = 1500 + random.nextInt(2000);
-            Thread.sleep(delay);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
     }
 
     /**
@@ -102,8 +123,8 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
      */
     protected void closePage(Page page) {
         if (page != null) {
-            BrowserContext context = page.context();
             try {
+                BrowserContext context = page.context();
                 page.close();
                 if (context != null) {
                     context.close();
@@ -114,20 +135,97 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
         }
     }
 
-    private void closeEverything() {
+    private synchronized void closeEverythingInternal() {
         try {
             if (browser != null) {
                 browser.close();
-                browser = null;
-                log.info("🧹 Đã giải phóng hoàn toàn bộ nhớ Browser: {}", getProvider().name());
             }
-        } catch (Exception e) {
-            log.error("Lỗi khi đóng Browser: {}", e.getMessage());
+        } catch (Exception ignored) {} finally {
+            browser = null;
         }
+
+        try {
+            if (playwright != null) {
+                playwright.close();
+            }
+        } catch (Exception ignored) {} finally {
+            playwright = null;
+        }
+        log.info("🧹 Đã hủy bỏ hoàn toàn các thực thể kết nối cũ.");
     }
 
     @PreDestroy
     public void shutdown() {
-        closeEverything();
+        closeEverythingInternal();
+    }
+
+
+    /**
+     * PIPELINE 2: Dành cho các hàm đơn giản không cần thực thể đầu vào (Ví dụ: storeLeagues)
+     */
+    protected <D> void executeSimpleStorePipeline(Function<Page, D> fetchFunction, Consumer<D> saveConsumer) {
+        Page page = this.createPage();
+        try {
+            D dtoResult = fetchFunction.apply(page);
+            if (dtoResult != null) {
+                transactionHelper.executeInNewTransaction(null, dtoResult, (entity, dto) -> saveConsumer.accept(dto));
+            }
+        } catch (PlaywrightException ex) {
+            handleFatalConnectionError(ex);
+        } catch (Exception ex) {
+            log.error("❌ Lỗi xử lý trong Simple Pipeline: {}", ex.getMessage());
+        } finally {
+            this.closePage(page);
+        }
+    }
+
+    /**
+     * PIPELINE 1: Dành cho các hàm xử lý tuần tự theo danh sách đầu vào (Seasons, Teams, Matches, Statistics...)
+     */
+    protected <E, D> void executeStorePipeline(List<E> entities, BiFunction<E, Page, D> fetchFunction,
+                                               BiConsumer<E, D> saveConsumer) {
+
+        if (CollectionUtils.isEmpty(entities)) {
+            return;
+        }
+
+        Page page = this.createPage();
+        try {
+            for (E entity : entities) {
+                if (page == null || page.isClosed()) {
+                    log.info("🔄 [Pipeline] Page bị đóng bất ngờ. Đang tạo lại Page mới...");
+                    page = this.createPage();
+                }
+                try {
+                    D dtoResult = fetchFunction.apply(entity, page);
+                    if (dtoResult != null) {
+                        transactionHelper.executeInNewTransaction(entity, dtoResult, saveConsumer);
+                    }
+                } catch (PlaywrightException ex) {
+                    boolean isFatal = handleFatalConnectionError(ex);
+                    if (isFatal) {
+                        page = null;
+                    }
+                } catch (Exception ex) {
+                    log.error("❌ Lỗi xử lý phần tử trong Pipeline: {}", ex.getMessage());
+                }
+            }
+        } finally {
+            this.closePage(page);
+        }
+    }
+
+    private boolean handleFatalConnectionError(PlaywrightException ex) {
+        String msg = ex.getMessage() != null ? ex.getMessage() : "";
+        if (msg.contains("Playwright connection closed") || msg.contains("Connection closed")) {
+            log.error("🚨 [Fatal Connection] Phát hiện sập kết nối ống dẫn gốc! Đang xóa bỏ instance hỏng...");
+            synchronized (this) {
+                this.browser = null;
+                this.playwright = null;
+            }
+            return true;
+        }
+        log.error("❌ Lỗi hệ thống Playwright: {}", msg);
+        return false;
     }
 }

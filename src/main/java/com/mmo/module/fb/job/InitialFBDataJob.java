@@ -20,9 +20,9 @@ public class InitialFBDataJob extends AbstractJob<CronJob> {
         CrawlerStrategy strategy = crawlerStrategyRegistry.getStrategy(Provider.SOFA_SCORE);
 //        strategy.storeLeagues();
 //        strategy.storeSeasons();
-        strategy.storeTeams();
+//        strategy.storeTeams();
 //        strategy.storeMatches();
-//        strategy.storeMatchStatistics();
+        strategy.storeMatchStatistics();
 
     }
 

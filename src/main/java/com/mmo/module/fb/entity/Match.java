@@ -58,6 +58,9 @@ public class Match extends AbstractEntity {
     private int round;
 
     @Column
+    private int xgRetryCount;
+
+    @Column
     private boolean notifiedPredict = false;
 
     @Column

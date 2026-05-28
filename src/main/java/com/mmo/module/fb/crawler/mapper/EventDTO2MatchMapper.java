@@ -24,6 +24,7 @@ public class EventDTO2MatchMapper extends AbstractMapper<SofaMatchData.SofaEvent
                 .status("finished".equals(source.getStatus().getType()) ? MatchStatus.FINISHED : MatchStatus.UPCOMING)
                 .matchTime(source.getStartTimestamp())
                 .round(source.getRoundInfo().getRound())
+                .xgRetryCount(0)
                 .build();
     }
 }
