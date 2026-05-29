@@ -1,7 +1,6 @@
 package com.mmo.module.fb.crawler.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -76,23 +75,6 @@ public abstract class AbstractCrawlerService {
             Thread.sleep(delay);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-        }
-    }
-
-    /**
-     * Tiện ích giải phóng tài nguyên của một Page và Context đi kèm sau khi cào xong
-     */
-    protected void closePage(Page page) {
-        if (page != null) {
-            BrowserContext context = page.context();
-            try {
-                page.close();
-                if (context != null) {
-                    context.close();
-                }
-            } catch (Exception e) {
-                log.error("Lỗi khi giải phóng Page/Context: {}", e.getMessage());
-            }
         }
     }
 }

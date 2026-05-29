@@ -66,9 +66,6 @@ public class Match extends AbstractEntity {
     @Column
     private boolean notifiedResult = false;
 
-    @OneToOne(mappedBy = "match")
-    private MatchOdds matchOdds;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "season_id")
     private Season season;

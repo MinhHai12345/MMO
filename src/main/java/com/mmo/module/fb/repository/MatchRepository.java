@@ -14,22 +14,13 @@ import java.util.Set;
 @Repository
 public interface MatchRepository extends JpaRepository<Match, Long> {
 
-    @Query("SELECT m FROM Match m WHERE m.league = :league " +
-            "AND m.matchOdds IS NULL " +
-            "AND m.sofaScoreId IS NOT NULL")
-    List<Match> findMatchesByLeagueAndMatchOddsIsNull(@Param("league") League league);
-
     @Query("SELECT DISTINCT m.sofaScoreId FROM Match m")
     Set<Long> findDistinctSofaScoreIds();
 
     List<Match> findTop30ByStatusAndHomeXGIsNullAndAwayXGIsNullAndXgRetryCountLessThanOrderByXgRetryCountAsc(MatchStatus matchStatus, int retryCount);
 
-    @Query("SELECT m FROM Match m LEFT JOIN FETCH m.matchOdds mo WHERE m.sofaScoreId IN (:sofaScoreIds) " +
+    @Query("SELECT m FROM Match m WHERE m.sofaScoreId IN (:sofaScoreIds) " +
            " AND m.status = com.mmo.module.fb.entity.enums.MatchStatus.UPCOMING")
     List<Match> findBySofaScoreIdIn(@Param("sofaScoreIds") Set<Long> sofaScoreIds);
 
-    @Query("SELECT m FROM Match m LEFT JOIN FETCH m.league " +
-           " WHERE m.status = com.mmo.module.fb.entity.enums.MatchStatus.PROCESSING " +
-           " AND m.notifiedPredict = false ")
-    List<Match> findProcessMatch();
 }

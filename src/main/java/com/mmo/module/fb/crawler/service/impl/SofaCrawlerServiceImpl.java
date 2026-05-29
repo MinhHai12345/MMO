@@ -77,7 +77,7 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
     }
 
     @Override
-    public Map<String, SofaOddsData.MatchOddDetailDTO> fetchDailyMatchOdds(Page page) {
+    public Map<Long, SofaOddsData.MatchOddDetailDTO> fetchDailyMatchOdds(Page page) {
         String url = String.format(DAILY_ALL_MATCH_ODDS_URI, appProperties.getSofaScore().getApi(), LocalDate.now());
         SofaOddsData oddsData = safeFetch(url, page, SofaOddsData.class);
         return oddsData != null ? oddsData.getOdds() : Collections.emptyMap();

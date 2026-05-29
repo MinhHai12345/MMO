@@ -6,9 +6,7 @@ import com.microsoft.playwright.BrowserType;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.PlaywrightException;
-import com.mmo.module.fb.crawler.TransactionHelper;
 import jakarta.annotation.PreDestroy;
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Component;
@@ -27,8 +25,6 @@ import java.util.function.Function;
 @Slf4j
 @Component
 public abstract class AbstractCrawler implements CrawlerStrategy {
-    @Resource
-    private TransactionHelper transactionHelper;
 
     protected volatile Playwright playwright;
     protected volatile Browser browser;
@@ -140,7 +136,7 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
             if (browser != null) {
                 browser.close();
             }
-        } catch (Exception ignored) {} finally {
+        } finally {
             browser = null;
         }
 
@@ -148,7 +144,7 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
             if (playwright != null) {
                 playwright.close();
             }
-        } catch (Exception ignored) {} finally {
+        } finally {
             playwright = null;
         }
         log.info("🧹 Đã hủy bỏ hoàn toàn các thực thể kết nối cũ.");
@@ -168,7 +164,7 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
         try {
             D dtoResult = fetchFunction.apply(page);
             if (dtoResult != null) {
-                transactionHelper.executeInNewTransaction(null, dtoResult, (entity, dto) -> saveConsumer.accept(dto));
+                saveConsumer.accept(dtoResult);
             }
         } catch (PlaywrightException ex) {
             handleFatalConnectionError(ex);
@@ -199,7 +195,7 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
                 try {
                     D dtoResult = fetchFunction.apply(entity, page);
                     if (dtoResult != null) {
-                        transactionHelper.executeInNewTransaction(entity, dtoResult, saveConsumer);
+                        saveConsumer.accept(entity, dtoResult);
                     }
                 } catch (PlaywrightException ex) {
                     boolean isFatal = handleFatalConnectionError(ex);

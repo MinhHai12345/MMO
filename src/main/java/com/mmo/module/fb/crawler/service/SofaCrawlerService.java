@@ -42,7 +42,7 @@ public interface SofaCrawlerService {
     /**
      * Get all match odds by today
      */
-    Map<String, SofaOddsData.MatchOddDetailDTO> fetchDailyMatchOdds(Page page);
+    Map<Long, SofaOddsData.MatchOddDetailDTO> fetchDailyMatchOdds(Page page);
 
     /**
      * Fetch Match Daily by tournament id

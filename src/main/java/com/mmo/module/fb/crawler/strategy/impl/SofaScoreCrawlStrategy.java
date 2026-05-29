@@ -24,6 +24,7 @@ import com.mmo.module.fb.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -234,8 +235,8 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
                 activeLeagues,
                 (league, page) -> {
                     List<SofaMatchData.SofaEventDTO> events = sofaCrawlerService.fetchMatchesDailyByTournamentId(league.getSofaScoreId(), page);
-                    Map<String, SofaOddsData.MatchOddDetailDTO> odds = sofaCrawlerService.fetchDailyMatchOdds(page);
-                    return new SofaDailyMatchWrapper(events, odds);
+                    Map<Long, SofaOddsData.MatchOddDetailDTO> oddsMap = sofaCrawlerService.fetchDailyMatchOdds(page);
+                    return new SofaDailyMatchWrapper(events, oddsMap);
                 },
                 (league, wrapper) -> {
                     if (wrapper == null || CollectionUtils.isEmpty(wrapper.getEvents())) return;
@@ -249,7 +250,7 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
                     if (CollectionUtils.isNotEmpty(matches)) {
                         List<MatchPrediction> matchPredictions = dynamicConverter.convertAll(matches, MatchPrediction.class);
                         // populate odds
-
+                        populateMatchPredictionInfo(matchPredictions, wrapper.getOddsMap());
                         matchPredictionRepository.saveAll(matchPredictions);
                     }
                 }
@@ -275,4 +276,25 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
             match.setAwayTeam(teamMap.get(match.getSofaScoreAwayTeamId()));
         });
     }
+
+    private void populateMatchPredictionInfo(List<MatchPrediction> matchPredictions, Map<Long, SofaOddsData.MatchOddDetailDTO> oddsMap) {
+        matchPredictions.forEach(match -> {
+            SofaOddsData.MatchOddDetailDTO odd = oddsMap.get(match.getMatch().getSofaScoreId());
+            if (odd != null) {
+                if ("Full time".equalsIgnoreCase(odd.getMarketName())) {
+                    List<SofaOddsData.ChoiceDTO> choices = odd.getChoices();
+                    match.setSofaHomeOdd(parseFractional(choices.get(0).getFractionalValue()));
+                    match.setSofaDrawOdd(parseFractional(choices.get(1).getFractionalValue()));
+                    match.setSofaAwayOdd(parseFractional(choices.get(2).getFractionalValue()));
+                }
+            }
+        });
+    }
+
+    private double parseFractional(String fraction) {
+        if (StringUtils.isBlank(fraction) || !fraction.contains("/")) return 0L;
+        String[] parts = fraction.split("/");
+        return (Double.parseDouble(parts[0]) / Double.parseDouble(parts[1])) + 1;
+    }
+
 }

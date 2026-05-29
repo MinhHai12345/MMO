@@ -10,7 +10,7 @@ import java.util.Map;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class SofaOddsData {
 
-    private Map<String, MatchOddDetailDTO> odds;
+    private Map<Long, MatchOddDetailDTO> odds;
 
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)

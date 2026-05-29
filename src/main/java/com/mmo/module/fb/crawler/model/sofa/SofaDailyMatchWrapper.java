@@ -10,5 +10,5 @@ import java.util.Map;
 @AllArgsConstructor
 public class SofaDailyMatchWrapper {
     private List<SofaMatchData.SofaEventDTO> events;
-    private Map<String, SofaOddsData.MatchOddDetailDTO> odds;
+    private Map<Long, SofaOddsData.MatchOddDetailDTO> oddsMap;
 }
