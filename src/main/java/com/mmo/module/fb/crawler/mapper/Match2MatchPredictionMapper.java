@@ -16,8 +16,8 @@ public class Match2MatchPredictionMapper extends AbstractMapper<Match, MatchPred
     @Override
     public MatchPrediction map(Match source, MatchPrediction target) {
         target.setMatch(source);
-        target.setKickoffTime(Instant.ofEpochMilli(source.getMatchTime())
-                .atZone(ZoneId.systemDefault())
+        target.setKickoffTime(Instant.ofEpochSecond(source.getMatchTime())
+                .atZone(ZoneId.of("Asia/Ho_Chi_Minh"))
                 .toLocalDateTime());
         target.setStatus(MatchPredictionStatus.PENDING);
         return target;

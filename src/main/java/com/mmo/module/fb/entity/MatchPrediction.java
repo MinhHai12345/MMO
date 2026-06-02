@@ -2,12 +2,7 @@ package com.mmo.module.fb.entity;
 
 import com.mmo.entity.AbstractEntity;
 import com.mmo.module.fb.entity.enums.MatchPredictionStatus;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -78,6 +73,7 @@ public class MatchPrediction extends AbstractEntity {
     private boolean isPremium = false; // Thuộc gói VIP (True) hay gói Free (False)
 
     @Column
+    @Enumerated(EnumType.STRING)
     private MatchPredictionStatus status; // Trạng thái: PENDING (Chưa tính), READY (Đã tính), FREE_DASHBOARD, FREE_DETAIL, VIP_ONLY, POSTED (Đã đăng thành công)
 
 }

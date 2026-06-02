@@ -79,14 +79,14 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
 
     @Override
     public Map<Long, SofaOddsData.MatchOddDetailDTO> fetchDailyMatchOdds(Page page) {
-        String url = String.format(FETCH_DAILY_ALL_MATCH_ODDS_URI, appProperties.getSofaScore().getApi(), LocalDate.now());
+        String url = String.format(FETCH_DAILY_ALL_MATCH_ODDS_URI, appProperties.getSofaScore().getApi(), LocalDate.now().plusDays(10));
         SofaOddsData oddsData = safeFetch(url, page, SofaOddsData.class);
         return oddsData != null ? oddsData.getOdds() : Collections.emptyMap();
     }
 
     @Override
     public List<SofaMatchData.SofaEventDTO> fetchMatchesDailyByTournamentId(Long sofaTournamentId, Page page) {
-        String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String today = LocalDateTime.now().plusDays(10).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         String url = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI, appProperties.getSofaScore().getApi(),
                 sofaTournamentId, today);
         SofaMatchData matchData = safeFetch(url, page, SofaMatchData.class);

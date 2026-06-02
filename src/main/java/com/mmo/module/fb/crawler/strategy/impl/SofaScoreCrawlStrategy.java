@@ -242,7 +242,6 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
                 (league, wrapper) -> {
                     if (wrapper == null || CollectionUtils.isEmpty(wrapper.getEvents())) return;
 
-                    sofaCrawlerService.fetchDailyMatchOdds(createPage());
                     Set<Long> sofaMatchIds = wrapper.getEvents().stream()
                             .filter(Objects::nonNull)
                             .map(SofaMatchData.SofaEventDTO::getId)
@@ -300,7 +299,12 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
     private double parseFractional(String fraction) {
         if (StringUtils.isBlank(fraction) || !fraction.contains("/")) return 0L;
         String[] parts = fraction.split("/");
-        return (Double.parseDouble(parts[0]) / Double.parseDouble(parts[1])) + 1;
+        return round(Double.parseDouble(parts[0]) / Double.parseDouble(parts[1])) + 1;
+    }
+
+    private double round(double value) {
+        long factor = (long) Math.pow(10, 2);
+        return (double) Math.round(value * factor) / factor;
     }
 
 }
