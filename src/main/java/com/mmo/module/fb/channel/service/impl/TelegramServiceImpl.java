@@ -6,8 +6,7 @@ import com.mmo.module.fb.channel.service.AbstractTelegramService;
 import com.mmo.module.fb.channel.service.TelegramService;
 import com.mmo.module.fb.channel.strategy.ContentStrategy;
 import com.mmo.module.fb.channel.strategy.ContentStrategyRegistry;
-import com.mmo.module.fb.entity.League;
-import com.mmo.module.fb.entity.Match;
+import com.mmo.module.fb.entity.MatchPrediction;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -22,17 +21,19 @@ public class TelegramServiceImpl extends AbstractTelegramService implements Tele
     private final AppProperties appProperties;
     private final ContentStrategyRegistry strategyRegistry;
 
+
     @Override
-    public void notifyMatchesDaily(Map<League, List<Match>> matchesByLeague) {
+    public void notifyMatchesDashboard(List<MatchPrediction> freeMatches, List<MatchPrediction> vipMatches) {
         ContentStrategy contentStrategy = strategyRegistry.getStrategy(Platform.TELEGRAM);
-        String content = contentStrategy.buildMatchesDailyContent(matchesByLeague);
-        publish(appProperties.getTelegram().getChannel().getFree(), content);
+        String content = contentStrategy.buildMatchesDashboardContent(freeMatches, vipMatches);
+        markdownPublish(appProperties.getTelegram().getChannel().getFree(), content);
     }
 
     @Override
-    public void notifyMatchInsights(Map<League, List<Match>> matchesByLeague) {
+    public void notifyMatchesInsights(Map<Integer, List<MatchPrediction>> groupedMatches) {
         ContentStrategy contentStrategy = strategyRegistry.getStrategy(Platform.TELEGRAM);
-        String content = contentStrategy.buildMatchInsightsContent(matchesByLeague);
-        publish(appProperties.getTelegram().getChannel().getFree(), content);
+        String content = contentStrategy.buildMatchesInsightsContent(groupedMatches);
+        markdownPublish(appProperties.getTelegram().getChannel().getFree(), content);
     }
+
 }

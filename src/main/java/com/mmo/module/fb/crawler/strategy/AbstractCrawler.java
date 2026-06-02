@@ -211,6 +211,23 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
         }
     }
 
+    /**
+     * PIPELINE 3 (Rút gọn): Chỉ cào dữ liệu từ Page, tự động quản lý đóng/thả Page và return kết quả DTO.
+     */
+    protected <D> D executeSimpleFetchPipeline(Function<Page, D> fetchFunction) {
+        Page page = this.createPage();
+        try {
+            return fetchFunction.apply(page);
+        } catch (PlaywrightException ex) {
+            handleFatalConnectionError(ex);
+        } catch (Exception ex) {
+            log.error("❌ Lỗi xử lý trong Simple Fetch Pipeline: {}", ex.getMessage());
+        } finally {
+            this.closePage(page);
+        }
+        return null;
+    }
+
     private boolean handleFatalConnectionError(PlaywrightException ex) {
         String msg = ex.getMessage() != null ? ex.getMessage() : "";
         if (msg.contains("Playwright connection closed") || msg.contains("Connection closed")) {

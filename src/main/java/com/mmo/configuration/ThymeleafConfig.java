@@ -26,4 +26,23 @@ public class ThymeleafConfig {
         templateEngine.setTemplateResolver(htmlTemplateResolver);
         return templateEngine;
     }
+
+    @Bean
+    public ClassLoaderTemplateResolver textTemplateResolver() {
+        ClassLoaderTemplateResolver templateResolver = new ClassLoaderTemplateResolver();
+        templateResolver.setPrefix("templates/text/"); // Tách ra folder text
+        templateResolver.setSuffix(".txt");
+        templateResolver.setTemplateMode(TemplateMode.TEXT); // Chế độ TEXT giúp giữ nguyên format Markdown
+        templateResolver.setCharacterEncoding("UTF-8");
+        templateResolver.setCacheable(false);
+        templateResolver.setCheckExistence(true);
+        return templateResolver;
+    }
+
+    @Bean
+    public TemplateEngine textTemplateEngine() {
+        TemplateEngine templateEngine = new TemplateEngine();
+        templateEngine.setTemplateResolver(textTemplateResolver());
+        return templateEngine;
+    }
 }

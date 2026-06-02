@@ -3,9 +3,8 @@ package com.mmo.module.fb.channel.strategy.impl;
 import com.mmo.module.fb.channel.model.Platform;
 import com.mmo.module.fb.channel.strategy.ContentStrategy;
 import com.mmo.module.fb.channel.util.TelegramUtils;
-import com.mmo.module.fb.entity.League;
-import com.mmo.module.fb.entity.Match;
-import lombok.RequiredArgsConstructor;
+import com.mmo.module.fb.entity.MatchPrediction;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
@@ -17,28 +16,36 @@ import java.util.Locale;
 import java.util.Map;
 
 @Component
-@RequiredArgsConstructor
 public class TelegramContentStrategy implements ContentStrategy {
-    private final TemplateEngine templateEngine;
+    @Resource
+    private TemplateEngine textTemplateEngine;
 
-    DateTimeFormatter VN_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy", new Locale("vi", "VN"));
+    private final DateTimeFormatter ENGLISH_FORMATTER = DateTimeFormatter.ofPattern("dd MMM", Locale.ENGLISH);
 
     @Override
-    public String buildMatchesDailyContent(Map<League, List<Match>> matchesByLeague) {
+    public String buildMatchesDashboardContent(List<MatchPrediction> freeMatches, List<MatchPrediction> vipMatches) {
         Context context = new Context();
-        String date = LocalDate.now().format(VN_FORMATTER);
-        context.setVariable("date", date);
-        context.setVariable("matchesByLeague", matchesByLeague);
-        return templateEngine.process("tele-daily-matches", context);
+        context.setVariable("date", LocalDate.now().format(ENGLISH_FORMATTER));
+        context.setVariable("totalValue", freeMatches.size() + vipMatches.size());
+        context.setVariable("freeMatches", freeMatches);
+        context.setVariable("vipMatches", vipMatches);
+        context.setVariable("freeSize", freeMatches.size());
+
+        return textTemplateEngine.process("daily_dashboard", context);
     }
 
     @Override
-    public String buildMatchInsightsContent(Map<League, List<Match>> matchesByLeague) {
+    public String buildMatchesInsightsContent(Map<Integer, List<MatchPrediction>> groupedMatches) {
+        double totalExposure = groupedMatches.values().stream()
+                .flatMap(List::stream).mapToDouble(MatchPrediction::getSmartStakingSize)
+                .sum();
+
         Context context = new Context();
-        String date = LocalDate.now().format(VN_FORMATTER);
-        context.setVariable("date", date);
-        context.setVariable("matchesByLeague", matchesByLeague);
-        return templateEngine.process("tele-daily-insights", context);
+        context.setVariable("groupedMatches", groupedMatches);
+        context.setVariable("leagueName", "FIFA World Cup 2026");
+        context.setVariable("totalExposure", totalExposure);
+
+        return textTemplateEngine.process("match_insight_multi", context);
     }
 
     private String escape(String text) {

@@ -11,7 +11,6 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -63,6 +62,12 @@ public class MatchPrediction extends AbstractEntity {
     // =========================================================================
     // 🎯 BUSINESS LOGIC & CONTENT DISTRIBUTION STATE
     // =========================================================================
+    @Column
+    private String recommendedPick;
+
+    @Column
+    private Double smartStakingSize;
+
     @Column
     private Double edgePercentage; // Độ lệch % lợi thế so với nhà cái (Ví dụ: 8.5)
 

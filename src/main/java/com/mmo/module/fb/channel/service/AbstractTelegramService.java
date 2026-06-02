@@ -11,11 +11,11 @@ public abstract class AbstractTelegramService {
     @Resource
     private TelegramClient telegramClient;
 
-    protected void publish(String chatId, String content) {
+    protected void markdownPublish(String chatId, String content) {
         SendMessage sendMessage = SendMessage.builder()
                 .chatId(chatId)
                 .text(content)
-                .parseMode("HTML")
+                .parseMode("Markdown")
                 .build();
         try {
             telegramClient.execute(sendMessage);

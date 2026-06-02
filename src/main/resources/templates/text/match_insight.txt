@@ -1,0 +1,27 @@
+🔬 *H2 DEEP INSIGHTS — POISSON MODEL ANALYSIS* ⚽
+🏆 League: *[[${mp.match.league.name}]]*
+🕒 Kick-off: *[[${#javatime.format(mp.kickoffTime, 'HH:mm dd MMM')}]] (GMT+7)*
+⚔️ Matchup: *[[${mp.match.homeTeam.name}]]* vs *[[${mp.match.awayTeam.name}]]*
+
+──────────────────────────────────────
+📊 *1. EXPECTED GOALS (xG) PROJECTIONS*
+  🏠 [[${mp.match.homeTeam.name}]]: `[[${#numbers.formatDecimal(mp.expectedHomeGoals, 1, 2)}]]` xG
+  ✈️ [[${mp.match.awayTeam.name}]]: `[[${#numbers.formatDecimal(mp.expectedAwayGoals, 1, 2)}]]` xG
+  📈 Total Expected Goals: `[[${#numbers.formatDecimal(mp.expectedHomeGoals + mp.expectedAwayGoals, 1, 2)}]]`
+
+🎯 *2. ODDS EFFICIENCY GAP (Mô hình vs Nhà cái)*
+  🏠 *Home Win:* Fair: `[[${mp.fairHomeOdd}]]` | Sofa: `[[${mp.sofaHomeOdd}]]`
+  🤝 *Draw:* Fair: `[[${mp.fairDrawOdd}]]` | Sofa: `[[${mp.sofaDrawOdd}]]`
+  ✈️ *Away Win:* Fair: `[[${mp.fairAwayOdd}]]` | Sofa: `[[${mp.sofaAwayOdd}]]`
+
+🚨 *3. MATHEMATICAL EDGE DETECTED*
+[# th:if="${!mp.isPremium}"]
+  💡 *Advantage:* This match shows a *+[[${mp.edgePercentage}]]%* market inefficiency. Our model detects the current market price deviates significantly from the true mathematical probability.
+[/]
+[# th:if="${mp.isPremium}"]
+  🔒 *Advantage:* *[VIP UNLOCK ONLY]*
+  ⚠️ This is a Premium High-Alpha prediction. To view the target outcome and strict probability distributions, access our premium bot channel.
+[/]
+
+🤖 _Data processed by H2 Predictive Engine. Invest smart based on Math, not luck._
+👉 Unlock premium distributions: @H2DataInsight_Bot

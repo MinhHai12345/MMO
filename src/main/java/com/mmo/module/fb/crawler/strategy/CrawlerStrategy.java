@@ -2,6 +2,9 @@ package com.mmo.module.fb.crawler.strategy;
 
 import com.microsoft.playwright.Page;
 import com.mmo.module.fb.crawler.model.enums.Provider;
+import com.mmo.module.fb.crawler.model.sofa.SofaMatchData;
+
+import java.util.List;
 
 public interface CrawlerStrategy {
 
@@ -34,6 +37,11 @@ public interface CrawlerStrategy {
      * Prepare daily match upcoming to system
      */
     void prepareMatchUpcomingDaily();
+
+    /**
+     * Fetch latest histories match by team id
+     */
+    List<SofaMatchData.SofaEventDTO> getLatestHistoriesMatchesByTeamId(Long sofaTeamId);
 
     /**
      * Provider for crawl data

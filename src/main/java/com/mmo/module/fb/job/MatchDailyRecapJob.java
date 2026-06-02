@@ -10,18 +10,14 @@ import org.quartz.JobExecutionContext;
 import org.springframework.stereotype.Component;
 
 @Component
-public class InitialFBDataJob extends AbstractJob<CronJob> {
+public class MatchDailyRecapJob extends AbstractJob<CronJob> {
     @Resource
     private CrawlerStrategyRegistry crawlerStrategyRegistry;
 
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
         CrawlerStrategy strategy = crawlerStrategyRegistry.getStrategy(Provider.SOFA_SCORE);
-        strategy.storeLeagues();
-        strategy.storeSeasons();
-        strategy.storeTeams();
-        strategy.storeMatches();
-        strategy.storeMatchStatistics();
+        strategy.prepareMatchUpcomingDaily();
     }
 
 }

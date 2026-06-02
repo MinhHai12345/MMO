@@ -3,6 +3,7 @@ package com.mmo.module.fb.crawler.mapper;
 import com.mmo.converter.AbstractMapper;
 import com.mmo.module.fb.entity.Match;
 import com.mmo.module.fb.entity.MatchPrediction;
+import com.mmo.module.fb.entity.enums.MatchPredictionStatus;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -18,6 +19,7 @@ public class Match2MatchPredictionMapper extends AbstractMapper<Match, MatchPred
         target.setKickoffTime(Instant.ofEpochMilli(source.getMatchTime())
                 .atZone(ZoneId.systemDefault())
                 .toLocalDateTime());
+        target.setStatus(MatchPredictionStatus.PENDING);
         return target;
     }
 }

@@ -32,8 +32,9 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
     private static final String FETCH_STANDINGS_TOTAL_BY_TOURNAMENT_AND_SEASON_URI = "%sunique-tournament/%d/season/%d/standings/total";
     private static final String FETCH_MATCH_BY_ROUND_URI = "%sunique-tournament/%d/season/%d/events/round/%d";
     private static final String FETCH_MATCH_STATISTICS_URI = "%sevent/%d/statistics";
-    private static final String DAILY_ALL_MATCH_ODDS_URI = "%ssport/football/odds/1/%s";
-    private static final String MATCH_UPCOMING_BY_TEAM_AND_DATE_URI = "%sunique-tournament/%d/scheduled-events/%s";
+    private static final String FETCH_DAILY_ALL_MATCH_ODDS_URI = "%ssport/football/odds/1/%s";
+    private static final String FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI = "%sunique-tournament/%d/scheduled-events/%s";
+    private static final String FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX =  "%steam/%d/events/last/%d";
 
 //    private static final String MATCH_ODDS_URI = "%sevent/%d/odds/1/all";
 //    private static final String DAILY_MATCH_UP_COMING_URI = "%sodds/1/featured-events-by-popularity/football";
@@ -78,7 +79,7 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
 
     @Override
     public Map<Long, SofaOddsData.MatchOddDetailDTO> fetchDailyMatchOdds(Page page) {
-        String url = String.format(DAILY_ALL_MATCH_ODDS_URI, appProperties.getSofaScore().getApi(), LocalDate.now());
+        String url = String.format(FETCH_DAILY_ALL_MATCH_ODDS_URI, appProperties.getSofaScore().getApi(), LocalDate.now());
         SofaOddsData oddsData = safeFetch(url, page, SofaOddsData.class);
         return oddsData != null ? oddsData.getOdds() : Collections.emptyMap();
     }
@@ -86,8 +87,16 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
     @Override
     public List<SofaMatchData.SofaEventDTO> fetchMatchesDailyByTournamentId(Long sofaTournamentId, Page page) {
         String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        String url = String.format(MATCH_UPCOMING_BY_TEAM_AND_DATE_URI, appProperties.getSofaScore().getApi(),
+        String url = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI, appProperties.getSofaScore().getApi(),
                 sofaTournamentId, today);
+        SofaMatchData matchData = safeFetch(url, page, SofaMatchData.class);
+        return matchData != null ? matchData.getEvents() : Collections.emptyList();
+    }
+
+    @Override
+    public List<SofaMatchData.SofaEventDTO> fetchHistoriesMatchesByTeamIdAndIndex(Long sofaTeamId, int index, Page page) {
+        String url = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX, appProperties.getSofaScore().getApi(),
+                sofaTeamId, index);
         SofaMatchData matchData = safeFetch(url, page, SofaMatchData.class);
         return matchData != null ? matchData.getEvents() : Collections.emptyList();
     }

@@ -1,5 +1,6 @@
 package com.mmo.module.fb.crawler.strategy.impl;
 
+import com.microsoft.playwright.Page;
 import com.mmo.converter.DynamicConverter;
 import com.mmo.module.fb.crawler.model.enums.Provider;
 import com.mmo.module.fb.crawler.model.sofa.SofaDailyMatchWrapper;
@@ -249,12 +250,17 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
                     List<Match> matches = matchRepository.findBySofaScoreIdIn(sofaMatchIds);
                     if (CollectionUtils.isNotEmpty(matches)) {
                         List<MatchPrediction> matchPredictions = dynamicConverter.convertAll(matches, MatchPrediction.class);
-                        // populate odds
                         populateMatchPredictionInfo(matchPredictions, wrapper.getOddsMap());
                         matchPredictionRepository.saveAll(matchPredictions);
                     }
                 }
         );
+    }
+
+    @Override
+    public List<SofaMatchData.SofaEventDTO> getLatestHistoriesMatchesByTeamId(Long sofaTeamId) {
+        return executeSimpleFetchPipeline(
+                page -> sofaCrawlerService.fetchHistoriesMatchesByTeamIdAndIndex(sofaTeamId, 0, page));
     }
 
     @Override

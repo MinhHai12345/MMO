@@ -1,0 +1,16 @@
+👑 *H2 PREMIUM VALUE ALERTS — EARLY FIXTURES*
+🏆 [[${leagueName != null ? leagueName : 'World Cup 2026'}]] | 🚀 High Confidence Signals Unlocked
+──────────────────────────────────────
+📊 *AI MATRIX & SMART STAKING ALLOCATION:*
+
+[# th:each="entry, hourStat : ${groupedMatches}"]
+[# th:each="mp, matchStat : ${entry.value}"]
+[(${matchStat.count})]️⃣ *[[${mp.homeName}]] vs [[${mp.awayName}]]* ──> 🕒 [[${#javatime.format(mp.kickoffTime, 'HH:mm')}]] (GMT+7)
+• Expected Goals: `[[${#numbers.formatDecimal(mp.homeXG, 1, 2)}]]` vs `[[${#numbers.formatDecimal(mp.awayXG, 1, 2)}]]`
+• Market Odds: [[${#numbers.formatDecimal(mp.sofaOdds, 1, 2)}]] | AI Edge: `+[[${#numbers.formatDecimal(mp.edgePercentage, 1, 1)}]]%`
+🎯 *H2 Recommended Pick:* **[[${mp.recommendedPick}]]**
+📈 *Size:* `[[${#numbers.formatDecimal(mp.smartStakingSize, 1, 2)}]]% of Bankroll` (Edge: `+[[${#numbers.formatDecimal(mp.edgePercentage, 1, 1)}]]%`)
+
+[/][/]──────────────────────────────────────
+🔑 *H2 Bankroll Rule:* Total exposure for this session is [(${#numbers.formatDecimal(totalExposure, 1, 1)})]%. Do not over-stake. Trust the long-term mathematical edge.
+🤖 Live Analytics Dashboard: @H2DataInsight_Bot

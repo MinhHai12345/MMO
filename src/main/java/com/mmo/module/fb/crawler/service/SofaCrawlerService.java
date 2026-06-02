@@ -49,4 +49,9 @@ public interface SofaCrawlerService {
      */
     List<SofaMatchData.SofaEventDTO> fetchMatchesDailyByTournamentId(Long sofaTournamentId, Page page);
 
+    /**
+     * Fetch histories match by team id and index
+     */
+    List<SofaMatchData.SofaEventDTO> fetchHistoriesMatchesByTeamIdAndIndex(Long sofaTeamId, int index, Page page);
+
 }
