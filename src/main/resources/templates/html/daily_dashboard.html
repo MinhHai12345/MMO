@@ -1,0 +1,17 @@
+☀️ <b>H2 FOOTBALL DAILY DASHBOARD — [[${date}]]</b>
+──────────────────────────────────────
+🔬 Our Poisson AI Engine has scanned today's fixture list.
+🚨 <b>[[${totalValue}]] VALUE OPPORTUNITIES</b> (Market Inefficiencies) have been detected!
+
+📈 <b>FREE SELECTIONS FOR TODAY:</b>
+<th:block th:each="mp, iter : ${freeMatches}">
+    [[${iter.index + 1}]]️⃣ <b>[(${#strings.replace(mp.match.homeTeam.name, '.', '\.')})]</b> vs <b>[(${#strings.replace(mp.match.awayTeam.name, '.', '\.')})]</b> ──> 🕒 [[${mp.matchTime}]] (GMT+7) ──> 💎 <b>[[${mp.edgePercentage >= 8 ? 'HIGH VALUE' : 'MEDIUM VALUE'}]]</b> (Edge: <code>+[[${mp.edgePercentage}]]%</code>)
+</th:block>
+
+🔒 <b>PREMIUM VALUE ALERTS (VIP ONLY):</b>
+<th:block th:each="mp, iter : ${vipMatches}">
+    [[${iter.index + 1 + freeSize}]]️⃣ [(${#strings.replace(mp.match.homeTeam.name, '.', '\.')})] vs [(${#strings.replace(mp.match.awayTeam.name, '.', '\.')})] ──> 🤫 <code>[VIP UNLOCK]</code>
+</th:block>
+
+🤖 Total Expected ROI for today's models: <code>[[${#numbers.formatDecimal(totalExposure, 1, 1)}]]%</code>
+👉 <a href="https://t.me/H2DataInsight_Bot">Click here to unlock all VIP AI insights for today: @H2DataInsight_Bot</a>

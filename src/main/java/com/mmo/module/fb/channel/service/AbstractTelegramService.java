@@ -15,7 +15,7 @@ public abstract class AbstractTelegramService {
         SendMessage sendMessage = SendMessage.builder()
                 .chatId(chatId)
                 .text(content)
-                .parseMode("Markdown")
+                .parseMode("HTML")
                 .build();
         try {
             telegramClient.execute(sendMessage);

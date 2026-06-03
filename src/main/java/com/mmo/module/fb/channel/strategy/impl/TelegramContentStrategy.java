@@ -23,6 +23,10 @@ public class TelegramContentStrategy implements ContentStrategy {
     @Qualifier("textTemplateEngine")
     private SpringTemplateEngine textTemplateEngine;
 
+    @Autowired
+    @Qualifier("htmlTemplateEngine")
+    private SpringTemplateEngine htmlTemplateEngine;
+
     private final DateTimeFormatter ENGLISH_FORMATTER = DateTimeFormatter.ofPattern("dd MMM", Locale.ENGLISH);
 
     @Override
@@ -32,14 +36,14 @@ public class TelegramContentStrategy implements ContentStrategy {
                                + vipMatches.stream().mapToDouble(mp -> mp.getSmartStakingSize() != null
                 ? mp.getSmartStakingSize() : 0.0).sum();
         Context context = new Context();
-        context.setVariable("date", LocalDate.now().format(ENGLISH_FORMATTER));
+        context.setVariable("date", LocalDate.now().plusDays(8).format(ENGLISH_FORMATTER));
         context.setVariable("totalValue", freeMatches.size() + vipMatches.size());
         context.setVariable("freeMatches", freeMatches);
         context.setVariable("vipMatches", vipMatches);
         context.setVariable("freeSize", freeMatches.size());
         context.setVariable("totalExposure", totalExposure);
 
-        return textTemplateEngine.process("daily_dashboard", context);
+        return htmlTemplateEngine.process("daily_dashboard", context);
     }
 
     @Override
