@@ -4,10 +4,11 @@ import com.mmo.module.fb.channel.model.Platform;
 import com.mmo.module.fb.channel.strategy.ContentStrategy;
 import com.mmo.module.fb.channel.util.TelegramUtils;
 import com.mmo.module.fb.entity.MatchPrediction;
-import jakarta.annotation.Resource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
-import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
+import org.thymeleaf.spring6.SpringTemplateEngine;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -17,19 +18,26 @@ import java.util.Map;
 
 @Component
 public class TelegramContentStrategy implements ContentStrategy {
-    @Resource
-    private TemplateEngine textTemplateEngine;
+
+    @Autowired
+    @Qualifier("textTemplateEngine")
+    private SpringTemplateEngine textTemplateEngine;
 
     private final DateTimeFormatter ENGLISH_FORMATTER = DateTimeFormatter.ofPattern("dd MMM", Locale.ENGLISH);
 
     @Override
     public String buildMatchesDashboardContent(List<MatchPrediction> freeMatches, List<MatchPrediction> vipMatches) {
+        double totalExposure = freeMatches.stream().mapToDouble(mp -> mp.getSmartStakingSize() != null
+                ? mp.getSmartStakingSize() : 0.0).sum()
+                               + vipMatches.stream().mapToDouble(mp -> mp.getSmartStakingSize() != null
+                ? mp.getSmartStakingSize() : 0.0).sum();
         Context context = new Context();
         context.setVariable("date", LocalDate.now().format(ENGLISH_FORMATTER));
         context.setVariable("totalValue", freeMatches.size() + vipMatches.size());
         context.setVariable("freeMatches", freeMatches);
         context.setVariable("vipMatches", vipMatches);
         context.setVariable("freeSize", freeMatches.size());
+        context.setVariable("totalExposure", totalExposure);
 
         return textTemplateEngine.process("daily_dashboard", context);
     }

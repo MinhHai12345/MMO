@@ -175,18 +175,19 @@ public class PredictionEngineServiceImpl implements PredictionEngineService {
             }
             double goalsScored;
             double goalsConceded;
+            if ("finished".equalsIgnoreCase(match.getStatus().getType())) {
+                if (teamId.equals(match.getHomeTeam().getId())) {
+                    goalsScored = match.getHomeScore().getCurrent();
+                    goalsConceded = match.getAwayScore().getCurrent();
+                } else {
+                    goalsScored = match.getAwayScore().getCurrent();
+                    goalsConceded = match.getHomeScore().getCurrent();
+                }
 
-            if (teamId.equals(match.getHomeTeam().getId())) {
-                goalsScored = match.getHomeScore().getCurrent();
-                goalsConceded = match.getAwayScore().getCurrent();
-            } else {
-                goalsScored = match.getAwayScore().getCurrent();
-                goalsConceded = match.getHomeScore().getCurrent();
+                totalWeightedGoalsScored += (goalsScored * weight);
+                totalWeightedGoalsConceded += (goalsConceded * weight);
+                totalWeight += weight;
             }
-
-            totalWeightedGoalsScored += (goalsScored * weight);
-            totalWeightedGoalsConceded += (goalsConceded * weight);
-            totalWeight += weight;
         }
 
         if (totalWeight == 0) return new double[]{1.2, 1.2};

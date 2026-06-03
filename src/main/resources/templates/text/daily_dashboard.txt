@@ -1,16 +1,16 @@
 ☀️ *H2 FOOTBALL DAILY DASHBOARD — [[${date}]]*
 ──────────────────────────────────────
 🔬 Our Poisson AI Engine has scanned today's fixture list.
-🚨 *[[${totalValue}]] VALUE OPPORTUNITIES* (Market Inefficiencies) have been detected!
+🚨 *[[${totalValue}]] VALUE OPPORTUNITIES* (Market Inefficiencies) have been detected\!
 
 📈 *FREE SELECTIONS FOR TODAY:*
 [# th:each="mp, iter : ${freeMatches}"]
-[[${iter.index + 1}]]️⃣ \[[${mp.match.league.name}]]\ *[[${mp.match.homeTeam.name}]]* vs *[[${mp.match.awayTeam.name}]]* ──> 🕒 [[${#javatime.format(mp.kickoffTime, 'HH:mm')}]] (GMT+7) ──> 💎 *[[${mp.edgePercentage >= 8 ? 'HIGH VALUE' : 'MEDIUM VALUE'}]]* (Edge: `+[[${mp.edgePercentage}]]%`)
+[[${iter.index + 1}]]️⃣ \[[${#strings.replace(mp.match.league.name, '.', '\.')}]]\ *[[${#strings.replace(mp.match.homeTeam.name, '.', '\.')}]]* vs *[[${#strings.replace(mp.match.awayTeam.name, '.', '\.')}]]* ──> 🕒 [[${mp.matchTime}]] (GMT+7) ──> 💎 *[[${mp.edgePercentage >= 8 ? 'HIGH VALUE' : 'MEDIUM VALUE'}]]* (Edge: `+[[${mp.edgePercentage}]]%`)
 [/]
 🔒 *PREMIUM VALUE ALERTS (VIP ONLY):*
 [# th:each="mp, iter : ${vipMatches}"]
-[[${iter.index + 1 + freeSize}]]️⃣ \[[${mp.match.league.name}]]\ [[${mp.match.homeTeam.name}]] vs [[${mp.match.awayTeam.name}]] ──> 🤫 `[VIP UNLOCK]`
+[[${iter.index + 1 + freeSize}]]️⃣ \[[${#strings.replace(mp.match.league.name, '.', '\.')}]]\ [[${#strings.replace(mp.match.homeTeam.name, '.', '\.')}]] vs [[${#strings.replace(mp.match.awayTeam.name, '.', '\.')}]] ──> 🤫 `[VIP UNLOCK]`
 [/]
 
-🤖 Total Expected ROI for today's models: `+14.2%`
-👉 Click here to unlock all VIP AI insights for today: @H2DataInsight_Bot
+🤖 Total Expected ROI for today's models: `[[${#numbers.formatDecimal(totalExposure, 1, 1)}]]%`
+👉 Click here to unlock all VIP AI insights for today: @H2DataInsight\_Bot

@@ -2,7 +2,9 @@ package com.mmo.configuration;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.spring6.SpringTemplateEngine;
 import org.thymeleaf.templatemode.TemplateMode;
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver;
 
@@ -21,8 +23,8 @@ public class ThymeleafConfig {
     }
 
     @Bean
-    public TemplateEngine htmlTemplateEngine(ClassLoaderTemplateResolver htmlTemplateResolver) {
-        TemplateEngine templateEngine = new TemplateEngine();
+    public SpringTemplateEngine htmlTemplateEngine(ClassLoaderTemplateResolver htmlTemplateResolver) {
+        SpringTemplateEngine templateEngine = new SpringTemplateEngine();
         templateEngine.setTemplateResolver(htmlTemplateResolver);
         return templateEngine;
     }
@@ -40,8 +42,9 @@ public class ThymeleafConfig {
     }
 
     @Bean
-    public TemplateEngine textTemplateEngine() {
-        TemplateEngine templateEngine = new TemplateEngine();
+    @Primary
+    public SpringTemplateEngine textTemplateEngine() {
+        SpringTemplateEngine templateEngine = new SpringTemplateEngine();
         templateEngine.setTemplateResolver(textTemplateResolver());
         return templateEngine;
     }

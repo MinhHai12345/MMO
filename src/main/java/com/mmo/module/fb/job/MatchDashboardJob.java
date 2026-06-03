@@ -29,8 +29,8 @@ public class MatchDashboardJob extends AbstractJob<CronJob> {
 
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
-        LocalDateTime startTimeWindow = LocalDateTime.of(LocalDate.now().plusDays(10), LocalTime.of(13, 0));
-        LocalDateTime endTimeWindow = startTimeWindow.plusHours(24);
+        LocalDateTime startTimeWindow = LocalDateTime.of(LocalDate.now().plusDays(8), LocalTime.of(13, 0));
+        LocalDateTime endTimeWindow = startTimeWindow.plusHours(48);
 
         List<MatchPrediction> readyPredictions = predictionRepository
                 .findByStatusAndKickoffTimeBetween(MatchPredictionStatus.READY, startTimeWindow, endTimeWindow);

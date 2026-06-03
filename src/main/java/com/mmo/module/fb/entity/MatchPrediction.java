@@ -2,11 +2,20 @@ package com.mmo.module.fb.entity;
 
 import com.mmo.entity.AbstractEntity;
 import com.mmo.module.fb.entity.enums.MatchPredictionStatus;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Entity
 @Table(name = "match_predictions", indexes = {
@@ -23,6 +32,9 @@ public class MatchPrediction extends AbstractEntity {
 
     @Column(nullable = false)
     private LocalDateTime kickoffTime;
+
+    @Transient
+    private String matchTime;
 
     // =========================================================================
     // 🏛️ MARKET ODDS (Dữ liệu tỷ lệ cược cào từ SofaScore)
@@ -76,4 +88,9 @@ public class MatchPrediction extends AbstractEntity {
     @Enumerated(EnumType.STRING)
     private MatchPredictionStatus status; // Trạng thái: PENDING (Chưa tính), READY (Đã tính), FREE_DASHBOARD, FREE_DETAIL, VIP_ONLY, POSTED (Đã đăng thành công)
 
+    public String getMatchTime() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+        this.matchTime = kickoffTime.format(formatter);
+        return matchTime;
+    }
 }
