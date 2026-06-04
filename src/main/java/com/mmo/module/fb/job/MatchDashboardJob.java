@@ -33,7 +33,7 @@ public class MatchDashboardJob extends AbstractJob<CronJob> {
         LocalDateTime endTimeWindow = startTimeWindow.plusHours(48);
 
         List<MatchPrediction> readyPredictions = predictionRepository
-                .findByStatusAndKickoffTimeBetween(MatchPredictionStatus.READY, startTimeWindow, endTimeWindow);
+                .findByStatusAndKickoffTimeBetweenOrderByKickoffTimeAsc(MatchPredictionStatus.READY, startTimeWindow, endTimeWindow);
         if (CollectionUtils.isNotEmpty(readyPredictions)) {
             MatchClassification matchClassification = classifyMatches(readyPredictions);
             telegramService.notifyMatchesDashboard(matchClassification.getFreeMatches(), matchClassification.getVipMatches());

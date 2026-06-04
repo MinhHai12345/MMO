@@ -1,0 +1,17 @@
+👑 <strong>H2 FOOTBALL DATA INSIGHT — QUANT ALERTS</strong>
+🏆 <strong>[[${leagueName != null ? leagueName : 'World Cup 2026'}]]</strong> | 🧠 Algorithmic Picks &amp; High-Confidence Signals
+
+──────────────────────────────────────
+📊 <strong>AI QUANT MATRIX &amp; RISK-ADJUSTED ALLOCATION</strong>
+<i>💡 Core predictive edges modeled via Poisson Probability Analysis. Capital distribution is dynamically optimized using a conservative 1/4 Fractional Kelly Criterion to systematically compound growth while strictly neutralizing variance.</i>
+    <th:block th:each="mp : ${matches}">
+        [[${mp.index}]]️⃣ <strong>[[${mp.match.homeTeam.name}]] vs [[${mp.match.awayTeam.name}]]</strong> 🕒 <strong>[[${mp.matchTime}]]</strong> (GMT+7)
+        • Expected Goals: <code>[[${#numbers.formatDecimal(mp.expectedHomeGoals, 1, 2)}]] vs [[${#numbers.formatDecimal(mp.expectedAwayGoals, 1, 2)}]]</code>
+        • Market Odds: [[${#numbers.formatDecimal(mp.sofaHomeOdd, 1, 2)}]] | [[${#numbers.formatDecimal(mp.sofaDrawOdd, 1, 2)}]] | [[${#numbers.formatDecimal(mp.sofaAwayOdd, 1, 2)}]]
+        ➔ H2 Fair Odds: [[${#numbers.formatDecimal(mp.fairHomeOdd, 1, 2)}]] | [[${#numbers.formatDecimal(mp.fairDrawOdd, 1, 2)}]] | [[${#numbers.formatDecimal(mp.fairAwayOdd, 1, 2)}]]
+        🎯 <strong>H2 Recommended Pick:</strong> <strong>[[${mp.recommendedPick}]]</strong>
+        • AI Top Scores: <code>[[${mp.topCorrectScores}]]</code>
+        📈 <strong>Size:</strong> <code>[[${#numbers.formatDecimal(mp.smartStakingSize, 1, 1)}]]% of Bankroll</code> (Edge: <code>+[[${#numbers.formatDecimal(mp.edgePercentage, 1, 1)}]]%</code>)
+    </th:block>──────────────────────────────────────
+🔑 <strong>H2 Bankroll Rule:</strong> Total exposure for this session is <strong>[[${#numbers.formatDecimal(totalExposure, 1, 1)}]]%</strong>. Do not over-stake. Trust the long-term mathematical edge.
+🤖 Live Analytics Dashboard: <strong><a href="https://t.me/H2DataInsight_Bot">@H2DataInsight_Bot</a></strong>

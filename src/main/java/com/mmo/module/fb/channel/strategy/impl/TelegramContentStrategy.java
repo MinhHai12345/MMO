@@ -10,11 +10,7 @@ import org.springframework.stereotype.Component;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 
 @Component
 public class TelegramContentStrategy implements ContentStrategy {
@@ -27,8 +23,6 @@ public class TelegramContentStrategy implements ContentStrategy {
     @Qualifier("htmlTemplateEngine")
     private SpringTemplateEngine htmlTemplateEngine;
 
-    private final DateTimeFormatter ENGLISH_FORMATTER = DateTimeFormatter.ofPattern("dd MMM", Locale.ENGLISH);
-
     @Override
     public String buildMatchesDashboardContent(List<MatchPrediction> freeMatches, List<MatchPrediction> vipMatches) {
         double totalExposure = freeMatches.stream().mapToDouble(mp -> mp.getSmartStakingSize() != null
@@ -36,28 +30,23 @@ public class TelegramContentStrategy implements ContentStrategy {
                                + vipMatches.stream().mapToDouble(mp -> mp.getSmartStakingSize() != null
                 ? mp.getSmartStakingSize() : 0.0).sum();
         Context context = new Context();
-        context.setVariable("date", LocalDate.now().plusDays(8).format(ENGLISH_FORMATTER));
+        context.setVariable("leagueName", "FIFA World Cup 2026");
         context.setVariable("totalValue", freeMatches.size() + vipMatches.size());
         context.setVariable("freeMatches", freeMatches);
         context.setVariable("vipMatches", vipMatches);
         context.setVariable("freeSize", freeMatches.size());
         context.setVariable("totalExposure", totalExposure);
-
         return htmlTemplateEngine.process("daily_dashboard", context);
     }
 
     @Override
-    public String buildMatchesInsightsContent(Map<Integer, List<MatchPrediction>> groupedMatches) {
-        double totalExposure = groupedMatches.values().stream()
-                .flatMap(List::stream).mapToDouble(MatchPrediction::getSmartStakingSize)
-                .sum();
-
+    public String buildMatchesInsightsContent(List<MatchPrediction> matches) {
+        double totalExposure = matches.stream().mapToDouble(MatchPrediction::getSmartStakingSize).sum();
         Context context = new Context();
-        context.setVariable("groupedMatches", groupedMatches);
+        context.setVariable("matches", matches);
         context.setVariable("leagueName", "FIFA World Cup 2026");
         context.setVariable("totalExposure", totalExposure);
-
-        return textTemplateEngine.process("match_insight_multi", context);
+        return htmlTemplateEngine.process("match_insights", context);
     }
 
     private String escape(String text) {

@@ -14,9 +14,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class MatchInsightJob extends AbstractJob<CronJob> {
@@ -28,14 +26,14 @@ public class MatchInsightJob extends AbstractJob<CronJob> {
 
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime upperLimit = now.plusHours(3);
+        LocalDateTime now = LocalDateTime.now().plusDays(7);
+        LocalDateTime upperLimit = now.plusHours(48);
         List<MatchPredictionStatus> targetStatuses = Arrays.asList(MatchPredictionStatus.FREE_DETAIL, MatchPredictionStatus.VIP_ONLY);
-        List<MatchPrediction> incomingMatches = predictionRepository.findByStatusInAndKickoffTimeBetween(targetStatuses, now, upperLimit);
+        List<MatchPrediction> incomingMatches = predictionRepository.findByStatusInAndKickoffTimeBetweenOrderByKickoffTimeAsc(targetStatuses, now, upperLimit);
 
         if (CollectionUtils.isNotEmpty(incomingMatches)) {
-            Map<Integer, List<MatchPrediction>> groupedMatches = groupMatchesByHour(incomingMatches);
-            telegramService.notifyMatchesInsights(groupedMatches);
+            populateIndex(incomingMatches);
+            telegramService.notifyMatchesInsights(incomingMatches);
             incomingMatches.forEach((matchPrediction) -> {
                 matchPrediction.setStatus(MatchPredictionStatus.POSTED);
             });
@@ -43,12 +41,8 @@ public class MatchInsightJob extends AbstractJob<CronJob> {
         }
     }
 
-    public Map<Integer, List<MatchPrediction>> groupMatchesByHour(List<MatchPrediction> matches) {
-        return matches.stream()
-                .collect(Collectors.groupingBy(
-                        mp -> mp.getKickoffTime().getHour(),
-                        TreeMap::new,
-                        Collectors.toList()
-                ));
+    public void populateIndex(List<MatchPrediction> matches) {
+        AtomicInteger globalIndex = new AtomicInteger(1);
+        matches.forEach(it -> it.setIndex(globalIndex.getAndIncrement()));
     }
 }

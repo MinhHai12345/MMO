@@ -12,7 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Component
@@ -30,9 +29,9 @@ public class TelegramServiceImpl extends AbstractTelegramService implements Tele
     }
 
     @Override
-    public void notifyMatchesInsights(Map<Integer, List<MatchPrediction>> groupedMatches) {
+    public void notifyMatchesInsights(List<MatchPrediction> matches) {
         ContentStrategy contentStrategy = strategyRegistry.getStrategy(Platform.TELEGRAM);
-        String content = contentStrategy.buildMatchesInsightsContent(groupedMatches);
+        String content = contentStrategy.buildMatchesInsightsContent(matches);
         markdownPublish(appProperties.getTelegram().getChannel().getFree(), content);
     }
 

@@ -6,6 +6,9 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
+import java.time.Instant;
+import java.util.concurrent.ThreadLocalRandom;
+
 @Slf4j
 public abstract class AbstractTelegramService {
     @Resource

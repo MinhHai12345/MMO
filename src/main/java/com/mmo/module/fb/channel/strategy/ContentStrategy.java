@@ -10,7 +10,7 @@ public interface ContentStrategy {
 
     String buildMatchesDashboardContent(List<MatchPrediction> freeMatches, List<MatchPrediction> vipMatches);
 
-    String buildMatchesInsightsContent(Map<Integer, List<MatchPrediction>> groupedMatches);
+    String buildMatchesInsightsContent(List<MatchPrediction> matches);
 
     Platform getPlatform();
 

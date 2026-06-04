@@ -6,12 +6,15 @@ import com.mmo.module.fb.crawler.strategy.CrawlerStrategy;
 import com.mmo.module.fb.crawler.strategy.CrawlerStrategyRegistry;
 import com.mmo.module.fb.entity.MatchPrediction;
 import com.mmo.module.fb.entity.enums.MatchPredictionStatus;
+import com.mmo.module.fb.predict.model.ScoreProbability;
 import com.mmo.module.fb.predict.service.PredictionEngineService;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -24,6 +27,7 @@ public class PredictionEngineServiceImpl implements PredictionEngineService {
     private CrawlerStrategyRegistry crawlerStrategyRegistry;
 
     private static final int MAX_GOALS = 9;
+    private static final int MAX_GOALS_MATRIX = 6;
     private static final double MIN_EDGE_FREE = 5.0;
     private static final double MIN_EDGE_PREMIUM = 10.0;
 
@@ -94,6 +98,9 @@ public class PredictionEngineServiceImpl implements PredictionEngineService {
             }
         }
 
+        // 🚀 TÍCH HỢP TÍNH MA TRẬN TOP TỶ SỐ CHÍNH XÁC (CORRECT SCORES) TẠI ĐÂY
+        calculatePoissonCorrectScores(prediction, homeGoalProbs, awayGoalProbs);
+
         // 8. ĐỔI XÁC SUẤT RA FAIR ODDS CỦA HỆ THỐNG H2
         prediction.setFairHomeOdd(homeWinProb > 0 ? round(1.0 / homeWinProb) : 99.0);
         prediction.setFairDrawOdd(drawProb > 0 ? round(1.0 / drawProb) : 99.0);
@@ -119,10 +126,10 @@ public class PredictionEngineServiceImpl implements PredictionEngineService {
 
             // Bốc chuẩn xác cửa cược tối ưu nhất dựa trên toán học
             if (maxEdge == homeEdge) {
-                prediction.setRecommendedPick(homeTeamName + " (Home Win)");
+                prediction.setRecommendedPick(homeTeamName + " (Win)");
                 selectedSofaOdd = prediction.getSofaHomeOdd();
             } else if (maxEdge == awayEdge) {
-                prediction.setRecommendedPick(awayTeamName + " (Away Win)");
+                prediction.setRecommendedPick(awayTeamName + " (Win)");
                 selectedSofaOdd = prediction.getSofaAwayOdd();
             } else {
                 prediction.setRecommendedPick("Draw (X)");
@@ -204,34 +211,19 @@ public class PredictionEngineServiceImpl implements PredictionEngineService {
     }
 
     /**
-     * Tính toán Staking dựa trên Fractional Kelly Criterion (Hệ số an toàn 1/4)
+     * Thuật toán bóc tách ma trận tìm Top 3 tỷ số có tỷ lệ xuất hiện cao nhất
      */
-    public double calculateSmartStaking(double sofaOdds, double edgePercentage) {
-        if (edgePercentage <= 0 || sofaOdds <= 1.0) {
-            return 0.0;
+    private void calculatePoissonCorrectScores(MatchPrediction prediction, double[] homeGoalProbs, double[] awayGoalProbs) {
+        List<ScoreProbability> scoreList = new ArrayList<>();
+        for (int h = 0; h < MAX_GOALS_MATRIX; h++) {
+            for (int a = 0; a < MAX_GOALS_MATRIX; a++) {
+                double scoreProb = homeGoalProbs[h] * awayGoalProbs[a];
+                scoreList.add(new ScoreProbability(h + "-" + a, scoreProb));
+            }
         }
 
-        // Công thức thực chiến: Smart Staking = Edge % / ((Odds - 1) * 4)
-        double staking = edgePercentage / ((sofaOdds - 1.0) * 4.0);
-
-        // Làm tròn toán học lấy 1 chữ số thập phân (Ví dụ: 1.818... -> 1.8)
-        staking = Math.round(staking * 10.0) / 10.0;
-
-        // Quy tắc Hard Caps bảo vệ nguồn vốn của nhà đầu tư VIP
-        if (staking > 5.0) return 5.0;
-        return Math.max(staking, 1.0);
-
-    }
-
-    /**
-     * Gom nhóm danh sách 10 trận đấu theo Khung giờ đá (Sắp xếp tăng dần theo thời gian)
-     */
-    public Map<Integer, List<MatchPrediction>> groupMatchesByHour(List<MatchPrediction> matches) {
-        return matches.stream()
-                .collect(Collectors.groupingBy(
-                        mp -> mp.getKickoffTime().getHour(),
-                        TreeMap::new, // Sử dụng TreeMap để tự động sắp xếp khung giờ từ sớm đến muộn
-                        Collectors.toList()
-                ));
+        Collections.sort(scoreList);
+        String topScores = scoreList.get(0).getScore() + ", " + scoreList.get(1).getScore();
+        prediction.setTopCorrectScores(topScores);
     }
 }

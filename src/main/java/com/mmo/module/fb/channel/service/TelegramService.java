@@ -8,6 +8,6 @@ import java.util.Map;
 public interface TelegramService {
     void notifyMatchesDashboard(List<MatchPrediction> freeMatches, List<MatchPrediction> vipMatches);
 
-    void notifyMatchesInsights(Map<Integer, List<MatchPrediction>> groupedMatches);
+    void notifyMatchesInsights(List<MatchPrediction> matches);
 
 }

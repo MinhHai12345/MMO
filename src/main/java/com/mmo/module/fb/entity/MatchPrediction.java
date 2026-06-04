@@ -36,6 +36,9 @@ public class MatchPrediction extends AbstractEntity {
     @Transient
     private String matchTime;
 
+    @Transient
+    private int index;
+
     // =========================================================================
     // 🏛️ MARKET ODDS (Dữ liệu tỷ lệ cược cào từ SofaScore)
     // =========================================================================
@@ -76,13 +79,16 @@ public class MatchPrediction extends AbstractEntity {
     private Double smartStakingSize;
 
     @Column
-    private Double edgePercentage; // Độ lệch % lợi thế so với nhà cái (Ví dụ: 8.5)
+    private Double edgePercentage;
 
     @Column
-    private boolean hasValue = false; // Trận đấu này có đáng đầu tư hay không?
+    private String topCorrectScores;
 
     @Column
-    private boolean isPremium = false; // Thuộc gói VIP (True) hay gói Free (False)
+    private boolean hasValue = false;
+
+    @Column
+    private boolean isPremium = false;
 
     @Column
     @Enumerated(EnumType.STRING)
