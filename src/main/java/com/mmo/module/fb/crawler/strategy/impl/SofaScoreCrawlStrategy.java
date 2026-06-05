@@ -1,11 +1,10 @@
 package com.mmo.module.fb.crawler.strategy.impl;
 
-import com.microsoft.playwright.Page;
 import com.mmo.converter.DynamicConverter;
 import com.mmo.module.fb.crawler.model.enums.Provider;
 import com.mmo.module.fb.crawler.model.sofa.SofaDailyMatchWrapper;
-import com.mmo.module.fb.crawler.model.sofa.SofaMatchData;
 import com.mmo.module.fb.crawler.model.sofa.SofaMatchStatisticsData;
+import com.mmo.module.fb.crawler.model.sofa.SofaMatchesData;
 import com.mmo.module.fb.crawler.model.sofa.SofaOddsData;
 import com.mmo.module.fb.crawler.model.sofa.SofaSeasonData;
 import com.mmo.module.fb.crawler.model.sofa.SofaStandingsData;
@@ -16,6 +15,7 @@ import com.mmo.module.fb.entity.Match;
 import com.mmo.module.fb.entity.MatchPrediction;
 import com.mmo.module.fb.entity.Season;
 import com.mmo.module.fb.entity.Team;
+import com.mmo.module.fb.entity.enums.MatchPredictionStatus;
 import com.mmo.module.fb.entity.enums.MatchStatus;
 import com.mmo.module.fb.repository.LeagueRepository;
 import com.mmo.module.fb.repository.MatchPredictionRepository;
@@ -156,13 +156,13 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
         executeStorePipeline(
                 activeLeagues,
                 (league, page) -> {
-                    java.util.List<SofaMatchData.SofaEventDTO> allLeagueEvents = new java.util.ArrayList<>();
+                    java.util.List<SofaMatchesData.SofaEventDTO> allLeagueEvents = new java.util.ArrayList<>();
                     int emptyCount = 0;
                     for (int round = 1; round <= 50; round++) {
                         if (page.isClosed()) {
                             log.info("⚠️ Page bị đóng tại Round {} của giải {}. Khởi tạo lại...", round, league.getSofaScoreId());
                         }
-                        List<SofaMatchData.SofaEventDTO> events = sofaCrawlerService.fetchMatchesByRound(league.getSofaScoreId(), league.getCurrentSeason().getSofaScoreId(), round, page);
+                        List<SofaMatchesData.SofaEventDTO> events = sofaCrawlerService.fetchMatchesByRound(league.getSofaScoreId(), league.getCurrentSeason().getSofaScoreId(), round, page);
                         if (events.isEmpty()) {
                             emptyCount++;
                             if (emptyCount > 3 && round > 10) break;
@@ -176,7 +176,7 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
                 (league, allEvents) -> {
                     if (CollectionUtils.isEmpty(allEvents)) return;
 
-                    List<SofaMatchData.SofaEventDTO> newEvents = allEvents.stream()
+                    List<SofaMatchesData.SofaEventDTO> newEvents = allEvents.stream()
                             .filter(eventDTO -> !existingSofaMatchIds.contains(eventDTO.getId()))
                             .toList();
 
@@ -235,7 +235,7 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
         executeStorePipeline(
                 activeLeagues,
                 (league, page) -> {
-                    List<SofaMatchData.SofaEventDTO> events = sofaCrawlerService.fetchMatchesDailyByTournamentId(league.getSofaScoreId(), page);
+                    List<SofaMatchesData.SofaEventDTO> events = sofaCrawlerService.fetchMatchesDailyByTournamentId(league.getSofaScoreId(), page);
                     Map<Long, SofaOddsData.MatchOddDetailDTO> oddsMap = sofaCrawlerService.fetchDailyMatchOdds(page);
                     return new SofaDailyMatchWrapper(events, oddsMap);
                 },
@@ -244,7 +244,7 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
 
                     Set<Long> sofaMatchIds = wrapper.getEvents().stream()
                             .filter(Objects::nonNull)
-                            .map(SofaMatchData.SofaEventDTO::getId)
+                            .map(SofaMatchesData.SofaEventDTO::getId)
                             .collect(Collectors.toSet());
                     List<Match> matches = matchRepository.findBySofaScoreIdIn(sofaMatchIds);
                     if (CollectionUtils.isNotEmpty(matches)) {
@@ -257,7 +257,30 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
     }
 
     @Override
-    public List<SofaMatchData.SofaEventDTO> getLatestHistoriesMatchesByTeamId(Long sofaTeamId) {
+    public void prepareMatchResultDaily() {
+        List<MatchPrediction> targetMatches = matchPredictionRepository.findByStatus(MatchPredictionStatus.POSTED);
+        if (CollectionUtils.isEmpty(targetMatches)) {
+            return;
+        }
+        executeStorePipeline(
+                targetMatches,
+                (prediction, page) -> sofaCrawlerService.fetchMatchById(prediction.getMatch().getSofaScoreId(), page),
+                (prediction, event) -> {
+                    if (event == null) return;
+                    Integer homeScore = event.getHomeScore().getCurrent();
+                    Integer awayScore = event.getAwayScore().getCurrent();
+                    if (homeScore != null && awayScore != null) {
+                        prediction.setActualAwayGoals(homeScore);
+                        prediction.setActualHomeGoals(awayScore);
+                        prediction.setStatus(MatchPredictionStatus.RESULT);
+                        matchPredictionRepository.save(prediction);
+                    }
+                }
+        );
+    }
+
+    @Override
+    public List<SofaMatchesData.SofaEventDTO> getLatestHistoriesMatchesByTeamId(Long sofaTeamId) {
         return executeSimpleFetchPipeline(
                 page -> sofaCrawlerService.fetchHistoriesMatchesByTeamIdAndIndex(sofaTeamId, 0, page));
     }

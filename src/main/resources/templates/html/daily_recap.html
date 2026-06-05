@@ -1,0 +1,18 @@
+👑 <strong>H2 FOOTBALL DATA INSIGHT — RECAP</strong>
+🏆 <strong>[[${leagueName != null ? leagueName : 'World Cup 2026'}]]</strong> | 🧠 Algorithmic Picks &amp; High-Confidence Signals
+──────────────────────────────────────
+🔬 Verification of recently concluded fixtures against our Poisson $xG$ baselines:
+
+[# th:each="mp, mpStat : ${completedMatches}"]
+⚽ <b>[[${mp.match.homeTeam.name}]] [[${mp.actualHomeGoals}]] — [[${mp.actualAwayGoals}]] [[${mp.match.awayTeam.name}]]</b>
+• Pre-Match Expected Goals ($xG$): <code>[[${mp.expectedHomeGoals}]] vs [[${mp.expectedAwayGoals}]]</code>
+• Model Target Pick: <b>[[${mp.recommendedPick}]]</b>
+• Result Alignment: [[${mp.isWin ? '✅ <b>VALUE EXPLOITED (WIN)</b>' : '❌ <b>VARIANCE INTERFERENCE (LOSS)</b>']]
+[# th:if="${!mpStat.last}"]────────────────[/]
+[/]
+──────────────────────────────────────
+📊 <b>SESSION PERFORMANCE METRICS:</b>
+• Total Verified Matches: <code>[[${totalMatches}]]</code>
+• Session Record: 🎯 <code>[[${winCount}]]W — [[${lossCount}]]L</code>
+
+🤖 Live Analytics Dashboard: <strong><a href="https://t.me/h2_fb_insights">H2FBDataInsights Group</a></strong>

@@ -39,6 +39,9 @@ public class MatchPrediction extends AbstractEntity {
     @Transient
     private int index;
 
+    @Transient
+    private boolean isWin;
+
     // =========================================================================
     // 🏛️ MARKET ODDS (Dữ liệu tỷ lệ cược cào từ SofaScore)
     // =========================================================================
@@ -59,6 +62,12 @@ public class MatchPrediction extends AbstractEntity {
 
     @Column
     private Double expectedAwayGoals;
+
+    @Column
+    private Integer actualHomeGoals;
+
+    @Column
+    private Integer actualAwayGoals;
 
     @Column
     private Double fairHomeOdd;

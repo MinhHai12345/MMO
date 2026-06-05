@@ -2,7 +2,6 @@ package com.mmo.module.fb.channel.strategy.impl;
 
 import com.mmo.module.fb.channel.model.Platform;
 import com.mmo.module.fb.channel.strategy.ContentStrategy;
-import com.mmo.module.fb.channel.util.TelegramUtils;
 import com.mmo.module.fb.entity.MatchPrediction;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -49,8 +48,16 @@ public class TelegramContentStrategy implements ContentStrategy {
         return htmlTemplateEngine.process("match_insights", context);
     }
 
-    private String escape(String text) {
-        return TelegramUtils.escape(text);
+    @Override
+    public String buildMatchesRecapContent(List<MatchPrediction> matches) {
+        long winCount = matches.stream().filter(MatchPrediction::isWin).count();
+        Context context = new Context();
+        context.setVariable("leagueName", "FIFA World Cup 2026");
+        context.setVariable("completedMatches", matches);
+        context.setVariable("totalMatches", matches.size());
+        context.setVariable("lossCount", matches.size() - winCount);
+        context.setVariable("winCount", winCount);
+        return htmlTemplateEngine.process("daily_recap", context);
     }
 
     @Override

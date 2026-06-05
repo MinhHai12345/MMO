@@ -17,7 +17,7 @@ public class MatchResultJob extends AbstractJob<CronJob> {
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
         CrawlerStrategy strategy = crawlerStrategyRegistry.getStrategy(Provider.SOFA_SCORE);
-        strategy.prepareMatchUpcomingDaily();
+        strategy.prepareMatchResultDaily();
     }
 
 }

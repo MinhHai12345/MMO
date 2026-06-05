@@ -4,6 +4,7 @@ import com.microsoft.playwright.Page;
 import com.mmo.configuration.AppProperties;
 import com.mmo.module.fb.crawler.model.sofa.SofaMatchData;
 import com.mmo.module.fb.crawler.model.sofa.SofaMatchStatisticsData;
+import com.mmo.module.fb.crawler.model.sofa.SofaMatchesData;
 import com.mmo.module.fb.crawler.model.sofa.SofaOddsData;
 import com.mmo.module.fb.crawler.model.sofa.SofaSeasonData;
 import com.mmo.module.fb.crawler.model.sofa.SofaStandingsData;
@@ -34,11 +35,8 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
     private static final String FETCH_MATCH_STATISTICS_URI = "%sevent/%d/statistics";
     private static final String FETCH_DAILY_ALL_MATCH_ODDS_URI = "%ssport/football/odds/1/%s";
     private static final String FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI = "%sunique-tournament/%d/scheduled-events/%s";
-    private static final String FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX =  "%steam/%d/events/last/%d";
-
-//    private static final String MATCH_ODDS_URI = "%sevent/%d/odds/1/all";
-//    private static final String DAILY_MATCH_UP_COMING_URI = "%sodds/1/featured-events-by-popularity/football";
-
+    private static final String FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX = "%steam/%d/events/last/%d";
+    private static final String FETCH_MATCH_BY_ID = "%sevent/%d";
 
     @Override
     public List<SofaUniqueTournamentsData.UniqueTournamentDTO> fetchLeagues(Page page) {
@@ -63,10 +61,10 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
     }
 
     @Override
-    public List<SofaMatchData.SofaEventDTO> fetchMatchesByRound(Long sofaTournamentId, Long sofaSeasonId, int round, Page page) {
+    public List<SofaMatchesData.SofaEventDTO> fetchMatchesByRound(Long sofaTournamentId, Long sofaSeasonId, int round, Page page) {
         String url = String.format(FETCH_MATCH_BY_ROUND_URI, appProperties.getSofaScore().getApi(),
                 sofaTournamentId, sofaSeasonId, round);
-        SofaMatchData matchData = safeFetch(url, page, SofaMatchData.class);
+        SofaMatchesData matchData = safeFetch(url, page, SofaMatchesData.class);
         return matchData != null ? matchData.getEvents() : Collections.emptyList();
     }
 
@@ -85,20 +83,27 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
     }
 
     @Override
-    public List<SofaMatchData.SofaEventDTO> fetchMatchesDailyByTournamentId(Long sofaTournamentId, Page page) {
+    public List<SofaMatchesData.SofaEventDTO> fetchMatchesDailyByTournamentId(Long sofaTournamentId, Page page) {
         String today = LocalDateTime.now().plusDays(9).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         String url = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI, appProperties.getSofaScore().getApi(),
                 sofaTournamentId, today);
-        SofaMatchData matchData = safeFetch(url, page, SofaMatchData.class);
+        SofaMatchesData matchData = safeFetch(url, page, SofaMatchesData.class);
         return matchData != null ? matchData.getEvents() : Collections.emptyList();
     }
 
     @Override
-    public List<SofaMatchData.SofaEventDTO> fetchHistoriesMatchesByTeamIdAndIndex(Long sofaTeamId, int index, Page page) {
+    public List<SofaMatchesData.SofaEventDTO> fetchHistoriesMatchesByTeamIdAndIndex(Long sofaTeamId, int index, Page page) {
         String url = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX, appProperties.getSofaScore().getApi(),
                 sofaTeamId, index);
-        SofaMatchData matchData = safeFetch(url, page, SofaMatchData.class);
+        SofaMatchesData matchData = safeFetch(url, page, SofaMatchesData.class);
         return matchData != null ? matchData.getEvents() : Collections.emptyList();
+    }
+
+    @Override
+    public SofaMatchesData.SofaEventDTO fetchMatchById(Long sofaMatchId, Page page) {
+        String url = String.format(FETCH_MATCH_BY_ID, appProperties.getSofaScore().getApi(), sofaMatchId);
+        SofaMatchData matchData = safeFetch(url, page, SofaMatchData.class);
+        return matchData != null ? matchData.getEvent() : null;
     }
 
 }

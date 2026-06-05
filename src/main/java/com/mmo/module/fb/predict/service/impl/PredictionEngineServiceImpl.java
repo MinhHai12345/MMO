@@ -1,7 +1,7 @@
 package com.mmo.module.fb.predict.service.impl;
 
 import com.mmo.module.fb.crawler.model.enums.Provider;
-import com.mmo.module.fb.crawler.model.sofa.SofaMatchData;
+import com.mmo.module.fb.crawler.model.sofa.SofaMatchesData;
 import com.mmo.module.fb.crawler.strategy.CrawlerStrategy;
 import com.mmo.module.fb.crawler.strategy.CrawlerStrategyRegistry;
 import com.mmo.module.fb.entity.MatchPrediction;
@@ -16,9 +16,6 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -42,8 +39,8 @@ public class PredictionEngineServiceImpl implements PredictionEngineService {
         CrawlerStrategy strategy = crawlerStrategyRegistry.getStrategy(Provider.SOFA_SCORE);
 
         // 2. Lấy danh sách lịch sử trận đấu (Tối đa 29 trận gần nhất, sắp xếp từ mới đến cũ)
-        List<SofaMatchData.SofaEventDTO> homeHistories = strategy.getLatestHistoriesMatchesByTeamId(homeTeamId);
-        List<SofaMatchData.SofaEventDTO> awayHistories = strategy.getLatestHistoriesMatchesByTeamId(awayTeamId);
+        List<SofaMatchesData.SofaEventDTO> homeHistories = strategy.getLatestHistoriesMatchesByTeamId(homeTeamId);
+        List<SofaMatchesData.SofaEventDTO> awayHistories = strategy.getLatestHistoriesMatchesByTeamId(awayTeamId);
 
         // 3. Tính toán số bàn thắng/thua trung bình có ÁP TRỌNG SỐ cho Đội Nhà
         double[] homeCalculatedStats = calculateWeightedAverages(homeHistories, homeTeamId);
@@ -126,10 +123,10 @@ public class PredictionEngineServiceImpl implements PredictionEngineService {
 
             // Bốc chuẩn xác cửa cược tối ưu nhất dựa trên toán học
             if (maxEdge == homeEdge) {
-                prediction.setRecommendedPick(homeTeamName + " (Win)");
+                prediction.setRecommendedPick(homeTeamName + " (Home Win)");
                 selectedSofaOdd = prediction.getSofaHomeOdd();
             } else if (maxEdge == awayEdge) {
-                prediction.setRecommendedPick(awayTeamName + " (Win)");
+                prediction.setRecommendedPick(awayTeamName + " (Away Win)");
                 selectedSofaOdd = prediction.getSofaAwayOdd();
             } else {
                 prediction.setRecommendedPick("Draw (X)");
@@ -166,13 +163,13 @@ public class PredictionEngineServiceImpl implements PredictionEngineService {
         prediction.setStatus(MatchPredictionStatus.READY);
     }
 
-    private double[] calculateWeightedAverages(List<SofaMatchData.SofaEventDTO> histories, Long teamId) {
+    private double[] calculateWeightedAverages(List<SofaMatchesData.SofaEventDTO> histories, Long teamId) {
         double totalWeightedGoalsScored = 0.0;
         double totalWeightedGoalsConceded = 0.0;
         double totalWeight = 0.0;
 
         for (int i = 0; i < histories.size(); i++) {
-            SofaMatchData.SofaEventDTO match = histories.get(i);
+            SofaMatchesData.SofaEventDTO match = histories.get(i);
             double weight = 1.0;
 
             if (i < 5) {

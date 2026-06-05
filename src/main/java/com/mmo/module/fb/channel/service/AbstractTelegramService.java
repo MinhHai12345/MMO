@@ -6,15 +6,12 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
-import java.time.Instant;
-import java.util.concurrent.ThreadLocalRandom;
-
 @Slf4j
 public abstract class AbstractTelegramService {
     @Resource
     private TelegramClient telegramClient;
 
-    protected void markdownPublish(String chatId, String content) {
+    protected void publish(String chatId, String content) {
         SendMessage sendMessage = SendMessage.builder()
                 .chatId(chatId)
                 .text(content)

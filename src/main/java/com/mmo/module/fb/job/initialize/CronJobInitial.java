@@ -30,7 +30,7 @@ public class CronJobInitial implements DataInitializer {
             resultJob.setJobGroup(FB_JOB_GROUP);
             resultJob.setJobClass(MatchResultJob.class.getName());
             resultJob.setCronExpression("0 30 9 * * ?");
-            resultJob.setDescription("Fetch Match Upcoming Job");
+            resultJob.setDescription("Fetch Match Results Job");
             cronJobService.saveJob(resultJob);
         }
 
@@ -40,7 +40,7 @@ public class CronJobInitial implements DataInitializer {
             dailyRecapJob.setJobGroup(FB_JOB_GROUP);
             dailyRecapJob.setJobClass(MatchDailyRecapJob.class.getName());
             dailyRecapJob.setCronExpression("0 0 10 * * ?");
-            dailyRecapJob.setDescription("Fetch Match Upcoming Job");
+            dailyRecapJob.setDescription("Fetch Match Daily Recap Job");
             cronJobService.saveJob(dailyRecapJob);
         }
 
@@ -70,7 +70,7 @@ public class CronJobInitial implements DataInitializer {
             matchDashboardJob.setJobGroup(FB_JOB_GROUP);
             matchDashboardJob.setJobClass(MatchDashboardJob.class.getName());
             matchDashboardJob.setCronExpression("0 0 13 * * ?");
-            matchDashboardJob.setDescription("Fetch Match Upcoming Dashboard Job");
+            matchDashboardJob.setDescription("Fetch Match Daily Upcoming Dashboard Job");
             cronJobService.saveJob(matchDashboardJob);
         }
 

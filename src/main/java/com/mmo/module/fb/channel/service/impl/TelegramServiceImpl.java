@@ -25,14 +25,21 @@ public class TelegramServiceImpl extends AbstractTelegramService implements Tele
     public void notifyMatchesDashboard(List<MatchPrediction> freeMatches, List<MatchPrediction> vipMatches) {
         ContentStrategy contentStrategy = strategyRegistry.getStrategy(Platform.TELEGRAM);
         String content = contentStrategy.buildMatchesDashboardContent(freeMatches, vipMatches);
-        markdownPublish(appProperties.getTelegram().getChannel().getFree(), content);
+        publish(appProperties.getTelegram().getChannel().getFree(), content);
     }
 
     @Override
     public void notifyMatchesInsights(List<MatchPrediction> matches) {
         ContentStrategy contentStrategy = strategyRegistry.getStrategy(Platform.TELEGRAM);
         String content = contentStrategy.buildMatchesInsightsContent(matches);
-        markdownPublish(appProperties.getTelegram().getChannel().getFree(), content);
+        publish(appProperties.getTelegram().getChannel().getFree(), content);
+    }
+
+    @Override
+    public void notifyMatchesRecap(List<MatchPrediction> matches) {
+        ContentStrategy contentStrategy = strategyRegistry.getStrategy(Platform.TELEGRAM);
+        String content = contentStrategy.buildMatchesRecapContent(matches);
+        publish(appProperties.getTelegram().getChannel().getFree(), content);
     }
 
 }

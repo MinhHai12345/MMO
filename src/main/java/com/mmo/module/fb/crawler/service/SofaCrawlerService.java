@@ -1,7 +1,7 @@
 package com.mmo.module.fb.crawler.service;
 
 import com.microsoft.playwright.Page;
-import com.mmo.module.fb.crawler.model.sofa.SofaMatchData;
+import com.mmo.module.fb.crawler.model.sofa.SofaMatchesData;
 import com.mmo.module.fb.crawler.model.sofa.SofaMatchStatisticsData;
 import com.mmo.module.fb.crawler.model.sofa.SofaOddsData;
 import com.mmo.module.fb.crawler.model.sofa.SofaSeasonData;
@@ -32,7 +32,7 @@ public interface SofaCrawlerService {
     /**
      * Fetch Match by tournament id and season id and round
      */
-    List<SofaMatchData.SofaEventDTO> fetchMatchesByRound(Long sofaTournamentId, Long sofaSeasonId, int round, Page page);
+    List<SofaMatchesData.SofaEventDTO> fetchMatchesByRound(Long sofaTournamentId, Long sofaSeasonId, int round, Page page);
 
     /**
      * Get match Statistics by match id
@@ -47,11 +47,16 @@ public interface SofaCrawlerService {
     /**
      * Fetch Match Daily by tournament id
      */
-    List<SofaMatchData.SofaEventDTO> fetchMatchesDailyByTournamentId(Long sofaTournamentId, Page page);
+    List<SofaMatchesData.SofaEventDTO> fetchMatchesDailyByTournamentId(Long sofaTournamentId, Page page);
 
     /**
      * Fetch histories match by team id and index
      */
-    List<SofaMatchData.SofaEventDTO> fetchHistoriesMatchesByTeamIdAndIndex(Long sofaTeamId, int index, Page page);
+    List<SofaMatchesData.SofaEventDTO> fetchHistoriesMatchesByTeamIdAndIndex(Long sofaTeamId, int index, Page page);
+
+    /**
+     * Fetch Match By ID
+     */
+    SofaMatchesData.SofaEventDTO fetchMatchById(Long sofaMatchId, Page page);
 
 }
