@@ -32,9 +32,9 @@ public class ThymeleafConfig {
     @Bean
     public ClassLoaderTemplateResolver textTemplateResolver() {
         ClassLoaderTemplateResolver templateResolver = new ClassLoaderTemplateResolver();
-        templateResolver.setPrefix("templates/text/"); // Tách ra folder text
+        templateResolver.setPrefix("templates/text/");
         templateResolver.setSuffix(".txt");
-        templateResolver.setTemplateMode(TemplateMode.TEXT); // Chế độ TEXT giúp giữ nguyên format Markdown
+        templateResolver.setTemplateMode(TemplateMode.TEXT);
         templateResolver.setCharacterEncoding("UTF-8");
         templateResolver.setCacheable(false);
         templateResolver.setCheckExistence(true);

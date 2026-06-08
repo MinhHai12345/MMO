@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 
 public class DateTimeUtils {
@@ -23,5 +24,13 @@ public class DateTimeUtils {
 
     public static Date convertToDate(final ZonedDateTime dateToConvert) {
         return Date.from(dateToConvert.toInstant());
+    }
+
+    public static String today() {
+        return todayLocalDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+    }
+
+    public static LocalDate todayLocalDate() {
+        return LocalDate.now().plusDays(4);
     }
 }

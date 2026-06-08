@@ -11,13 +11,11 @@ import com.mmo.module.fb.crawler.model.sofa.SofaStandingsData;
 import com.mmo.module.fb.crawler.model.sofa.SofaUniqueTournamentsData;
 import com.mmo.module.fb.crawler.service.AbstractCrawlerService;
 import com.mmo.module.fb.crawler.service.SofaCrawlerService;
+import com.mmo.utils.DateTimeUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -77,16 +75,15 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
 
     @Override
     public Map<Long, SofaOddsData.MatchOddDetailDTO> fetchDailyMatchOdds(Page page) {
-        String url = String.format(FETCH_DAILY_ALL_MATCH_ODDS_URI, appProperties.getSofaScore().getApi(), LocalDate.now().plusDays(9));
+        String url = String.format(FETCH_DAILY_ALL_MATCH_ODDS_URI, appProperties.getSofaScore().getApi(), DateTimeUtils.today());
         SofaOddsData oddsData = safeFetch(url, page, SofaOddsData.class);
         return oddsData != null ? oddsData.getOdds() : Collections.emptyMap();
     }
 
     @Override
     public List<SofaMatchesData.SofaEventDTO> fetchMatchesDailyByTournamentId(Long sofaTournamentId, Page page) {
-        String today = LocalDateTime.now().plusDays(9).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         String url = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI, appProperties.getSofaScore().getApi(),
-                sofaTournamentId, today);
+                sofaTournamentId, DateTimeUtils.today());
         SofaMatchesData matchData = safeFetch(url, page, SofaMatchesData.class);
         return matchData != null ? matchData.getEvents() : Collections.emptyList();
     }

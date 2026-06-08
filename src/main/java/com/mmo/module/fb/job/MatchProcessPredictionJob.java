@@ -6,6 +6,7 @@ import com.mmo.module.fb.entity.MatchPrediction;
 import com.mmo.module.fb.entity.enums.MatchPredictionStatus;
 import com.mmo.module.fb.predict.service.PredictionEngineService;
 import com.mmo.module.fb.repository.MatchPredictionRepository;
+import com.mmo.utils.DateTimeUtils;
 import jakarta.annotation.Resource;
 import org.apache.commons.collections4.CollectionUtils;
 import org.quartz.JobExecutionContext;
@@ -26,8 +27,8 @@ public class MatchProcessPredictionJob extends AbstractJob<CronJob> {
 
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
-        LocalDateTime startTimeWindow = LocalDateTime.of(LocalDate.now().plusDays(7), LocalTime.of(13, 0));
-        LocalDateTime endTimeWindow = startTimeWindow.plusHours(44);
+        LocalDateTime startTimeWindow = LocalDateTime.of(DateTimeUtils.todayLocalDate(), LocalTime.of(13, 0));
+        LocalDateTime endTimeWindow = startTimeWindow.plusHours(24);
         List<MatchPrediction> predictions = matchPredictionRepository.findByStatusAndKickoffTimeBetweenOrderByKickoffTimeAsc(
                 MatchPredictionStatus.PENDING, startTimeWindow, endTimeWindow);
         if (CollectionUtils.isNotEmpty(predictions)) {
