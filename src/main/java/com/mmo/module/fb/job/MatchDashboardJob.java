@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Component
@@ -29,38 +29,38 @@ public class MatchDashboardJob extends AbstractJob<CronJob> {
 
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
-        LocalDateTime startTimeWindow = LocalDateTime.of(DateTimeUtils.todayLocalDate(), LocalTime.of(13, 0));
-        LocalDateTime endTimeWindow = startTimeWindow.plusHours(24);
+        LocalDateTime startTimeWindow = LocalDateTime.of(DateTimeUtils.todayLocalDate(), LocalTime.of(0, 0));
+        LocalDateTime endTimeWindow = startTimeWindow.plusHours(48);
 
         List<MatchPrediction> readyPredictions = predictionRepository
                 .findByStatusAndKickoffTimeBetweenOrderByKickoffTimeAsc(MatchPredictionStatus.READY, startTimeWindow, endTimeWindow);
         if (CollectionUtils.isNotEmpty(readyPredictions)) {
-            MatchClassification matchClassification = classifyMatches(readyPredictions);
-            telegramService.notifyMatchesDashboard(matchClassification.getFreeMatches(), matchClassification.getVipMatches());
+//            MatchClassification matchClassification = classifyMatches(readyPredictions);
+            telegramService.notifyMatchesDashboard(Collections.emptyList(), readyPredictions);
             predictionRepository.saveAll(readyPredictions);
         }
     }
 
-    private MatchClassification classifyMatches(List<MatchPrediction> valueMatches) {
-        List<MatchPrediction> freeMatches = new ArrayList<>();
-        List<MatchPrediction> vipMatches = new ArrayList<>();
-
-        for (MatchPrediction mp : valueMatches) {
-            if (mp.isPremium()) {
-                mp.setStatus(MatchPredictionStatus.VIP_ONLY);
-                vipMatches.add(mp);
-            } else {
-                if (freeMatches.size() < 3) {
-                    mp.setStatus(MatchPredictionStatus.FREE_DETAIL);
-                    freeMatches.add(mp);
-                } else {
-                    mp.setStatus(MatchPredictionStatus.VIP_ONLY);
-                    vipMatches.add(mp);
-                }
-            }
-        }
-        return new MatchClassification(freeMatches, vipMatches);
-    }
+//    private MatchClassification classifyMatches(List<MatchPrediction> valueMatches) {
+//        List<MatchPrediction> freeMatches = new ArrayList<>();
+//        List<MatchPrediction> vipMatches = new ArrayList<>();
+//
+//        for (MatchPrediction mp : valueMatches) {
+//            if (mp.isPremium()) {
+//                mp.setStatus(MatchPredictionStatus.VIP_ONLY);
+//                vipMatches.add(mp);
+//            } else {
+//                if (freeMatches.size() < 3) {
+//                    mp.setStatus(MatchPredictionStatus.FREE_DETAIL);
+//                    freeMatches.add(mp);
+//                } else {
+//                    mp.setStatus(MatchPredictionStatus.VIP_ONLY);
+//                    vipMatches.add(mp);
+//                }
+//            }
+//        }
+//        return new MatchClassification(freeMatches, vipMatches);
+//    }
 
     @Getter
     @RequiredArgsConstructor

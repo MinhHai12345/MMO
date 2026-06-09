@@ -26,14 +26,16 @@ public class MatchInsightJob extends AbstractJob<CronJob> {
 
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
-        LocalDateTime now = LocalDateTime.now().plusDays(4);
+        LocalDateTime now = LocalDateTime.now().plusDays(2);
         LocalDateTime upperLimit = now.plusHours(24);
-        List<MatchPredictionStatus> targetStatuses = Arrays.asList(MatchPredictionStatus.FREE_DETAIL, MatchPredictionStatus.VIP_ONLY);
+//        List<MatchPredictionStatus> targetStatuses = Arrays.asList(MatchPredictionStatus.FREE_DETAIL, MatchPredictionStatus.VIP_ONLY);
+        List<MatchPredictionStatus> targetStatuses = Arrays.asList(MatchPredictionStatus.READY);
         List<MatchPrediction> incomingMatches = predictionRepository.findByStatusInAndKickoffTimeBetweenOrderByKickoffTimeAsc(targetStatuses, now, upperLimit);
 
         if (CollectionUtils.isNotEmpty(incomingMatches)) {
             populateIndex(incomingMatches);
-            telegramService.notifyMatchesInsights(incomingMatches);
+            List<MatchPrediction> matchPredictions = incomingMatches.stream().filter(prediction -> prediction.getId().equals(1L)).toList();
+            telegramService.notifyMatchesInsights(matchPredictions);
             incomingMatches.forEach((matchPrediction) -> matchPrediction.setStatus(MatchPredictionStatus.POSTED));
             predictionRepository.saveAll(incomingMatches);
         }

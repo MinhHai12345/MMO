@@ -4,16 +4,14 @@
 🔬 Our Poisson AI Engine has scanned today's fixture list.
 🚨 <b>[[${totalValue}]] VALUE OPPORTUNITIES</b> (Market Inefficiencies) have been detected!
 
-📈 <b>FREE SELECTIONS FOR TODAY:</b>
-<th:block th:each="mp, iter : ${freeMatches}">
-    [[${iter.index + 1}]]️⃣ <b>[(${#strings.replace(mp.match.homeTeam.name, '.', '\.')})]</b> vs <b>[(${#strings.replace(mp.match.awayTeam.name, '.', '\.')})]</b> 🕒 [[${mp.matchTime}]] (GMT+7)
-</th:block>
-
 🔒 <b>PREMIUM VALUE ALERTS (VIP ONLY):</b>
 <th:block th:each="mp, iter : ${vipMatches}">
-    [[${iter.index + 1 + freeSize}]]️⃣ <b>[(${#strings.replace(mp.match.homeTeam.name, '.', '\.')})]</b> vs <b>[(${#strings.replace(mp.match.awayTeam.name, '.', '\.')})]</b> ──> 🤫 <code>[VIP UNLOCK]</code>
+    [[${iter.index + 1 + freeSize}]]️⃣ <b>[(${#strings.replace(mp.match.homeTeam.name, '.', '\.')})]</b> vs <b>[(${#strings.replace(mp.match.awayTeam.name, '.', '\.')})]</b> 🕒 [[${mp.matchTime}]] ──> 🤫 <code>[VIP UNLOCK]</code>
 </th:block>
-
 🤖 Total Expected ROI for today's models: <code>[[${#numbers.formatDecimal(totalExposure, 1, 1)}]]%</code>
-👉 Click here to unlock all VIP AI insights for today: <strong><a href="https://t.me/h2_fb_insights">H2FBInsights Channel</a></strong>
 
+💎 <b>UNLOCK ALL VIP ALERTS INSTANTLY VIA PAYPAL:</b>
+🏆 <strong><a href="https://ko-fi.com/s/a85b813bdb">Get Full Tournament Pass ($15.00)</a></strong>
+⚡ <strong><a href="https://ko-fi.com/s/332f0d7b4d">Get 7-Day Weekly Pass ($5.00)</a></strong>
+
+<i>*After payment, Ko-fi will instantly provide your exclusive VIP Telegram access link.</i>

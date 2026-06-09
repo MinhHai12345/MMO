@@ -21,7 +21,7 @@ app:
       token: ${TELEGRAM_TOKEN}
       username: H2_FB_Bot
     channel:
-      free: ${CHANNEL_ID}
-      premium: ${CHANNEL_ID}
+      free: ${FREE_CHANNEL_ID}
+      premium: ${PREMIUM_CHANNEL_ID}
   sofa-score:
     api: https://api.sofascore.com/api/v1/

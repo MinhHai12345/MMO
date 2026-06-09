@@ -15,7 +15,11 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 @Entity
 @Table(name = "match_predictions", indexes = {
@@ -104,8 +108,11 @@ public class MatchPrediction extends AbstractEntity {
     private MatchPredictionStatus status; // Trạng thái: PENDING (Chưa tính), READY (Đã tính), FREE_DASHBOARD, FREE_DETAIL, VIP_ONLY, POSTED (Đã đăng thành công)
 
     public String getMatchTime() {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
-        this.matchTime = kickoffTime.format(formatter);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm", Locale.ENGLISH);
+        ZonedDateTime utcTime = kickoffTime
+                .atZone(ZoneId.of("Asia/Ho_Chi_Minh"))
+                .withZoneSameInstant(ZoneOffset.UTC);
+        this.matchTime = utcTime.format(formatter);
         return matchTime;
     }
 }
