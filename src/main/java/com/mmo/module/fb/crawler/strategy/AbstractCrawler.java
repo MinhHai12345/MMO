@@ -110,7 +110,13 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
                 .setTimezoneId("Asia/Ho_Chi_Minh"));
 
         Page page = context.newPage();
-        page.addInitScript("delete Object.getPrototypeOf(navigator).webdriver;");
+        page.addInitScript(
+                "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});\n" +
+                "Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});\n" +
+                "Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});\n" +
+                "window.chrome = { runtime: {} };"
+        );
+
         return page;
     }
 

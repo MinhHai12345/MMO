@@ -31,6 +31,6 @@ public class DateTimeUtils {
     }
 
     public static LocalDate todayLocalDate() {
-        return LocalDate.now().plusDays(3);
+        return LocalDate.now().plusDays(2);
     }
 }

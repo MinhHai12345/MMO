@@ -62,6 +62,24 @@ public class MatchPrediction extends AbstractEntity {
     // 🔬 POISSON PREDICTION RESULT (Dữ liệu hệ thống tự tính toán)
     // =========================================================================
     @Column
+    private Double marketHomeXG;
+
+    @Column
+    private Double marketAwayXG;
+
+    @Column
+    private Double h2TotalXG;
+
+    @Column
+    private String h2HandicapMargin;
+
+    @Column
+    private Double h2ProbUnder25;
+
+    @Column
+    private Double h2ProbOver25;
+
+    @Column
     private Double expectedHomeGoals;
 
     @Column
@@ -86,7 +104,10 @@ public class MatchPrediction extends AbstractEntity {
     // 🎯 BUSINESS LOGIC & CONTENT DISTRIBUTION STATE
     // =========================================================================
     @Column
-    private String recommendedPick;
+    private String valueBetPick;
+
+    @Column
+    private String mostLikelyWinner;
 
     @Column
     private Double smartStakingSize;

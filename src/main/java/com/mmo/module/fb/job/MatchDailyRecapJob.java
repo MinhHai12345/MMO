@@ -42,7 +42,7 @@ public class MatchDailyRecapJob extends AbstractJob<CronJob> {
     }
 
     private boolean checkPredictionSuccess(MatchPrediction mp) {
-        String pick = identifyWinner(mp.getRecommendedPick());
+        String pick = identifyWinner(mp.getMostLikelyWinner());
         if (pick == null || mp.getActualHomeGoals() == null || mp.getActualAwayGoals() == null) {
             return false;
         }

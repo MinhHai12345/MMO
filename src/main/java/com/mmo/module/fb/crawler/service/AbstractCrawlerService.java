@@ -27,6 +27,8 @@ public abstract class AbstractCrawlerService {
     protected <T> T safeFetch(String url, Page page, Class<T> clazz) {
         try {
             handleAntiBotDelay(page);
+            page.navigate("https://www.sofascore.com/");
+            page.waitForTimeout(2000);
             Response response = page.navigate(url);
 
             if (response == null) {
