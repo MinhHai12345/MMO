@@ -2,6 +2,8 @@ package com.mmo.module.fb.crawler.service.impl;
 
 import com.microsoft.playwright.Page;
 import com.mmo.configuration.AppProperties;
+import com.mmo.module.fb.crawler.model.DynamicFetchResult;
+import com.mmo.module.fb.crawler.model.sofa.SofaDailyMatchWrapper;
 import com.mmo.module.fb.crawler.model.sofa.SofaMatchData;
 import com.mmo.module.fb.crawler.model.sofa.SofaMatchStatisticsData;
 import com.mmo.module.fb.crawler.model.sofa.SofaMatchesData;
@@ -16,7 +18,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -31,10 +35,10 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
     private static final String FETCH_STANDINGS_TOTAL_BY_TOURNAMENT_AND_SEASON_URI = "%sunique-tournament/%d/season/%d/standings/total";
     private static final String FETCH_MATCH_BY_ROUND_URI = "%sunique-tournament/%d/season/%d/events/round/%d";
     private static final String FETCH_MATCH_STATISTICS_URI = "%sevent/%d/statistics";
-    private static final String FETCH_DAILY_ALL_MATCH_ODDS_URI = "%ssport/football/odds/1/%s";
-    private static final String FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI = "%sunique-tournament/%d/scheduled-events/%s";
-    private static final String FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX = "%steam/%d/events/last/%d";
-    private static final String FETCH_MATCH_BY_ID = "%sevent/%d";
+    private static final String FETCH_DAILY_ALL_MATCH_ODDS_URI = "/api/v1/sport/football/odds/1/%s";
+    private static final String FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI = "/api/v1/unique-tournament/%d/scheduled-events/%s";
+    private static final String FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_URI = "%steam/%d/events/last/%d";
+    private static final String FETCH_MATCH_BY_ID_URI = "%sevent/%d";
 
     @Override
     public List<SofaUniqueTournamentsData.UniqueTournamentDTO> fetchLeagues(Page page) {
@@ -75,22 +79,21 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
 
     @Override
     public Map<Long, SofaOddsData.MatchOddDetailDTO> fetchDailyMatchOdds(Page page) {
-        String url = String.format(FETCH_DAILY_ALL_MATCH_ODDS_URI, appProperties.getSofaScore().getApi(), DateTimeUtils.today());
-        SofaOddsData oddsData = safeFetch(url, page, SofaOddsData.class);
+        String endpoint = String.format(FETCH_DAILY_ALL_MATCH_ODDS_URI, DateTimeUtils.today());
+        SofaOddsData oddsData = safeFetch(appProperties.getSofaScore().getUrl(), page, SofaOddsData.class);
         return oddsData != null ? oddsData.getOdds() : Collections.emptyMap();
     }
 
     @Override
     public List<SofaMatchesData.SofaEventDTO> fetchMatchesDailyByTournamentId(Long sofaTournamentId, Page page) {
-        String url = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI, appProperties.getSofaScore().getApi(),
-                sofaTournamentId, DateTimeUtils.today());
-        SofaMatchesData matchData = safeFetch(url, page, SofaMatchesData.class);
+        String endpoint = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI, sofaTournamentId, DateTimeUtils.today());
+        SofaMatchesData matchData = safeFetch(appProperties.getSofaScore().getUrl(), page, SofaMatchesData.class);
         return matchData != null ? matchData.getEvents() : Collections.emptyList();
     }
 
     @Override
     public List<SofaMatchesData.SofaEventDTO> fetchHistoriesMatchesByTeamIdAndIndex(Long sofaTeamId, int index, Page page) {
-        String url = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX, appProperties.getSofaScore().getApi(),
+        String url = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_URI, appProperties.getSofaScore().getApi(),
                 sofaTeamId, index);
         SofaMatchesData matchData = safeFetch(url, page, SofaMatchesData.class);
         return matchData != null ? matchData.getEvents() : Collections.emptyList();
@@ -98,9 +101,34 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
 
     @Override
     public SofaMatchesData.SofaEventDTO fetchMatchById(Long sofaMatchId, Page page) {
-        String url = String.format(FETCH_MATCH_BY_ID, appProperties.getSofaScore().getApi(), sofaMatchId);
+        String url = String.format(FETCH_MATCH_BY_ID_URI, appProperties.getSofaScore().getApi(), sofaMatchId);
         SofaMatchData matchData = safeFetch(url, page, SofaMatchData.class);
         return matchData != null ? matchData.getEvent() : null;
+    }
+
+    @Override
+    public SofaDailyMatchWrapper fetchMatchesDaily(Long sofaTournamentId, Page page) {
+        String loadPageUrl = appProperties.getSofaScore().getUrl();
+        String matchEndpoint = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI, sofaTournamentId, DateTimeUtils.today());
+        String oddsEndpoint = String.format(FETCH_DAILY_ALL_MATCH_ODDS_URI, DateTimeUtils.today());
+
+        Map<String, Class<?>> configMap = Map.of(matchEndpoint, SofaMatchesData.class, oddsEndpoint, SofaOddsData.class);
+
+        DynamicFetchResult result = safeFetch(loadPageUrl, configMap, page, null);
+
+        List<SofaMatchesData.SofaEventDTO> events = new ArrayList<>();
+        Map<Long, SofaOddsData.MatchOddDetailDTO> oddsMap = new HashMap<>();
+
+        if (result.hasData(matchEndpoint)) {
+            SofaMatchesData matchData = result.get(matchEndpoint, SofaMatchesData.class);
+            if (matchData != null) events = matchData.getEvents();
+        }
+
+        if (result.hasData(oddsEndpoint)) {
+            SofaOddsData oddsData = result.get(oddsEndpoint, SofaOddsData.class);
+            if (oddsData != null) oddsMap = oddsData.getOdds();
+        }
+        return new SofaDailyMatchWrapper(events, oddsMap);
     }
 
 }

@@ -25,3 +25,4 @@ app:
       premium: ${PREMIUM_CHANNEL_ID}
   sofa-score:
     api: https://api.sofascore.com/api/v1/
+    url: https://www.sofascore.com

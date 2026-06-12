@@ -65,5 +65,8 @@ public class AppProperties {
     public static class SofaScore {
         @NotBlank
         private String api;
+
+        @NotBlank
+        private String url;
     }
 }

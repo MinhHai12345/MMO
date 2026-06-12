@@ -47,7 +47,7 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
                         Browser oldBrowser = this.browser;
                         new Thread(() -> {
                             try {
-                                Thread.sleep(30000);
+//                                Thread.sleep(30000);
                                 if (oldBrowser.isConnected()) {
                                     oldBrowser.close();
                                     log.info("🧹 Đã dọn dẹp an toàn instance Browser cũ sau thời gian chờ hoãn.");
@@ -67,15 +67,17 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
                             this.playwright = Playwright.create();
                         }
                         this.browser = this.playwright.chromium().launch(new BrowserType.LaunchOptions()
-                                .setHeadless(true)
-                                .setArgs(Arrays.asList(
-                                        "--no-sandbox",
-                                        "--disable-dev-shm-usage",
-                                        "--disable-blink-features=AutomationControlled",
-                                        "--disable-infobars",
-                                        "--window-size=1920,1080",
-                                        "--disable-gpu"
-                                )));
+                                .setHeadless(false));
+//                                .setArgs(Arrays.asList(
+//                                        "--disable-blink-features=AutomationControlled",
+//                                        "--use-fake-ui-for-media-stream"
+//                                        "--no-sandbox",
+//                                        "--disable-dev-shm-usage",
+//                                        "--disable-blink-features=AutomationControlled",
+//                                        "--disable-infobars",
+//                                        "--window-size=1920,1080",
+//                                        "--disable-gpu"
+//                                )));
                         usageCount.set(0);
                     } catch (Exception e) {
                         log.error("🚨 Thất bại nghiêm trọng khi tạo mới Playwright/Browser: {}", e.getMessage());

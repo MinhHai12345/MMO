@@ -1,6 +1,7 @@
 package com.mmo.module.fb.crawler.service;
 
 import com.microsoft.playwright.Page;
+import com.mmo.module.fb.crawler.model.sofa.SofaDailyMatchWrapper;
 import com.mmo.module.fb.crawler.model.sofa.SofaMatchesData;
 import com.mmo.module.fb.crawler.model.sofa.SofaMatchStatisticsData;
 import com.mmo.module.fb.crawler.model.sofa.SofaOddsData;
@@ -58,5 +59,10 @@ public interface SofaCrawlerService {
      * Fetch Match By ID
      */
     SofaMatchesData.SofaEventDTO fetchMatchById(Long sofaMatchId, Page page);
+
+    /**
+     * Fetch Match Daily by tournament id
+     */
+    SofaDailyMatchWrapper fetchMatchesDaily(Long sofaTournamentId, Page page);
 
 }

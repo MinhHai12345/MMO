@@ -2,7 +2,6 @@ package com.mmo.module.fb.crawler.strategy.impl;
 
 import com.mmo.converter.DynamicConverter;
 import com.mmo.module.fb.crawler.model.enums.Provider;
-import com.mmo.module.fb.crawler.model.sofa.SofaDailyMatchWrapper;
 import com.mmo.module.fb.crawler.model.sofa.SofaMatchStatisticsData;
 import com.mmo.module.fb.crawler.model.sofa.SofaMatchesData;
 import com.mmo.module.fb.crawler.model.sofa.SofaOddsData;
@@ -234,11 +233,7 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
         List<League> activeLeagues = leagueRepository.findByActiveIsTrue();
         executeStorePipeline(
                 activeLeagues,
-                (league, page) -> {
-                    List<SofaMatchesData.SofaEventDTO> events = sofaCrawlerService.fetchMatchesDailyByTournamentId(league.getSofaScoreId(), page);
-                    Map<Long, SofaOddsData.MatchOddDetailDTO> oddsMap = sofaCrawlerService.fetchDailyMatchOdds(page);
-                    return new SofaDailyMatchWrapper(events, oddsMap);
-                },
+                (league, page) -> sofaCrawlerService.fetchMatchesDaily(league.getSofaScoreId(), page),
                 (league, wrapper) -> {
                     if (wrapper == null || CollectionUtils.isEmpty(wrapper.getEvents())) return;
 
