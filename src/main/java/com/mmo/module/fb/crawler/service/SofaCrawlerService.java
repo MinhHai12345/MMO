@@ -8,6 +8,7 @@ import com.mmo.module.fb.crawler.model.sofa.SofaOddsData;
 import com.mmo.module.fb.crawler.model.sofa.SofaSeasonData;
 import com.mmo.module.fb.crawler.model.sofa.SofaStandingsData;
 import com.mmo.module.fb.crawler.model.sofa.SofaUniqueTournamentsData;
+import com.mmo.module.fb.entity.Team;
 
 import java.util.List;
 import java.util.Map;
@@ -53,7 +54,7 @@ public interface SofaCrawlerService {
     /**
      * Fetch histories match by team id and index
      */
-    List<SofaMatchesData.SofaEventDTO> fetchHistoriesMatchesByTeamIdAndIndex(Long sofaTeamId, int index, Page page);
+    List<SofaMatchesData.SofaEventDTO> fetchHistoriesMatchesByTeamIdAndIndex(Team team, int index, Page page);
 
     /**
      * Fetch Match By ID

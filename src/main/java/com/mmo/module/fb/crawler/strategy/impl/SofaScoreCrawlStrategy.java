@@ -27,6 +27,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -276,8 +277,10 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
 
     @Override
     public List<SofaMatchesData.SofaEventDTO> getLatestHistoriesMatchesByTeamId(Long sofaTeamId) {
+        Team team = teamRepository.findBySofaScoreId(sofaTeamId);
+        if (team == null) return Collections.emptyList();
         return executeSimpleFetchPipeline(
-                page -> sofaCrawlerService.fetchHistoriesMatchesByTeamIdAndIndex(sofaTeamId, 0, page));
+                page -> sofaCrawlerService.fetchHistoriesMatchesByTeamIdAndIndex(team, 0, page));
     }
 
     @Override

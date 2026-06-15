@@ -123,17 +123,16 @@ public abstract class AbstractCrawlerService {
             page.navigate(loadPageUrl, new Page.NavigateOptions()
                     .setWaitUntil(WaitUntilState.COMMIT)
                     .setTimeout(30000));
+            page.waitForTimeout(7000);
             if (triggerAction != null) {
-                page.waitForTimeout(5000);
                 try {
                     log.info("⚡ [Pipeline] Kích nổ hành động Trigger...");
                     triggerAction.accept(page);
+                    page.waitForTimeout(10000);
                 } catch (Exception ex) {
                     log.error("❌ Lỗi xảy ra khi thực thi Trigger Action: {}", ex.getMessage());
                 }
             }
-            page.waitForTimeout(15000);
-
             // 5. Đợi toàn bộ các API trả về kết quả hoặc chạm ngưỡng giới hạn thời gian (Timeout)
             CompletableFuture<?>[] futuresArray = futuresMap.values().toArray(new CompletableFuture[0]);
             CompletableFuture.allOf(futuresArray).get(20, TimeUnit.SECONDS);

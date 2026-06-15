@@ -67,17 +67,14 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
                             this.playwright = Playwright.create();
                         }
                         this.browser = this.playwright.chromium().launch(new BrowserType.LaunchOptions()
-                                .setHeadless(false));
-//                                .setArgs(Arrays.asList(
-//                                        "--disable-blink-features=AutomationControlled",
-//                                        "--use-fake-ui-for-media-stream"
-//                                        "--no-sandbox",
-//                                        "--disable-dev-shm-usage",
-//                                        "--disable-blink-features=AutomationControlled",
-//                                        "--disable-infobars",
-//                                        "--window-size=1920,1080",
-//                                        "--disable-gpu"
-//                                )));
+                                .setHeadless(true)
+                                .setArgs(List.of(
+                                        "--disable-blink-features=AutomationControlled",
+                                        "--disable-infobars",
+                                        "--no-sandbox",
+                                        "--disable-dev-shm-usage",
+                                        "--window-size=1920,1080"
+                                )));
                         usageCount.set(0);
                     } catch (Exception e) {
                         log.error("🚨 Thất bại nghiêm trọng khi tạo mới Playwright/Browser: {}", e.getMessage());
@@ -95,30 +92,24 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
         ensureBrowser();
         usageCount.incrementAndGet();
         String selectedUserAgent = USER_AGENTS.get(random.nextInt(USER_AGENTS.size()));
-        Map<String, String> extraHeaders = new HashMap<>();
-        extraHeaders.put("Accept", "*/*");
-        extraHeaders.put("Accept-Language", "en-US,en;q=0.9,vi;q=0.8");
-        extraHeaders.put("Referer", "https://www.sofascore.com/");
-        extraHeaders.put("Origin", "https://www.sofascore.com");
-        extraHeaders.put("Sec-Fetch-Dest", "empty");
-        extraHeaders.put("Sec-Fetch-Mode", "cors");
-        extraHeaders.put("Sec-Fetch-Site", "same-origin");
+        Map<String, String> baseHeaders = new HashMap<>();
+        baseHeaders.put("Accept-Language", "en-US,en;q=0.9,vi;q=0.8");
 
         BrowserContext context = browser.newContext(new Browser.NewContextOptions()
                 .setUserAgent(selectedUserAgent)
                 .setViewportSize(1920, 1080)
-                .setExtraHTTPHeaders(extraHeaders)
+                .setExtraHTTPHeaders(baseHeaders)
                 .setLocale("en-US")
                 .setTimezoneId("Asia/Ho_Chi_Minh"));
 
         Page page = context.newPage();
         page.addInitScript(
-                "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});\n" +
-                "Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});\n" +
-                "Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});\n" +
-                "window.chrome = { runtime: {} };"
+                "const newProto = Navigator.prototype;\n" +
+                "delete newProto.webdriver;\n" + // Xóa hoàn toàn thuộc tính thay vì trả về undefined
+                "Object.defineProperty(newProto, 'webdriver', {get: () => false});\n" +
+                "Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en', 'vi']});\n" +
+                "window.chrome = { runtime: {}, loadTimes: function() {}, csi: function() {} };"
         );
-
         return page;
     }
 
@@ -188,7 +179,6 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
      */
     protected <E, D> void executeStorePipeline(List<E> entities, BiFunction<E, Page, D> fetchFunction,
                                                BiConsumer<E, D> saveConsumer) {
-
         if (CollectionUtils.isEmpty(entities)) {
             return;
         }

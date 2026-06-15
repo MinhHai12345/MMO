@@ -49,40 +49,40 @@ public class MatchPrediction extends AbstractEntity {
     // =========================================================================
     // 🏛️ MARKET ODDS (Dữ liệu tỷ lệ cược cào từ SofaScore)
     // =========================================================================
-    @Column
+    @Column(precision = 2)
     private Double sofaHomeOdd;
 
-    @Column
+    @Column(precision = 2)
     private Double sofaDrawOdd;
 
-    @Column
+    @Column(precision = 2)
     private Double sofaAwayOdd;
 
     // =========================================================================
     // 🔬 POISSON PREDICTION RESULT (Dữ liệu hệ thống tự tính toán)
     // =========================================================================
-    @Column
+    @Column(precision = 2)
     private Double marketHomeXG;
 
-    @Column
+    @Column(precision = 2)
     private Double marketAwayXG;
 
-    @Column
+    @Column(precision = 2)
     private Double h2TotalXG;
 
-    @Column
+    @Column(precision = 2)
     private String h2HandicapMargin;
 
-    @Column
+    @Column(precision = 2)
     private Double h2ProbUnder25;
 
-    @Column
+    @Column(precision = 2)
     private Double h2ProbOver25;
 
-    @Column
+    @Column(precision = 2)
     private Double expectedHomeGoals;
 
-    @Column
+    @Column(precision = 2)
     private Double expectedAwayGoals;
 
     @Column
@@ -91,13 +91,13 @@ public class MatchPrediction extends AbstractEntity {
     @Column
     private Integer actualAwayGoals;
 
-    @Column
+    @Column(precision = 2)
     private Double fairHomeOdd;
 
-    @Column
+    @Column(precision = 2)
     private Double fairDrawOdd;
 
-    @Column
+    @Column(precision = 2)
     private Double fairAwayOdd;
 
     // =========================================================================
@@ -109,10 +109,10 @@ public class MatchPrediction extends AbstractEntity {
     @Column
     private String mostLikelyWinner;
 
-    @Column
+    @Column(precision = 2)
     private Double smartStakingSize;
 
-    @Column
+    @Column(precision = 2)
     private Double edgePercentage;
 
     @Column

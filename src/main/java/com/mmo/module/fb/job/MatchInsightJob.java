@@ -29,7 +29,7 @@ public class MatchInsightJob extends AbstractJob<CronJob> {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime upperLimit = now.plusHours(44);
 //        List<MatchPredictionStatus> targetStatuses = Arrays.asList(MatchPredictionStatus.FREE_DETAIL, MatchPredictionStatus.VIP_ONLY);
-        List<MatchPredictionStatus> targetStatuses = Arrays.asList(MatchPredictionStatus.READY);
+        List<MatchPredictionStatus> targetStatuses = List.of(MatchPredictionStatus.READY);
         List<MatchPrediction> incomingMatches = predictionRepository.findByStatusInAndKickoffTimeBetweenOrderByKickoffTimeAsc(targetStatuses, now, upperLimit);
 
         if (CollectionUtils.isNotEmpty(incomingMatches)) {

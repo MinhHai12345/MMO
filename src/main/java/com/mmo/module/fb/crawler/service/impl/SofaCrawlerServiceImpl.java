@@ -1,6 +1,8 @@
 package com.mmo.module.fb.crawler.service.impl;
 
+import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.TimeoutError;
 import com.mmo.configuration.AppProperties;
 import com.mmo.module.fb.crawler.model.DynamicFetchResult;
 import com.mmo.module.fb.crawler.model.sofa.SofaDailyMatchWrapper;
@@ -13,6 +15,7 @@ import com.mmo.module.fb.crawler.model.sofa.SofaStandingsData;
 import com.mmo.module.fb.crawler.model.sofa.SofaUniqueTournamentsData;
 import com.mmo.module.fb.crawler.service.AbstractCrawlerService;
 import com.mmo.module.fb.crawler.service.SofaCrawlerService;
+import com.mmo.module.fb.entity.Team;
 import com.mmo.utils.DateTimeUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,7 +40,8 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
     private static final String FETCH_MATCH_STATISTICS_URI = "%sevent/%d/statistics";
     private static final String FETCH_DAILY_ALL_MATCH_ODDS_URI = "/api/v1/sport/football/odds/1/%s";
     private static final String FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI = "/api/v1/unique-tournament/%d/scheduled-events/%s";
-    private static final String FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_URI = "%steam/%d/events/last/%d";
+    private static final String FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_URI = "team/%d/events/last/%d";
+    private static final String FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_PAGE = "%s/football/team/%s/%d";
     private static final String FETCH_MATCH_BY_ID_URI = "%sevent/%d";
 
     @Override
@@ -92,11 +96,20 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
     }
 
     @Override
-    public List<SofaMatchesData.SofaEventDTO> fetchHistoriesMatchesByTeamIdAndIndex(Long sofaTeamId, int index, Page page) {
-        String url = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_URI, appProperties.getSofaScore().getApi(),
-                sofaTeamId, index);
-        SofaMatchesData matchData = safeFetch(url, page, SofaMatchesData.class);
-        return matchData != null ? matchData.getEvents() : Collections.emptyList();
+    public List<SofaMatchesData.SofaEventDTO> fetchHistoriesMatchesByTeamIdAndIndex(Team team, int index, Page page) {
+        String loadPageUrl = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_PAGE, appProperties.getSofaScore().getUrl(),
+                team.getSlug(), team.getSofaScoreId());
+        String historiesEndpoint = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_URI, team.getSofaScoreId(), index);
+        Map<String, Class<?>> configMap = Map.of(historiesEndpoint, SofaMatchesData.class);
+
+        DynamicFetchResult result = safeFetch(loadPageUrl, configMap, page, null);
+        List<SofaMatchesData.SofaEventDTO> events = new ArrayList<>();
+        if (result.hasData(historiesEndpoint)) {
+            SofaMatchesData matchData = result.get(historiesEndpoint, SofaMatchesData.class);
+            if (matchData != null) return matchData.getEvents();
+        }
+
+        return events;
     }
 
     @Override
@@ -111,10 +124,35 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
         String loadPageUrl = appProperties.getSofaScore().getUrl();
         String matchEndpoint = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI, sofaTournamentId, DateTimeUtils.today());
         String oddsEndpoint = String.format(FETCH_DAILY_ALL_MATCH_ODDS_URI, DateTimeUtils.today());
-
         Map<String, Class<?>> configMap = Map.of(matchEndpoint, SofaMatchesData.class, oddsEndpoint, SofaOddsData.class);
 
-        DynamicFetchResult result = safeFetch(loadPageUrl, configMap, page, null);
+        DynamicFetchResult result = safeFetch(loadPageUrl, configMap, page, (p) -> {
+            try {
+                log.info("⏳ Đang chờ bộ khung giao diện chứa nút Odds đính vào DOM...");
+
+                Locator oddsText = p.locator("span:has-text('Odds'), div:has-text('Odds')").first();
+                oddsText.waitFor(new Locator.WaitForOptions()
+                        .setState(com.microsoft.playwright.options.WaitForSelectorState.ATTACHED)
+                        .setTimeout(15000));
+
+                String jsForceClick = """
+                        () => {
+                            const input = document.querySelector("input[role='switch']");
+                            if (input) {
+                                const target = input.nextElementSibling || input.closest('label') || input;
+                                target.click();
+                                return 'CLICKED_SLIDER';
+                            }
+                            return null;
+                        }
+                        """;
+                p.evaluate(jsForceClick);
+            } catch (TimeoutError te) {
+                log.error("❌ [Trigger Timeout] Quá 15 giây không thấy cấu trúc chứa nút Odds xuất hiện.");
+            } catch (Exception ex) {
+                log.error("❌ Lỗi xử lý trong Trigger: {}", ex.getMessage());
+            }
+        });
 
         List<SofaMatchesData.SofaEventDTO> events = new ArrayList<>();
         Map<Long, SofaOddsData.MatchOddDetailDTO> oddsMap = new HashMap<>();
