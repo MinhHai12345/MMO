@@ -46,6 +46,16 @@ public class MatchPrediction extends AbstractEntity {
     @Transient
     private boolean isWin;
 
+    @Transient
+    private Double tempHomeProb;
+
+    @Transient
+    private Double tempDrawProb;
+
+    @Transient
+    private Double tempAwayProb;
+
+
     // =========================================================================
     // 🏛️ MARKET ODDS (Dữ liệu tỷ lệ cược cào từ SofaScore)
     // =========================================================================

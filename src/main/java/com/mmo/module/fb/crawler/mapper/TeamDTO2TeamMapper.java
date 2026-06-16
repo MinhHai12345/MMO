@@ -16,6 +16,7 @@ public class TeamDTO2TeamMapper extends AbstractMapper<SofaStandingsData.TeamDTO
                 .code(source.getNameCode())
                 .shortName(source.getShortName())
                 .slug(source.getSlug())
+                .ranking(source.getRanking())
                 .logoUrl(String.format("https://api.sofascore.app/api/v1/team/%d/image", source.getId()))
                 .build();
     }

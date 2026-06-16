@@ -1,6 +1,7 @@
 package com.mmo.module.fb.channel.strategy.impl;
 
 import com.mmo.module.fb.channel.model.Platform;
+import com.mmo.module.fb.channel.model.PredictionData;
 import com.mmo.module.fb.channel.strategy.ContentStrategy;
 import com.mmo.module.fb.entity.MatchPrediction;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,12 +40,10 @@ public class TelegramContentStrategy implements ContentStrategy {
     }
 
     @Override
-    public String buildMatchesInsightsContent(List<MatchPrediction> matches) {
-        double totalExposure = matches.stream().mapToDouble(MatchPrediction::getSmartStakingSize).sum();
+    public String buildMatchesInsightsContent(List<PredictionData> matches) {
         Context context = new Context();
         context.setVariable("matches", matches);
         context.setVariable("leagueName", "FIFA World Cup 2026");
-        context.setVariable("totalExposure", totalExposure);
         return htmlTemplateEngine.process("match_insights", context);
     }
 

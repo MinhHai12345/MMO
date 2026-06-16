@@ -76,5 +76,8 @@ public class Match extends AbstractEntity {
     @Transient
     private Long sofaScoreAwayTeamId;
 
+    @OneToOne(mappedBy = "match")
+    private MatchPrediction matchPrediction;
+
 
 }

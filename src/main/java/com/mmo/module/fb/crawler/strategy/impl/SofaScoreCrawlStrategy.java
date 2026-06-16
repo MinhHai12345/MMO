@@ -242,7 +242,10 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
                             .filter(Objects::nonNull)
                             .map(SofaMatchesData.SofaEventDTO::getId)
                             .collect(Collectors.toSet());
-                    List<Match> matches = matchRepository.findBySofaScoreIdIn(sofaMatchIds);
+                    List<Match> matches = matchRepository.findBySofaScoreIdIn(sofaMatchIds).stream()
+                            .filter(Objects::nonNull)
+                            .filter(it -> it.getMatchPrediction() == null)
+                            .collect(Collectors.toList());
                     if (CollectionUtils.isNotEmpty(matches)) {
                         List<MatchPrediction> matchPredictions = dynamicConverter.convertAll(matches, MatchPrediction.class);
                         populateMatchPredictionInfo(matchPredictions, wrapper.getOddsMap());

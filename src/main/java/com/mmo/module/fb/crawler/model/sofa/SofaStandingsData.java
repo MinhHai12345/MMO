@@ -46,6 +46,7 @@ public class SofaStandingsData {
         private String shortName;
         private String nameCode;
         private Long userCount;
+        private Integer ranking;
 
         private CountryDTO country;
     }

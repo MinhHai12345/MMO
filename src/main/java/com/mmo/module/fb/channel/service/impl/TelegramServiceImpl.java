@@ -2,6 +2,7 @@ package com.mmo.module.fb.channel.service.impl;
 
 import com.mmo.configuration.AppProperties;
 import com.mmo.module.fb.channel.model.Platform;
+import com.mmo.module.fb.channel.model.PredictionData;
 import com.mmo.module.fb.channel.service.AbstractTelegramService;
 import com.mmo.module.fb.channel.service.TelegramService;
 import com.mmo.module.fb.channel.strategy.ContentStrategy;
@@ -29,7 +30,7 @@ public class TelegramServiceImpl extends AbstractTelegramService implements Tele
     }
 
     @Override
-    public void notifyMatchesInsights(List<MatchPrediction> matches) {
+    public void notifyMatchesInsights(List<PredictionData> matches) {
         ContentStrategy contentStrategy = strategyRegistry.getStrategy(Platform.TELEGRAM);
         String content = contentStrategy.buildMatchesInsightsContent(matches);
         publish(appProperties.getTelegram().getChannel().getFree(), content);

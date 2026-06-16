@@ -35,6 +35,9 @@ public class Team extends AbstractEntity {
     private String slug;
 
     @Column
+    private Integer ranking;
+
+    @Column
     private Long sofaScoreId;
 
 }

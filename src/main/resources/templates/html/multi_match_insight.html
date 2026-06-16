@@ -1,0 +1,31 @@
+
+👑 <b>H2 FOOTBALL DATA INSIGHT — QUANT ALERTS</b>
+🏆 <b>[[${leagueName != null ? leagueName : 'World Cup 2026'}]]</b> | <i>Algorithmic Picks &amp; High-Confidence Signals</i>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 <b>AI QUANT MATRIX &amp; RISK-ADJUSTED ALLOCATION</b>
+<i>💡 Core predictive edges modeled via Poisson Probability Analysis. Capital distribution is dynamically optimized using a conservative 1/4 Fractional Kelly Criterion to systematically compound growth while strictly neutralizing variance.</i>
+
+<th:block th:each="mp : ${matches}">
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━
+    [[${mp.index}]]️⃣ <b>[[${mp.homeTeam}]] vs [[${mp.awayTeam}]]</b> 🕒 <i>[[${mp.matchTime}]]</i>
+
+    <b>🔹 MARKET BENCHMARK</b>
+    <code>• 1X2 Odds:  [[${mp.sofaHomeOdd}]] | [[${mp.sofaDrawOdd}]] | [[${mp.sofaAwayOdd}]]</code>
+    <code>• Implied xG:[[${mp.marketHomeXG}]] vs [[${mp.marketAwayXG}]]</code>
+
+    <b>🔹 H2 QUANT MATRIX</b>
+    <code>• Fair 1X2 Odds:  [[${mp.fairHomeOdd}]] | [[${mp.fairDrawOdd}]] | [[${mp.fairAwayOdd}]]</code>
+    <code>• Predictive xG:  [[${mp.homeXG}]] vs [[${mp.awayXG}]]</code>
+    <code>• Fair Handicap:  [[${mp.h2HandicapMargin}]]</code>
+    <code>• Projected Goals:[[${mp.h2TotalXG}]]</code>
+    <code>• O/U 2.5 Prob:   Over 2.5 ([[${mp.h2ProbOver25}]]%) | Under 2.5 ([[${mp.h2ProbUnder25}]]%)</code>
+    <code>• Top Scores:     [[${mp.topCorrectScores}]]</code>
+
+    <b>🎯 SYSTEM RECOMMENDATIONS</b>
+    <code>• Most Likely Outcome: [[${mp.mostLikelyOutcome}]]</code>
+    <code>• High-Edge Selection: [[${mp.valueBetPick}]]</code>
+    <code>• Capital Allocation:  [[${mp.smartStakingSize}]]% of Bankroll (Fractional Kelly 1/4)</code>
+</th:block>
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔑 <b>H2 Bankroll Rule:</b> Capital distribution is dynamically optimized using a conservative 1/4 Fractional Kelly Criterion to systematically compound growth. <i>Trust the mathematical edge.</i>
