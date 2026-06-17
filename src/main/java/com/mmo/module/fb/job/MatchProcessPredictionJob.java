@@ -28,7 +28,7 @@ public class MatchProcessPredictionJob extends AbstractJob<CronJob> {
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
         LocalDateTime startTimeWindow = LocalDateTime.of(DateTimeUtils.todayLocalDate(), LocalTime.of(13, 0));
-        LocalDateTime endTimeWindow = startTimeWindow.plusHours(48);
+        LocalDateTime endTimeWindow = startTimeWindow.plusHours(24);
         List<MatchPrediction> predictions = matchPredictionRepository.findByStatusAndKickoffTimeBetweenOrderByKickoffTimeAsc(
                 MatchPredictionStatus.PENDING, startTimeWindow, endTimeWindow);
         if (CollectionUtils.isNotEmpty(predictions)) {

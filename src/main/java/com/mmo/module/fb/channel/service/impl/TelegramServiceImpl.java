@@ -33,7 +33,7 @@ public class TelegramServiceImpl extends AbstractTelegramService implements Tele
     public void notifyMatchesInsights(List<PredictionData> matches) {
         ContentStrategy contentStrategy = strategyRegistry.getStrategy(Platform.TELEGRAM);
         String content = contentStrategy.buildMatchesInsightsContent(matches);
-        publish(appProperties.getTelegram().getChannel().getFree(), content);
+        publish(appProperties.getTelegram().getChannel().getPremium(), content);
     }
 
     @Override

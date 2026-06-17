@@ -44,7 +44,7 @@ public class TelegramContentStrategy implements ContentStrategy {
         Context context = new Context();
         context.setVariable("matches", matches);
         context.setVariable("leagueName", "FIFA World Cup 2026");
-        return htmlTemplateEngine.process("match_insights", context);
+        return htmlTemplateEngine.process("multi_match_insight", context);
     }
 
     @Override

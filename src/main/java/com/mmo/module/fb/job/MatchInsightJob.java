@@ -31,7 +31,7 @@ public class MatchInsightJob extends AbstractJob<CronJob> {
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime upperLimit = now.plusHours(44);
+        LocalDateTime upperLimit = now.plusHours(3);
         List<MatchPredictionStatus> targetStatuses = List.of(MatchPredictionStatus.READY);
         List<MatchPrediction> incomingMatches = predictionRepository.findByStatusInAndKickoffTimeBetweenOrderByKickoffTimeAsc(targetStatuses, now, upperLimit);
 
