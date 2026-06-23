@@ -25,6 +25,10 @@ public class PredictionData {
     private String marketHomeXG;
     private String marketAwayXG;
 
+    private String awayProb;
+    private String homeProb;
+    private String drawProb;
+
     // Số liệu hệ thống H2 dạng String
     private String fairHomeOdd;
     private String fairDrawOdd;
@@ -39,5 +43,6 @@ public class PredictionData {
 
     private String mostLikelyOutcome;
     private String valueBetPick;
+    private String edgePercentage;
     private String smartStakingSize;
 }

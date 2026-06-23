@@ -46,14 +46,14 @@ public class MatchPrediction extends AbstractEntity {
     @Transient
     private boolean isWin;
 
-    @Transient
-    private Double tempHomeProb;
+    @Column(precision = 2)
+    private Double homeProb;
 
-    @Transient
-    private Double tempDrawProb;
+    @Column(precision = 2)
+    private Double drawProb;
 
-    @Transient
-    private Double tempAwayProb;
+    @Column(precision = 2)
+    private Double awayProb;
 
 
     // =========================================================================

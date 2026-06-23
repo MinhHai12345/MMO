@@ -155,9 +155,9 @@ public class PredictionEngineServiceImpl implements PredictionEngineService {
         }
 
         // Tạm lưu xác suất gốc để phục vụ tính toán bước sau
-        prediction.setTempHomeProb(homeWinProb);
-        prediction.setTempDrawProb(drawProb);
-        prediction.setTempAwayProb(awayWinProb);
+        prediction.setHomeProb(round(homeWinProb));
+        prediction.setDrawProb(round(drawProb));
+        prediction.setAwayProb(round(awayWinProb));
     }
 
     /**
@@ -180,9 +180,9 @@ public class PredictionEngineServiceImpl implements PredictionEngineService {
         prediction.setMarketAwayXG(marketXG[1]);
 
         // Lấy lại xác suất gốc từ bước trước
-        double homeWinProb = prediction.getTempHomeProb();
-        double drawProb = prediction.getTempDrawProb();
-        double awayWinProb = prediction.getTempAwayProb();
+        double homeWinProb = prediction.getHomeProb();
+        double drawProb = prediction.getDrawProb();
+        double awayWinProb = prediction.getAwayProb();
 
         // Tính toán lợi thế Edge toán học
         double homeEdge = (homeWinProb * prediction.getSofaHomeOdd()) - 1;

@@ -19,6 +19,9 @@ public class MatchPrediction2PredictionDataMapper extends AbstractMapper<MatchPr
         target.setSofaAwayOdd(String.format("%.2f", source.getSofaAwayOdd() != null ? source.getSofaAwayOdd() : 0.0));
         target.setMarketHomeXG(String.format("%.2f", source.getMarketHomeXG() != null ? source.getMarketHomeXG() : 0.0));
         target.setMarketAwayXG(String.format("%.2f", source.getMarketAwayXG() != null ? source.getMarketAwayXG() : 0.0));
+        target.setAwayProb(String.format("%.2f", source.getAwayProb() != null ? source.getAwayProb() * 100 : 0.0));
+        target.setHomeProb(String.format("%.2f", source.getHomeProb() != null ? source.getHomeProb() * 100 : 0.0));
+        target.setDrawProb(String.format("%.2f", source.getDrawProb() != null ? source.getDrawProb() * 100 : 0.0));
 
         target.setFairHomeOdd(String.format("%.2f", source.getFairHomeOdd() != null ? source.getFairHomeOdd() : 0.0));
         target.setFairDrawOdd(String.format("%.2f", source.getFairDrawOdd() != null ? source.getFairDrawOdd() : 0.0));
@@ -34,6 +37,7 @@ public class MatchPrediction2PredictionDataMapper extends AbstractMapper<MatchPr
         target.setMostLikelyOutcome(source.getMostLikelyWinner());
         target.setValueBetPick(source.getValueBetPick());
         target.setSmartStakingSize(String.format("%.2f", source.getSmartStakingSize() != null ? source.getSmartStakingSize() : 0.0));
+        target.setEdgePercentage(String.format("%.2f", source.getEdgePercentage() != null ? source.getEdgePercentage() : 0.0));
 
         return target;
     }
