@@ -12,6 +12,8 @@ public interface ContentStrategy {
 
     String buildMatchesInsightsContent(List<PredictionData> matches);
 
+    byte[] buildMatchesInsightImage(PredictionData match);
+
     String buildMatchesRecapContent(List<MatchPrediction> matches);
 
     Platform getPlatform();

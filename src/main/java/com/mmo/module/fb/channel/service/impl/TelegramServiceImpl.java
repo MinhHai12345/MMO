@@ -21,7 +21,6 @@ public class TelegramServiceImpl extends AbstractTelegramService implements Tele
     private final AppProperties appProperties;
     private final ContentStrategyRegistry strategyRegistry;
 
-
     @Override
     public void notifyMatchesDashboard(List<MatchPrediction> freeMatches, List<MatchPrediction> vipMatches) {
         ContentStrategy contentStrategy = strategyRegistry.getStrategy(Platform.TELEGRAM);
@@ -32,8 +31,11 @@ public class TelegramServiceImpl extends AbstractTelegramService implements Tele
     @Override
     public void notifyMatchesInsights(List<PredictionData> matches) {
         ContentStrategy contentStrategy = strategyRegistry.getStrategy(Platform.TELEGRAM);
-        String content = contentStrategy.buildMatchesInsightsContent(matches);
-        publish(appProperties.getTelegram().getChannel().getPremium(), content);
+        for (PredictionData match : matches) {
+            byte[] image = contentStrategy.buildMatchesInsightImage(match);
+            publish(appProperties.getTelegram().getChannel().getPremium(),
+                    match.getHomeTeam().concat(" vs ").concat(match.getAwayTeam()), image);
+        }
     }
 
     @Override

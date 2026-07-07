@@ -11,7 +11,9 @@ public class MatchPrediction2PredictionDataMapper extends AbstractMapper<MatchPr
     @Override
     public PredictionData map(MatchPrediction source, PredictionData target) {
         target.setHomeTeam(source.getMatch().getHomeTeam().getName());
+        target.setHomeTeamLogoUrl(source.getMatch().getHomeTeam().getLogoUrl());
         target.setAwayTeam(source.getMatch().getAwayTeam().getName());
+        target.setAwayTeamLogoUrl(source.getMatch().getAwayTeam().getLogoUrl());
         target.setMatchTime(source.getMatchTime());
 
         target.setSofaHomeOdd(String.format("%.2f", source.getSofaHomeOdd() != null ? source.getSofaHomeOdd() : 0.0));

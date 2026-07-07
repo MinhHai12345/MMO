@@ -151,7 +151,6 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
     @Override
     public void storeMatches() {
         List<League> activeLeagues = leagueRepository.findByActiveIsTrue();
-        Set<Long> existingSofaMatchIds = matchRepository.findDistinctSofaScoreIds();
         Map<Long, Team> teamMap = getTeamMap();
         executeStorePipeline(
                 activeLeagues,
@@ -175,17 +174,7 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
                 },
                 (league, allEvents) -> {
                     if (CollectionUtils.isEmpty(allEvents)) return;
-
-                    List<SofaMatchesData.SofaEventDTO> newEvents = allEvents.stream()
-                            .filter(eventDTO -> !existingSofaMatchIds.contains(eventDTO.getId()))
-                            .toList();
-
-                    if (CollectionUtils.isNotEmpty(newEvents)) {
-                        List<Match> matches = dynamicConverter.convertAll(newEvents, Match.class);
-                        populateMatchInfo(matches, teamMap, league);
-                        matchRepository.saveAll(matches);
-                        existingSofaMatchIds.addAll(matches.stream().map(Match::getSofaScoreId).collect(Collectors.toSet()));
-                    }
+                    saveMatches(allEvents, teamMap, league);
                 }
         );
     }
@@ -237,6 +226,7 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
                 (league, page) -> sofaCrawlerService.fetchMatchesDaily(league.getSofaScoreId(), page),
                 (league, wrapper) -> {
                     if (wrapper == null || CollectionUtils.isEmpty(wrapper.getEvents())) return;
+                    saveMatches(wrapper.getEvents(), getTeamMap(), league);
 
                     Set<Long> sofaMatchIds = wrapper.getEvents().stream()
                             .filter(Objects::nonNull)
@@ -289,6 +279,19 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
     @Override
     public Provider getProvider() {
         return Provider.SOFA_SCORE;
+    }
+
+    private void saveMatches(List<SofaMatchesData.SofaEventDTO> allEvents, Map<Long, Team> teamMap, League league) {
+        Set<Long> existingSofaMatchIds = matchRepository.findDistinctSofaScoreIdsAndLeague(league);
+
+        List<SofaMatchesData.SofaEventDTO> newEvents = allEvents.stream()
+                .filter(eventDTO -> !existingSofaMatchIds.contains(eventDTO.getId()))
+                .toList();
+        if (CollectionUtils.isNotEmpty(newEvents)) {
+            List<Match> matches = dynamicConverter.convertAll(newEvents, Match.class);
+            populateMatchInfo(matches, teamMap, league);
+            matchRepository.saveAll(matches);
+        }
     }
 
     private Map<Long, Team> getTeamMap() {

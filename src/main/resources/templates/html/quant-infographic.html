@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>H2 Quant Infographic - Premium</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; }
+        body {
+            width: 1080px; height: 1920px;
+            background: radial-gradient(circle at center, #0d1527 0%, #050914 100%);
+            color: #ffffff; padding: 60px;
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+        /* Header */
+        .header { text-align: center; border-bottom: 2px dashed #00f0ff; padding-bottom: 40px; }
+        .brand { font-size: 38px; font-weight: 800; color: #00f0ff; text-shadow: 0 0 15px rgba(0,240,255,0.6); letter-spacing: 2px; }
+        .league { font-size: 48px; font-weight: 900; margin-top: 15px; text-transform: uppercase; color: #ff007f; text-shadow: 0 0 15px rgba(255,0,127,0.6); }
+
+        /* Match Card */
+        .match-container { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 24px; padding: 50px; margin-top: 30px; box-shadow: inset 0 0 30px rgba(0,240,255,0.05); }
+        .teams { display: flex; justify-content: space-between; align-items: center; font-size: 46px; font-weight: 800; text-align: center; }
+
+        /* Flag & Team Layout */
+        .team { width: 42%; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+        .flag-box { width: 160px; height: 110px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.2); overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.5); background: #111; }
+        .flag-box img { width: 100%; height: 100%; object-fit: cover; }
+        .vs { font-size: 40px; color: #ff007f; font-style: italic; font-weight: 900; text-shadow: 0 0 10px rgba(255,0,127,0.4); }
+        .time { text-align: center; font-size: 32px; color: #8a99ad; margin-top: 25px; font-weight: 600; }
+
+        /* Grid Data */
+        .section-title { font-size: 34px; color: #00f0ff; font-weight: 700; margin: 45px 0 20px 0; text-transform: uppercase; display: flex; align-items: center; letter-spacing: 1px; }
+        .grid-data { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .data-box { background: rgba(0, 0, 0, 0.4); padding: 30px; border-radius: 16px; border-left: 6px solid #00f0ff; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .data-box.pink { border-left-color: #ff007f; }
+        .label { font-size: 24px; color: #8a99ad; margin-bottom: 12px; text-transform: uppercase; font-weight: 600; }
+        .value { font-size: 38px; font-weight: 700; font-family: 'Courier New', Courier, monospace; color: #fff; }
+
+        /* Top Correct Scores Style (Mới bổ sung) */
+        .score-row { background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.15); border-radius: 16px; padding: 25px; display: flex; justify-content: space-around; align-items: center; margin-top: 10px; }
+        .score-badge { background: rgba(0, 0, 0, 0.6); border: 1px solid #00f0ff; padding: 10px 25px; border-radius: 30px; font-size: 32px; font-weight: bold; font-family: 'Courier New', monospace; color: #00f0ff; box-shadow: 0 0 10px rgba(0,240,255,0.2); }
+
+        /* Footer */
+        .footer { text-align: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 40px; font-size: 26px; color: #8a99ad; }
+        .highlight { color: #00f0ff; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="brand">👑 H2 FOOTBALL DATA INSIGHT</div>
+    <div class="league" th:text="${leagueName != null ? leagueName : 'World Cup 2026'}">PREMIER LEAGUE</div>
+</div>
+
+<div class="match-container">
+    <div class="teams">
+        <div class="team">
+            <div class="flag-box">
+                <img th:src="${match.homeTeamLogoUrl}" alt="Home Flag">
+            </div>
+            <div th:text="${match.homeTeam}">HOME TEAM</div>
+        </div>
+
+        <div class="vs">VS</div>
+
+        <div class="team">
+            <div class="flag-box">
+                <img th:src="${match.awayTeamLogoUrl}" alt="Away Flag">
+            </div>
+            <div th:text="${match.awayTeam}">AWAY TEAM</div>
+        </div>
+    </div>
+    <div class="time">🕒 <span th:text="${match.matchTime}">20:00</span></div>
+
+    <div class="section-title">📊 Predictive Matrix</div>
+    <div class="grid-data">
+        <div class="data-box">
+            <div class="label">Predictive xG</div>
+            <div class="value" th:text="${match.homeXG} + ' - ' + ${match.awayXG}">1.65 - 1.20</div>
+        </div>
+        <div class="data-box">
+            <div class="label">Structural Margin</div>
+            <div class="value" th:text="${match.h2HandicapMargin}">-0.5</div>
+        </div>
+        <div class="data-box">
+            <div class="label">O/U 2.5 Prob</div>
+            <div class="value" th:text="'Over ' + ${match.h2ProbOver25} + '%'">Over 62%</div>
+        </div>
+        <div class="data-box">
+            <div class="box-data-content">
+                <div class="label">Projected Total xG</div>
+                <div class="value" th:text="${match.h2TotalXG}">2.85</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">🎯 High-Prob Correct Scores</div>
+    <div class="score-row">
+        <div class="score-badge" th:text="${match.topCorrectScores}">2-1 | 1-0 | 1-1</div>
+    </div>
+
+    <div class="section-title" style="color: #ff007f;">🚀 Algorithmic Signals</div>
+    <div class="grid-data">
+        <div class="data-box pink">
+            <div class="label">Statistical Alpha</div>
+            <div class="value" th:text="${match.valueBetPick}">Home -0.5</div>
+        </div>
+        <div class="data-box pink">
+            <div class="label">Signal Strength</div>
+            <div class="value" th:text="${match.smartStakingSize} + ' / 10'">7.5 / 10</div>
+        </div>
+    </div>
+</div>
+
+<div class="footer">
+    Automated Quant Report • Join Telegram: <span class="highlight">t.me/H2QuantAlerts</span>
+</div>
+
+</body>
+</html>

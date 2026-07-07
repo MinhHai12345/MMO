@@ -14,8 +14,8 @@ import java.util.Set;
 @Repository
 public interface MatchRepository extends JpaRepository<Match, Long> {
 
-    @Query("SELECT DISTINCT m.sofaScoreId FROM Match m")
-    Set<Long> findDistinctSofaScoreIds();
+    @Query("SELECT DISTINCT m.sofaScoreId FROM Match m WHERE m.league = :league")
+    Set<Long> findDistinctSofaScoreIdsAndLeague(@Param("league") League league);
 
     List<Match> findTop30ByStatusAndHomeXGIsNullAndAwayXGIsNullAndXgRetryCountLessThanOrderByXgRetryCountAsc(MatchStatus matchStatus, int retryCount);
 

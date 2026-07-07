@@ -1,27 +1,24 @@
-
 👑 <b>H2 FOOTBALL DATA INSIGHT — QUANT ALERTS</b>
-🏆 <b>[[${leagueName != null ? leagueName : 'World Cup 2026'}]]</b> | <i>Algorithmic Picks &amp; High-Confidence Signals</i>
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏆 <b>[[${leagueName != null ? leagueName : 'World Cup 2026'}]]</b> | <i>Algorithmic Analytics &amp; High-Confidence Signals</i>
 <th:block th:each="mp : ${matches}">
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━
     [[${mp.index}]]️⃣ <b>[[${mp.homeTeam}]] vs [[${mp.awayTeam}]]</b> 🕒 <i>[[${mp.matchTime}]]</i>
 
-    <b>🔹 MARKET BENCHMARK</b>
-    <code>• 1X2 Odds:  [[${mp.sofaHomeOdd}]] | [[${mp.sofaDrawOdd}]] | [[${mp.sofaAwayOdd}]]</code>
-    <code>• Implied xG:[[${mp.marketHomeXG}]] vs [[${mp.marketAwayXG}]]</code>
+    <b>🔹 MARKET CONSENSUS</b>
+    <code>• Market Implied Prob:</code> [[${mp.sofaHomeOdd}]] | [[${mp.sofaDrawOdd}]] | [[${mp.sofaAwayOdd}]]
+    <code>• Implied xG:</code> [[${mp.marketHomeXG}]] vs [[${mp.marketAwayXG}]]
 
     <b>🔹 H2 QUANT MATRIX</b>
-    <code>• Fair 1X2 Odds:  [[${mp.fairHomeOdd}]] | [[${mp.fairDrawOdd}]] | [[${mp.fairAwayOdd}]]</code>
-    <code>• Predictive xG:  [[${mp.homeXG}]] vs [[${mp.awayXG}]]</code>
-    <code>• Fair Handicap:  [[${mp.h2HandicapMargin}]]</code>
-    <code>• Projected Goals:[[${mp.h2TotalXG}]]</code>
-    <code>• O/U 2.5 Prob:   Over 2.5 ([[${mp.h2ProbOver25}]]%) | Under 2.5 ([[${mp.h2ProbUnder25}]]%)</code>
-    <code>• Top Scores:     [[${mp.topCorrectScores}]]</code>
+    <code>• H2 Fair Prob:</code>  [[${mp.fairHomeOdd}]] | [[${mp.fairDrawOdd}]] | [[${mp.fairAwayOdd}]]
+    <code>• Predictive xG:</code>  [[${mp.homeXG}]] vs [[${mp.awayXG}]]
+    <code>• Structural Margin:</code>  [[${mp.h2HandicapMargin}]]
+    <code>• Projected Goals:</code> [[${mp.h2TotalXG}]]
+    <code>• O/U 2.5 Prob:</code>   Over 2.5 (<b>[[${mp.h2ProbOver25}]]%</b>) | Under 2.5 (<b>[[${mp.h2ProbUnder25}]]%</b>)
+    <code>• High-Prob Scores:</code>  <code>[[${mp.topCorrectScores}]]</code>
 
     <b>🎯 SYSTEM RECOMMENDATIONS</b>
-    <code>• Most Likely Outcome: [[${mp.mostLikelyOutcome}]]</code>
-    <code>• High-Edge Selection: [[${mp.valueBetPick}]]</code>
-    <code>• Capital Allocation:  [[${mp.smartStakingSize}]]% of Bankroll (Fractional Kelly 1/4)</code>
+    <code>• Most Likely Outcome:</code> <b>[[${mp.mostLikelyOutcome}]]</b>
+    <code>• High-Edge Selection:</code> <b>[[${mp.valueBetPick}]]</b>
+    <code>• Model Signal Strength:</code>  <b>[[${mp.smartStakingSize}]]/10</b> (Based on Quant Volatility)
 </th:block>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━

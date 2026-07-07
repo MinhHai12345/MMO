@@ -125,6 +125,7 @@ public abstract class AbstractCrawlerService {
                     .setTimeout(30000));
             page.waitForTimeout(7000);
             if (triggerAction != null) {
+                page.waitForTimeout(8000);
                 try {
                     log.info("⚡ [Pipeline] Kích nổ hành động Trigger...");
                     triggerAction.accept(page);

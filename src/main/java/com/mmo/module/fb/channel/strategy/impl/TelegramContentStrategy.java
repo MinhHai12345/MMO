@@ -1,5 +1,11 @@
 package com.mmo.module.fb.channel.strategy.impl;
 
+import com.microsoft.playwright.Browser;
+import com.microsoft.playwright.BrowserContext;
+import com.microsoft.playwright.BrowserType;
+import com.microsoft.playwright.Page;
+import com.microsoft.playwright.Playwright;
+import com.microsoft.playwright.options.ScreenshotType;
 import com.mmo.module.fb.channel.model.Platform;
 import com.mmo.module.fb.channel.model.PredictionData;
 import com.mmo.module.fb.channel.strategy.ContentStrategy;
@@ -45,6 +51,27 @@ public class TelegramContentStrategy implements ContentStrategy {
         context.setVariable("matches", matches);
         context.setVariable("leagueName", "FIFA World Cup 2026");
         return htmlTemplateEngine.process("multi_match_insight", context);
+    }
+
+    @Override
+    public byte[] buildMatchesInsightImage(PredictionData match) {
+        Context context = new Context();
+        context.setVariable("match", match);
+        context.setVariable("leagueName", "FIFA World Cup 2026");
+        String htmlContent = htmlTemplateEngine.process("quant-infographic", context);
+        byte[] screenshot;
+        try (Playwright playwright = Playwright.create()) {
+            Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
+            BrowserContext browserContext = browser.newContext();
+            Page page = browserContext.newPage();
+            page.setViewportSize(1080, 1920);
+            page.setContent(htmlContent);
+            screenshot = page.screenshot(new Page.ScreenshotOptions().setType(ScreenshotType.PNG));
+            browser.close();
+            return screenshot;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

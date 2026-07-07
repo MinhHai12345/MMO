@@ -2,7 +2,6 @@ package com.mmo.module.fb.channel.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -16,6 +15,8 @@ public class PredictionData {
     private int index;
     private String homeTeam;
     private String awayTeam;
+    private String homeTeamLogoUrl;
+    private String awayTeamLogoUrl;
     private String matchTime;
 
     // Số liệu Market dạng String để cố định số ký tự thập phân
