@@ -2,7 +2,7 @@ package com.mmo.module.fb.job;
 
 import com.mmo.cronjob.entity.CronJob;
 import com.mmo.cronjob.job.AbstractJob;
-import com.mmo.module.fb.channel.service.TelegramService;
+import com.mmo.module.publisher.telegram.service.TelegramService;
 import com.mmo.module.fb.entity.MatchPrediction;
 import com.mmo.module.fb.entity.enums.MatchPredictionStatus;
 import com.mmo.module.fb.repository.MatchPredictionRepository;

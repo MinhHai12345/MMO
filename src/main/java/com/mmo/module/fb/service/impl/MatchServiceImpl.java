@@ -1,13 +1,8 @@
 package com.mmo.module.fb.service.impl;
 
-import com.microsoft.playwright.Page;
-import com.mmo.module.fb.crawler.model.enums.Provider;
-import com.mmo.module.fb.crawler.strategy.CrawlerStrategy;
-import com.mmo.module.fb.crawler.strategy.CrawlerStrategyRegistry;
-import com.mmo.module.fb.entity.League;
+import com.mmo.module.fb.provider.strategy.CrawlerStrategyRegistry;
 import com.mmo.module.fb.entity.Match;
 import com.mmo.module.fb.entity.Team;
-import com.mmo.module.fb.entity.enums.MatchStatus;
 import com.mmo.module.fb.repository.LeagueRepository;
 import com.mmo.module.fb.repository.MatchRepository;
 import com.mmo.module.fb.repository.TeamRepository;
@@ -16,11 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 

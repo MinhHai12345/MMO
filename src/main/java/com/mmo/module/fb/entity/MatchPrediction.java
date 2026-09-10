@@ -2,148 +2,124 @@ package com.mmo.module.fb.entity;
 
 import com.mmo.entity.AbstractEntity;
 import com.mmo.module.fb.entity.enums.MatchPredictionStatus;
+import com.mmo.module.fb.entity.enums.ValueBetType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.Transient;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
-
 @Entity
-@Table(name = "match_predictions", indexes = {
-        @Index(name = "idx_kickoff_time", columnList = "kickoff_time"),
-        @Index(name = "idx_status", columnList = "status")
-})
+@Table(
+        name = "match_predictions",
+        indexes = {
+                @Index(name = "idx_match_id", columnList = "match_id", unique = true),
+                @Index(name = "idx_status_has_value", columnList = "status, has_value"),
+                @Index(name = "idx_premium_distribution", columnList = "is_premium, is_posted_social")
+        })
 @Getter
 @Setter
 public class MatchPrediction extends AbstractEntity {
 
-    @OneToOne
-    @JoinColumn(name = "match_id")
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "match_id", nullable = false)
     private Match match;
 
-    @Column(nullable = false)
-    private LocalDateTime kickoffTime;
-
-    @Transient
-    private String matchTime;
-
-    @Transient
-    private int index;
-
-    @Transient
-    private boolean isWin;
-
-    @Column(precision = 2)
-    private Double homeProb;
-
-    @Column(precision = 2)
-    private Double drawProb;
-
-    @Column(precision = 2)
-    private Double awayProb;
-
-
     // =========================================================================
-    // 🏛️ MARKET ODDS (Dữ liệu tỷ lệ cược cào từ SofaScore)
+    // 📊 MODEL EXPECTED METRICS (Kết quả tính toán nội bộ Engine)
     // =========================================================================
-    @Column(precision = 2)
-    private Double sofaHomeOdd;
+    @Column(nullable = false, precision = 4, scale = 2)
+    private Double expectedHomeXG;
 
-    @Column(precision = 2)
-    private Double sofaDrawOdd;
+    @Column(nullable = false, precision = 4, scale = 2)
+    private Double expectedAwayXG;
 
-    @Column(precision = 2)
-    private Double sofaAwayOdd;
-
-    // =========================================================================
-    // 🔬 POISSON PREDICTION RESULT (Dữ liệu hệ thống tự tính toán)
-    // =========================================================================
-    @Column(precision = 2)
-    private Double marketHomeXG;
-
-    @Column(precision = 2)
-    private Double marketAwayXG;
-
-    @Column(precision = 2)
+    @Column(nullable = false, precision = 4, scale = 2)
     private Double h2TotalXG;
 
-    @Column(precision = 2)
-    private String h2HandicapMargin;
+    @Column(length = 15)
+    private String handicapMargin;
 
-    @Column(precision = 2)
-    private Double h2ProbUnder25;
+    // =========================================================================
+    // 🎯 MODEL PROBABILITIES & FAIR ODDS (Đã tính qua Dixon-Coles)
+    // =========================================================================
+    @Column(nullable = false, precision = 5, scale = 4) // 0.4525 (45.25%)
+    private Double homeWinProb;
 
-    @Column(precision = 2)
-    private Double h2ProbOver25;
+    @Column(nullable = false, precision = 5, scale = 4)
+    private Double drawProb;
 
-    @Column(precision = 2)
-    private Double expectedHomeGoals;
+    @Column(nullable = false, precision = 5, scale = 4)
+    private Double awayWinProb;
 
-    @Column(precision = 2)
-    private Double expectedAwayGoals;
-
-    @Column
-    private Integer actualHomeGoals;
-
-    @Column
-    private Integer actualAwayGoals;
-
-    @Column(precision = 2)
+    @Column(precision = 6, scale = 2)
     private Double fairHomeOdd;
 
-    @Column(precision = 2)
+    @Column(precision = 6, scale = 2)
     private Double fairDrawOdd;
 
-    @Column(precision = 2)
+    @Column(precision = 6, scale = 2)
     private Double fairAwayOdd;
 
-    // =========================================================================
-    // 🎯 BUSINESS LOGIC & CONTENT DISTRIBUTION STATE
-    // =========================================================================
-    @Column
-    private String valueBetPick;
+    @Column(precision = 5, scale = 2)
+    private Double probUnder25;
 
-    @Column
-    private String mostLikelyWinner;
+    @Column(precision = 5, scale = 2)
+    private Double probOver25;
 
-    @Column(precision = 2)
-    private Double smartStakingSize;
-
-    @Column(precision = 2)
-    private Double edgePercentage;
-
-    @Column
+    @Column(length = 50)
     private String topCorrectScores;
 
-    @Column
+    // =========================================================================
+    // 🏛️ MARKET ODDS & IMPLIED XG (Dữ liệu thị trường từ Nhà cái)
+    // =========================================================================
+    @Column(precision = 6, scale = 2)
+    private Double marketHomeOdd;
+
+    @Column(precision = 6, scale = 2)
+    private Double marketDrawOdd;
+
+    @Column(precision = 6, scale = 2)
+    private Double marketAwayOdd;
+
+    @Column(precision = 4, scale = 2)
+    private Double marketHomeXG;
+
+    @Column(precision = 4, scale = 2)
+    private Double marketAwayXG;
+
+    // =========================================================================
+    // 💰 VALUE BET & KELLY STAKING ANALYSIS
+    // =========================================================================
+    @Column(nullable = false)
     private boolean hasValue = false;
 
-    @Column
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private ValueBetType valueBetType;
+
+    @Column(precision = 5, scale = 2)
+    private Double edgePercentage;
+
+    @Column(precision = 3, scale = 1)
+    private Double smartStakingSize; // Fractional Kelly: 1.0 - 5.0%
+
+    // =========================================================================
+    // 🚀 BUSINESS, E-COMMERCE & SOCIAL DISTRIBUTION STATE
+    // =========================================================================
+    @Column(nullable = false)
     private boolean isPremium = false;
 
-    @Column
-    @Enumerated(EnumType.STRING)
-    private MatchPredictionStatus status; // Trạng thái: PENDING (Chưa tính), READY (Đã tính), FREE_DASHBOARD, FREE_DETAIL, VIP_ONLY, POSTED (Đã đăng thành công)
+    @Column(nullable = false)
+    private boolean isPostedSocial = false;
 
-    public String getMatchTime() {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm", Locale.ENGLISH);
-        ZonedDateTime utcTime = kickoffTime
-                .atZone(ZoneId.of("Asia/Ho_Chi_Minh"))
-                .withZoneSameInstant(ZoneOffset.UTC);
-        this.matchTime = utcTime.format(formatter);
-        return matchTime;
-    }
+    @Enumerated(EnumType.STRING)
+    @Column(length = 25, nullable = false)
+    private MatchPredictionStatus status = MatchPredictionStatus.PENDING;
 }

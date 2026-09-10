@@ -2,7 +2,7 @@ package com.mmo.module.fb.service.impl;
 
 import com.mmo.module.fb.entity.MatchPrediction;
 import com.mmo.module.fb.entity.enums.MatchPredictionStatus;
-import com.mmo.module.fb.predict.service.PredictionEngineService;
+import com.mmo.module.fb.core.service.PredictionEngineService;
 import com.mmo.module.fb.repository.MatchPredictionRepository;
 import com.mmo.module.fb.service.MatchPredictionService;
 import lombok.RequiredArgsConstructor;
