@@ -108,7 +108,7 @@ public class MatchPrediction extends AbstractEntity {
     private Double edgePercentage;
 
     @Column(precision = 3, scale = 1)
-    private Double smartStakingSize; // Fractional Kelly: 1.0 - 5.0%
+    private Double smartStakingSize;
 
     // =========================================================================
     // 🚀 BUSINESS, E-COMMERCE & SOCIAL DISTRIBUTION STATE

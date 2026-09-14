@@ -11,7 +11,7 @@ public interface CrawlerStrategy {
     /**
      * Store Leagues to system
      */
-    void storeLeagues();
+    void syncLeagues();
 
     /**
      * Store seasons to system

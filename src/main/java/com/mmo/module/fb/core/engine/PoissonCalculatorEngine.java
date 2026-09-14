@@ -261,8 +261,7 @@ public class PoissonCalculatorEngine {
         return Math.round(val * 10000.0) / 10000.0;
     }
 
-    private record ValueBetEvaluation(boolean hasValue, boolean isPremium, ValueBetType type, double edgePercentage,
-                                      double stakingSize) {
+    private record ValueBetEvaluation(boolean hasValue, boolean isPremium, ValueBetType type, double edgePercentage, double stakingSize) {
     }
 
 }

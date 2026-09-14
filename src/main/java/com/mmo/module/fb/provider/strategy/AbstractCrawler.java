@@ -6,6 +6,7 @@ import com.microsoft.playwright.BrowserType;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.PlaywrightException;
+import com.microsoft.playwright.Route;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -15,8 +16,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -26,13 +28,12 @@ import java.util.function.Function;
 @Slf4j
 @Component
 public abstract class AbstractCrawler implements CrawlerStrategy {
-
     protected volatile Playwright playwright;
     protected volatile Browser browser;
     private final AtomicInteger usageCount = new AtomicInteger(0);
     private static final int MAX_USAGE_THRESHOLD = 150;
     private static final int MAX_RETRY_ATTEMPTS = 3;
-    private final Random random = new Random();
+    private final AtomicBoolean needsRecycle = new AtomicBoolean(false);
 
     private final Map<String, BrowserContext> activeContexts = new ConcurrentHashMap<>();
 
@@ -44,11 +45,11 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
 
     protected synchronized void ensureBrowser() {
         boolean isDisconnected = (browser == null || !browser.isConnected());
-        boolean isExceededThreshold = (usageCount.get() >= MAX_USAGE_THRESHOLD);
+        boolean shouldRecycle = (needsRecycle.get() || usageCount.get() >= MAX_USAGE_THRESHOLD);
 
-        if (playwright == null || isDisconnected || isExceededThreshold) {
-            log.info("🔄 [{}] Initializing/recycling Browser (Reason: Disconnected={}, ExceededThreshold={})...",
-                    getProvider().name(), isDisconnected, isExceededThreshold);
+        if (playwright == null || isDisconnected || (shouldRecycle && activeContexts.isEmpty())) {
+            log.info("🔄 [{}] Initializing/recycling Browser (Reason: Disconnected={}, ShouldRecycle={}, ActiveContexts={})...",
+                    getProvider().name(), isDisconnected, shouldRecycle, activeContexts.size());
             closeEverythingInternal();
             try {
                 this.playwright = Playwright.create();
@@ -64,22 +65,28 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
                                 "--window-size=1920,1080"
                         )));
                 this.usageCount.set(0);
+                this.needsRecycle.set(false);
                 log.info("✅ [{}] Browser initialization successful!", getProvider().name());
             } catch (Exception e) {
                 log.error("🚨 Critical failure creating Playwright/Browser: {}", e.getMessage(), e);
                 closeEverythingInternal();
                 throw e;
             }
+        } else if (shouldRecycle) {
+            needsRecycle.set(true);
         }
     }
 
     @Override
     public Page createPage() {
-        ensureBrowser();
-        usageCount.incrementAndGet();
+        synchronized (this) {
+            ensureBrowser();
+            usageCount.incrementAndGet();
+        }
 
-        String selectedUserAgent = USER_AGENTS.get(random.nextInt(USER_AGENTS.size()));
+        String selectedUserAgent = USER_AGENTS.get(ThreadLocalRandom.current().nextInt(USER_AGENTS.size()));
         Map<String, String> baseHeaders = new HashMap<>();
+        baseHeaders.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8");
         baseHeaders.put("Accept-Language", "en-US,en;q=0.9");
         baseHeaders.put("sec-ch-ua", "\"Chromium\";v=\"124\", \"Google Chrome\";v=\"124\", \"Not-A.Brand\";v=\"99\"");
         baseHeaders.put("sec-ch-ua-mobile", "?0");
@@ -101,6 +108,7 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
             activeContexts.put(contextId, context);
 
             Page page = context.newPage();
+            page.route("**/*.{png,jpg,jpeg,gif,svg,css,woff,woff2,ttf,eot}", Route::abort);
 
             // Optimized anti-detection script injection
             page.addInitScript("""
@@ -116,10 +124,10 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
 
             return page;
         } catch (Exception e) {
+            if (contextId != null) {
+                activeContexts.remove(contextId);
+            }
             if (context != null) {
-                if (contextId != null) {
-                    activeContexts.remove(contextId);
-                }
                 try {
                     context.close();
                 } catch (Exception ignored) {
@@ -147,6 +155,12 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
                 }
             } catch (Exception e) {
                 log.warn("⚠️ Minor error while disposing Page/Context: {}", e.getMessage());
+            } finally {
+                if (needsRecycle.get() && activeContexts.isEmpty()) {
+                    synchronized (this) {
+                        ensureBrowser();
+                    }
+                }
             }
         }
     }
@@ -245,6 +259,7 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
                         page = null;
                         if (!isFatal && attempts < MAX_RETRY_ATTEMPTS) {
                             log.warn("⚠️ Retrying item [{}] (Attempt {}/{})", entity, attempts, MAX_RETRY_ATTEMPTS);
+                            backoffDelay(attempts);
                         }
                     } catch (Exception ex) {
                         log.error("❌ Error processing item [{}] in Pipeline: {}", entity, ex.getMessage());
@@ -288,5 +303,13 @@ public abstract class AbstractCrawler implements CrawlerStrategy {
         }
         log.error("❌ Playwright system error: {}", msg);
         return false;
+    }
+
+    private void backoffDelay(int attempt) {
+        try {
+            Thread.sleep(1000L * attempt);
+        } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
+        }
     }
 }

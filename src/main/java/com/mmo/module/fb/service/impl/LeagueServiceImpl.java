@@ -13,6 +13,6 @@ public class LeagueServiceImpl implements LeagueService {
 
     @Override
     public void storeAllLeagues() {
-        crawlerStrategyRegistry.getStrategy(Provider.SOFA_SCORE).storeLeagues();
+        crawlerStrategyRegistry.getStrategy(Provider.SOFA_SCORE).syncLeagues();
     }
 }

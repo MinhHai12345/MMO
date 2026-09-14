@@ -49,7 +49,7 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
     private final MatchPredictionRepository matchPredictionRepository;
 
     @Override
-    public void storeLeagues() {
+    public void syncLeagues() {
         executeSimpleStorePipeline(
                 sofaCrawlerService::fetchLeagues,
                 tournaments -> {

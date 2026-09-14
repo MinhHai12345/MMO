@@ -10,7 +10,7 @@ import org.quartz.JobExecutionContext;
 import org.springframework.stereotype.Component;
 
 @Component
-public class InitialFBDataJob extends AbstractJob<CronJob> {
+public class LeagueSyncJob extends AbstractJob<CronJob> {
     @Resource
     private CrawlerStrategyRegistry crawlerStrategyRegistry;
 
@@ -18,10 +18,6 @@ public class InitialFBDataJob extends AbstractJob<CronJob> {
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
         CrawlerStrategy strategy = crawlerStrategyRegistry.getStrategy(Provider.SOFA_SCORE);
         strategy.syncLeagues();
-        strategy.storeSeasons();
-        strategy.storeTeams();
-        strategy.storeMatches();
-        strategy.storeMatchStatistics();
     }
 
 }
