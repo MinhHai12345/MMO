@@ -14,8 +14,7 @@ import com.mmo.module.fb.entity.Match;
 import com.mmo.module.fb.entity.MatchPrediction;
 import com.mmo.module.fb.entity.Season;
 import com.mmo.module.fb.entity.Team;
-import com.mmo.module.fb.entity.enums.MatchPredictionStatus;
-import com.mmo.module.fb.entity.enums.MatchStatus;
+import com.mmo.module.fb.enums.MatchStatus;
 import com.mmo.module.fb.repository.LeagueRepository;
 import com.mmo.module.fb.repository.MatchPredictionRepository;
 import com.mmo.module.fb.repository.MatchRepository;
@@ -113,7 +112,7 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
     }
 
     @Override
-    public void storeTeams() {
+    public void syncTeams() {
         List<League> activeLeagues = leagueRepository.findByActiveIsTrue();
         Set<Long> existingSofaTeamIds = teamRepository.findAll().stream()
                 .map(Team::getSofaScoreId)

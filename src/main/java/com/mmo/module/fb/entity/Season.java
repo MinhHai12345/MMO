@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "seasons")
+@Table(name = "fb_seasons")
 @Getter
 @Setter
 @Builder
@@ -23,13 +23,13 @@ import lombok.Setter;
 public class Season extends AbstractEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "league_id")
+    @JoinColumn(name = "league_id", nullable = false)
     private League league;
 
-    @Column
-    private Long sofaScoreId;
+    @Column(name = "external_id")
+    private String externalId;
 
-    @Column
+    @Column(nullable = false)
     private String year;
 
     @Column

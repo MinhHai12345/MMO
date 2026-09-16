@@ -21,7 +21,7 @@ public interface CrawlerStrategy {
     /**
      * Store teams to system
      */
-    void storeTeams();
+    void syncTeams();
 
     /**
      * Store matches to system

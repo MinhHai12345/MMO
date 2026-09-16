@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "teams")
+@Table(name = "fb_teams")
 @Getter
 @Setter
 @Builder
@@ -19,25 +19,22 @@ import lombok.Setter;
 @NoArgsConstructor
 public class Team extends AbstractEntity {
 
-    @Column
+    @Column(nullable = false)
     private String name;
-
-    @Column
-    private String code;
 
     @Column
     private String shortName;
 
     @Column
-    private String logoUrl;
+    private String slug;
 
     @Column
-    private String slug;
+    private String logoUrl;
 
     @Column
     private Integer ranking;
 
     @Column
-    private Long sofaScoreId;
+    private String externalId;
 
 }

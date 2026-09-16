@@ -3,7 +3,7 @@ package com.mmo.module.fb.core.engine;
 import com.mmo.module.fb.core.model.PredictionResult;
 import com.mmo.module.fb.core.model.ScoreProbability;
 import com.mmo.module.fb.provider.model.sofa.SofaMatchesData;
-import com.mmo.module.fb.entity.enums.ValueBetType;
+import com.mmo.module.fb.enums.ValueBetType;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.springframework.stereotype.Component;
 

@@ -3,7 +3,7 @@ package com.mmo.module.fb.provider.mapper;
 import com.mmo.converter.AbstractMapper;
 import com.mmo.module.fb.provider.model.sofa.SofaMatchesData;
 import com.mmo.module.fb.entity.Match;
-import com.mmo.module.fb.entity.enums.MatchStatus;
+import com.mmo.module.fb.enums.MatchStatus;
 import org.springframework.stereotype.Component;
 
 @Component

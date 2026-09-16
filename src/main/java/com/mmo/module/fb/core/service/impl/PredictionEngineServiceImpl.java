@@ -9,7 +9,6 @@ import com.mmo.module.fb.provider.model.sofa.SofaMatchesData;
 import com.mmo.module.fb.provider.strategy.CrawlerStrategy;
 import com.mmo.module.fb.provider.strategy.CrawlerStrategyRegistry;
 import com.mmo.module.fb.entity.MatchPrediction;
-import com.mmo.module.fb.entity.enums.MatchPredictionStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

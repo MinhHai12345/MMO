@@ -13,6 +13,6 @@ public class TeamServiceImpl implements TeamService {
 
     @Override
     public void storeAllTeams() {
-        crawlerStrategyRegistry.getStrategy(Provider.SOFA_SCORE).storeTeams();
+        crawlerStrategyRegistry.getStrategy(Provider.SOFA_SCORE).syncTeams();
     }
 }

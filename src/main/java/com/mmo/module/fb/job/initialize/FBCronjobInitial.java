@@ -4,17 +4,25 @@ import com.mmo.cronjob.entity.CronJob;
 import com.mmo.cronjob.repository.CronJobRepository;
 import com.mmo.cronjob.service.CronJobService;
 import com.mmo.initialize.DataInitializer;
-import com.mmo.module.fb.job.InitialFBDataJob;
+import com.mmo.module.fb.job.CrawlerHealthCheckJob;
+import com.mmo.module.fb.job.DataCleanupJob;
 import com.mmo.module.fb.job.LeagueSyncJob;
 import com.mmo.module.fb.job.MatchDailyRecapJob;
-import com.mmo.module.fb.job.MatchInsightJob;
-import com.mmo.module.fb.job.MatchProcessPredictionJob;
-import com.mmo.module.fb.job.MatchResultJob;
-import com.mmo.module.fb.job.MatchUpcomingJob;
 import com.mmo.module.fb.job.MatchDashboardJob;
+import com.mmo.module.fb.job.MatchFixtureSyncJob;
+import com.mmo.module.fb.job.MatchInsightJob;
+import com.mmo.module.fb.job.MatchLineupOddsUpdateJob;
+import com.mmo.module.fb.job.MatchProcessPredictionJob;
+import com.mmo.module.fb.job.MatchResultSyncJob;
+import com.mmo.module.fb.job.MatchSeasonFixtureSyncJob;
+import com.mmo.module.fb.job.MatchStatusTrackerJob;
+import com.mmo.module.fb.job.NotificationPublisherJob;
+import com.mmo.module.fb.job.TeamSyncJob;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class FBCronjobInitial implements DataInitializer {
@@ -25,63 +33,81 @@ public class FBCronjobInitial implements DataInitializer {
 
     @Override
     public void initialize() {
+        log.info("Initializing Football Analytics CronJobs (UTC Timezone)...");
+
         // =========================================================================
-        // NOTE: ALL CRON EXPRESSIONS ARE IN UTC TIMEZONE
+        // GROUP 1: DYNAMIC SEASON SYNC (Lịch thi đấu & Cấu trúc giải)
         // =========================================================================
+        createJobIfNotExist(LeagueSyncJob.class.getSimpleName(), LeagueSyncJob.class,
+                "0 0 2 1 * ?",
+                "Sync League and Season info (UTC 02:00 / VN 09:00 AM - 1st of month)"
+        );
+        createJobIfNotExist(TeamSyncJob.class.getSimpleName(), TeamSyncJob.class,
+                "0 0 3 1,15 * ?",
+                "Sync Team metadata (UTC 03:00 / VN 10:00 AM - 1st & 15th of month)"
+        );
+        createJobIfNotExist(MatchSeasonFixtureSyncJob.class.getSimpleName(), MatchSeasonFixtureSyncJob.class,
+                "0 0 1 1 * ?",
+                "Sync full season fixtures frame (UTC 01:00 / VN 08:00 AM - 1st of month)"
+        );
 
-        // 1. MASTER DATA JOBS
-        createJobIfNotExist(LeagueSyncJob.class.getSimpleName(), LeagueSyncJob.class, "0 0 2 1 * ?",
-                "Sync Leagues and Seasons (UTC 02:00)");
-        createJobIfNotExist("TeamSyncJob", TeamSyncJob.class, "0 0 3 1,15 * ?",
-                "Sync Teams by Leagues (UTC 03:00)");
-        createJobIfNotExist("InitialFBDataJob", InitialFBDataJob.class, "0 0 0 1 8 ?",
-                "Initial All Data FB Job");
+        // =========================================================================
+        // GROUP 2: DAILY DATA PIPELINE (Luồng xử lý dữ liệu hàng ngày)
+        // =========================================================================
+        createJobIfNotExist(MatchResultSyncJob.class.getSimpleName(), MatchResultSyncJob.class,
+                "0 0 4 * * ?",
+                "Fetch yesterday's match results and actual xG (UTC 04:00 / VN 11:00 AM)"
+        );
+        createJobIfNotExist(MatchDailyRecapJob.class.getSimpleName(), MatchDailyRecapJob.class,
+                "0 0 5 * * ?",
+                "Calculate yesterday's prediction accuracy & ROI (UTC 05:00 / VN 12:00 PM)"
+        );
+        createJobIfNotExist(MatchFixtureSyncJob.class.getSimpleName(), MatchFixtureSyncJob.class,
+                "0 30 5 * * ?",
+                "Fetch today & tomorrow fixtures update (UTC 05:30 / VN 12:30 PM)"
+        );
+        createJobIfNotExist(MatchInsightJob.class.getSimpleName(), MatchInsightJob.class,
+                "0 0/30 6-9 * * ?",
+                "Fetch H2H, Form, Rest Days & Injuries (Every 30m UTC 06:00-09:00 / VN 13:00-16:00)"
+        );
+        createJobIfNotExist(MatchProcessPredictionJob.class.getSimpleName(), MatchProcessPredictionJob.class,
+                "0 0 10 * * ?",
+                "Calculate expected xG, Win Probs & Confidence Score (UTC 10:00 / VN 17:00 PM)"
+        );
+        createJobIfNotExist(MatchDashboardJob.class.getSimpleName(), MatchDashboardJob.class,
+                "0 30 10 * * ?",
+                "Render Thymeleaf templates & enqueue to NotificationQueue (UTC 10:30 / VN 17:30 PM)"
+        );
 
-        // 2. DAILY DATA PIPELINE
-        // B1: Cào kết quả đêm qua (04:00 UTC = 11:00 AM VN)
-        createJobIfNotExist("MatchResultSyncJob", MatchResultJob.class, "0 0 4 * * ?",
-                "Fetch Match Results & Stats");
+        // =========================================================================
+        // GROUP 3: REALTIME & SÁT GIỜ BÓNG LĂN
+        // =========================================================================
+        createJobIfNotExist(NotificationPublisherJob.class.getSimpleName(), NotificationPublisherJob.class,
+                "0 */2 * * * ?",
+                "Scan queue and publish messages to Telegram/Facebook/X (Every 2 mins)"
+        );
+        createJobIfNotExist(MatchStatusTrackerJob.class.getSimpleName(), MatchStatusTrackerJob.class,
+                "0 0 */3 * * ?",
+                "Track postponed/cancelled matches (Every 3 hours)"
+        );
+        createJobIfNotExist(MatchLineupOddsUpdateJob.class.getSimpleName(), MatchLineupOddsUpdateJob.class,
+                "0 0/15 15-21 * * ?",
+                "Update official lineups & odds movement before match (Every 15m UTC 15:00-21:00)"
+        );
 
-        // B2: Đánh giá hiệu suất ngày cũ (05:00 UTC = 12:00 PM VN)
-        createJobIfNotExist("MatchDailyRecapJob", MatchDailyRecapJob.class, "0 0 5 * * ?",
-                "Process Daily Recap & Accuracy");
+        // =========================================================================
+        // GROUP 4: MONITORING & SYSTEM MAINTENANCE
+        // =========================================================================
+        createJobIfNotExist(CrawlerHealthCheckJob.class.getSimpleName(), CrawlerHealthCheckJob.class,
+                "0 30 9 * * ?",
+                "Test crawlers DOM/Selectors health check (UTC 09:30 / VN 16:30 PM)"
+        );
+        createJobIfNotExist(DataCleanupJob.class.getSimpleName(), DataCleanupJob.class,
+                "0 0 1 ? * SUN",
+                "Cleanup temp Playwright files and old logs (UTC 01:00 Sun / VN 08:00 AM Sun)"
+        );
 
-        // B3: Cào danh sách trận hôm nay (05:30 UTC = 12:30 PM VN)
-        createJobIfNotExist("MatchFixtureSyncJob", MatchUpcomingJob.class, "0 30 5 * * ?",
-                "Fetch Today Fixtures");
-
-        // B4: Cào Insight chuyên sâu (06:00 - 09:00 UTC = 13:00 - 16:00 PM VN)
-        createJobIfNotExist("MatchInsightFetchJob", MatchInsightJob.class, "0 0/30 6-9 * * ?",
-                "Fetch Deep Match Insights");
-
-        // B5: Health Check Crawlers (09:30 UTC = 16:30 PM VN)
-        createJobIfNotExist("CrawlerHealthCheckJob", CrawlerHealthCheckJob.class, "0 30 9 * * ?",
-                "Check Playwright Crawler Health");
-
-        // B6: Tính toán dự đoán (10:00 UTC = 17:00 PM VN)
-        createJobIfNotExist("MatchProcessPredictionJob", MatchProcessPredictionJob.class, "0 0 10 * * ?",
-                "Calculate Match Predictions");
-
-        // B7: Render Dashboard (10:30 UTC = 17:30 PM VN)
-        createJobIfNotExist("MatchDashboardPublishJob", MatchDashboardJob.class, "0 30 10 * * ?",
-                "Prepare Dashboard Content");
-
-        // 3. REALTIME & SYSTEM MONITORING
-        // Đẩy tin tự động từ Queue ra Social/Telegram (Mỗi 2 phút)
-        createJobIfNotExist("NotificationPublisherJob", NotificationPublisherJob.class, "0 */2 * * * ?",
-                "Publish Queue Notifications");
-
-        // Kiểm tra trận hoãn (Mỗi 3 tiếng)
-        createJobIfNotExist("MatchStatusTrackerJob", MatchStatusTrackerJob.class, "0 0 */3 * * ?",
-                "Track Match Status Changes");
-
-        // Cập nhật Lineups & Odds sát giờ bóng lăn (15:00 - 21:00 UTC = 22:00 - 04:00 AM VN)
-        createJobIfNotExist("MatchLineupOddsUpdateJob", MatchLineupOddsJob.class, "0 0/15 15-21 * * ?",
-                "Update Lineups & Odds");
-
-        // Dọn dẹp tài nguyên OS/DB (Chủ Nhật 01:00 UTC)
-        createJobIfNotExist("DataCleanupJob", DataCleanupJob.class, "0 0 1 ? * SUN",
-                "Cleanup Logs and Temp Files");
+        log.info("CronJobs initialization completed successfully.");
     }
 
     private void createJobIfNotExist(String jobName, Class<?> jobClass, String cronExpression, String description) {
@@ -92,80 +118,9 @@ public class FBCronjobInitial implements DataInitializer {
             job.setJobClass(jobClass.getName());
             job.setCronExpression(cronExpression);
             job.setDescription(description);
+
             cronJobService.saveJob(job);
+            log.info("Created CronJob [{}] with expression: {}", jobName, cronExpression);
         }
     }
-
-//    @Override
-//    public void initialize() {
-//        if (cronJobRepository.findByJobNameAndJobGroup(MatchResultJob.class.getSimpleName(), FB_JOB_GROUP).isEmpty()) {
-//            final CronJob resultJob = new CronJob();
-//            resultJob.setJobName(MatchResultJob.class.getSimpleName());
-//            resultJob.setJobGroup(FB_JOB_GROUP);
-//            resultJob.setJobClass(MatchResultJob.class.getName());
-//            resultJob.setCronExpression("0 30 9 * * ?");
-//            resultJob.setDescription("Fetch Match Results Job");
-//            cronJobService.saveJob(resultJob);
-//        }
-//
-//        if (cronJobRepository.findByJobNameAndJobGroup(MatchDailyRecapJob.class.getSimpleName(), FB_JOB_GROUP).isEmpty()) {
-//            final CronJob dailyRecapJob = new CronJob();
-//            dailyRecapJob.setJobName(MatchDailyRecapJob.class.getSimpleName());
-//            dailyRecapJob.setJobGroup(FB_JOB_GROUP);
-//            dailyRecapJob.setJobClass(MatchDailyRecapJob.class.getName());
-//            dailyRecapJob.setCronExpression("0 0 10 * * ?");
-//            dailyRecapJob.setDescription("Fetch Match Daily Recap Job");
-//            cronJobService.saveJob(dailyRecapJob);
-//        }
-//
-//        if (cronJobRepository.findByJobNameAndJobGroup(MatchUpcomingJob.class.getSimpleName(), FB_JOB_GROUP).isEmpty()) {
-//            final CronJob matchUpcomingJob = new CronJob();
-//            matchUpcomingJob.setJobName(MatchUpcomingJob.class.getSimpleName());
-//            matchUpcomingJob.setJobGroup(FB_JOB_GROUP);
-//            matchUpcomingJob.setJobClass(MatchUpcomingJob.class.getName());
-//            matchUpcomingJob.setCronExpression("0 0 11 * * ?");
-//            matchUpcomingJob.setDescription("Fetch Match Upcoming Job");
-//            cronJobService.saveJob(matchUpcomingJob);
-//        }
-//
-//        if (cronJobRepository.findByJobNameAndJobGroup(MatchProcessPredictionJob.class.getSimpleName(), FB_JOB_GROUP).isEmpty()) {
-//            final CronJob processPredictionJob = new CronJob();
-//            processPredictionJob.setJobName(MatchProcessPredictionJob.class.getSimpleName());
-//            processPredictionJob.setJobGroup(FB_JOB_GROUP);
-//            processPredictionJob.setJobClass(MatchProcessPredictionJob.class.getName());
-//            processPredictionJob.setCronExpression("0 0 12 * * ?");
-//            processPredictionJob.setDescription("Process calculate prediction Job");
-//            cronJobService.saveJob(processPredictionJob);
-//        }
-//
-//        if (cronJobRepository.findByJobNameAndJobGroup(MatchDashboardJob.class.getSimpleName(), FB_JOB_GROUP).isEmpty()) {
-//            final CronJob matchDashboardJob = new CronJob();
-//            matchDashboardJob.setJobName(MatchDashboardJob.class.getSimpleName());
-//            matchDashboardJob.setJobGroup(FB_JOB_GROUP);
-//            matchDashboardJob.setJobClass(MatchDashboardJob.class.getName());
-//            matchDashboardJob.setCronExpression("0 0 13 * * ?");
-//            matchDashboardJob.setDescription("Fetch Match Daily Upcoming Dashboard Job");
-//            cronJobService.saveJob(matchDashboardJob);
-//        }
-//
-//        if (cronJobRepository.findByJobNameAndJobGroup(MatchInsightJob.class.getSimpleName(), FB_JOB_GROUP).isEmpty()) {
-//            final CronJob matchInsightJob = new CronJob();
-//            matchInsightJob.setJobName(MatchInsightJob.class.getSimpleName());
-//            matchInsightJob.setJobGroup(FB_JOB_GROUP);
-//            matchInsightJob.setJobClass(MatchInsightJob.class.getName());
-//            matchInsightJob.setCronExpression("0 */28 * * * ?");
-//            matchInsightJob.setDescription("Fetch Match Upcoming Insights Job");
-//            cronJobService.saveJob(matchInsightJob);
-//        }
-//
-//        if (cronJobRepository.findByJobNameAndJobGroup(InitialFBDataJob.class.getSimpleName(), FB_JOB_GROUP).isEmpty()) {
-//            final CronJob initialDataJob = new CronJob();
-//            initialDataJob.setJobName(InitialFBDataJob.class.getSimpleName());
-//            initialDataJob.setJobGroup(FB_JOB_GROUP);
-//            initialDataJob.setJobClass(InitialFBDataJob.class.getName());
-//            initialDataJob.setCronExpression("0 0 0 1 8 ?");
-//            initialDataJob.setDescription("Initial All Data FB Job");
-//            cronJobService.saveJob(initialDataJob);
-//        }
-//    }
 }

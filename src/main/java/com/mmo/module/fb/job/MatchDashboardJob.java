@@ -2,24 +2,19 @@ package com.mmo.module.fb.job;
 
 import com.mmo.cronjob.entity.CronJob;
 import com.mmo.cronjob.job.AbstractJob;
-import com.mmo.module.publisher.telegram.service.TelegramService;
-import com.mmo.module.fb.entity.MatchPrediction;
-import com.mmo.module.fb.entity.enums.MatchPredictionStatus;
 import com.mmo.module.fb.repository.MatchPredictionRepository;
-import com.mmo.utils.DateTimeUtils;
+import com.mmo.module.publisher.telegram.service.TelegramService;
 import jakarta.annotation.Resource;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.collections4.CollectionUtils;
+import lombok.extern.slf4j.Slf4j;
+import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionContext;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.Collections;
-import java.util.List;
-
+@Slf4j
 @Component
+@DisallowConcurrentExecution
+@RequiredArgsConstructor
 public class MatchDashboardJob extends AbstractJob<CronJob> {
     @Resource
     private TelegramService telegramService;
@@ -29,16 +24,16 @@ public class MatchDashboardJob extends AbstractJob<CronJob> {
 
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
-        LocalDateTime startTimeWindow = LocalDateTime.of(DateTimeUtils.todayLocalDate(), LocalTime.of(13, 0));
-        LocalDateTime endTimeWindow = startTimeWindow.plusHours(24);
-
-        List<MatchPrediction> readyPredictions = predictionRepository
-                .findByStatusAndKickoffTimeBetweenOrderByKickoffTimeAsc(MatchPredictionStatus.READY, startTimeWindow, endTimeWindow);
-        if (CollectionUtils.isNotEmpty(readyPredictions)) {
-//            MatchClassification matchClassification = classifyMatches(readyPredictions);
-            telegramService.notifyMatchesDashboard(Collections.emptyList(), readyPredictions);
-            predictionRepository.saveAll(readyPredictions);
-        }
+//        LocalDateTime startTimeWindow = LocalDateTime.of(DateTimeUtils.todayLocalDate(), LocalTime.of(13, 0));
+//        LocalDateTime endTimeWindow = startTimeWindow.plusHours(24);
+//
+//        List<MatchPrediction> readyPredictions = predictionRepository
+//                .findByStatusAndKickoffTimeBetweenOrderByKickoffTimeAsc(MatchPredictionStatus.READY, startTimeWindow, endTimeWindow);
+//        if (CollectionUtils.isNotEmpty(readyPredictions)) {
+////            MatchClassification matchClassification = classifyMatches(readyPredictions);
+//            telegramService.notifyMatchesDashboard(Collections.emptyList(), readyPredictions);
+//            predictionRepository.saveAll(readyPredictions);
+//        }
     }
 
 //    private MatchClassification classifyMatches(List<MatchPrediction> valueMatches) {
@@ -61,13 +56,13 @@ public class MatchDashboardJob extends AbstractJob<CronJob> {
 //        }
 //        return new MatchClassification(freeMatches, vipMatches);
 //    }
-
-    @Getter
-    @RequiredArgsConstructor
-    private static class MatchClassification {
-        private final List<MatchPrediction> freeMatches;
-        private final List<MatchPrediction> vipMatches;
-    }
+//
+//    @Getter
+//    @RequiredArgsConstructor
+//    private static class MatchClassification {
+//        private final List<MatchPrediction> freeMatches;
+//        private final List<MatchPrediction> vipMatches;
+//    }
 
 }
 

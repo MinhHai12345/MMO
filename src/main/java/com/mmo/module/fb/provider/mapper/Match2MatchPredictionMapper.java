@@ -3,7 +3,6 @@ package com.mmo.module.fb.provider.mapper;
 import com.mmo.converter.AbstractMapper;
 import com.mmo.module.fb.entity.Match;
 import com.mmo.module.fb.entity.MatchPrediction;
-import com.mmo.module.fb.entity.enums.MatchPredictionStatus;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;

@@ -1,6 +1,6 @@
 package com.mmo.module.fb.core.model;
 
-import com.mmo.module.fb.entity.enums.ValueBetType;
+import com.mmo.module.fb.enums.ValueBetType;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;

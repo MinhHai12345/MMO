@@ -17,13 +17,13 @@ import lombok.Setter;
 import java.time.Instant;
 
 @Entity
-@Table(name = "fb_match_predictions")
+@Table(name = "fb_match_insights")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class MatchPrediction extends AbstractEntity {
+public class MatchInsight extends AbstractEntity {
 
     @MapsId
     @OneToOne(fetch = FetchType.LAZY)
@@ -31,41 +31,35 @@ public class MatchPrediction extends AbstractEntity {
     private Match match;
 
     @Column(precision = 5, scale = 2)
-    private Double predictedHomeXg;
+    private Double homeAvgXg;
 
     @Column(precision = 5, scale = 2)
-    private Double predictedAwayXg;
+    private Double homeAvgXgConceded;
 
     @Column(precision = 5, scale = 2)
-    private Double winHomeProb;
-
-    @Column(precision = 5, scale = 2)
-    private Double drawProb;
-
-    @Column(precision = 5, scale = 2)
-    private Double winAwayProb;
+    private Double awayAvgXg;
 
     @Column
-    private String recommendedPick;
-
-    @Column(precision = 5, scale = 2)
-    private Double confidenceScore;
-
-    @Column(columnDefinition = "TEXT")
-    private String predictionReasoning;
+    private Double awayAvgXgConceded;
 
     @Column
-    private Instant calculatedAt;
-
-    @Column(columnDefinition = "TEXT")
-    private String telegramPostHtml;
-
-    @Column(columnDefinition = "TEXT")
-    private String facebookPostText;
-
-    @Column(columnDefinition = "TEXT")
-    private String twitterThreadJson;
+    private String homeForm;
 
     @Column
-    private String imageUrl;
+    private String awayForm;
+
+    @Column
+    private Integer homeRestDays;
+
+    @Column
+    private Integer awayRestDays;
+
+    @Column(columnDefinition = "TEXT")
+    private String h2hSummaryJson;
+
+    @Column(columnDefinition = "TEXT")
+    private String lineupJson;
+
+    @Column
+    private Instant fetchedAt;
 }
