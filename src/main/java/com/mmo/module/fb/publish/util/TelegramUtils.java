@@ -1,4 +1,4 @@
-package com.mmo.module.fb.publisher.util;
+package com.mmo.module.fb.publish.util;
 
 public class TelegramUtils {
     public static String escape(String text) {

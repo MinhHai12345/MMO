@@ -1,4 +1,4 @@
-package com.mmo.module.fb.publisher.strategy;
+package com.mmo.module.fb.publish.strategy;
 
 import com.mmo.module.fb.publisher.model.Platform;
 import com.mmo.module.fb.publisher.model.PredictionData;
