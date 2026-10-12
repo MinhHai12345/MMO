@@ -1,0 +1,48 @@
+package com.mmo.module.publisher.telegram.service.impl;
+
+import com.mmo.configuration.AppProperties;
+import com.mmo.module.fb.publisher.model.Platform;
+import com.mmo.module.fb.publisher.model.PredictionData;
+import com.mmo.module.publisher.telegram.service.AbstractTelegramService;
+import com.mmo.module.publisher.telegram.service.TelegramService;
+import com.mmo.module.fb.publisher.strategy.ContentStrategy;
+import com.mmo.module.fb.publisher.strategy.ContentStrategyRegistry;
+import com.mmo.module.fb.entity.MatchPrediction;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class TelegramServiceImpl extends AbstractTelegramService implements TelegramService {
+    private final AppProperties appProperties;
+    private final ContentStrategyRegistry strategyRegistry;
+
+    @Override
+    public void notifyMatchesDashboard(List<MatchPrediction> freeMatches, List<MatchPrediction> vipMatches) {
+        ContentStrategy contentStrategy = strategyRegistry.getStrategy(Platform.TELEGRAM);
+        String content = contentStrategy.buildMatchesDashboardContent(freeMatches, vipMatches);
+        publish(appProperties.getTelegram().getChannel().getFree(), content);
+    }
+
+    @Override
+    public void notifyMatchesInsights(List<PredictionData> matches) {
+        ContentStrategy contentStrategy = strategyRegistry.getStrategy(Platform.TELEGRAM);
+        for (PredictionData match : matches) {
+            byte[] image = contentStrategy.buildMatchesInsightImage(match);
+            publish(appProperties.getTelegram().getChannel().getPremium(),
+                    match.getHomeTeam().concat(" vs ").concat(match.getAwayTeam()), image);
+        }
+    }
+
+    @Override
+    public void notifyMatchesRecap(List<MatchPrediction> matches) {
+        ContentStrategy contentStrategy = strategyRegistry.getStrategy(Platform.TELEGRAM);
+        String content = contentStrategy.buildMatchesRecapContent(matches);
+        publish(appProperties.getTelegram().getChannel().getFree(), content);
+    }
+
+}

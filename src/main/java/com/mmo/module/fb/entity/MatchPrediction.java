@@ -1,149 +1,71 @@
 package com.mmo.module.fb.entity;
 
 import com.mmo.entity.AbstractEntity;
-import com.mmo.module.fb.entity.enums.MatchPredictionStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Index;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.Transient;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
+import java.time.Instant;
 
 @Entity
-@Table(name = "match_predictions", indexes = {
-        @Index(name = "idx_kickoff_time", columnList = "kickoff_time"),
-        @Index(name = "idx_status", columnList = "status")
-})
+@Table(name = "fb_match_predictions")
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class MatchPrediction extends AbstractEntity {
 
-    @OneToOne
+    @MapsId
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "match_id")
     private Match match;
 
-    @Column(nullable = false)
-    private LocalDateTime kickoffTime;
+    @Column(precision = 5, scale = 2)
+    private Double predictedHomeXg;
 
-    @Transient
-    private String matchTime;
+    @Column(precision = 5, scale = 2)
+    private Double predictedAwayXg;
 
-    @Transient
-    private int index;
+    @Column(precision = 5, scale = 2)
+    private Double winHomeProb;
 
-    @Transient
-    private boolean isWin;
-
-    @Column(precision = 2)
-    private Double homeProb;
-
-    @Column(precision = 2)
+    @Column(precision = 5, scale = 2)
     private Double drawProb;
 
-    @Column(precision = 2)
-    private Double awayProb;
-
-
-    // =========================================================================
-    // 🏛️ MARKET ODDS (Dữ liệu tỷ lệ cược cào từ SofaScore)
-    // =========================================================================
-    @Column(precision = 2)
-    private Double sofaHomeOdd;
-
-    @Column(precision = 2)
-    private Double sofaDrawOdd;
-
-    @Column(precision = 2)
-    private Double sofaAwayOdd;
-
-    // =========================================================================
-    // 🔬 POISSON PREDICTION RESULT (Dữ liệu hệ thống tự tính toán)
-    // =========================================================================
-    @Column(precision = 2)
-    private Double marketHomeXG;
-
-    @Column(precision = 2)
-    private Double marketAwayXG;
-
-    @Column(precision = 2)
-    private Double h2TotalXG;
-
-    @Column(precision = 2)
-    private String h2HandicapMargin;
-
-    @Column(precision = 2)
-    private Double h2ProbUnder25;
-
-    @Column(precision = 2)
-    private Double h2ProbOver25;
-
-    @Column(precision = 2)
-    private Double expectedHomeGoals;
-
-    @Column(precision = 2)
-    private Double expectedAwayGoals;
+    @Column(precision = 5, scale = 2)
+    private Double winAwayProb;
 
     @Column
-    private Integer actualHomeGoals;
+    private String recommendedPick;
+
+    @Column(precision = 5, scale = 2)
+    private Double confidenceScore;
+
+    @Column(columnDefinition = "TEXT")
+    private String predictionReasoning;
 
     @Column
-    private Integer actualAwayGoals;
+    private Instant calculatedAt;
 
-    @Column(precision = 2)
-    private Double fairHomeOdd;
+    @Column(columnDefinition = "TEXT")
+    private String telegramPostHtml;
 
-    @Column(precision = 2)
-    private Double fairDrawOdd;
+    @Column(columnDefinition = "TEXT")
+    private String facebookPostText;
 
-    @Column(precision = 2)
-    private Double fairAwayOdd;
-
-    // =========================================================================
-    // 🎯 BUSINESS LOGIC & CONTENT DISTRIBUTION STATE
-    // =========================================================================
-    @Column
-    private String valueBetPick;
+    @Column(columnDefinition = "TEXT")
+    private String twitterThreadJson;
 
     @Column
-    private String mostLikelyWinner;
-
-    @Column(precision = 2)
-    private Double smartStakingSize;
-
-    @Column(precision = 2)
-    private Double edgePercentage;
-
-    @Column
-    private String topCorrectScores;
-
-    @Column
-    private boolean hasValue = false;
-
-    @Column
-    private boolean isPremium = false;
-
-    @Column
-    @Enumerated(EnumType.STRING)
-    private MatchPredictionStatus status; // Trạng thái: PENDING (Chưa tính), READY (Đã tính), FREE_DASHBOARD, FREE_DETAIL, VIP_ONLY, POSTED (Đã đăng thành công)
-
-    public String getMatchTime() {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm", Locale.ENGLISH);
-        ZonedDateTime utcTime = kickoffTime
-                .atZone(ZoneId.of("Asia/Ho_Chi_Minh"))
-                .withZoneSameInstant(ZoneOffset.UTC);
-        this.matchTime = utcTime.format(formatter);
-        return matchTime;
-    }
+    private String imageUrl;
 }

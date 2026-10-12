@@ -1,7 +1,7 @@
 package com.mmo.module.fb.video.mapper;
 
 import com.mmo.converter.AbstractMapper;
-import com.mmo.module.fb.channel.model.PredictionData;
+import com.mmo.module.fb.publisher.model.PredictionData;
 import com.mmo.module.fb.video.model.VideoContent;
 import org.springframework.stereotype.Component;
 
