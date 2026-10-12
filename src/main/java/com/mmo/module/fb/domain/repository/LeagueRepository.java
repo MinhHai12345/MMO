@@ -1,0 +1,27 @@
+package com.mmo.module.fb.repository;
+
+import com.mmo.module.fb.domain.entity.League;
+import org.jetbrains.annotations.NotNull;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface LeagueRepository extends JpaRepository<League, Long> {
+
+    @NotNull
+    @EntityGraph(attributePaths = {"currentSeason"})
+    List<League> findAll();
+
+    @NotNull
+    @EntityGraph(attributePaths = {"currentSeason"})
+    Optional<League> findById(@NotNull Long id);
+
+    @NotNull
+    @EntityGraph(attributePaths = {"currentSeason"})
+    List<League> findByActiveIsTrue();
+
+}
