@@ -30,4 +30,13 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
                                                                           @Param("status") String status);
     
     List<Match> findByStatus(String status);
+    
+    @Query("SELECT DISTINCT m.externalId FROM Match m WHERE m.league = :league")
+    List<String> findDistinctExternalIdsByLeague(@Param("league") com.mmo.module.fb.domain.entity.League league);
+    
+    @Query("SELECT m FROM Match m WHERE m.status = 'FINISHED' AND (m.homeXG IS NULL OR m.awayXG IS NULL)")
+    List<Match> findByStatusAndHomeXGIsNullAndAwayXGIsNull();
+    
+    @Query("SELECT m FROM Match m WHERE m.status = :status AND m.homeXG IS NULL AND m.awayXG IS NULL ORDER BY m.matchTime ASC")
+    List<Match> findTop30ByStatusAndHomeXGIsNullAndAwayXGIsNullOrderByMatchTimeAsc(@Param("status") String status);
 }
