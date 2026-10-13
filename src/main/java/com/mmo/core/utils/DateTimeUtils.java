@@ -1,8 +1,10 @@
 package com.mmo.core.utils;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
@@ -32,5 +34,15 @@ public class DateTimeUtils {
 
     public static LocalDate todayLocalDate() {
         return LocalDate.now();
+    }
+
+
+    /** Ngày hiện tại theo UTC, dùng cho các API tra cứu theo ngày. */
+    public static LocalDate todayUtc() {
+        return LocalDate.now(ZoneOffset.UTC);
+    }
+
+    public static Instant nowUtc() {
+        return Instant.now();
     }
 }

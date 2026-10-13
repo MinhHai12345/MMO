@@ -3,7 +3,7 @@ package com.mmo.module.fb.ingest.provider.service.impl;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.TimeoutError;
-import com.mmo.core.configuration.AppProperties;
+import com.mmo.AppProperties;
 import com.mmo.core.utils.DateTimeUtils;
 import com.mmo.module.fb.domain.entity.Team;
 import com.mmo.module.fb.ingest.provider.model.DynamicFetchResult;

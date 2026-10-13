@@ -35,13 +35,12 @@ public abstract class AbstractJob<T extends CronJob> extends QuartzJobBean imple
             final StopWatch stopWatch = new StopWatch();
             stopWatch.start();
             executeInternal(context, cronjob);
-            cronjob.setLastCompleteStatus(JobCompleteState.SUCCESS);
             stopWatch.stop();
-            LOGGER.info("Done [{}]", cronjob.getJobName());
-            LOGGER.info("Execution time: {} ms", stopWatch.getTotalTimeMillis());
+            context.setResult(JobCompleteState.SUCCESS);
+            LOGGER.info("Done [{}] in {} ms", cronjob.getJobName(), stopWatch.getTotalTimeMillis());
         } catch (Exception e) {
-            cronjob.setLastCompleteStatus(JobCompleteState.ERROR);
-            LOGGER.error("Error while executing {}", cronjob, e);
+            context.setResult(JobCompleteState.ERROR);
+            LOGGER.error("Error while executing [{}]", cronjob, e);
         }
     }
 

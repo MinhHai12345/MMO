@@ -1,6 +1,7 @@
 package com.mmo.core.cronjob.listener;
 
 import com.mmo.core.cronjob.entity.CronJob;
+import com.mmo.core.cronjob.entity.JobCompleteState;
 import com.mmo.core.cronjob.entity.JobState;
 import com.mmo.core.cronjob.repository.CronJobRepository;
 import com.mmo.core.cronjob.service.CronJobService;
@@ -35,8 +36,16 @@ public class JobStateListener extends JobListenerSupport {
         super.jobWasExecuted(context, jobException);
         final JobKey jobKey = context.getJobDetail().getKey();
         final CronJob executingJob = BeanUtils.getBean(CronJobService.class).getJob(jobKey.getName(), jobKey.getGroup());
+        final Object result = context.getResult();
+        final JobCompleteState state;
+        if (result instanceof JobCompleteState completeState) {
+            state = completeState;
+        } else {
+            state = jobException != null ? JobCompleteState.ERROR : JobCompleteState.SUCCESS;
+        }
         executingJob.setJobStatus(JobState.COMPLETE);
         executingJob.setLastExecutedTime(ZonedDateTime.now());
+        executingJob.setLastCompleteStatus(state);
         BeanUtils.getBean(CronJobRepository.class).save(executingJob);
     }
 }

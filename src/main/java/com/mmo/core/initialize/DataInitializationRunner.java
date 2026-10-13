@@ -1,6 +1,6 @@
 package com.mmo.core.initialize;
 
-import com.mmo.core.configuration.AppProperties;
+import com.mmo.AppProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
