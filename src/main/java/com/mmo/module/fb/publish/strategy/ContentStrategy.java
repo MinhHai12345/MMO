@@ -1,8 +1,8 @@
 package com.mmo.module.fb.publish.strategy;
 
-import com.mmo.module.fb.publisher.model.Platform;
-import com.mmo.module.fb.publisher.model.PredictionData;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
+import com.mmo.module.fb.publish.model.Platform;
+import com.mmo.module.fb.publish.model.PredictionData;
 
 import java.util.List;
 

@@ -1,4 +1,4 @@
-package com.mmo.module.fb.enums;
+package com.mmo.module.fb.domain.enums;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

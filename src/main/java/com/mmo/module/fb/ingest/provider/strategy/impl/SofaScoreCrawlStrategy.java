@@ -1,17 +1,21 @@
 package com.mmo.module.fb.ingest.provider.strategy.impl;
 
 import com.mmo.module.fb.domain.entity.League;
+import com.mmo.module.fb.domain.entity.LeagueExternalId;
 import com.mmo.module.fb.domain.entity.Season;
-import com.mmo.module.fb.ingest.provider.model.enums.Provider;
+import com.mmo.module.fb.domain.entity.SeasonExternalId;
+import com.mmo.module.fb.domain.enums.Provider;
+import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
+import com.mmo.module.fb.domain.repository.LeagueRepository;
+import com.mmo.module.fb.domain.repository.MatchPredictionRepository;
+import com.mmo.module.fb.domain.repository.MatchRepository;
+import com.mmo.module.fb.domain.repository.SeasonExternalIdRepository;
+import com.mmo.module.fb.domain.repository.TeamRepository;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
 import com.mmo.module.fb.ingest.provider.service.SofaCrawlerService;
 import com.mmo.module.fb.ingest.provider.strategy.AbstractCrawler;
-import com.mmo.module.fb.repository.LeagueRepository;
-import com.mmo.module.fb.repository.MatchPredictionRepository;
-import com.mmo.module.fb.repository.MatchRepository;
 import com.mmo.module.fb.repository.SeasonRepository;
-import com.mmo.module.fb.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -34,6 +38,8 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
     private final SeasonRepository seasonRepository;
     private final SofaCrawlerService sofaCrawlerService;
     private final MatchPredictionRepository matchPredictionRepository;
+    private final LeagueExternalIdRepository leagueExternalIdRepository;
+    private final SeasonExternalIdRepository seasonExternalIdRepository;
 
     @Override
     public void syncLeagues() {
@@ -42,19 +48,34 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
                 tournaments -> {
                     if (CollectionUtils.isEmpty(tournaments)) return;
 
-                    List<League> leagues = leagueRepository.findAll();
-                    Set<Long> leagueIds = leagues.stream()
-                            .filter(Objects::nonNull)
-                            .map(it -> Long.valueOf(it.getExternalId()))
+                    Set<String> existingSofaIds = leagueExternalIdRepository.findAll().stream()
+                            .filter(eid -> Provider.SOFA_SCORE.name().equals(eid.getProvider().name()))
+                            .map(LeagueExternalId::getExternalId)
                             .collect(Collectors.toSet());
-                    tournaments = tournaments.stream()
-                            .filter(Objects::nonNull)
-                            .filter(it -> !leagueIds.contains(it.getId()))
-                            .toList();
-                    if (CollectionUtils.isNotEmpty(tournaments)) {
-                        leagueRepository.saveAll(dynamicConverter.convertAll(tournaments, League.class));
-                        log.info("✅ Đã lưu thành công {} giải đấu mới.", tournaments.size());
-                    }
+
+//                    List<SofaSeasonData.TournamentDTO> newTournaments = tournaments.stream()
+//                            .filter(Objects::nonNull)
+//                            .filter(t -> !existingSofaIds.contains(String.valueOf(t.getId())))
+//                            .toList();
+
+//                    if (CollectionUtils.isNotEmpty(newTournaments)) {
+//                        List<League> leagues = dynamicConverter.convertAll(newTournaments, League.class);
+//                        List<League> savedLeagues = leagueRepository.saveAll(leagues);
+//
+//                        List<LeagueExternalId> externalIds = savedLeagues.stream()
+//                                .map(league -> LeagueExternalId.builder()
+//                                        .league(league)
+//                                        .provider(Provider.SOFA_SCORE)
+//                                        .externalId(String.valueOf(newTournaments.stream()
+//                                                .filter(t -> t.getName().equals(league.getName()))
+//                                                .findFirst()
+//                                                .orElseThrow()
+//                                                .getId()))
+//                                        .build())
+//                                .toList();
+//                        leagueExternalIdRepository.saveAll(externalIds);
+//                        log.info("✅ Đã lưu thành công {} giải đấu mới.", newTournaments.size());
+//                    }
                 }
         );
     }
@@ -62,32 +83,52 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
     @Override
     public void storeSeasons() {
         List<League> activeLeagues = leagueRepository.findByActiveIsTrue();
-        Set<Long> existingSofaSeasonIds = seasonRepository.findAll().stream()
-                .map(it -> Long.valueOf(it.getExternalId()))
+        Set<String> existingSofaSeasonIds = seasonExternalIdRepository.findAll().stream()
+                .filter(eid -> Provider.SOFA_SCORE.name().equals(eid.getProvider().name()))
+                .map(SeasonExternalId::getExternalId)
                 .collect(Collectors.toSet());
         executeStorePipeline(
                 activeLeagues,
-                (league, page) -> sofaCrawlerService.fetchSeasonByTournamentId(Long.valueOf(league.getExternalId()), page),
+                (league, page) -> {
+                    LeagueExternalId leagueExtId = leagueExternalIdRepository
+                            .findByLeagueIdAndProvider(league.getId(), Provider.SOFA_SCORE)
+                            .orElseThrow(() -> new RuntimeException("League external ID not found for SOFA_SCORE"));
+                    return sofaCrawlerService.fetchSeasonByTournamentId(Long.valueOf(leagueExtId.getExternalId()), page);
+                },
                 (league, seasonDTOS) -> {
                     if (CollectionUtils.isEmpty(seasonDTOS)) return;
 
                     seasonDTOS.get(0).setCurrent(true);
                     List<SofaSeasonData.SeasonDTO> newSeasons = seasonDTOS.stream()
                             .filter(Objects::nonNull)
-                            .filter(season -> !existingSofaSeasonIds.contains(season.getId()))
+                            .filter(season -> !existingSofaSeasonIds.contains(String.valueOf(season.getId())))
                             .toList();
 
                     if (CollectionUtils.isNotEmpty(newSeasons)) {
-                        Set<Season> seasons = newSeasons.stream().map(seasonDTO -> {
+                        List<Season> seasons = newSeasons.stream().map(seasonDTO -> {
                             Season season = dynamicConverter.convert(seasonDTO, Season.class);
                             season.setLeague(league);
                             return season;
-                        }).collect(Collectors.toSet());
+                        }).toList();
 
-                        seasonRepository.saveAll(seasons);
+                        List<Season> savedSeasons = seasonRepository.saveAll(seasons);
 
-                        leagueRepository.save(league);
-                        existingSofaSeasonIds.addAll(seasons.stream().map(it -> Long.valueOf(it.getExternalId())).collect(Collectors.toSet()));
+                        List<SeasonExternalId> externalIds = savedSeasons.stream()
+                                .map(season -> {
+                                    SofaSeasonData.SeasonDTO dto = newSeasons.stream()
+                                            .filter(s -> s.getName().equals(season.getYear()))
+                                            .findFirst()
+                                            .orElseThrow();
+                                    return SeasonExternalId.builder()
+                                            .season(season)
+                                            .provider(Provider.SOFA_SCORE)
+                                            .externalId(String.valueOf(dto.getId()))
+                                            .build();
+                                })
+                                .toList();
+                        seasonExternalIdRepository.saveAll(externalIds);
+
+                        existingSofaSeasonIds.addAll(externalIds.stream().map(SeasonExternalId::getExternalId).toList());
                     }
                 }
         );

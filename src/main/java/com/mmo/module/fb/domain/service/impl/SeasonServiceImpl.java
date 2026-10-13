@@ -1,8 +1,8 @@
-package com.mmo.module.fb.service.impl;
+package com.mmo.module.fb.domain.service.impl;
 
+import com.mmo.module.fb.domain.service.SeasonService;
 import com.mmo.module.fb.ingest.provider.model.enums.Provider;
 import com.mmo.module.fb.provider.strategy.CrawlerStrategyRegistry;
-import com.mmo.module.fb.service.SeasonService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

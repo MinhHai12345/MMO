@@ -1,4 +1,4 @@
-package com.mmo.module.fb.repository;
+package com.mmo.module.fb.domain.repository;
 
 import com.mmo.module.fb.domain.entity.League;
 import org.jetbrains.annotations.NotNull;
@@ -23,5 +23,7 @@ public interface LeagueRepository extends JpaRepository<League, Long> {
     @NotNull
     @EntityGraph(attributePaths = {"currentSeason"})
     List<League> findByActiveIsTrue();
+
+    List<League> findByIsActive(Boolean isActive);
 
 }

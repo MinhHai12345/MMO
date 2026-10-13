@@ -1,4 +1,4 @@
-package com.mmo.module.fb.repository;
+package com.mmo.module.fb.domain.repository;
 
 import com.mmo.module.fb.domain.entity.Season;
 import org.springframework.data.jpa.repository.JpaRepository;

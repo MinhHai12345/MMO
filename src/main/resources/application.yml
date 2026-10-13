@@ -4,6 +4,20 @@ spring:
   application:
     name: mmo
 
+  datasource:
+    url: jdbc:mysql://localhost:3306/football_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:password}
+    
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+
   quartz:
     job-store-type: jdbc
     jdbc:
@@ -13,16 +27,47 @@ spring:
         quartz:
           jobStore:
             driverDelegateClass: org.quartz.impl.jdbcjobstore.StdJDBCDelegate
+
 app:
   initial-data:
     auto-import: true
+  
   telegram:
     bot:
       token: ${TELEGRAM_TOKEN}
       username: H2_FB_Bot
     channel:
+      id: ${TELEGRAM_CHANNEL_ID}
       free: ${FREE_CHANNEL_ID}
       premium: ${PREMIUM_CHANNEL_ID}
+      
+  twitter:
+    consumer:
+      key: ${TWITTER_CONSUMER_KEY}
+      secret: ${TWITTER_CONSUMER_SECRET}
+    access:
+      token: ${TWITTER_ACCESS_TOKEN}
+      secret: ${TWITTER_ACCESS_SECRET}
+
+  facebook:
+    page:
+      id: ${FACEBOOK_PAGE_ID}
+    access:
+      token: ${FACEBOOK_ACCESS_TOKEN}
+
+  stripe:
+    api:
+      key: ${STRIPE_API_KEY}
+      webhook:
+        secret: ${STRIPE_WEBHOOK_SECRET}
+        
   sofa-score:
     api: https://api.sofascore.com/api/v1/
     url: https://www.sofascore.com
+    
+  api-football:
+    base-url: https://api football-v1.p.rapidapi.com/v3
+    api-key: ${API_FOOTBALL_API_KEY}
+    
+  understats:
+    base-url: https://understat.com

@@ -1,6 +1,6 @@
 package com.mmo.module.fb.domain.service.impl;
 
-import com.mmo.module.fb.service.MatchPredictionService;
+import com.mmo.module.fb.domain.service.MatchPredictionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.provider.strategy;
 
 import com.microsoft.playwright.Page;
-import com.mmo.module.fb.ingest.provider.model.enums.Provider;
+import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData;
 
 import java.util.List;

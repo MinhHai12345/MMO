@@ -1,4 +1,4 @@
-package com.mmo.module.fb.publisher.model;
+package com.mmo.module.fb.publish.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

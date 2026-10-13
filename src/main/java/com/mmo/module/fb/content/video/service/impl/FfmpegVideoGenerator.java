@@ -2,7 +2,7 @@ package com.mmo.module.fb.content.video.service.impl;
 
 import com.mmo.module.fb.content.video.model.VideoContent;
 import com.mmo.module.fb.content.video.service.VideoGenerator;
-import com.mmo.module.fb.publisher.model.PredictionData;
+import com.mmo.module.fb.publish.model.PredictionData;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

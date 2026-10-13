@@ -1,21 +1,12 @@
-package com.mmo.module.fb.service.impl;
+package com.mmo.module.fb.domain.service.impl;
 
+import com.mmo.module.fb.domain.repository.LeagueRepository;
+import com.mmo.module.fb.domain.repository.MatchRepository;
+import com.mmo.module.fb.domain.repository.TeamRepository;
+import com.mmo.module.fb.domain.service.MatchService;
 import com.mmo.module.fb.provider.strategy.CrawlerStrategyRegistry;
-import com.mmo.module.fb.domain.entity.Match;
-import com.mmo.module.fb.domain.entity.Team;
-import com.mmo.module.fb.repository.LeagueRepository;
-import com.mmo.module.fb.repository.MatchRepository;
-import com.mmo.module.fb.repository.TeamRepository;
-import com.mmo.module.fb.service.MatchService;
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor

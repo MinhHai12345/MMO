@@ -4,6 +4,8 @@ import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.repository.CronJobRepository;
 import com.mmo.core.cronjob.service.CronJobService;
 import com.mmo.core.initialize.DataInitializer;
+import com.mmo.module.fb.ingest.job.AdvancedMetricsJob;
+import com.mmo.module.fb.ingest.job.ContentSchedulingJob;
 import com.mmo.module.fb.ingest.job.CrawlerHealthCheckJob;
 import com.mmo.module.fb.ingest.job.DataCleanupJob;
 import com.mmo.module.fb.ingest.job.LeagueSyncJob;
@@ -16,6 +18,7 @@ import com.mmo.module.fb.ingest.job.MatchResultSyncJob;
 import com.mmo.module.fb.ingest.job.MatchSeasonFixtureSyncJob;
 import com.mmo.module.fb.ingest.job.MatchStatusTrackerJob;
 import com.mmo.module.fb.ingest.job.NotificationPublisherJob;
+import com.mmo.module.fb.ingest.job.SubscriptionExpiryCheckJob;
 import com.mmo.module.fb.ingest.job.TeamSyncJob;
 import com.mmo.module.fb.job.MatchLineupOddsUpdateJob;
 import lombok.RequiredArgsConstructor;
@@ -105,6 +108,26 @@ public class FBCronjobInitial implements DataInitializer {
         createJobIfNotExist(DataCleanupJob.class.getSimpleName(), DataCleanupJob.class,
                 "0 0 1 ? * SUN",
                 "Cleanup temp Playwright files and old logs (UTC 01:00 Sun / VN 08:00 AM Sun)"
+        );
+
+        // =========================================================================
+        // GROUP 5: ADVANCED ANALYTICS & CONTENT
+        // =========================================================================
+        createJobIfNotExist(AdvancedMetricsJob.class.getSimpleName(), AdvancedMetricsJob.class,
+                "0 */2 * * * ?",
+                "Calculate PPDA, Field Tilt, xG Chain and store advanced metrics (Every 2 hours)"
+        );
+        createJobIfNotExist(ContentSchedulingJob.class.getSimpleName(), ContentSchedulingJob.class,
+                "0 0 8,12,18 * * ?",
+                "Schedule content for upcoming matches to different platforms (3 times daily)"
+        );
+
+        // =========================================================================
+        // GROUP 6: SUBSCRIPTION & MONETIZATION
+        // =========================================================================
+        createJobIfNotExist(SubscriptionExpiryCheckJob.class.getSimpleName(), SubscriptionExpiryCheckJob.class,
+                "0 0 0 * * ?",
+                "Check subscription expiry and send warnings (Daily at midnight UTC)"
         );
 
         log.info("CronJobs initialization completed successfully.");

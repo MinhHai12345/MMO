@@ -1,14 +1,16 @@
 package com.mmo.module.fb.domain.entity;
 
 import com.mmo.core.entity.AbstractEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "fb_leagues")
@@ -36,5 +38,17 @@ public class League extends AbstractEntity {
 
     @Column
     private String logoUrl;
+
+    @Column(name = "popularity_score")
+    private BigDecimal popularityScore = BigDecimal.ZERO;
+
+    @Column(name = "betting_market")
+    private String bettingMarket;
+
+    @Column(name = "is_active")
+    private Boolean isActive = true;
+
+    @OneToMany(mappedBy = "league", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<LeagueExternalId> externalIds = new ArrayList<>();
 
 }

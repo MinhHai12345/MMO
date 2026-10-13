@@ -1,4 +1,4 @@
-package com.mmo.module.fb.service;
+package com.mmo.module.fb.domain.service;
 
 public interface MatchService {
 

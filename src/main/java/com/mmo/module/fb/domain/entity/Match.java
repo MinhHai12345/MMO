@@ -1,16 +1,8 @@
 package com.mmo.module.fb.domain.entity;
 
 import com.mmo.core.entity.AbstractEntity;
-import com.mmo.module.fb.enums.MatchStatus;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import com.mmo.module.fb.domain.enums.MatchStatus;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -18,6 +10,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "fb_matches",
@@ -57,6 +51,17 @@ public class Match extends AbstractEntity {
     @Column
     private Integer round;
 
+    @Column(name = "round_info")
+    private String roundInfo;
+
+    private String venue;
+
+    private Integer attendance;
+
+    private String referee;
+
+    private String weather;
+
     @Column
     private Integer homeScore;
 
@@ -71,5 +76,8 @@ public class Match extends AbstractEntity {
 
     @Enumerated(EnumType.STRING)
     private MatchStatus status;
+
+    @OneToMany(mappedBy = "match", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MatchExternalId> externalIds = new ArrayList<>();
 
 }

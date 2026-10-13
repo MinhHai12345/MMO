@@ -1,18 +1,16 @@
 package com.mmo.module.fb.domain.entity;
 
 import com.mmo.core.entity.AbstractEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.MapsId;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "fb_match_odds")
@@ -23,36 +21,45 @@ import lombok.Setter;
 @Builder
 public class MatchOdds extends AbstractEntity {
 
-    @MapsId
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "match_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "match_id", nullable = false)
     private Match match;
 
-    @Column(precision = 5, scale = 2)
-    private Double homeWinOdds;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bookmaker_id", nullable = false)
+    private Bookmaker bookmaker;
 
-    @Column(precision = 5, scale = 2)
-    private Double drawOdds;
+    @Column(name = "market_name", nullable = false)
+    private String marketName;
 
-    @Column(precision = 5, scale = 2)
-    private Double awayWinOdds;
+    @Column(precision = 8, scale = 3)
+    private BigDecimal homeWinOdds;
 
-    @Column
-    private String handicapLine;
+    @Column(precision = 8, scale = 3)
+    private BigDecimal drawOdds;
 
-    @Column(precision = 5, scale = 2)
-    private Double homeHandicapOdds;
+    @Column(precision = 8, scale = 3)
+    private BigDecimal awayWinOdds;
 
-    @Column(precision = 5, scale = 2)
-    private Double awayHandicapOdds;
+    @Column(precision = 8, scale = 3)
+    private BigDecimal over25Odds;
 
-    @Column(precision = 5, scale = 2)
-    private Double overUnderLine;
+    @Column(precision = 8, scale = 3)
+    private BigDecimal under25Odds;
 
-    @Column(precision = 5, scale = 2)
-    private Double overOdds;
+    @Column(precision = 8, scale = 3)
+    private BigDecimal bttsYesOdds;
 
-    @Column(precision = 5, scale = 2)
-    private Double underOdds;
+    @Column(precision = 8, scale = 3)
+    private BigDecimal bttsNoOdds;
+
+    @Column(precision = 8, scale = 3)
+    private BigDecimal asianHandicapHome;
+
+    @Column(precision = 8, scale = 3)
+    private BigDecimal asianHandicapAway;
+
+    @OneToMany(mappedBy = "matchOdds", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OddsHistory> history = new ArrayList<>();
 
 }

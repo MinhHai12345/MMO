@@ -2,13 +2,22 @@ package com.mmo.module.fb.ingest.job;
 
 import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.job.AbstractJob;
-import com.mmo.module.fb.repository.MatchPredictionRepository;
+import com.mmo.module.fb.analytics.engine.CompositePredictionEngine;
+import com.mmo.module.fb.domain.entity.Match;
+import com.mmo.module.fb.domain.entity.MatchPrediction;
+import com.mmo.module.fb.domain.repository.MatchPredictionRepository;
+import com.mmo.module.fb.domain.repository.MatchRepository;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionContext;
 import org.springframework.stereotype.Component;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -19,18 +28,50 @@ public class MatchProcessPredictionJob extends AbstractJob<CronJob> {
     @Resource
     private MatchPredictionRepository matchPredictionRepository;
 
+    @Resource
+    private MatchRepository matchRepository;
+
+    @Resource
+    private CompositePredictionEngine compositePredictionEngine;
+
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
-//        LocalDateTime startTimeWindow = LocalDateTime.of(DateTimeUtils.todayLocalDate(), LocalTime.of(13, 0));
-//        LocalDateTime endTimeWindow = startTimeWindow.plusHours(24);
-//        List<MatchPrediction> predictions = matchPredictionRepository.findByStatusAndKickoffTimeBetweenOrderByKickoffTimeAsc(
-//                MatchPredictionStatus.PENDING, startTimeWindow, endTimeWindow);
-//        if (CollectionUtils.isNotEmpty(predictions)) {
-//            predictions.forEach(prediction -> {
-//                predictionEngineService.calculateMatchPredict(prediction);
-//                matchPredictionRepository.save(prediction);
-//            });
-//        }
+        log.info("🔮 Starting match prediction processing...");
+
+        Instant startTimeWindow = Instant.now().plus(6, ChronoUnit.HOURS);
+        Instant endTimeWindow = startTimeWindow.plus(48, ChronoUnit.HOURS);
+
+        List<Match> upcomingMatches = matchRepository.findByMatchTimeBetweenAndStatus(
+                startTimeWindow, endTimeWindow, "SCHEDULED");
+
+        if (CollectionUtils.isEmpty(upcomingMatches)) {
+            log.info("✅ No upcoming matches found for prediction");
+            return;
+        }
+
+        log.info("📊 Found {} upcoming matches to predict", upcomingMatches.size());
+
+        int processedCount = 0;
+        for (Match match : upcomingMatches) {
+            try {
+                MatchPrediction existingPrediction = matchPredictionRepository.findByMatchId(match.getId()).orElse(null);
+
+                if (existingPrediction != null && "PENDING".equals(existingPrediction.getPredictionStatus())) {
+                    MatchPrediction updatedPrediction = compositePredictionEngine.predict(match);
+                    updatedPrediction.setId(existingPrediction.getId());
+                    matchPredictionRepository.save(updatedPrediction);
+                    processedCount++;
+                } else if (existingPrediction == null) {
+                    MatchPrediction newPrediction = compositePredictionEngine.predict(match);
+                    matchPredictionRepository.save(newPrediction);
+                    processedCount++;
+                }
+            } catch (Exception e) {
+                log.error("❌ Error processing prediction for match {}: {}", match.getId(), e.getMessage());
+            }
+        }
+
+        log.info("✅ Completed prediction processing for {} matches", processedCount);
     }
 
 }
