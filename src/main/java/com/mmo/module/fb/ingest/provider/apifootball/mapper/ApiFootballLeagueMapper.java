@@ -38,6 +38,7 @@ public class ApiFootballLeagueMapper extends AbstractMapper<LeagueItem, Provider
     private ProviderSeason toSeason(LeagueSeasonDto season) {
         return new ProviderSeason(
                 season.year().toString(),
+                season.year().toString(),
                 Boolean.TRUE.equals(season.current()),
                 parseDate(season.start()),
                 parseDate(season.end())
