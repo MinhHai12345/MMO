@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -54,6 +55,7 @@ public class ApiFootballOddsSyncService {
                         && !match.getMatchTime().isAfter(until))
                 .filter(match -> matchExternalIdRepository
                         .findByMatchIdAndProvider(match.getId(), Provider.API_FOOTBALL).isPresent())
+                .sorted(Comparator.comparing(Match::getMatchTime))
                 .limit(MAX_FIXTURES_PER_RUN)
                 .toList();
 
