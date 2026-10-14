@@ -23,8 +23,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -67,10 +70,13 @@ public class FixtureIngestionService {
 
         int saved = 0;
         int skipped = 0;
-        List<Season> seasons = seasonRepository.findAll().stream()
-                .filter(Season::isCurrent)
-                .filter(season -> season.getLeague() != null && season.getYear() != null)
-                .toList();
+        List<Season> seasons = seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
+        Map<String, Team> teamsByExternalId = new HashMap<>();
+        teamExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
+                teamsByExternalId.put(mapping.getExternalId(), mapping.getTeam()));
+        Map<String, Match> matchesByExternalId = new HashMap<>();
+        matchExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
+                matchesByExternalId.put(mapping.getExternalId(), mapping.getMatch()));
 
         for (Season season : seasons) {
             Long externalLeagueId = leagueExternalIdRepository
@@ -86,8 +92,8 @@ public class FixtureIngestionService {
                     fixtures.size(), externalLeagueId, season.getYear(), selectedProvider);
 
             for (ProviderFixture fixture : fixtures) {
-                Team home = findTeam(fixture.homeTeamExternalId(), selectedProvider);
-                Team away = findTeam(fixture.awayTeamExternalId(), selectedProvider);
+                Team home = teamsByExternalId.get(fixture.homeTeamExternalId());
+                Team away = teamsByExternalId.get(fixture.awayTeamExternalId());
                 if (home == null || away == null) {
                     skipped++;
                     log.debug("Skipping fixture {} because one or both teams are not mapped",
@@ -95,23 +101,28 @@ public class FixtureIngestionService {
                     continue;
                 }
 
-                Match match = matchExternalIdRepository
-                        .findByProviderAndExternalId(selectedProvider, fixture.externalId())
-                        .map(MatchExternalId::getMatch)
-                        .orElse(null);
+                if (fixture.externalId() == null || fixture.externalId().isBlank()) {
+                    skipped++;
+                    log.warn("Skipping fixture with empty external ID from {}", selectedProvider);
+                    continue;
+                }
+
+                Match match = matchesByExternalId.get(fixture.externalId());
+
+                if (match != null && (!match.getSeason().getId().equals(season.getId())
+                        || !match.getHomeTeam().getId().equals(home.getId())
+                        || !match.getAwayTeam().getId().equals(away.getId()))) {
+                    skipped++;
+                    log.warn("Provider {} fixture ID {} is already mapped to a different canonical fixture; skipping",
+                            selectedProvider, fixture.externalId());
+                    continue;
+                }
 
                 if (match == null && fixture.kickoff() != null) {
-                    List<Match> candidates = matchRepository.findAll().stream()
-                            .filter(existing -> existing.getSeason() != null
-                                    && existing.getSeason().getId().equals(season.getId()))
-                            .filter(existing -> existing.getHomeTeam() != null
-                                    && existing.getAwayTeam() != null
-                                    && existing.getHomeTeam().getId().equals(home.getId())
-                                    && existing.getAwayTeam().getId().equals(away.getId()))
-                            .filter(existing -> existing.getMatchTime() != null
-                                    && Duration.between(existing.getMatchTime(), fixture.kickoff())
-                                    .abs().toHours() <= 6)
-                            .toList();
+                    Instant windowStart = fixture.kickoff().minus(Duration.ofHours(6));
+                    Instant windowEnd = fixture.kickoff().plus(Duration.ofHours(6));
+                    List<Match> candidates = matchRepository.findFixtureCandidates(
+                            season.getId(), home.getId(), away.getId(), windowStart, windowEnd);
                     if (candidates.size() == 1) {
                         match = candidates.get(0);
                     } else if (candidates.size() > 1) {
@@ -122,6 +133,11 @@ public class FixtureIngestionService {
                     }
                 }
 
+                if (match == null && fixture.kickoff() == null) {
+                    skipped++;
+                    log.warn("Skipping new fixture {} because kickoff time is missing", fixture.externalId());
+                    continue;
+                }
                 if (match == null) {
                     match = new Match();
                     // Match.externalId is a legacy unique key; provider IDs live in MatchExternalId.
@@ -153,6 +169,7 @@ public class FixtureIngestionService {
                                 .build());
                 externalId.setExternalId(fixture.externalId());
                 matchExternalIdRepository.save(externalId);
+                matchesByExternalId.put(fixture.externalId(), savedMatch);
                 saved++;
             }
         }
@@ -162,14 +179,6 @@ public class FixtureIngestionService {
     }
 
 
-
-    private Team findTeam(String externalId, Provider selectedProvider) {
-        if (externalId == null || externalId.isBlank()) return null;
-        return teamExternalIdRepository
-                .findByProviderAndExternalId(selectedProvider, externalId)
-                .map(TeamExternalId::getTeam)
-                .orElse(null);
-    }
 
     private static MatchStatus toMatchStatus(String status) {
         if (status == null) return MatchStatus.SCHEDULED;
