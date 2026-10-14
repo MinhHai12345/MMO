@@ -14,6 +14,10 @@ import java.util.List;
 @Component
 public class ApiFootballLeagueMapper extends AbstractMapper<LeagueItem, ProviderLeague> {
 
+    public ProviderLeague toModel(LeagueItem item) {
+        return map(item, null);
+    }
+
     @Override
     public ProviderLeague map(LeagueItem item, ProviderLeague target) {
         if (item == null || item.league() == null || item.league().id() == null) return null;
