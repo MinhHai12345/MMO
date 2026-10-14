@@ -13,6 +13,7 @@ import com.mmo.module.fb.domain.repository.SeasonRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
 import com.mmo.module.fb.ingest.provider.spi.LeagueProvider;
+import com.mmo.module.fb.ingest.provider.spi.ProviderResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -97,11 +98,7 @@ public class LeagueIngestionService {
     }
 
     private LeagueProvider leagueProvider(Provider selectedProvider) {
-        return leagueProviders.stream()
-                .filter(provider -> provider.getProvider() == selectedProvider)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        "No LeagueProvider configured for " + selectedProvider));
+        return ProviderResolver.resolve(leagueProviders, selectedProvider, LeagueProvider::getProvider, "LeagueProvider");
     }
 
     private static String slug(String value) {
