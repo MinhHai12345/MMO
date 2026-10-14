@@ -1,7 +1,6 @@
 package com.mmo.module.fb.ingest.service;
 
 import com.mmo.AppProperties;
-import com.mmo.module.fb.domain.entity.LeagueExternalId;
 import com.mmo.module.fb.domain.entity.LeagueStanding;
 import com.mmo.module.fb.domain.entity.Season;
 import com.mmo.module.fb.domain.entity.TeamExternalId;
