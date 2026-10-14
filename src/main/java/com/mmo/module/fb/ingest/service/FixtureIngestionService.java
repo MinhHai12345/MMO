@@ -1,12 +1,10 @@
 package com.mmo.module.fb.ingest.service;
 
 import com.mmo.AppProperties;
-import com.mmo.module.fb.domain.entity.LeagueExternalId;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchExternalId;
 import com.mmo.module.fb.domain.entity.Season;
 import com.mmo.module.fb.domain.entity.Team;
-import com.mmo.module.fb.domain.entity.TeamExternalId;
 import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
@@ -23,8 +21,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -67,17 +68,19 @@ public class FixtureIngestionService {
 
         int saved = 0;
         int skipped = 0;
-        List<Season> seasons = seasonRepository.findAll().stream()
-                .filter(Season::isCurrent)
-                .filter(season -> season.getLeague() != null && season.getYear() != null)
-                .toList();
+        List<Season> seasons = seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
+        Map<Long, String> leagueExternalIdsByLeagueId = new HashMap<>();
+        leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
+                leagueExternalIdsByLeagueId.put(mapping.getLeague().getId(), mapping.getExternalId()));
+        Map<String, Team> teamsByExternalId = new HashMap<>();
+        teamExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
+                teamsByExternalId.put(mapping.getExternalId(), mapping.getTeam()));
+        Map<String, Match> matchesByExternalId = new HashMap<>();
+        matchExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
+                matchesByExternalId.put(mapping.getExternalId(), mapping.getMatch()));
 
         for (Season season : seasons) {
-            Long externalLeagueId = leagueExternalIdRepository
-                    .findByLeagueIdAndProvider(season.getLeague().getId(), selectedProvider)
-                    .map(LeagueExternalId::getExternalId)
-                    .map(FixtureIngestionService::parseLong)
-                    .orElse(null);
+            Long externalLeagueId = parseLong(leagueExternalIdsByLeagueId.get(season.getLeague().getId()));
             if (externalLeagueId == null) continue;
 
             List<ProviderFixture> fixtures = providerRegistry.fixture(selectedProvider).fetchFixtures(
@@ -86,8 +89,8 @@ public class FixtureIngestionService {
                     fixtures.size(), externalLeagueId, season.getYear(), selectedProvider);
 
             for (ProviderFixture fixture : fixtures) {
-                Team home = findTeam(fixture.homeTeamExternalId(), selectedProvider);
-                Team away = findTeam(fixture.awayTeamExternalId(), selectedProvider);
+                Team home = teamsByExternalId.get(fixture.homeTeamExternalId());
+                Team away = teamsByExternalId.get(fixture.awayTeamExternalId());
                 if (home == null || away == null) {
                     skipped++;
                     log.debug("Skipping fixture {} because one or both teams are not mapped",
@@ -95,23 +98,30 @@ public class FixtureIngestionService {
                     continue;
                 }
 
-                Match match = matchExternalIdRepository
-                        .findByProviderAndExternalId(selectedProvider, fixture.externalId())
-                        .map(MatchExternalId::getMatch)
-                        .orElse(null);
+                if (fixture.externalId() == null || fixture.externalId().isBlank()) {
+                    skipped++;
+                    log.warn("Skipping fixture with empty external ID from {}", selectedProvider);
+                    continue;
+                }
+
+                Match match = matchesByExternalId.get(fixture.externalId());
+
+                if (match != null && (match.getSeason() == null
+                        || match.getHomeTeam() == null || match.getAwayTeam() == null
+                        || !match.getSeason().getId().equals(season.getId())
+                        || !match.getHomeTeam().getId().equals(home.getId())
+                        || !match.getAwayTeam().getId().equals(away.getId()))) {
+                    skipped++;
+                    log.warn("Provider {} fixture ID {} is already mapped to a different canonical fixture; skipping",
+                            selectedProvider, fixture.externalId());
+                    continue;
+                }
 
                 if (match == null && fixture.kickoff() != null) {
-                    List<Match> candidates = matchRepository.findAll().stream()
-                            .filter(existing -> existing.getSeason() != null
-                                    && existing.getSeason().getId().equals(season.getId()))
-                            .filter(existing -> existing.getHomeTeam() != null
-                                    && existing.getAwayTeam() != null
-                                    && existing.getHomeTeam().getId().equals(home.getId())
-                                    && existing.getAwayTeam().getId().equals(away.getId()))
-                            .filter(existing -> existing.getMatchTime() != null
-                                    && Duration.between(existing.getMatchTime(), fixture.kickoff())
-                                    .abs().toHours() <= 6)
-                            .toList();
+                    Instant windowStart = fixture.kickoff().minus(Duration.ofHours(6));
+                    Instant windowEnd = fixture.kickoff().plus(Duration.ofHours(6));
+                    List<Match> candidates = matchRepository.findFixtureCandidates(
+                            season.getId(), home.getId(), away.getId(), windowStart, windowEnd);
                     if (candidates.size() == 1) {
                         match = candidates.get(0);
                     } else if (candidates.size() > 1) {
@@ -122,6 +132,11 @@ public class FixtureIngestionService {
                     }
                 }
 
+                if (match == null && fixture.kickoff() == null) {
+                    skipped++;
+                    log.warn("Skipping new fixture {} because kickoff time is missing", fixture.externalId());
+                    continue;
+                }
                 if (match == null) {
                     match = new Match();
                     // Match.externalId is a legacy unique key; provider IDs live in MatchExternalId.
@@ -133,14 +148,25 @@ public class FixtureIngestionService {
                 match.setAwayTeam(away);
                 if (fixture.kickoff() != null) match.setMatchTime(fixture.kickoff());
                 if (fixture.startTimestamp() != null) match.setStartTimestamp(fixture.startTimestamp());
-                match.setRoundInfo(fixture.round());
-                match.setVenue(fixture.venue());
-                match.setReferee(fixture.referee());
-                match.setStatus(toMatchStatus(fixture.status()));
-                if (fixture.homeScore() != null || fixture.awayScore() != null) {
-                    match.setHomeScore(fixture.homeScore());
-                    match.setAwayScore(fixture.awayScore());
+                if (fixture.round() != null && !fixture.round().isBlank()) {
+                    match.setRoundInfo(fixture.round());
                 }
+                if (fixture.venue() != null && !fixture.venue().isBlank()) {
+                    match.setVenue(fixture.venue());
+                }
+                if (fixture.referee() != null && !fixture.referee().isBlank()) {
+                    match.setReferee(fixture.referee());
+                }
+                MatchStatus incomingStatus = toMatchStatus(fixture.status());
+                if (incomingStatus != null
+                        && (match.getStatus() != MatchStatus.FINISHED || incomingStatus == MatchStatus.FINISHED)
+                        && (match.getStatus() != MatchStatus.LIVE || incomingStatus != MatchStatus.SCHEDULED)) {
+                    match.setStatus(incomingStatus);
+                } else if (match.getStatus() == null) {
+                    match.setStatus(MatchStatus.SCHEDULED);
+                }
+                if (fixture.homeScore() != null) match.setHomeScore(fixture.homeScore());
+                if (fixture.awayScore() != null) match.setAwayScore(fixture.awayScore());
                 match = matchRepository.save(match);
 
                 Match savedMatch = match;
@@ -153,6 +179,7 @@ public class FixtureIngestionService {
                                 .build());
                 externalId.setExternalId(fixture.externalId());
                 matchExternalIdRepository.save(externalId);
+                matchesByExternalId.put(fixture.externalId(), savedMatch);
                 saved++;
             }
         }
@@ -163,22 +190,15 @@ public class FixtureIngestionService {
 
 
 
-    private Team findTeam(String externalId, Provider selectedProvider) {
-        if (externalId == null || externalId.isBlank()) return null;
-        return teamExternalIdRepository
-                .findByProviderAndExternalId(selectedProvider, externalId)
-                .map(TeamExternalId::getTeam)
-                .orElse(null);
-    }
-
     private static MatchStatus toMatchStatus(String status) {
-        if (status == null) return MatchStatus.SCHEDULED;
+        if (status == null || status.isBlank()) return null;
         return switch (status.toUpperCase()) {
+            case "NS", "TBD", "SCHEDULED" -> MatchStatus.SCHEDULED;
             case "1H", "HT", "2H", "ET", "P", "LIVE", "BT" -> MatchStatus.LIVE;
             case "FT", "AET", "PEN" -> MatchStatus.FINISHED;
             case "PST", "SUSP", "INT" -> MatchStatus.POSTPONED;
             case "CANC", "ABD", "WO" -> MatchStatus.CANCELLED;
-            default -> MatchStatus.SCHEDULED;
+            default -> null;
         };
     }
 

@@ -1,7 +1,6 @@
 package com.mmo.module.fb.ingest.service;
 
 import com.mmo.AppProperties;
-import com.mmo.module.fb.domain.entity.LeagueExternalId;
 import com.mmo.module.fb.domain.entity.LeagueStanding;
 import com.mmo.module.fb.domain.entity.Season;
 import com.mmo.module.fb.domain.entity.TeamExternalId;
@@ -20,7 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -49,14 +50,13 @@ public class StandingsIngestionService {
         }
         teamIngestionService.syncTeamsForProvider(selectedProvider);
         StandingsProvider provider = providerRegistry.standings(selectedProvider);
+        Map<Long, String> leagueExternalIdsByLeagueId = new HashMap<>();
+        leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
+                leagueExternalIdsByLeagueId.put(mapping.getLeague().getId(), mapping.getExternalId()));
         int saved = 0;
         for (Season season : seasonRepository.findAll()) {
             if (season.getLeague() == null || season.getYear() == null) continue;
-            Long externalLeagueId = leagueExternalIdRepository
-                    .findByLeagueIdAndProvider(season.getLeague().getId(), selectedProvider)
-                    .map(LeagueExternalId::getExternalId)
-                    .map(StandingsIngestionService::parseLong)
-                    .orElse(null);
+            Long externalLeagueId = parseLong(leagueExternalIdsByLeagueId.get(season.getLeague().getId()));
             if (externalLeagueId == null) continue;
 
             List<ProviderStanding> rows = provider.fetchStandings(

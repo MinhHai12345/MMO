@@ -3,7 +3,6 @@ package com.mmo.module.fb.ingest.service;
 import com.mmo.AppProperties;
 import com.mmo.module.fb.domain.entity.Bookmaker;
 import com.mmo.module.fb.domain.entity.Match;
-import com.mmo.module.fb.domain.entity.MatchExternalId;
 import com.mmo.module.fb.domain.entity.MatchOdds;
 import com.mmo.module.fb.domain.entity.OddsHistory;
 import com.mmo.module.fb.domain.enums.MatchStatus;
@@ -18,13 +17,15 @@ import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,30 +54,22 @@ public class OddsIngestionService {
 
         Instant now = Instant.now();
         Instant until = now.plus(72, ChronoUnit.HOURS);
-        List<Match> scheduledMatches = matchRepository.findAll().stream()
-                .filter(match -> match.getStatus() == MatchStatus.SCHEDULED)
-                .filter(match -> match.getMatchTime() != null
-                        && !match.getMatchTime().isBefore(now) && !match.getMatchTime().isAfter(until))
-                .toList();
+        List<Match> scheduledMatches = matchRepository.findByStatusAndMatchTimeBetweenOrderByMatchTimeAsc(
+                MatchStatus.SCHEDULED, now, until);
+        Set<Long> mappedMatchIds = new HashSet<>();
+        matchExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
+                mappedMatchIds.add(mapping.getMatch().getId()));
 
-        boolean missingProviderMappings = scheduledMatches.isEmpty()
-                || scheduledMatches.stream().anyMatch(match -> matchExternalIdRepository
-                        .findByMatchIdAndProvider(match.getId(), selectedProvider).isEmpty());
+        boolean missingProviderMappings = !scheduledMatches.isEmpty()
+                && scheduledMatches.stream().anyMatch(match -> !mappedMatchIds.contains(match.getId()));
         if (missingProviderMappings) {
             // Bootstrap missing cross-provider fixture IDs without repeating a full fixture sync every odds run.
             LocalDate today = LocalDate.now();
             fixtureIngestionService.syncFixturesForProvider(selectedProvider, today, today.plusDays(3));
         }
 
-        List<Match> upcoming = matchRepository.findAll().stream()
-                .filter(match -> match.getStatus() == MatchStatus.SCHEDULED)
-                .filter(match -> match.getMatchTime() != null
-                        && !match.getMatchTime().isBefore(now) && !match.getMatchTime().isAfter(until))
-                .filter(match -> matchExternalIdRepository
-                        .findByMatchIdAndProvider(match.getId(), selectedProvider).isPresent())
-                .sorted(Comparator.comparing(Match::getMatchTime))
-                .limit(MAX_FIXTURES_PER_RUN)
-                .toList();
+        List<Match> upcoming = matchRepository.findUpcomingWithProviderMapping(
+                MatchStatus.SCHEDULED, now, until, selectedProvider, PageRequest.of(0, MAX_FIXTURES_PER_RUN));
 
         int processed = 0;
         for (Match match : upcoming) {

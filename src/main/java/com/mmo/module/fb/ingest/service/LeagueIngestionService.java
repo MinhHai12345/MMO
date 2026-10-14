@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -56,6 +57,7 @@ public class LeagueIngestionService {
         }
 
         int synced = 0;
+        List<League> knownActiveLeagues = new ArrayList<>(leagueRepository.findByIsActive(true));
         for (ProviderLeague source : providerRegistry.league(selectedProvider).fetchLeagues(configuredIds)) {
             League league = leagueExternalIdRepository
                     .findByProviderAndExternalId(selectedProvider, source.externalId())
@@ -63,7 +65,7 @@ public class LeagueIngestionService {
                     .orElse(null);
 
             if (league == null) {
-                List<League> candidates = leagueRepository.findByIsActive(true).stream()
+                List<League> candidates = knownActiveLeagues.stream()
                         .filter(existing -> normalizeName(existing.getName()).equals(normalizeName(source.name())))
                         .toList();
                 if (candidates.size() > 1 && source.country() != null && !source.country().isBlank()) {
@@ -83,21 +85,32 @@ public class LeagueIngestionService {
                 league = candidates.isEmpty() ? new League() : candidates.get(0);
             }
 
-            league.setName(source.name());
+            if (league.getName() == null || league.getName().isBlank()) {
+                league.setName(source.name());
+            }
             if (league.getSlug() == null || league.getSlug().isBlank()) {
                 league.setSlug(slug(source.name()) + "-" + selectedProvider.name().toLowerCase()
                         + "-" + source.externalId());
             }
-            league.setCountry(source.country());
-            league.setLogoUrl(source.logoUrl());
+            if (source.country() != null && !source.country().isBlank()) {
+                league.setCountry(source.country());
+            }
+            if (source.logoUrl() != null && !source.logoUrl().isBlank()) {
+                league.setLogoUrl(source.logoUrl());
+            }
             if (league.getExternalId() == null || league.getExternalId().isBlank()) {
                 league.setExternalId(source.externalId());
             }
             league.setActive(true);
             league.setIsActive(true);
             league = leagueRepository.save(league);
-
             League savedLeague = league;
+            Long savedLeagueId = savedLeague.getId();
+            if (knownActiveLeagues.stream().noneMatch(existing -> existing.getId().equals(savedLeagueId))) {
+                knownActiveLeagues.add(savedLeague);
+            }
+
+
             LeagueExternalId external = leagueExternalIdRepository
                     .findByLeagueIdAndProvider(savedLeague.getId(), selectedProvider)
                     .orElseGet(() -> LeagueExternalId.builder()
@@ -125,10 +138,7 @@ public class LeagueIngestionService {
                     continue;
                 }
                 if (season == null) {
-                    season = seasonRepository.findAll().stream()
-                            .filter(existing -> existing.getLeague().getId().equals(savedLeague.getId())
-                                    && existing.getYear().equals(sourceSeason.year()))
-                            .findFirst()
+                    season = seasonRepository.findByLeague_IdAndYear(savedLeague.getId(), sourceSeason.year())
                             .orElseGet(() -> Season.builder()
                                     .league(savedLeague).year(sourceSeason.year()).build());
                 }
