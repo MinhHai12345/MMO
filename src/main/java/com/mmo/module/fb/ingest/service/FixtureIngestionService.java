@@ -46,7 +46,6 @@ public class FixtureIngestionService {
     @Transactional
     public void syncCurrentSeasonFixtures(LocalDate from, LocalDate to) {
         Provider selectedProvider = appProperties.getIngestion().getProviders().getFixture();
-        Provider leagueProvider = appProperties.getIngestion().getProviders().getLeague();
         if (selectedProvider == Provider.API_FOOTBALL && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
         if (from != null && to != null && from.isAfter(to)) {
             throw new IllegalArgumentException("'from' must be before or equal to 'to'");
@@ -61,7 +60,7 @@ public class FixtureIngestionService {
 
         for (Season season : seasons) {
             Long externalLeagueId = leagueExternalIdRepository
-                    .findByLeagueIdAndProvider(season.getLeague().getId(), leagueProvider)
+                    .findByLeagueIdAndProvider(season.getLeague().getId(), selectedProvider)
                     .map(LeagueExternalId::getExternalId)
                     .map(FixtureIngestionService::parseLong)
                     .orElse(null);
@@ -73,8 +72,8 @@ public class FixtureIngestionService {
                     fixtures.size(), externalLeagueId, season.getYear(), selectedProvider);
 
             for (ProviderFixture fixture : fixtures) {
-                Team home = findTeam(fixture.homeTeamExternalId());
-                Team away = findTeam(fixture.awayTeamExternalId());
+                Team home = findTeam(fixture.homeTeamExternalId(), selectedProvider);
+                Team away = findTeam(fixture.awayTeamExternalId(), selectedProvider);
                 if (home == null || away == null) {
                     skipped++;
                     log.debug("Skipping fixture {} because one or both teams are not mapped",
@@ -125,10 +124,10 @@ public class FixtureIngestionService {
         return ProviderResolver.resolve(fixtureProviders, selectedProvider, FixtureProvider::getProvider, "FixtureProvider");
     }
 
-    private Team findTeam(String externalId) {
+    private Team findTeam(String externalId, Provider selectedProvider) {
         if (externalId == null || externalId.isBlank()) return null;
         return teamExternalIdRepository
-                .findByProviderAndExternalId(appProperties.getIngestion().getProviders().getTeam(), externalId)
+                .findByProviderAndExternalId(selectedProvider, externalId)
                 .map(TeamExternalId::getTeam)
                 .orElse(null);
     }
