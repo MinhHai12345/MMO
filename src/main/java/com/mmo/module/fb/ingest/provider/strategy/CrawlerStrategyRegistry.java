@@ -1,6 +1,6 @@
 package com.mmo.module.fb.provider.strategy;
 
-import com.mmo.module.fb.ingest.provider.model.enums.Provider;
+import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.ingest.provider.strategy.CrawlerStrategy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -14,8 +14,9 @@ public class CrawlerStrategyRegistry {
 
     public CrawlerStrategy getStrategy(final Provider provider) {
         return strategies.stream()
-                .filter(s -> s.getProvider().equals(provider))
+                .filter(strategy -> strategy.getProvider() == provider)
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Don't support for source: " + provider.name()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Don't support for source: " + provider.name()));
     }
 }
