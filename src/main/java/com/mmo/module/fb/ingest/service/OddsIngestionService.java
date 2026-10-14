@@ -46,7 +46,8 @@ public class OddsIngestionService {
 
     @Transactional
     public void syncUpcomingOdds() {
-        if (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled()) return;
+        Provider selectedProvider = appProperties.getIngestion().getProviders().getOdds();
+        if (selectedProvider == Provider.API_FOOTBALL && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
 
         Instant now = Instant.now();
         Instant until = now.plus(72, ChronoUnit.HOURS);
@@ -55,7 +56,7 @@ public class OddsIngestionService {
                 .filter(match -> match.getMatchTime() != null
                         && !match.getMatchTime().isBefore(now) && !match.getMatchTime().isAfter(until))
                 .filter(match -> matchExternalIdRepository
-                        .findByMatchIdAndProvider(match.getId(), Provider.API_FOOTBALL).isPresent())
+                        .findByMatchIdAndProvider(match.getId(), selectedProvider).isPresent())
                 .sorted(Comparator.comparing(Match::getMatchTime))
                 .limit(MAX_FIXTURES_PER_RUN)
                 .toList();
@@ -63,7 +64,7 @@ public class OddsIngestionService {
         int processed = 0;
         for (Match match : upcoming) {
             try {
-                syncFixtureOdds(match);
+                syncFixtureOdds(match, selectedProvider);
                 processed++;
             } catch (Exception ex) {
                 log.warn("Could not sync odds for match {}: {}", match.getId(), ex.getMessage());
@@ -72,13 +73,13 @@ public class OddsIngestionService {
         log.info("Odds ingestion finished. {} upcoming fixtures checked.", processed);
     }
 
-    private void syncFixtureOdds(Match match) {
+    private void syncFixtureOdds(Match match, Provider selectedProvider) {
         String fixtureId = matchExternalIdRepository
                 .findByMatchIdAndProvider(match.getId(), Provider.API_FOOTBALL)
                 .map(MatchExternalId::getExternalId)
-                .orElseThrow(() -> new IllegalStateException("No API-Football fixture ID"));
+                .orElseThrow(() -> new IllegalStateException("No fixture ID for provider " + selectedProvider));
 
-        List<ProviderOdds> values = oddsProvider().fetchOdds(new OddsQuery(fixtureId));
+        List<ProviderOdds> values = oddsProvider(selectedProvider).fetchOdds(new OddsQuery(fixtureId));
         Map<String, List<ProviderOdds>> byBookmaker = new LinkedHashMap<>();
         for (ProviderOdds value : values) {
             if (value.bookmaker() != null && !value.bookmaker().isBlank()) {
@@ -113,11 +114,11 @@ public class OddsIngestionService {
         }
     }
 
-    private OddsProvider oddsProvider() {
+    private OddsProvider oddsProvider(Provider selectedProvider) {
         return oddsProviders.stream()
-                .filter(provider -> provider.getProvider() == Provider.API_FOOTBALL)
+                .filter(provider -> provider.getProvider() == selectedProvider)
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("No OddsProvider configured for API_FOOTBALL"));
+                .orElseThrow(() -> new IllegalStateException("No OddsProvider configured for " + selectedProvider));
     }
 
     private static void applyOdd(MatchOdds odds, String market, String label, java.math.BigDecimal odd) {
