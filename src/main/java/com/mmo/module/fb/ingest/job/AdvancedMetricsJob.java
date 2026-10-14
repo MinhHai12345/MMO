@@ -17,6 +17,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionContext;
 import org.springframework.stereotype.Component;
+import org.springframework.data.domain.PageRequest;
 
 import java.time.Instant;
 import java.util.List;
@@ -58,7 +59,7 @@ public class AdvancedMetricsJob extends AbstractJob<CronJob> {
         for (Team team : teams) {
             try {
                 List<Match> recentMatches = matchRepository.findTop10ByHomeTeamOrAwayTeamAndStatusOrderByMatchTimeDesc(
-                        team, MatchStatus.FINISHED);
+                        team, MatchStatus.FINISHED, PageRequest.of(0, 10));
 
                 if (CollectionUtils.isEmpty(recentMatches)) {
                     continue;
