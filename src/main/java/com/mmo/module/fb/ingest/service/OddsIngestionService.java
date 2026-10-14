@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -38,6 +39,7 @@ public class OddsIngestionService {
 
     private final ProviderRegistry providerRegistry;
     private final AppProperties appProperties;
+    private final FixtureIngestionService fixtureIngestionService;
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final BookmakerRepository bookmakerRepository;
@@ -48,6 +50,10 @@ public class OddsIngestionService {
     public void syncUpcomingOdds() {
         Provider selectedProvider = appProperties.getIngestion().getProviders().getOdds();
         if (selectedProvider == Provider.API_FOOTBALL && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
+
+        // Ensure this provider's fixture IDs are linked to canonical matches before odds lookup.
+        LocalDate today = LocalDate.now();
+        fixtureIngestionService.syncFixturesForProvider(selectedProvider, today, today.plusDays(3));
 
         Instant now = Instant.now();
         Instant until = now.plus(72, ChronoUnit.HOURS);
