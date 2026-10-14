@@ -15,7 +15,6 @@ import com.mmo.module.fb.domain.repository.MatchRepository;
 import com.mmo.module.fb.domain.repository.OddsHistoryRepository;
 import com.mmo.module.fb.ingest.provider.model.OddsQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
-import com.mmo.module.fb.ingest.provider.spi.OddsProvider;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
