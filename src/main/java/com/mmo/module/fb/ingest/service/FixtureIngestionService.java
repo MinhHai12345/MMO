@@ -30,7 +30,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class FixtureIngestionService {
 
-    private final FixtureProvider fixtureProvider;
+    private final List<FixtureProvider> fixtureProviders;
     private final AppProperties appProperties;
     private final SeasonRepository seasonRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
@@ -66,7 +66,7 @@ public class FixtureIngestionService {
                     .orElse(null);
             if (externalLeagueId == null) continue;
 
-            List<ProviderFixture> fixtures = fixtureProvider.fetchFixtures(
+            List<ProviderFixture> fixtures = fixtureProvider().fetchFixtures(
                     new FixtureQuery(externalLeagueId, season.getYear(), from, to));
             log.info("Fetched {} fixtures for league {} season {} from API-Football",
                     fixtures.size(), externalLeagueId, season.getYear());
@@ -118,6 +118,13 @@ public class FixtureIngestionService {
 
         log.info("API-Football fixture ingestion completed. {} saved/updated, {} skipped; date range {} to {}",
                 saved, skipped, from, to);
+    }
+
+    private FixtureProvider fixtureProvider() {
+        return fixtureProviders.stream()
+                .filter(provider -> provider.getProvider() == Provider.API_FOOTBALL)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No FixtureProvider configured for API_FOOTBALL"));
     }
 
     private Team findTeam(String externalId) {
