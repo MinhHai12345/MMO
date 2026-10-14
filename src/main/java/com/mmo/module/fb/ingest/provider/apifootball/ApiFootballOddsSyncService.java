@@ -1,18 +1,23 @@
 package com.mmo.module.fb.ingest.provider.apifootball;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.mmo.module.fb.domain.entity.Bookmaker;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchOdds;
 import com.mmo.module.fb.domain.entity.MatchExternalId;
-import com.mmo.module.fb.domain.enums.Provider;
-import com.mmo.module.fb.domain.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.domain.entity.OddsHistory;
+import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.repository.BookmakerRepository;
+import com.mmo.module.fb.domain.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.domain.repository.MatchOddsRepository;
 import com.mmo.module.fb.domain.repository.MatchRepository;
 import com.mmo.module.fb.domain.repository.OddsHistoryRepository;
+import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsBetDto;
+import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsBookmakerDto;
+import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsItem;
+import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsValueDto;
+import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,6 +37,7 @@ public class ApiFootballOddsSyncService {
 
     private static final String MARKET = "PREMATCH";
     private static final int MAX_FIXTURES_PER_RUN = 10;
+    private static final TypeReference<ApiFootballResponse<OddsItem>> RESPONSE_TYPE = new TypeReference<>() {};
 
     private final ApiFootballClient client;
     private final MatchRepository matchRepository;
@@ -40,10 +46,6 @@ public class ApiFootballOddsSyncService {
     private final MatchOddsRepository matchOddsRepository;
     private final OddsHistoryRepository oddsHistoryRepository;
 
-    /**
-     * Sync odds for a small upcoming window to avoid exhausting API quota.
-     * API-Football odds coverage and bookmaker count depend on subscription/league.
-     */
     @Transactional
     public void syncUpcomingOdds() {
         Instant now = Instant.now();
@@ -51,8 +53,7 @@ public class ApiFootballOddsSyncService {
         List<Match> upcoming = matchRepository.findAll().stream()
                 .filter(match -> match.getStatus() == MatchStatus.SCHEDULED)
                 .filter(match -> match.getMatchTime() != null
-                        && !match.getMatchTime().isBefore(now)
-                        && !match.getMatchTime().isAfter(until))
+                        && !match.getMatchTime().isBefore(now) && !match.getMatchTime().isAfter(until))
                 .filter(match -> matchExternalIdRepository
                         .findByMatchIdAndProvider(match.getId(), Provider.API_FOOTBALL).isPresent())
                 .sorted(Comparator.comparing(Match::getMatchTime))
@@ -65,8 +66,7 @@ public class ApiFootballOddsSyncService {
                 syncFixtureOdds(match);
                 processed++;
             } catch (Exception ex) {
-                // Odds are optional: a plan may not expose this endpoint for a competition.
-                log.warn("Could not sync odds for fixture {}: {}", match.getId(), ex.getMessage());
+                log.warn("Could not sync odds for match {}: {}", match.getId(), ex.getMessage());
             }
         }
         log.info("API-Football odds sync finished. {} upcoming fixtures checked.", processed);
@@ -77,39 +77,25 @@ public class ApiFootballOddsSyncService {
                 .findByMatchIdAndProvider(match.getId(), Provider.API_FOOTBALL)
                 .map(MatchExternalId::getExternalId)
                 .orElseThrow(() -> new IllegalStateException("No API-Football fixture ID"));
-        JsonNode body = client.get("/odds", Map.of("fixture", fixtureId));
-        for (JsonNode response : body.path("response")) {
-            for (JsonNode bookmakerNode : response.path("bookmakers")) {
-                String bookmakerName = bookmakerNode.path("name").asText(null);
-                if (bookmakerName == null || bookmakerName.isBlank()) continue;
 
-                Bookmaker bookmaker = bookmakerRepository.findByName(bookmakerName)
+        ApiFootballResponse<OddsItem> response = client.get("/odds", Map.of("fixture", fixtureId), RESPONSE_TYPE);
+        for (OddsItem item : safe(response.response())) {
+            for (OddsBookmakerDto bookmakerDto : safe(item.bookmakers())) {
+                if (bookmakerDto.name() == null || bookmakerDto.name().isBlank()) continue;
+                Bookmaker bookmaker = bookmakerRepository.findByName(bookmakerDto.name())
                         .orElseGet(() -> bookmakerRepository.save(
-                                Bookmaker.builder().name(bookmakerName).isActive(true).build()));
+                                Bookmaker.builder().name(bookmakerDto.name()).isActive(true).build()));
 
                 MatchOdds odds = matchOddsRepository
                         .findByMatchIdAndBookmakerIdAndMarketName(match.getId(), bookmaker.getId(), MARKET)
                         .orElseGet(() -> MatchOdds.builder()
                                 .match(match).bookmaker(bookmaker).marketName(MARKET).build());
 
-                for (JsonNode bet : bookmakerNode.path("bets")) {
-                    String marketName = bet.path("name").asText("");
-                    for (JsonNode value : bet.path("values")) {
-                        String label = value.path("value").asText("");
-                        BigDecimal odd = decimal(value.path("odd").asText(null));
-                        if (odd == null) continue;
-                        if (marketName.equalsIgnoreCase("Match Winner")
-                                || marketName.equalsIgnoreCase("1st Half Winner")) {
-                            if (label.equalsIgnoreCase("Home")) odds.setHomeWinOdds(odd);
-                            else if (label.equalsIgnoreCase("Draw")) odds.setDrawOdds(odd);
-                            else if (label.equalsIgnoreCase("Away")) odds.setAwayWinOdds(odd);
-                        } else if (marketName.equalsIgnoreCase("Goals Over/Under")) {
-                            if (label.equalsIgnoreCase("Over 2.5")) odds.setOver25Odds(odd);
-                            else if (label.equalsIgnoreCase("Under 2.5")) odds.setUnder25Odds(odd);
-                        } else if (marketName.equalsIgnoreCase("Both Teams Score")) {
-                            if (label.equalsIgnoreCase("Yes")) odds.setBttsYesOdds(odd);
-                            else if (label.equalsIgnoreCase("No")) odds.setBttsNoOdds(odd);
-                        }
+                for (OddsBetDto bet : safe(bookmakerDto.bets())) {
+                    for (OddsValueDto value : safe(bet.values())) {
+                        BigDecimal odd = decimal(value.odd());
+                        if (odd == null || bet.name() == null || value.value() == null) continue;
+                        applyOdd(odds, bet.name(), value.value(), odd);
                     }
                 }
 
@@ -127,9 +113,27 @@ public class ApiFootballOddsSyncService {
         }
     }
 
+    private static void applyOdd(MatchOdds odds, String market, String label, BigDecimal odd) {
+        if (market.equalsIgnoreCase("Match Winner")) {
+            if (label.equalsIgnoreCase("Home")) odds.setHomeWinOdds(odd);
+            else if (label.equalsIgnoreCase("Draw")) odds.setDrawOdds(odd);
+            else if (label.equalsIgnoreCase("Away")) odds.setAwayWinOdds(odd);
+        } else if (market.equalsIgnoreCase("Goals Over/Under")) {
+            if (label.equalsIgnoreCase("Over 2.5")) odds.setOver25Odds(odd);
+            else if (label.equalsIgnoreCase("Under 2.5")) odds.setUnder25Odds(odd);
+        } else if (market.equalsIgnoreCase("Both Teams Score")) {
+            if (label.equalsIgnoreCase("Yes")) odds.setBttsYesOdds(odd);
+            else if (label.equalsIgnoreCase("No")) odds.setBttsNoOdds(odd);
+        }
+    }
+
     private static BigDecimal decimal(String value) {
         if (value == null || value.isBlank()) return null;
         try { return new BigDecimal(value); }
         catch (NumberFormatException ignored) { return null; }
+    }
+
+    private static <T> List<T> safe(List<T> values) {
+        return values == null ? List.of() : values;
     }
 }
