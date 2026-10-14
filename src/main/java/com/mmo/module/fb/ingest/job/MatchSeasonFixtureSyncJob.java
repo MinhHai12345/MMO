@@ -25,7 +25,7 @@ public class MatchSeasonFixtureSyncJob extends AbstractJob<CronJob> {
         CrawlerStrategy strategy = crawlerStrategyRegistry.getStrategy(Provider.API_FOOTBALL);
         strategy.storeSeasons();
         strategy.syncTeams();
-        strategy.storeMatches();
+        strategy.syncAllCurrentSeasonFixtures();
         standingsSyncService.syncCurrentStandings();
     }
 }
