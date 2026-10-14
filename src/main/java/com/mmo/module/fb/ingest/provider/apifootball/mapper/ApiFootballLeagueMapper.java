@@ -1,5 +1,6 @@
 package com.mmo.module.fb.ingest.provider.apifootball.mapper;
 
+import com.mmo.core.converter.AbstractMapper;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.LeagueItem;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.LeagueSeasonDto;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
@@ -11,9 +12,10 @@ import java.time.LocalDate;
 import java.util.List;
 
 @Component
-public class ApiFootballLeagueMapper {
+public class ApiFootballLeagueMapper extends AbstractMapper<LeagueItem, ProviderLeague> {
 
-    public ProviderLeague toModel(LeagueItem item) {
+    @Override
+    public ProviderLeague map(LeagueItem item, ProviderLeague target) {
         if (item == null || item.league() == null || item.league().id() == null) return null;
         List<ProviderSeason> seasons = item.seasons() == null ? List.of()
                 : item.seasons().stream()
