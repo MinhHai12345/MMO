@@ -29,6 +29,7 @@ public class StandingsIngestionService {
 
     private final ProviderRegistry providerRegistry;
     private final AppProperties appProperties;
+    private final TeamIngestionService teamIngestionService;
     private final SeasonRepository seasonRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;
@@ -37,8 +38,16 @@ public class StandingsIngestionService {
     @Transactional
     public void syncStandings() {
         Provider selectedProvider = appProperties.getIngestion().getProviders().getStandings();
-        if (selectedProvider == Provider.API_FOOTBALL && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
+        syncStandingsForProvider(selectedProvider);
+    }
 
+    @Transactional
+    public void syncStandingsForProvider(Provider selectedProvider) {
+        if (selectedProvider == Provider.API_FOOTBALL
+                && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
+            return;
+        }
+        teamIngestionService.syncTeamsForProvider(selectedProvider);
         StandingsProvider provider = providerRegistry.standings(selectedProvider);
         int saved = 0;
         for (Season season : seasonRepository.findAll()) {
