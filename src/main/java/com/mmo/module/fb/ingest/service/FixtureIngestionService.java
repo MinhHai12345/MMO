@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -32,6 +33,8 @@ public class FixtureIngestionService {
 
     private final ProviderRegistry providerRegistry;
     private final AppProperties appProperties;
+    private final LeagueIngestionService leagueIngestionService;
+    private final TeamIngestionService teamIngestionService;
     private final SeasonRepository seasonRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;
@@ -44,11 +47,25 @@ public class FixtureIngestionService {
      */
     @Transactional
     public void syncCurrentSeasonFixtures(LocalDate from, LocalDate to) {
-        Provider selectedProvider = appProperties.getIngestion().getProviders().getFixture();
-        if (selectedProvider == Provider.API_FOOTBALL && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
+        syncFixturesForProvider(appProperties.getIngestion().getProviders().getFixture(), from, to);
+    }
+
+    /**
+     * Ensures upstream league/team IDs for the selected source before fetching fixtures.
+     * The same canonical Match can then receive external IDs from multiple providers.
+     */
+    @Transactional
+    public void syncFixturesForProvider(Provider selectedProvider, LocalDate from, LocalDate to) {
+        if (selectedProvider == Provider.API_FOOTBALL
+                && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
+            return;
+        }
         if (from != null && to != null && from.isAfter(to)) {
             throw new IllegalArgumentException("'from' must be before or equal to 'to'");
         }
+
+        leagueIngestionService.syncLeaguesForProvider(selectedProvider);
+        teamIngestionService.syncTeamsForProvider(selectedProvider);
 
         int saved = 0;
         int skipped = 0;
@@ -83,9 +100,36 @@ public class FixtureIngestionService {
                 Match match = matchExternalIdRepository
                         .findByProviderAndExternalId(selectedProvider, fixture.externalId())
                         .map(MatchExternalId::getMatch)
-                        .orElseGet(Match::new);
+                        .orElse(null);
 
-                match.setExternalId(fixture.externalId());
+                if (match == null && fixture.kickoff() != null) {
+                    List<Match> candidates = matchRepository.findAll().stream()
+                            .filter(existing -> existing.getSeason() != null
+                                    && existing.getSeason().getId().equals(season.getId()))
+                            .filter(existing -> existing.getHomeTeam() != null
+                                    && existing.getAwayTeam() != null
+                                    && existing.getHomeTeam().getId().equals(home.getId())
+                                    && existing.getAwayTeam().getId().equals(away.getId()))
+                            .filter(existing -> existing.getMatchTime() != null
+                                    && Duration.between(existing.getMatchTime(), fixture.kickoff())
+                                    .abs().toHours() <= 6)
+                            .toList();
+                    if (candidates.size() == 1) {
+                        match = candidates.get(0);
+                    } else if (candidates.size() > 1) {
+                        skipped++;
+                        log.warn("Ambiguous cross-provider fixture mapping for {} ({} vs {} at {})",
+                                fixture.externalId(), home.getName(), away.getName(), fixture.kickoff());
+                        continue;
+                    }
+                }
+
+                if (match == null) {
+                    match = new Match();
+                    // Match.externalId is a legacy unique key; provider IDs live in MatchExternalId.
+                    match.setExternalId(selectedProvider.name() + ":" + fixture.externalId());
+                }
+
                 match.setSeason(season);
                 match.setHomeTeam(home);
                 match.setAwayTeam(away);
