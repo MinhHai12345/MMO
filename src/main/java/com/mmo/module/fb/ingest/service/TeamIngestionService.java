@@ -13,6 +13,7 @@ import com.mmo.module.fb.domain.repository.TeamRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.provider.model.TeamQuery;
 import com.mmo.module.fb.ingest.provider.spi.TeamProvider;
+import com.mmo.module.fb.ingest.provider.spi.ProviderResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -86,10 +87,7 @@ public class TeamIngestionService {
     }
 
     private TeamProvider teamProvider(Provider selectedProvider) {
-        return teamProviders.stream()
-                .filter(provider -> provider.getProvider() == selectedProvider)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("No TeamProvider configured for " + selectedProvider));
+        return ProviderResolver.resolve(teamProviders, selectedProvider, TeamProvider::getProvider, "TeamProvider");
     }
 
     private static Long parseLong(String value) {
