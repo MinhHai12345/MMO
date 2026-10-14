@@ -56,9 +56,14 @@ public class OddsIngestionService {
         Instant until = now.plus(72, ChronoUnit.HOURS);
         List<Match> scheduledMatches = matchRepository.findByStatusAndMatchTimeBetweenOrderByMatchTimeAsc(
                 MatchStatus.SCHEDULED, now, until);
+        List<MatchExternalId> providerMappings = matchExternalIdRepository.findAllByProvider(selectedProvider);
         Set<Long> mappedMatchIds = new HashSet<>();
-        matchExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
-                mappedMatchIds.add(mapping.getMatch().getId()));
+        Map<Long, String> fixtureIdsByMatchId = new java.util.HashMap<>();
+        providerMappings.forEach(mapping -> {
+            Long matchId = mapping.getMatch().getId();
+            mappedMatchIds.add(matchId);
+            fixtureIdsByMatchId.put(matchId, mapping.getExternalId());
+        });
 
         boolean missingProviderMappings = !scheduledMatches.isEmpty()
                 && scheduledMatches.stream().anyMatch(match -> !mappedMatchIds.contains(match.getId()));
@@ -74,7 +79,9 @@ public class OddsIngestionService {
         int processed = 0;
         for (Match match : upcoming) {
             try {
-                syncFixtureOdds(match, selectedProvider);
+                syncFixtureOdds(match, selectedProvider, fixtureIdsByMatchId.get(match.getId()));
+                match.setLastOddsSyncedAt(Instant.now());
+                matchRepository.save(match);
                 processed++;
             } catch (Exception ex) {
                 log.warn("Could not sync odds for match {}: {}", match.getId(), ex.getMessage());
@@ -83,12 +90,10 @@ public class OddsIngestionService {
         log.info("Odds ingestion finished. {} upcoming fixtures checked.", processed);
     }
 
-    private void syncFixtureOdds(Match match, Provider selectedProvider) {
-        String fixtureId = matchExternalIdRepository
-                .findByMatchIdAndProvider(match.getId(), selectedProvider)
-                .map(MatchExternalId::getExternalId)
-                .orElseThrow(() -> new IllegalStateException("No fixture ID for provider " + selectedProvider));
-
+    private void syncFixtureOdds(Match match, Provider selectedProvider, String fixtureId) {
+        if (fixtureId == null || fixtureId.isBlank()) {
+            throw new IllegalStateException("No fixture ID for provider " + selectedProvider);
+        }
         List<ProviderOdds> values = providerRegistry.odds(selectedProvider).fetchOdds(new OddsQuery(fixtureId));
         Map<String, List<ProviderOdds>> byBookmaker = new LinkedHashMap<>();
         for (ProviderOdds value : values) {
@@ -107,12 +112,20 @@ public class OddsIngestionService {
                     .orElseGet(() -> MatchOdds.builder()
                             .match(match).bookmaker(bookmaker).marketName(MARKET).build());
 
+            java.math.BigDecimal previousHome = odds.getHomeWinOdds();
+            java.math.BigDecimal previousDraw = odds.getDrawOdds();
+            java.math.BigDecimal previousAway = odds.getAwayWinOdds();
+
             for (ProviderOdds value : entry.getValue()) {
                 applyOdd(odds, value.market(), value.outcome(), value.odd());
             }
 
+            boolean resultOddsChanged = !sameOdd(previousHome, odds.getHomeWinOdds())
+                    || !sameOdd(previousDraw, odds.getDrawOdds())
+                    || !sameOdd(previousAway, odds.getAwayWinOdds());
             odds = matchOddsRepository.save(odds);
-            if (odds.getHomeWinOdds() != null || odds.getDrawOdds() != null || odds.getAwayWinOdds() != null) {
+            if (resultOddsChanged
+                    && (odds.getHomeWinOdds() != null || odds.getDrawOdds() != null || odds.getAwayWinOdds() != null)) {
                 oddsHistoryRepository.save(OddsHistory.builder()
                         .matchOdds(odds)
                         .homeWinOdds(odds.getHomeWinOdds())
@@ -125,6 +138,10 @@ public class OddsIngestionService {
     }
 
 
+
+    private static boolean sameOdd(java.math.BigDecimal left, java.math.BigDecimal right) {
+        return left == null ? right == null : right != null && left.compareTo(right) == 0;
+    }
 
     private static void applyOdd(MatchOdds odds, String market, String label, java.math.BigDecimal odd) {
         if (market == null || label == null || odd == null) return;
