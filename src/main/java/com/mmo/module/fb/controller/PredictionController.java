@@ -2,6 +2,7 @@ package com.mmo.module.fb.controller;
 
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
+import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.repository.MatchPredictionRepository;
 import com.mmo.module.fb.domain.repository.MatchRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +32,7 @@ public class PredictionController {
             Instant endTime = now.plus(48, java.time.temporal.ChronoUnit.HOURS);
             
             List<Match> upcomingMatches = matchRepository.findByMatchTimeBetweenAndStatus(
-                    now, endTime, "SCHEDULED");
+                    now, endTime, MatchStatus.SCHEDULED);
             
             List<MatchPrediction> predictions = upcomingMatches.stream()
                     .limit(limit)
@@ -82,7 +83,7 @@ public class PredictionController {
             Instant endOfDay = startOfDay.plus(1, java.time.temporal.ChronoUnit.DAYS);
             
             List<Match> matches = matchRepository.findByMatchTimeBetweenAndStatus(
-                    startOfDay, endOfDay, "SCHEDULED");
+                    startOfDay, endOfDay, MatchStatus.SCHEDULED);
             
             List<MatchPrediction> predictions = matches.stream()
                     .map(match -> matchPredictionRepository.findByMatchId(match.getId()).orElse(null))
