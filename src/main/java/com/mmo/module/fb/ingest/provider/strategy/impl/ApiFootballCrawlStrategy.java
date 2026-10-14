@@ -1,119 +1,43 @@
 package com.mmo.module.fb.ingest.provider.strategy.impl;
 
-import com.mmo.module.fb.domain.entity.*;
 import com.mmo.module.fb.domain.enums.Provider;
-import com.mmo.module.fb.domain.repository.*;
-import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballClient;
-import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.*;
-import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
-import com.mmo.module.fb.ingest.service.FixtureIngestionService;
-import com.mmo.module.fb.ingest.service.TeamIngestionService;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData;
 import com.mmo.module.fb.ingest.provider.strategy.AbstractCrawler;
-import com.mmo.AppProperties;
+import com.mmo.module.fb.ingest.service.FixtureIngestionService;
+import com.mmo.module.fb.ingest.service.LeagueIngestionService;
+import com.mmo.module.fb.ingest.service.StandingsIngestionService;
+import com.mmo.module.fb.ingest.service.TeamIngestionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
+/**
+ * Compatibility adapter for existing Quartz jobs.
+ * Source-specific HTTP and DTO logic lives in provider/apifootball; persistence is handled by
+ * ingestion services. New jobs should depend on those services rather than this legacy strategy.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ApiFootballCrawlStrategy extends AbstractCrawler {
 
-    private static final com.fasterxml.jackson.core.type.TypeReference<ApiFootballResponse<LeagueItem>> LEAGUES_TYPE = new com.fasterxml.jackson.core.type.TypeReference<>() {};
-
-    private final LeagueRepository leagueRepository;
-    private final SeasonRepository seasonRepository;
-    private final LeagueExternalIdRepository leagueExternalIdRepository;
-    private final SeasonExternalIdRepository seasonExternalIdRepository;
-    private final ApiFootballClient apiFootballClient;
-    private final AppProperties appProperties;
-    private final FixtureIngestionService fixtureIngestionService;
+    private final LeagueIngestionService leagueIngestionService;
     private final TeamIngestionService teamIngestionService;
+    private final FixtureIngestionService fixtureIngestionService;
+    private final StandingsIngestionService standingsIngestionService;
 
     @Override
-    @Transactional
     public void syncLeagues() {
-        if (!isEnabled()) return;
-        List<Long> leagueIds = appProperties.getApiFootball().getLeagueIds();
-        if (leagueIds == null || leagueIds.isEmpty()) {
-            log.warn("No API-Football league IDs configured; set API_FOOTBALL_LEAGUE_IDS.");
-            return;
-        }
-
-        int synced = 0;
-        for (Long apiLeagueId : leagueIds) {
-            ApiFootballResponse<LeagueItem> response =
-                    apiFootballClient.get("/leagues", Map.of("id", apiLeagueId), LEAGUES_TYPE);
-            for (LeagueItem item : safe(response.response())) {
-                if (item.league() == null || item.league().id() == null) continue;
-                LeagueDto dto = item.league();
-                String externalId = dto.id().toString();
-
-                League league = leagueExternalIdRepository
-                        .findByProviderAndExternalId(Provider.API_FOOTBALL, externalId)
-                        .map(LeagueExternalId::getLeague)
-                        .orElseGet(() -> leagueRepository.findByIsActive(true).stream()
-                                .filter(existing -> existing.getName().equalsIgnoreCase(dto.name()))
-                                .findFirst().orElseGet(League::new));
-
-                league.setName(dto.name());
-                league.setSlug(slug(dto.name()) + "-" + externalId);
-                league.setCountry(item.country() == null ? null : item.country().name());
-                league.setLogoUrl(dto.logo());
-                league.setExternalId(externalId);
-                league.setActive(true);
-                league.setIsActive(true);
-                league = leagueRepository.save(league);
-
-                final League savedLeague = league;
-                LeagueExternalId external = leagueExternalIdRepository
-                        .findByLeagueIdAndProvider(savedLeague.getId(), Provider.API_FOOTBALL)
-                        .orElseGet(() -> LeagueExternalId.builder()
-                                .league(savedLeague).provider(Provider.API_FOOTBALL)
-                                .externalId(externalId).build());
-                external.setExternalId(externalId);
-                leagueExternalIdRepository.save(external);
-
-                for (LeagueSeasonDto seasonDto : safe(item.seasons())) {
-                    if (seasonDto.year() == null) continue;
-                    String year = seasonDto.year().toString();
-                    Season season = seasonRepository.findAll().stream()
-                            .filter(existing -> existing.getLeague().getId().equals(savedLeague.getId())
-                                    && existing.getYear().equals(year))
-                            .findFirst()
-                            .orElseGet(() -> Season.builder().league(savedLeague).year(year).build());
-                    season.setCurrent(Boolean.TRUE.equals(seasonDto.current()));
-                    season.setStartDate(parseDate(seasonDto.start()));
-                    season.setEndDate(parseDate(seasonDto.end()));
-                    season.setExternalId(year);
-                    season = seasonRepository.save(season);
-
-                    final Season savedSeason = season;
-                    SeasonExternalId seasonExternal = seasonExternalIdRepository
-                            .findBySeasonIdAndProvider(savedSeason.getId(), Provider.API_FOOTBALL)
-                            .orElseGet(() -> SeasonExternalId.builder()
-                                    .season(savedSeason).provider(Provider.API_FOOTBALL)
-                                    .externalId(year).build());
-                    seasonExternal.setExternalId(year);
-                    seasonExternalIdRepository.save(seasonExternal);
-                }
-                synced++;
-            }
-        }
-        log.info("API-Football league sync completed. {} leagues processed.", synced);
+        leagueIngestionService.syncLeagues();
     }
 
     @Override
-    @Transactional
     public void storeSeasons() {
+        // League sync also upserts the seasons returned by the source.
         syncLeagues();
     }
 
@@ -150,23 +74,8 @@ public class ApiFootballCrawlStrategy extends AbstractCrawler {
         fixtureIngestionService.syncCurrentSeasonFixtures(LocalDate.now().minusDays(3), LocalDate.now());
     }
 
-    private boolean isEnabled() {
-        return appProperties.getApiFootball() != null && appProperties.getApiFootball().isEnabled();
-    }
-
-    private static LocalDate parseDate(String value) {
-        if (!StringUtils.hasText(value)) return null;
-        try { return LocalDate.parse(value); }
-        catch (Exception ignored) { return null; }
-    }
-
-    private static String slug(String value) {
-        if (value == null) return "unknown";
-        return value.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
-    }
-
-    private static <T> List<T> safe(List<T> values) {
-        return values == null ? Collections.emptyList() : values;
+    public void syncStandings() {
+        standingsIngestionService.syncStandings();
     }
 
     @Override
