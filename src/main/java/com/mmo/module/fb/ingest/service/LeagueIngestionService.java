@@ -16,7 +16,6 @@ import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +32,6 @@ public class LeagueIngestionService {
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final SeasonExternalIdRepository seasonExternalIdRepository;
 
-    @Transactional
     public void syncLeagues() {
         syncLeaguesForProvider(appProperties.getIngestion().getProviders().getLeague());
     }
