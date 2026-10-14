@@ -64,7 +64,6 @@ public class FixtureIngestionService {
             throw new IllegalArgumentException("'from' must be before or equal to 'to'");
         }
 
-        leagueIngestionService.syncLeaguesForProvider(selectedProvider);
         teamIngestionService.syncTeamsForProvider(selectedProvider);
 
         int saved = 0;
