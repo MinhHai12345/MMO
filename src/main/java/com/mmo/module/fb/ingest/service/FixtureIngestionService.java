@@ -71,6 +71,9 @@ public class FixtureIngestionService {
         int saved = 0;
         int skipped = 0;
         List<Season> seasons = seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
+        Map<Long, String> leagueExternalIdsByLeagueId = new HashMap<>();
+        leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
+                leagueExternalIdsByLeagueId.put(mapping.getLeague().getId(), mapping.getExternalId()));
         Map<String, Team> teamsByExternalId = new HashMap<>();
         teamExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
                 teamsByExternalId.put(mapping.getExternalId(), mapping.getTeam()));
@@ -79,11 +82,7 @@ public class FixtureIngestionService {
                 matchesByExternalId.put(mapping.getExternalId(), mapping.getMatch()));
 
         for (Season season : seasons) {
-            Long externalLeagueId = leagueExternalIdRepository
-                    .findByLeagueIdAndProvider(season.getLeague().getId(), selectedProvider)
-                    .map(LeagueExternalId::getExternalId)
-                    .map(FixtureIngestionService::parseLong)
-                    .orElse(null);
+            Long externalLeagueId = parseLong(leagueExternalIdsByLeagueId.get(season.getLeague().getId()));
             if (externalLeagueId == null) continue;
 
             List<ProviderFixture> fixtures = providerRegistry.fixture(selectedProvider).fetchFixtures(
