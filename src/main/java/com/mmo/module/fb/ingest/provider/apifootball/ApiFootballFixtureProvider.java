@@ -7,6 +7,7 @@ import com.mmo.module.fb.ingest.provider.apifootball.mapper.ApiFootballFixtureMa
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import com.mmo.module.fb.ingest.provider.spi.FixtureProvider;
+import com.mmo.module.fb.domain.enums.Provider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -27,6 +28,11 @@ public class ApiFootballFixtureProvider implements FixtureProvider {
 
     private final ApiFootballClient client;
     private final ApiFootballFixtureMapper mapper;
+
+    @Override
+    public Provider getProvider() {
+        return Provider.API_FOOTBALL;
+    }
 
     @Override
     public List<ProviderFixture> fetchFixtures(FixtureQuery query) {
