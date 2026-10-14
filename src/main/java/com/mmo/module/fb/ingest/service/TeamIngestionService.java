@@ -36,14 +36,13 @@ public class TeamIngestionService {
     @Transactional
     public void syncTeams() {
         Provider selectedProvider = appProperties.getIngestion().getProviders().getTeam();
-        Provider leagueProvider = appProperties.getIngestion().getProviders().getLeague();
         if (selectedProvider == Provider.API_FOOTBALL && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
 
         int synced = 0;
         for (Season season : seasonRepository.findAll()) {
             if (season.getLeague() == null || season.getYear() == null) continue;
             Long leagueExternalId = leagueExternalIdRepository
-                    .findByLeagueIdAndProvider(season.getLeague().getId(), leagueProvider)
+                    .findByLeagueIdAndProvider(season.getLeague().getId(), selectedProvider)
                     .map(LeagueExternalId::getExternalId)
                     .map(TeamIngestionService::parseLong)
                     .orElse(null);
