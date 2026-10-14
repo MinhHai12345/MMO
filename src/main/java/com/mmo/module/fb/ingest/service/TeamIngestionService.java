@@ -13,7 +13,7 @@ import com.mmo.module.fb.domain.repository.TeamRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.provider.model.TeamQuery;
 import com.mmo.module.fb.ingest.provider.spi.TeamProvider;
-import com.mmo.module.fb.ingest.provider.spi.ProviderResolver;
+import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,7 +26,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TeamIngestionService {
 
-    private final List<TeamProvider> teamProviders;
+    private final ProviderRegistry providerRegistry;
     private final AppProperties appProperties;
     private final SeasonRepository seasonRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
@@ -85,9 +85,7 @@ public class TeamIngestionService {
         log.info("Team ingestion via {} completed. {} records saved/updated.", selectedProvider, synced);
     }
 
-    private TeamProvider teamProvider(Provider selectedProvider) {
-        return ProviderResolver.resolve(teamProviders, selectedProvider, TeamProvider::getProvider, "TeamProvider");
-    }
+
 
     private static Long parseLong(String value) {
         try {
