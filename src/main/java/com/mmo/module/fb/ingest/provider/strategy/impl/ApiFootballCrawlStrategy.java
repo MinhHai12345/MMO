@@ -20,6 +20,8 @@ import org.springframework.util.StringUtils;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -171,7 +173,15 @@ public class ApiFootballCrawlStrategy extends AbstractCrawler {
     @Override
     @Transactional
     public void storeMatches() {
+        // Lightweight rolling sync for the daily job; do not download an entire season every day.
         syncFixtures(LocalDate.now().minusDays(14), LocalDate.now().plusDays(30));
+    }
+
+    @Override
+    @Transactional
+    public void syncAllCurrentSeasonFixtures() {
+        // Bootstrap/reconciliation job: no date filter, so completed and future fixtures are included.
+        syncFixtures(currentSeasons(), null, null);
     }
 
     @Override
@@ -192,25 +202,43 @@ public class ApiFootballCrawlStrategy extends AbstractCrawler {
     }
 
     private void syncFixtures(LocalDate from, LocalDate to) {
+        syncFixtures(currentSeasons(), from, to);
+    }
+
+    private void syncFixtures(List<Season> seasons, LocalDate from, LocalDate to) {
         if (!isEnabled()) return;
         int synced = 0;
-        for (Season season : currentSeasons()) {
+        int skipped = 0;
+
+        for (Season season : seasons) {
+            if (season.getLeague() == null || season.getYear() == null) continue;
             Long apiLeagueId = apiLeagueId(season.getLeague().getId());
             if (apiLeagueId == null) continue;
 
-            ApiFootballResponse<FixtureItem> response = apiFootballClient.get("/fixtures", Map.of(
-                    "league", apiLeagueId, "season", season.getYear(),
-                    "from", from.toString(), "to", to.toString()), FIXTURES_TYPE);
+            Map<String, Object> query = new LinkedHashMap<>();
+            query.put("league", apiLeagueId);
+            query.put("season", season.getYear());
+            if (from != null) query.put("from", from.toString());
+            if (to != null) query.put("to", to.toString());
 
-            for (FixtureItem item : safe(response.response())) {
+            List<FixtureItem> fixtures = fetchAllFixturePages(query);
+            log.info("Fetched {} API-Football fixtures for league {} season {}",
+                    fixtures.size(), apiLeagueId, season.getYear());
+
+            for (FixtureItem item : fixtures) {
                 if (item.fixture() == null || item.fixture().id() == null
                         || item.teams() == null || item.teams().home() == null
-                        || item.teams().away() == null) continue;
+                        || item.teams().away() == null) {
+                    skipped++;
+                    continue;
+                }
+
                 String fixtureId = item.fixture().id().toString();
                 Team home = findTeam(item.teams().home().id());
                 Team away = findTeam(item.teams().away().id());
                 if (home == null || away == null) {
                     log.debug("Skipping fixture {} because teams have not been synced.", fixtureId);
+                    skipped++;
                     continue;
                 }
 
@@ -253,7 +281,46 @@ public class ApiFootballCrawlStrategy extends AbstractCrawler {
                 synced++;
             }
         }
-        log.info("API-Football fixtures synced from {} through {}: {} records.", from, to, synced);
+
+        if (from == null && to == null) {
+            log.info("Full current-season API-Football fixture sync completed: {} saved/updated, {} skipped.",
+                    synced, skipped);
+        } else {
+            log.info("API-Football fixtures synced from {} through {}: {} saved/updated, {} skipped.",
+                    from, to, synced, skipped);
+        }
+    }
+
+    /**
+     * API-Football paginates fixtures. Fetch every page so a full-season bootstrap does not
+     * silently stop after the first page. The 100-page guard protects against broken metadata.
+     */
+    private List<FixtureItem> fetchAllFixturePages(Map<String, ?> baseQuery) {
+        List<FixtureItem> fixtures = new ArrayList<>();
+        int page = 1;
+        int totalPages = 1;
+
+        do {
+            Map<String, Object> query = new LinkedHashMap<>(baseQuery);
+            query.put("page", page);
+            ApiFootballResponse<FixtureItem> response =
+                    apiFootballClient.get("/fixtures", query, FIXTURES_TYPE);
+            fixtures.addAll(safe(response.response()));
+
+            if (response.paging() != null && response.paging().total() != null) {
+                totalPages = response.paging().total();
+            } else {
+                totalPages = page;
+            }
+
+            if (page >= totalPages || safe(response.response()).isEmpty()) break;
+            page++;
+        } while (page <= 100);
+
+        if (page > 100) {
+            log.warn("Stopped API-Football fixture pagination at safety limit (100 pages). Query={}", baseQuery);
+        }
+        return fixtures;
     }
 
     private Team findTeam(Long apiTeamId) {
