@@ -2,6 +2,9 @@ package com.mmo.module.fb.domain.repository;
 
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.Team;
+import com.mmo.module.fb.domain.enums.MatchStatus;
+import com.mmo.module.fb.domain.enums.Provider;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,6 +15,36 @@ import java.util.List;
 
 @Repository
 public interface MatchRepository extends JpaRepository<Match, Long> {
+
+    @Query("""
+            SELECT m FROM Match m
+            WHERE m.season.id = :seasonId
+              AND m.homeTeam.id = :homeTeamId
+              AND m.awayTeam.id = :awayTeamId
+              AND m.matchTime BETWEEN :startTime AND :endTime
+            """)
+    List<Match> findFixtureCandidates(@Param("seasonId") Long seasonId,
+                                      @Param("homeTeamId") Long homeTeamId,
+                                      @Param("awayTeamId") Long awayTeamId,
+                                      @Param("startTime") Instant startTime,
+                                      @Param("endTime") Instant endTime);
+
+    List<Match> findByStatusAndMatchTimeBetweenOrderByMatchTimeAsc(
+            MatchStatus status, Instant startTime, Instant endTime);
+
+    @Query("""
+            SELECT DISTINCT m FROM Match m
+            JOIN m.externalIds externalId
+            WHERE m.status = :status
+              AND m.matchTime BETWEEN :startTime AND :endTime
+              AND externalId.provider = :provider
+            ORDER BY m.matchTime ASC
+            """)
+    List<Match> findUpcomingWithProviderMapping(@Param("status") MatchStatus status,
+                                                @Param("startTime") Instant startTime,
+                                                @Param("endTime") Instant endTime,
+                                                @Param("provider") Provider provider,
+                                                Pageable pageable);
     
     @Query("SELECT m FROM Match m WHERE m.matchTime BETWEEN :startTime AND :endTime AND m.status = :status")
     List<Match> findByMatchTimeBetweenAndStatus(@Param("startTime") Instant startTime, 
@@ -31,7 +64,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     
     List<Match> findByStatus(String status);
     
-    @Query("SELECT DISTINCT m.externalId FROM Match m WHERE m.league = :league")
+    @Query("SELECT DISTINCT m.externalId FROM Match m WHERE m.season.league = :league")
     List<String> findDistinctExternalIdsByLeague(@Param("league") com.mmo.module.fb.domain.entity.League league);
     
     @Query("SELECT m FROM Match m WHERE m.status = 'FINISHED' AND (m.homeXG IS NULL OR m.awayXG IS NULL)")
