@@ -28,14 +28,11 @@ import java.util.Map;
 public class ApiFootballCrawlStrategy extends AbstractCrawler {
 
     private static final com.fasterxml.jackson.core.type.TypeReference<ApiFootballResponse<LeagueItem>> LEAGUES_TYPE = new com.fasterxml.jackson.core.type.TypeReference<>() {};
-    private static final com.fasterxml.jackson.core.type.TypeReference<ApiFootballResponse<TeamItem>> TEAMS_TYPE = new com.fasterxml.jackson.core.type.TypeReference<>() {};
 
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
-    private final TeamRepository teamRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final SeasonExternalIdRepository seasonExternalIdRepository;
-    private final TeamExternalIdRepository teamExternalIdRepository;
     private final ApiFootballClient apiFootballClient;
     private final AppProperties appProperties;
     private final FixtureIngestionService fixtureIngestionService;
@@ -153,36 +150,8 @@ public class ApiFootballCrawlStrategy extends AbstractCrawler {
         fixtureIngestionService.syncCurrentSeasonFixtures(LocalDate.now().minusDays(3), LocalDate.now());
     }
 
-    /**
-     * All seasons returned by /leagues, including completed seasons. Historical team membership
-     * matters because clubs can be promoted, relegated, renamed, or leave a competition.
-     */
-    private List<Season> allSeasons() {
-        return seasonRepository.findAll().stream()
-                .filter(season -> season.getLeague() != null)
-                .toList();
-    }
-
-    private List<Season> currentSeasons() {
-        return seasonRepository.findAll().stream()
-                .filter(Season::isCurrent)
-                .toList();
-    }
-
-    private Long apiLeagueId(Long localLeagueId) {
-        return leagueExternalIdRepository.findByLeagueIdAndProvider(localLeagueId, Provider.API_FOOTBALL)
-                .map(LeagueExternalId::getExternalId)
-                .map(ApiFootballCrawlStrategy::parseLong)
-                .orElse(null);
-    }
-
     private boolean isEnabled() {
         return appProperties.getApiFootball() != null && appProperties.getApiFootball().isEnabled();
-    }
-
-    private static Long parseLong(String value) {
-        try { return Long.valueOf(value); }
-        catch (Exception ignored) { return null; }
     }
 
     private static LocalDate parseDate(String value) {
