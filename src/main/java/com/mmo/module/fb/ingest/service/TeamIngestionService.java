@@ -25,7 +25,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TeamIngestionService {
 
-    private final TeamProvider teamProvider;
+    private final List<TeamProvider> teamProviders;
     private final AppProperties appProperties;
     private final SeasonRepository seasonRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
@@ -46,7 +46,7 @@ public class TeamIngestionService {
                     .orElse(null);
             if (leagueExternalId == null) continue;
 
-            List<ProviderTeam> teams = teamProvider.fetchTeams(
+            List<ProviderTeam> teams = teamProvider().fetchTeams(
                     new TeamQuery(leagueExternalId, season.getYear()));
             for (ProviderTeam source : teams) {
                 Team team = teamExternalIdRepository
@@ -81,6 +81,13 @@ public class TeamIngestionService {
             }
         }
         log.info("API-Football team ingestion completed. {} records saved/updated.", synced);
+    }
+
+    private TeamProvider teamProvider() {
+        return teamProviders.stream()
+                .filter(provider -> provider.getProvider() == Provider.API_FOOTBALL)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No TeamProvider configured for API_FOOTBALL"));
     }
 
     private static Long parseLong(String value) {
