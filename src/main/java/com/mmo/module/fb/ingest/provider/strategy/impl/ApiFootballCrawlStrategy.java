@@ -3,7 +3,7 @@ package com.mmo.module.fb.ingest.provider.strategy.impl;
 import com.mmo.module.fb.domain.entity.*;
 import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.domain.repository.*;
-import com.mmo.module.fb.ingest.provider.apifootball.ApiFootballClient;
+import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballClient;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.*;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
 import com.mmo.module.fb.ingest.service.FixtureIngestionService;
