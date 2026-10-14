@@ -13,7 +13,7 @@ import com.mmo.module.fb.domain.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
 import com.mmo.module.fb.ingest.provider.model.StandingsQuery;
 import com.mmo.module.fb.ingest.provider.spi.StandingsProvider;
-import com.mmo.module.fb.ingest.provider.spi.ProviderResolver;
+import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,8 +27,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class StandingsIngestionService {
 
-    private final List<StandingsProvider> standingsProviders;
+    private final ProviderRegistry providerRegistry;
     private final AppProperties appProperties;
+    private final TeamIngestionService teamIngestionService;
     private final SeasonRepository seasonRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;
@@ -37,9 +38,17 @@ public class StandingsIngestionService {
     @Transactional
     public void syncStandings() {
         Provider selectedProvider = appProperties.getIngestion().getProviders().getStandings();
-        if (selectedProvider == Provider.API_FOOTBALL && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
+        syncStandingsForProvider(selectedProvider);
+    }
 
-        StandingsProvider provider = standingsProvider(selectedProvider);
+    @Transactional
+    public void syncStandingsForProvider(Provider selectedProvider) {
+        if (selectedProvider == Provider.API_FOOTBALL
+                && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
+            return;
+        }
+        teamIngestionService.syncTeamsForProvider(selectedProvider);
+        StandingsProvider provider = providerRegistry.standings(selectedProvider);
         int saved = 0;
         for (Season season : seasonRepository.findAll()) {
             if (season.getLeague() == null || season.getYear() == null) continue;
@@ -82,9 +91,7 @@ public class StandingsIngestionService {
         log.info("Standings ingestion completed. {} rows upserted.", saved);
     }
 
-    private StandingsProvider standingsProvider(Provider selectedProvider) {
-        return ProviderResolver.resolve(standingsProviders, selectedProvider, StandingsProvider::getProvider, "StandingsProvider");
-    }
+
 
     private static Long parseLong(String value) {
         try {

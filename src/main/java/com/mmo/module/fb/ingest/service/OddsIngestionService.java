@@ -15,14 +15,14 @@ import com.mmo.module.fb.domain.repository.MatchRepository;
 import com.mmo.module.fb.domain.repository.OddsHistoryRepository;
 import com.mmo.module.fb.ingest.provider.model.OddsQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
-import com.mmo.module.fb.ingest.provider.spi.OddsProvider;
-import com.mmo.module.fb.ingest.provider.spi.ProviderResolver;
+import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -37,8 +37,9 @@ public class OddsIngestionService {
     private static final String MARKET = "PREMATCH";
     private static final int MAX_FIXTURES_PER_RUN = 10;
 
-    private final List<OddsProvider> oddsProviders;
+    private final ProviderRegistry providerRegistry;
     private final AppProperties appProperties;
+    private final FixtureIngestionService fixtureIngestionService;
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final BookmakerRepository bookmakerRepository;
@@ -52,6 +53,21 @@ public class OddsIngestionService {
 
         Instant now = Instant.now();
         Instant until = now.plus(72, ChronoUnit.HOURS);
+        List<Match> scheduledMatches = matchRepository.findAll().stream()
+                .filter(match -> match.getStatus() == MatchStatus.SCHEDULED)
+                .filter(match -> match.getMatchTime() != null
+                        && !match.getMatchTime().isBefore(now) && !match.getMatchTime().isAfter(until))
+                .toList();
+
+        boolean missingProviderMappings = scheduledMatches.isEmpty()
+                || scheduledMatches.stream().anyMatch(match -> matchExternalIdRepository
+                        .findByMatchIdAndProvider(match.getId(), selectedProvider).isEmpty());
+        if (missingProviderMappings) {
+            // Bootstrap missing cross-provider fixture IDs without repeating a full fixture sync every odds run.
+            LocalDate today = LocalDate.now();
+            fixtureIngestionService.syncFixturesForProvider(selectedProvider, today, today.plusDays(3));
+        }
+
         List<Match> upcoming = matchRepository.findAll().stream()
                 .filter(match -> match.getStatus() == MatchStatus.SCHEDULED)
                 .filter(match -> match.getMatchTime() != null
@@ -80,7 +96,7 @@ public class OddsIngestionService {
                 .map(MatchExternalId::getExternalId)
                 .orElseThrow(() -> new IllegalStateException("No fixture ID for provider " + selectedProvider));
 
-        List<ProviderOdds> values = oddsProvider(selectedProvider).fetchOdds(new OddsQuery(fixtureId));
+        List<ProviderOdds> values = providerRegistry.odds(selectedProvider).fetchOdds(new OddsQuery(fixtureId));
         Map<String, List<ProviderOdds>> byBookmaker = new LinkedHashMap<>();
         for (ProviderOdds value : values) {
             if (value.bookmaker() != null && !value.bookmaker().isBlank()) {
@@ -115,9 +131,7 @@ public class OddsIngestionService {
         }
     }
 
-    private OddsProvider oddsProvider(Provider selectedProvider) {
-        return ProviderResolver.resolve(oddsProviders, selectedProvider, OddsProvider::getProvider, "OddsProvider");
-    }
+
 
     private static void applyOdd(MatchOdds odds, String market, String label, java.math.BigDecimal odd) {
         if (market == null || label == null || odd == null) return;

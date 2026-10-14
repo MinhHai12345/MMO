@@ -12,8 +12,7 @@ import com.mmo.module.fb.domain.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.domain.repository.SeasonRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
-import com.mmo.module.fb.ingest.provider.spi.LeagueProvider;
-import com.mmo.module.fb.ingest.provider.spi.ProviderResolver;
+import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,7 +25,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class LeagueIngestionService {
 
-    private final List<LeagueProvider> leagueProviders;
+    private final ProviderRegistry providerRegistry;
     private final AppProperties appProperties;
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
@@ -35,8 +34,19 @@ public class LeagueIngestionService {
 
     @Transactional
     public void syncLeagues() {
-        Provider selectedProvider = appProperties.getIngestion().getProviders().getLeague();
-        if (selectedProvider == Provider.API_FOOTBALL && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
+        syncLeaguesForProvider(appProperties.getIngestion().getProviders().getLeague());
+    }
+
+    /**
+     * Ensures league and season external IDs exist for a provider, even when another provider
+     * is configured for the league ingestion schedule. Downstream resources depend on these IDs.
+     */
+    @Transactional
+    public void syncLeaguesForProvider(Provider selectedProvider) {
+        if (selectedProvider == Provider.API_FOOTBALL
+                && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
+            return;
+        }
         List<Long> configuredIds = selectedProvider == Provider.API_FOOTBALL
                 ? appProperties.getApiFootball().getLeagueIds() : List.of();
         if (selectedProvider == Provider.API_FOOTBALL
@@ -46,19 +56,43 @@ public class LeagueIngestionService {
         }
 
         int synced = 0;
-        for (ProviderLeague source : leagueProvider(selectedProvider).fetchLeagues(configuredIds)) {
+        for (ProviderLeague source : providerRegistry.league(selectedProvider).fetchLeagues(configuredIds)) {
             League league = leagueExternalIdRepository
                     .findByProviderAndExternalId(selectedProvider, source.externalId())
                     .map(LeagueExternalId::getLeague)
-                    .orElseGet(() -> leagueRepository.findByIsActive(true).stream()
-                            .filter(existing -> existing.getName().equalsIgnoreCase(source.name()))
-                            .findFirst().orElseGet(League::new));
+                    .orElse(null);
+
+            if (league == null) {
+                List<League> candidates = leagueRepository.findByIsActive(true).stream()
+                        .filter(existing -> normalizeName(existing.getName()).equals(normalizeName(source.name())))
+                        .toList();
+                if (candidates.size() > 1 && source.country() != null && !source.country().isBlank()) {
+                    List<League> countryMatches = candidates.stream()
+                            .filter(existing -> existing.getCountry() != null
+                                    && normalizeName(existing.getCountry()).equals(normalizeName(source.country())))
+                            .toList();
+                    if (!countryMatches.isEmpty()) {
+                        candidates = countryMatches;
+                    }
+                }
+                if (candidates.size() > 1) {
+                    log.warn("Ambiguous league mapping for provider {} external ID {} name '{}'; skipping",
+                            selectedProvider, source.externalId(), source.name());
+                    continue;
+                }
+                league = candidates.isEmpty() ? new League() : candidates.get(0);
+            }
 
             league.setName(source.name());
-            league.setSlug(slug(source.name()) + "-" + source.externalId());
+            if (league.getSlug() == null || league.getSlug().isBlank()) {
+                league.setSlug(slug(source.name()) + "-" + selectedProvider.name().toLowerCase()
+                        + "-" + source.externalId());
+            }
             league.setCountry(source.country());
             league.setLogoUrl(source.logoUrl());
-            league.setExternalId(source.externalId());
+            if (league.getExternalId() == null || league.getExternalId().isBlank()) {
+                league.setExternalId(source.externalId());
+            }
             league.setActive(true);
             league.setIsActive(true);
             league = leagueRepository.save(league);
@@ -73,12 +107,31 @@ public class LeagueIngestionService {
             leagueExternalIdRepository.save(external);
 
             for (ProviderSeason sourceSeason : source.seasons()) {
-                Season season = seasonRepository.findAll().stream()
-                        .filter(existing -> existing.getLeague().getId().equals(savedLeague.getId())
-                                && existing.getYear().equals(sourceSeason.year()))
-                        .findFirst()
-                        .orElseGet(() -> Season.builder()
-                                .league(savedLeague).year(sourceSeason.year()).build());
+                if (sourceSeason.externalId() == null || sourceSeason.externalId().isBlank()
+                        || sourceSeason.year() == null || sourceSeason.year().isBlank()) {
+                    log.warn("Skipping season without provider ID/year for league {} from {}",
+                            source.name(), selectedProvider);
+                    continue;
+                }
+
+                Season season = seasonExternalIdRepository
+                        .findByProviderAndExternalId(selectedProvider, sourceSeason.externalId())
+                        .map(SeasonExternalId::getSeason)
+                        .orElse(null);
+                if (season != null && (!season.getLeague().getId().equals(savedLeague.getId())
+                        || !season.getYear().equals(sourceSeason.year()))) {
+                    log.warn("Provider {} season ID {} is already mapped to a different canonical season; skipping",
+                            selectedProvider, sourceSeason.externalId());
+                    continue;
+                }
+                if (season == null) {
+                    season = seasonRepository.findAll().stream()
+                            .filter(existing -> existing.getLeague().getId().equals(savedLeague.getId())
+                                    && existing.getYear().equals(sourceSeason.year()))
+                            .findFirst()
+                            .orElseGet(() -> Season.builder()
+                                    .league(savedLeague).year(sourceSeason.year()).build());
+                }
                 season.setCurrent(sourceSeason.current());
                 season.setStartDate(sourceSeason.startDate());
                 season.setEndDate(sourceSeason.endDate());
@@ -99,8 +152,10 @@ public class LeagueIngestionService {
         log.info("League ingestion completed. {} leagues processed.", synced);
     }
 
-    private LeagueProvider leagueProvider(Provider selectedProvider) {
-        return ProviderResolver.resolve(leagueProviders, selectedProvider, LeagueProvider::getProvider, "LeagueProvider");
+
+
+    private static String normalizeName(String value) {
+        return value == null ? "" : value.toLowerCase().replaceAll("[^a-z0-9]", "");
     }
 
     private static String slug(String value) {

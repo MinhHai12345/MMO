@@ -21,13 +21,14 @@ public class ApiFootballLeagueMapper extends AbstractMapper<LeagueItem, Provider
     @Override
     public ProviderLeague map(LeagueItem item, ProviderLeague target) {
         if (item == null || item.league() == null || item.league().id() == null) return null;
+        String leagueExternalId = item.league().id().toString();
         List<ProviderSeason> seasons = item.seasons() == null ? List.of()
                 : item.seasons().stream()
                 .filter(season -> season != null && season.year() != null)
-                .map(this::toSeason)
+                .map(season -> toSeason(season, leagueExternalId))
                 .toList();
         return new ProviderLeague(
-                item.league().id().toString(),
+                leagueExternalId,
                 item.league().name(),
                 item.country() == null ? null : item.country().name(),
                 item.league().logo(),
@@ -35,9 +36,10 @@ public class ApiFootballLeagueMapper extends AbstractMapper<LeagueItem, Provider
         );
     }
 
-    private ProviderSeason toSeason(LeagueSeasonDto season) {
+    private ProviderSeason toSeason(LeagueSeasonDto season, String leagueExternalId) {
+        // API-Football season years are shared across leagues; scope the external key by league.
         return new ProviderSeason(
-                season.year().toString(),
+                leagueExternalId + ":" + season.year(),
                 season.year().toString(),
                 Boolean.TRUE.equals(season.current()),
                 parseDate(season.start()),
