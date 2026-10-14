@@ -17,6 +17,7 @@ import com.mmo.module.fb.domain.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import com.mmo.module.fb.ingest.provider.spi.FixtureProvider;
+import com.mmo.module.fb.ingest.provider.spi.ProviderResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -121,10 +122,7 @@ public class FixtureIngestionService {
     }
 
     private FixtureProvider fixtureProvider(Provider selectedProvider) {
-        return fixtureProviders.stream()
-                .filter(provider -> provider.getProvider() == selectedProvider)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("No FixtureProvider configured for " + selectedProvider));
+        return ProviderResolver.resolve(fixtureProviders, selectedProvider, FixtureProvider::getProvider, "FixtureProvider");
     }
 
     private Team findTeam(String externalId) {
