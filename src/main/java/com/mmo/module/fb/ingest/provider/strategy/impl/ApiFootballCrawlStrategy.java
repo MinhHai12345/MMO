@@ -1,13 +1,12 @@
 package com.mmo.module.fb.ingest.provider.strategy.impl;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.mmo.module.fb.domain.entity.*;
-import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.domain.repository.*;
 import com.mmo.module.fb.ingest.provider.apifootball.ApiFootballClient;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.*;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
+import com.mmo.module.fb.ingest.service.FixtureIngestionService;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData;
 import com.mmo.module.fb.ingest.provider.strategy.AbstractCrawler;
 import com.mmo.AppProperties;
@@ -17,11 +16,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collections;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,20 +26,18 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ApiFootballCrawlStrategy extends AbstractCrawler {
 
-    private static final TypeReference<ApiFootballResponse<LeagueItem>> LEAGUES_TYPE = new TypeReference<>() {};
-    private static final TypeReference<ApiFootballResponse<TeamItem>> TEAMS_TYPE = new TypeReference<>() {};
-    private static final TypeReference<ApiFootballResponse<FixtureItem>> FIXTURES_TYPE = new TypeReference<>() {};
+    private static final com.fasterxml.jackson.core.type.TypeReference<ApiFootballResponse<LeagueItem>> LEAGUES_TYPE = new com.fasterxml.jackson.core.type.TypeReference<>() {};
+    private static final com.fasterxml.jackson.core.type.TypeReference<ApiFootballResponse<TeamItem>> TEAMS_TYPE = new com.fasterxml.jackson.core.type.TypeReference<>() {};
 
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
     private final TeamRepository teamRepository;
-    private final MatchRepository matchRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final SeasonExternalIdRepository seasonExternalIdRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;
-    private final MatchExternalIdRepository matchExternalIdRepository;
     private final ApiFootballClient apiFootballClient;
     private final AppProperties appProperties;
+    private final FixtureIngestionService fixtureIngestionService;
 
     @Override
     @Transactional
@@ -171,17 +165,16 @@ public class ApiFootballCrawlStrategy extends AbstractCrawler {
     }
 
     @Override
-    @Transactional
     public void storeMatches() {
-        // Lightweight rolling sync for the daily job; do not download an entire season every day.
-        syncFixtures(LocalDate.now().minusDays(14), LocalDate.now().plusDays(30));
+        // Lightweight rolling sync for the daily job.
+        fixtureIngestionService.syncCurrentSeasonFixtures(
+                LocalDate.now().minusDays(14), LocalDate.now().plusDays(30));
     }
 
     @Override
-    @Transactional
     public void syncAllCurrentSeasonFixtures() {
-        // Bootstrap/reconciliation job: no date filter, so completed and future fixtures are included.
-        syncFixtures(currentSeasons(), null, null);
+        // Bootstrap/reconciliation job: no date filter includes completed and future fixtures.
+        fixtureIngestionService.syncCurrentSeasonFixtures(null, null);
     }
 
     @Override
@@ -190,144 +183,13 @@ public class ApiFootballCrawlStrategy extends AbstractCrawler {
     }
 
     @Override
-    @Transactional
     public void prepareMatchUpcomingDaily() {
-        syncFixtures(LocalDate.now(), LocalDate.now().plusDays(2));
+        fixtureIngestionService.syncCurrentSeasonFixtures(LocalDate.now(), LocalDate.now().plusDays(2));
     }
 
     @Override
-    @Transactional
     public void prepareMatchResultDaily() {
-        syncFixtures(LocalDate.now().minusDays(3), LocalDate.now());
-    }
-
-    private void syncFixtures(LocalDate from, LocalDate to) {
-        syncFixtures(currentSeasons(), from, to);
-    }
-
-    private void syncFixtures(List<Season> seasons, LocalDate from, LocalDate to) {
-        if (!isEnabled()) return;
-        int synced = 0;
-        int skipped = 0;
-
-        for (Season season : seasons) {
-            if (season.getLeague() == null || season.getYear() == null) continue;
-            Long apiLeagueId = apiLeagueId(season.getLeague().getId());
-            if (apiLeagueId == null) continue;
-
-            Map<String, Object> query = new LinkedHashMap<>();
-            query.put("league", apiLeagueId);
-            query.put("season", season.getYear());
-            if (from != null) query.put("from", from.toString());
-            if (to != null) query.put("to", to.toString());
-
-            List<FixtureItem> fixtures = fetchAllFixturePages(query);
-            log.info("Fetched {} API-Football fixtures for league {} season {}",
-                    fixtures.size(), apiLeagueId, season.getYear());
-
-            for (FixtureItem item : fixtures) {
-                if (item.fixture() == null || item.fixture().id() == null
-                        || item.teams() == null || item.teams().home() == null
-                        || item.teams().away() == null) {
-                    skipped++;
-                    continue;
-                }
-
-                String fixtureId = item.fixture().id().toString();
-                Team home = findTeam(item.teams().home().id());
-                Team away = findTeam(item.teams().away().id());
-                if (home == null || away == null) {
-                    log.debug("Skipping fixture {} because teams have not been synced.", fixtureId);
-                    skipped++;
-                    continue;
-                }
-
-                Match match = matchExternalIdRepository
-                        .findByProviderAndExternalId(Provider.API_FOOTBALL, fixtureId)
-                        .map(MatchExternalId::getMatch)
-                        .orElseGet(() -> matchRepository.findAll().stream()
-                                .filter(existing -> fixtureId.equals(existing.getExternalId()))
-                                .findFirst().orElseGet(Match::new));
-
-                match.setExternalId(fixtureId);
-                match.setSeason(season);
-                match.setHomeTeam(home);
-                match.setAwayTeam(away);
-                String date = item.fixture().date();
-                if (StringUtils.hasText(date)) {
-                    Instant kickoff = Instant.parse(date);
-                    match.setMatchTime(kickoff);
-                    match.setStartTimestamp(item.fixture().timestamp() != null
-                            ? item.fixture().timestamp() : kickoff.getEpochSecond());
-                }
-                match.setRoundInfo(item.league() == null ? null : item.league().round());
-                match.setVenue(item.fixture().venue() == null ? null : item.fixture().venue().name());
-                match.setReferee(item.fixture().referee());
-                match.setStatus(toMatchStatus(item.fixture().status() == null
-                        ? null : item.fixture().status().shortName()));
-                if (item.goals() != null) {
-                    match.setHomeScore(item.goals().home());
-                    match.setAwayScore(item.goals().away());
-                }
-                match = matchRepository.save(match);
-
-                final Match savedMatch = match;
-                MatchExternalId external = matchExternalIdRepository
-                        .findByMatchIdAndProvider(savedMatch.getId(), Provider.API_FOOTBALL)
-                        .orElseGet(() -> MatchExternalId.builder().match(savedMatch)
-                                .provider(Provider.API_FOOTBALL).externalId(fixtureId).build());
-                external.setExternalId(fixtureId);
-                matchExternalIdRepository.save(external);
-                synced++;
-            }
-        }
-
-        if (from == null && to == null) {
-            log.info("Full current-season API-Football fixture sync completed: {} saved/updated, {} skipped.",
-                    synced, skipped);
-        } else {
-            log.info("API-Football fixtures synced from {} through {}: {} saved/updated, {} skipped.",
-                    from, to, synced, skipped);
-        }
-    }
-
-    /**
-     * API-Football paginates fixtures. Fetch every page so a full-season bootstrap does not
-     * silently stop after the first page. The 100-page guard protects against broken metadata.
-     */
-    private List<FixtureItem> fetchAllFixturePages(Map<String, ?> baseQuery) {
-        List<FixtureItem> fixtures = new ArrayList<>();
-        int page = 1;
-        int totalPages = 1;
-
-        do {
-            Map<String, Object> query = new LinkedHashMap<>(baseQuery);
-            query.put("page", page);
-            ApiFootballResponse<FixtureItem> response =
-                    apiFootballClient.get("/fixtures", query, FIXTURES_TYPE);
-            fixtures.addAll(safe(response.response()));
-
-            if (response.paging() != null && response.paging().total() != null) {
-                totalPages = response.paging().total();
-            } else {
-                totalPages = page;
-            }
-
-            if (page >= totalPages || safe(response.response()).isEmpty()) break;
-            page++;
-        } while (page <= 100);
-
-        if (page > 100) {
-            log.warn("Stopped API-Football fixture pagination at safety limit (100 pages). Query={}", baseQuery);
-        }
-        return fixtures;
-    }
-
-    private Team findTeam(Long apiTeamId) {
-        if (apiTeamId == null) return null;
-        return teamExternalIdRepository.findByProviderAndExternalId(
-                Provider.API_FOOTBALL, apiTeamId.toString())
-                .map(TeamExternalId::getTeam).orElse(null);
+        fixtureIngestionService.syncCurrentSeasonFixtures(LocalDate.now().minusDays(3), LocalDate.now());
     }
 
     /**
@@ -355,17 +217,6 @@ public class ApiFootballCrawlStrategy extends AbstractCrawler {
 
     private boolean isEnabled() {
         return appProperties.getApiFootball() != null && appProperties.getApiFootball().isEnabled();
-    }
-
-    private static MatchStatus toMatchStatus(String status) {
-        if (status == null) return MatchStatus.SCHEDULED;
-        return switch (status.toUpperCase()) {
-            case "1H", "HT", "2H", "ET", "P", "LIVE", "BT" -> MatchStatus.LIVE;
-            case "FT", "AET", "PEN" -> MatchStatus.FINISHED;
-            case "PST", "SUSP", "INT" -> MatchStatus.POSTPONED;
-            case "CANC", "ABD", "WO" -> MatchStatus.CANCELLED;
-            default -> MatchStatus.SCHEDULED;
-        };
     }
 
     private static Long parseLong(String value) {
