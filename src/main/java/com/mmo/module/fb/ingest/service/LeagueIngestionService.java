@@ -84,10 +84,15 @@ public class LeagueIngestionService {
             }
 
             league.setName(source.name());
-            league.setSlug(slug(source.name()) + "-" + source.externalId());
+            if (league.getSlug() == null || league.getSlug().isBlank()) {
+                league.setSlug(slug(source.name()) + "-" + selectedProvider.name().toLowerCase()
+                        + "-" + source.externalId());
+            }
             league.setCountry(source.country());
             league.setLogoUrl(source.logoUrl());
-            league.setExternalId(source.externalId());
+            if (league.getExternalId() == null || league.getExternalId().isBlank()) {
+                league.setExternalId(source.externalId());
+            }
             league.setActive(true);
             league.setIsActive(true);
             league = leagueRepository.save(league);
