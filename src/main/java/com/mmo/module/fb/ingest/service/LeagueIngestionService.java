@@ -65,10 +65,16 @@ public class LeagueIngestionService {
             if (league == null) {
                 List<League> candidates = leagueRepository.findByIsActive(true).stream()
                         .filter(existing -> normalizeName(existing.getName()).equals(normalizeName(source.name())))
-                        .filter(existing -> source.country() == null || source.country().isBlank()
-                                || existing.getCountry() == null || existing.getCountry().isBlank()
-                                || normalizeName(existing.getCountry()).equals(normalizeName(source.country())))
                         .toList();
+                if (candidates.size() > 1 && source.country() != null && !source.country().isBlank()) {
+                    List<League> countryMatches = candidates.stream()
+                            .filter(existing -> existing.getCountry() != null
+                                    && normalizeName(existing.getCountry()).equals(normalizeName(source.country())))
+                            .toList();
+                    if (!countryMatches.isEmpty()) {
+                        candidates = countryMatches;
+                    }
+                }
                 if (candidates.size() > 1) {
                     log.warn("Ambiguous league mapping for provider {} external ID {} name '{}'; skipping",
                             selectedProvider, source.externalId(), source.name());
