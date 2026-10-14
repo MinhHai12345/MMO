@@ -37,8 +37,10 @@ public class LeagueIngestionService {
     public void syncLeagues() {
         Provider selectedProvider = appProperties.getIngestion().getProviders().getLeague();
         if (selectedProvider == Provider.API_FOOTBALL && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
-        List<Long> configuredIds = appProperties.getApiFootball().getLeagueIds();
-        if (configuredIds == null || configuredIds.isEmpty()) {
+        List<Long> configuredIds = selectedProvider == Provider.API_FOOTBALL
+                ? appProperties.getApiFootball().getLeagueIds() : List.of();
+        if (selectedProvider == Provider.API_FOOTBALL
+                && (configuredIds == null || configuredIds.isEmpty())) {
             log.warn("No API-Football league IDs configured; set API_FOOTBALL_LEAGUE_IDS.");
             return;
         }
