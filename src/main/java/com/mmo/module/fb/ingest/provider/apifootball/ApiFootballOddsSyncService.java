@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.mmo.module.fb.domain.entity.Bookmaker;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchOdds;
+import com.mmo.module.fb.domain.entity.MatchExternalId;
+import com.mmo.module.fb.domain.enums.Provider;
+import com.mmo.module.fb.domain.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.domain.entity.OddsHistory;
 import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.repository.BookmakerRepository;
@@ -31,6 +34,7 @@ public class ApiFootballOddsSyncService {
 
     private final ApiFootballClient client;
     private final MatchRepository matchRepository;
+    private final MatchExternalIdRepository matchExternalIdRepository;
     private final BookmakerRepository bookmakerRepository;
     private final MatchOddsRepository matchOddsRepository;
     private final OddsHistoryRepository oddsHistoryRepository;
@@ -48,6 +52,8 @@ public class ApiFootballOddsSyncService {
                 .filter(match -> match.getMatchTime() != null
                         && !match.getMatchTime().isBefore(now)
                         && !match.getMatchTime().isAfter(until))
+                .filter(match -> matchExternalIdRepository
+                        .findByMatchIdAndProvider(match.getId(), Provider.API_FOOTBALL).isPresent())
                 .limit(MAX_FIXTURES_PER_RUN)
                 .toList();
 
@@ -58,14 +64,18 @@ public class ApiFootballOddsSyncService {
                 processed++;
             } catch (Exception ex) {
                 // Odds are optional: a plan may not expose this endpoint for a competition.
-                log.warn("Could not sync odds for fixture {}: {}", match.getExternalId(), ex.getMessage());
+                log.warn("Could not sync odds for fixture {}: {}", match.getId(), ex.getMessage());
             }
         }
         log.info("API-Football odds sync finished. {} upcoming fixtures checked.", processed);
     }
 
     private void syncFixtureOdds(Match match) {
-        JsonNode body = client.get("/odds", Map.of("fixture", match.getExternalId()));
+        String fixtureId = matchExternalIdRepository
+                .findByMatchIdAndProvider(match.getId(), Provider.API_FOOTBALL)
+                .map(MatchExternalId::getExternalId)
+                .orElseThrow(() -> new IllegalStateException("No API-Football fixture ID"));
+        JsonNode body = client.get("/odds", Map.of("fixture", fixtureId));
         for (JsonNode response : body.path("response")) {
             for (JsonNode bookmakerNode : response.path("bookmakers")) {
                 String bookmakerName = bookmakerNode.path("name").asText(null);
