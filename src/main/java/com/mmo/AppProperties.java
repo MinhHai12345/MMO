@@ -2,6 +2,7 @@ package com.mmo;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import com.mmo.module.fb.domain.enums.Provider;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -30,6 +31,25 @@ public class AppProperties {
     private Sync sync = new Sync();
 
     private ApiFootball apiFootball = new ApiFootball();
+
+    /** Select the data source independently for each ingestion resource. */
+    private Ingestion ingestion = new Ingestion();
+
+    @Getter
+    @Setter
+    public static class Ingestion {
+        private Providers providers = new Providers();
+    }
+
+    @Getter
+    @Setter
+    public static class Providers {
+        private Provider league = Provider.API_FOOTBALL;
+        private Provider team = Provider.API_FOOTBALL;
+        private Provider fixture = Provider.API_FOOTBALL;
+        private Provider standings = Provider.API_FOOTBALL;
+        private Provider odds = Provider.API_FOOTBALL;
+    }
 
     @Getter
     @Setter
