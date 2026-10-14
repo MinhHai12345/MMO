@@ -34,7 +34,8 @@ public class LeagueIngestionService {
 
     @Transactional
     public void syncLeagues() {
-        if (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled()) return;
+        Provider selectedProvider = appProperties.getIngestion().getProviders().getLeague();
+        if (selectedProvider == Provider.API_FOOTBALL && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
         List<Long> configuredIds = appProperties.getApiFootball().getLeagueIds();
         if (configuredIds == null || configuredIds.isEmpty()) {
             log.warn("No API-Football league IDs configured; set API_FOOTBALL_LEAGUE_IDS.");
@@ -42,9 +43,9 @@ public class LeagueIngestionService {
         }
 
         int synced = 0;
-        for (ProviderLeague source : leagueProvider().fetchLeagues(configuredIds)) {
+        for (ProviderLeague source : leagueProvider(selectedProvider).fetchLeagues(configuredIds)) {
             League league = leagueExternalIdRepository
-                    .findByProviderAndExternalId(Provider.API_FOOTBALL, source.externalId())
+                    .findByProviderAndExternalId(selectedProvider, source.externalId())
                     .map(LeagueExternalId::getLeague)
                     .orElseGet(() -> leagueRepository.findByIsActive(true).stream()
                             .filter(existing -> existing.getName().equalsIgnoreCase(source.name()))
@@ -61,9 +62,9 @@ public class LeagueIngestionService {
 
             League savedLeague = league;
             LeagueExternalId external = leagueExternalIdRepository
-                    .findByLeagueIdAndProvider(savedLeague.getId(), Provider.API_FOOTBALL)
+                    .findByLeagueIdAndProvider(savedLeague.getId(), selectedProvider)
                     .orElseGet(() -> LeagueExternalId.builder()
-                            .league(savedLeague).provider(Provider.API_FOOTBALL)
+                            .league(savedLeague).provider(selectedProvider)
                             .externalId(source.externalId()).build());
             external.setExternalId(source.externalId());
             leagueExternalIdRepository.save(external);
@@ -83,9 +84,9 @@ public class LeagueIngestionService {
 
                 Season savedSeason = season;
                 SeasonExternalId seasonExternal = seasonExternalIdRepository
-                        .findBySeasonIdAndProvider(savedSeason.getId(), Provider.API_FOOTBALL)
+                        .findBySeasonIdAndProvider(savedSeason.getId(), selectedProvider)
                         .orElseGet(() -> SeasonExternalId.builder()
-                                .season(savedSeason).provider(Provider.API_FOOTBALL)
+                                .season(savedSeason).provider(selectedProvider)
                                 .externalId(sourceSeason.year()).build());
                 seasonExternal.setExternalId(sourceSeason.year());
                 seasonExternalIdRepository.save(seasonExternal);
@@ -95,12 +96,12 @@ public class LeagueIngestionService {
         log.info("League ingestion completed. {} leagues processed.", synced);
     }
 
-    private LeagueProvider leagueProvider() {
+    private LeagueProvider leagueProvider(Provider selectedProvider) {
         return leagueProviders.stream()
-                .filter(provider -> provider.getProvider() == Provider.API_FOOTBALL)
+                .filter(provider -> provider.getProvider() == selectedProvider)
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException(
-                        "No LeagueProvider configured for API_FOOTBALL"));
+                        "No LeagueProvider configured for " + selectedProvider));
     }
 
     private static String slug(String value) {
