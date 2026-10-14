@@ -33,7 +33,6 @@ public class FixtureIngestionService {
 
     private final ProviderRegistry providerRegistry;
     private final AppProperties appProperties;
-    private final LeagueIngestionService leagueIngestionService;
     private final TeamIngestionService teamIngestionService;
     private final SeasonRepository seasonRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
