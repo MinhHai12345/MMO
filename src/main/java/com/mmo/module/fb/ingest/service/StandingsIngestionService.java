@@ -39,7 +39,7 @@ public class StandingsIngestionService {
         Provider selectedProvider = appProperties.getIngestion().getProviders().getStandings();
         if (selectedProvider == Provider.API_FOOTBALL && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
 
-        StandingsProvider provider = standingsProvider(selectedProvider);
+        StandingsProvider provider = providerRegistry.standings(selectedProvider);
         int saved = 0;
         for (Season season : seasonRepository.findAll()) {
             if (season.getLeague() == null || season.getYear() == null) continue;
