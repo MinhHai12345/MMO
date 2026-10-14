@@ -1,0 +1,98 @@
+package com.mmo.module.fb.ingest.service;
+
+import com.mmo.AppProperties;
+import com.mmo.module.fb.domain.entity.LeagueExternalId;
+import com.mmo.module.fb.domain.entity.LeagueStanding;
+import com.mmo.module.fb.domain.entity.Season;
+import com.mmo.module.fb.domain.entity.TeamExternalId;
+import com.mmo.module.fb.domain.enums.Provider;
+import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
+import com.mmo.module.fb.domain.repository.LeagueStandingRepository;
+import com.mmo.module.fb.domain.repository.SeasonRepository;
+import com.mmo.module.fb.domain.repository.TeamExternalIdRepository;
+import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
+import com.mmo.module.fb.ingest.provider.model.StandingsQuery;
+import com.mmo.module.fb.ingest.provider.spi.StandingsProvider;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.List;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class StandingsIngestionService {
+
+    private final List<StandingsProvider> standingsProviders;
+    private final AppProperties appProperties;
+    private final SeasonRepository seasonRepository;
+    private final LeagueExternalIdRepository leagueExternalIdRepository;
+    private final TeamExternalIdRepository teamExternalIdRepository;
+    private final LeagueStandingRepository standingRepository;
+
+    @Transactional
+    public void syncStandings() {
+        if (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled()) return;
+
+        StandingsProvider provider = standingsProvider();
+        int saved = 0;
+        for (Season season : seasonRepository.findAll()) {
+            if (season.getLeague() == null || season.getYear() == null) continue;
+            Long externalLeagueId = leagueExternalIdRepository
+                    .findByLeagueIdAndProvider(season.getLeague().getId(), Provider.API_FOOTBALL)
+                    .map(LeagueExternalId::getExternalId)
+                    .map(StandingsIngestionService::parseLong)
+                    .orElse(null);
+            if (externalLeagueId == null) continue;
+
+            List<ProviderStanding> rows = provider.fetchStandings(
+                    new StandingsQuery(externalLeagueId, season.getYear()));
+            for (ProviderStanding row : rows) {
+                var team = teamExternalIdRepository
+                        .findByProviderAndExternalId(Provider.API_FOOTBALL, row.teamExternalId())
+                        .map(TeamExternalId::getTeam)
+                        .orElse(null);
+                if (team == null) continue;
+
+                LeagueStanding standing = standingRepository
+                        .findBySeasonIdAndTeamId(season.getId(), team.getId())
+                        .orElseGet(() -> LeagueStanding.builder()
+                                .league(season.getLeague()).season(season).team(team).build());
+                standing.setPosition(row.position());
+                standing.setPoints(row.points());
+                standing.setGoalDifference(row.goalDifference());
+                standing.setForm(row.form());
+                standing.setGroupName(row.groupName());
+                standing.setPlayed(row.played());
+                standing.setWon(row.won());
+                standing.setDrawn(row.drawn());
+                standing.setLost(row.lost());
+                standing.setGoalsFor(row.goalsFor());
+                standing.setGoalsAgainst(row.goalsAgainst());
+                standing.setLastSyncedAt(Instant.now());
+                standingRepository.save(standing);
+                saved++;
+            }
+        }
+        log.info("Standings ingestion completed. {} rows upserted.", saved);
+    }
+
+    private StandingsProvider standingsProvider() {
+        return standingsProviders.stream()
+                .filter(provider -> provider.getProvider() == Provider.API_FOOTBALL)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "No StandingsProvider configured for API_FOOTBALL"));
+    }
+
+    private static Long parseLong(String value) {
+        try {
+            return Long.valueOf(value);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+}
