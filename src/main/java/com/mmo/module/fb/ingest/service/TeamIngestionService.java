@@ -84,9 +84,14 @@ public class TeamIngestionService {
 
                 team.setName(source.name());
                 team.setShortName(source.shortName());
-                team.setSlug(slug(source.name()) + "-" + source.externalId());
+                if (team.getSlug() == null || team.getSlug().isBlank()) {
+                    team.setSlug(slug(source.name()) + "-" + selectedProvider.name().toLowerCase()
+                            + "-" + source.externalId());
+                }
                 team.setLogoUrl(source.logoUrl());
-                team.setExternalId(source.externalId());
+                if (team.getExternalId() == null || team.getExternalId().isBlank()) {
+                    team.setExternalId(source.externalId());
+                }
                 team.setFoundedYear(source.foundedYear());
                 team.setIsActive(true);
                 if (source.stadiumName() != null || source.stadiumCapacity() != null) {
