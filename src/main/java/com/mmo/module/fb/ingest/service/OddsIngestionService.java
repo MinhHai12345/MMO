@@ -61,8 +61,8 @@ public class OddsIngestionService {
         matchExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
                 mappedMatchIds.add(mapping.getMatch().getId()));
 
-        boolean missingProviderMappings = scheduledMatches.isEmpty()
-                || scheduledMatches.stream().anyMatch(match -> !mappedMatchIds.contains(match.getId()));
+        boolean missingProviderMappings = !scheduledMatches.isEmpty()
+                && scheduledMatches.stream().anyMatch(match -> !mappedMatchIds.contains(match.getId()));
         if (missingProviderMappings) {
             // Bootstrap missing cross-provider fixture IDs without repeating a full fixture sync every odds run.
             LocalDate today = LocalDate.now();
