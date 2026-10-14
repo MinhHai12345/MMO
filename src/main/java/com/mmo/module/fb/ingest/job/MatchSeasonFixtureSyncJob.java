@@ -4,7 +4,7 @@ import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.job.AbstractJob;
 import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.ingest.provider.strategy.CrawlerStrategy;
-import com.mmo.module.fb.ingest.provider.apifootball.ApiFootballStandingsSyncService;
+import com.mmo.module.fb.ingest.service.StandingsIngestionService;
 import com.mmo.module.fb.provider.strategy.CrawlerStrategyRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class MatchSeasonFixtureSyncJob extends AbstractJob<CronJob> {
     private final CrawlerStrategyRegistry crawlerStrategyRegistry;
-    private final ApiFootballStandingsSyncService standingsSyncService;
+    private final StandingsIngestionService standingsIngestionService;
 
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
@@ -26,6 +26,6 @@ public class MatchSeasonFixtureSyncJob extends AbstractJob<CronJob> {
         strategy.storeSeasons();
         strategy.syncTeams();
         strategy.syncAllCurrentSeasonFixtures();
-        standingsSyncService.syncCurrentStandings();
+        standingsIngestionService.syncStandings();
     }
 }
