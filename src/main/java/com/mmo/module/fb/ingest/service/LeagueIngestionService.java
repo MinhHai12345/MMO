@@ -1,0 +1,110 @@
+package com.mmo.module.fb.ingest.service;
+
+import com.mmo.AppProperties;
+import com.mmo.module.fb.domain.entity.League;
+import com.mmo.module.fb.domain.entity.LeagueExternalId;
+import com.mmo.module.fb.domain.entity.Season;
+import com.mmo.module.fb.domain.entity.SeasonExternalId;
+import com.mmo.module.fb.domain.enums.Provider;
+import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
+import com.mmo.module.fb.domain.repository.LeagueRepository;
+import com.mmo.module.fb.domain.repository.SeasonExternalIdRepository;
+import com.mmo.module.fb.domain.repository.SeasonRepository;
+import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
+import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
+import com.mmo.module.fb.ingest.provider.spi.LeagueProvider;
+import com.mmo.module.fb.ingest.provider.spi.ProviderResolver;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class LeagueIngestionService {
+
+    private final List<LeagueProvider> leagueProviders;
+    private final AppProperties appProperties;
+    private final LeagueRepository leagueRepository;
+    private final SeasonRepository seasonRepository;
+    private final LeagueExternalIdRepository leagueExternalIdRepository;
+    private final SeasonExternalIdRepository seasonExternalIdRepository;
+
+    @Transactional
+    public void syncLeagues() {
+        Provider selectedProvider = appProperties.getIngestion().getProviders().getLeague();
+        if (selectedProvider == Provider.API_FOOTBALL && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
+        List<Long> configuredIds = selectedProvider == Provider.API_FOOTBALL
+                ? appProperties.getApiFootball().getLeagueIds() : List.of();
+        if (selectedProvider == Provider.API_FOOTBALL
+                && (configuredIds == null || configuredIds.isEmpty())) {
+            log.warn("No API-Football league IDs configured; set API_FOOTBALL_LEAGUE_IDS.");
+            return;
+        }
+
+        int synced = 0;
+        for (ProviderLeague source : leagueProvider(selectedProvider).fetchLeagues(configuredIds)) {
+            League league = leagueExternalIdRepository
+                    .findByProviderAndExternalId(selectedProvider, source.externalId())
+                    .map(LeagueExternalId::getLeague)
+                    .orElseGet(() -> leagueRepository.findByIsActive(true).stream()
+                            .filter(existing -> existing.getName().equalsIgnoreCase(source.name()))
+                            .findFirst().orElseGet(League::new));
+
+            league.setName(source.name());
+            league.setSlug(slug(source.name()) + "-" + source.externalId());
+            league.setCountry(source.country());
+            league.setLogoUrl(source.logoUrl());
+            league.setExternalId(source.externalId());
+            league.setActive(true);
+            league.setIsActive(true);
+            league = leagueRepository.save(league);
+
+            League savedLeague = league;
+            LeagueExternalId external = leagueExternalIdRepository
+                    .findByLeagueIdAndProvider(savedLeague.getId(), selectedProvider)
+                    .orElseGet(() -> LeagueExternalId.builder()
+                            .league(savedLeague).provider(selectedProvider)
+                            .externalId(source.externalId()).build());
+            external.setExternalId(source.externalId());
+            leagueExternalIdRepository.save(external);
+
+            for (ProviderSeason sourceSeason : source.seasons()) {
+                Season season = seasonRepository.findAll().stream()
+                        .filter(existing -> existing.getLeague().getId().equals(savedLeague.getId())
+                                && existing.getYear().equals(sourceSeason.year()))
+                        .findFirst()
+                        .orElseGet(() -> Season.builder()
+                                .league(savedLeague).year(sourceSeason.year()).build());
+                season.setCurrent(sourceSeason.current());
+                season.setStartDate(sourceSeason.startDate());
+                season.setEndDate(sourceSeason.endDate());
+                season.setExternalId(sourceSeason.year());
+                season = seasonRepository.save(season);
+
+                Season savedSeason = season;
+                SeasonExternalId seasonExternal = seasonExternalIdRepository
+                        .findBySeasonIdAndProvider(savedSeason.getId(), selectedProvider)
+                        .orElseGet(() -> SeasonExternalId.builder()
+                                .season(savedSeason).provider(selectedProvider)
+                                .externalId(sourceSeason.externalId()).build());
+                seasonExternal.setExternalId(sourceSeason.externalId());
+                seasonExternalIdRepository.save(seasonExternal);
+            }
+            synced++;
+        }
+        log.info("League ingestion completed. {} leagues processed.", synced);
+    }
+
+    private LeagueProvider leagueProvider(Provider selectedProvider) {
+        return ProviderResolver.resolve(leagueProviders, selectedProvider, LeagueProvider::getProvider, "LeagueProvider");
+    }
+
+    private static String slug(String value) {
+        if (value == null) return "unknown";
+        return value.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
+    }
+}

@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.strategy.impl;
+package com.mmo.module.fb.ingest.provider.sofascore;
 
 import com.mmo.module.fb.domain.entity.League;
 import com.mmo.module.fb.domain.entity.LeagueExternalId;

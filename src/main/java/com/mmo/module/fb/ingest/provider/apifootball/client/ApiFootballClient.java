@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.apifootball;
+package com.mmo.module.fb.ingest.provider.apifootball.client;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

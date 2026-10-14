@@ -84,15 +84,52 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
     @Override
     public Map<Long, SofaOddsData.MatchOddDetailDTO> fetchDailyMatchOdds(Page page) {
         String endpoint = String.format(FETCH_DAILY_ALL_MATCH_ODDS_URI, DateTimeUtils.today());
-        SofaOddsData oddsData = safeFetch(appProperties.getSofaScore().getUrl(), page, SofaOddsData.class);
-        return oddsData != null ? oddsData.getOdds() : Collections.emptyMap();
+        DynamicFetchResult result = safeFetch(
+                appProperties.getSofaScore().getUrl(),
+                Map.of(endpoint, SofaOddsData.class),
+                page,
+                this::triggerOdds);
+        if (!result.hasData(endpoint)) return Collections.emptyMap();
+        SofaOddsData oddsData = result.get(endpoint, SofaOddsData.class);
+        return oddsData != null && oddsData.getOdds() != null
+                ? oddsData.getOdds() : Collections.emptyMap();
+    }
+
+    private void triggerOdds(Page page) {
+        try {
+            Locator oddsText = page.locator("span:has-text('Odds'), div:has-text('Odds')").first();
+            oddsText.waitFor(new Locator.WaitForOptions()
+                    .setState(com.microsoft.playwright.options.WaitForSelectorState.ATTACHED)
+                    .setTimeout(15000));
+            page.evaluate("""
+                    () => {
+                        const input = document.querySelector("input[role='switch']");
+                        if (input) {
+                            const target = input.nextElementSibling || input.closest('label') || input;
+                            target.click();
+                        }
+                    }
+                    """);
+        } catch (TimeoutError ex) {
+            log.warn("SofaScore odds toggle was not found before timeout.");
+        } catch (Exception ex) {
+            log.warn("Could not activate SofaScore odds view: {}", ex.getMessage());
+        }
     }
 
     @Override
     public List<SofaMatchesData.SofaEventDTO> fetchMatchesDailyByTournamentId(Long sofaTournamentId, Page page) {
-        String endpoint = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI, sofaTournamentId, DateTimeUtils.today());
-        SofaMatchesData matchData = safeFetch(appProperties.getSofaScore().getUrl(), page, SofaMatchesData.class);
-        return matchData != null ? matchData.getEvents() : Collections.emptyList();
+        String endpoint = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI,
+                sofaTournamentId, DateTimeUtils.today());
+        DynamicFetchResult result = safeFetch(
+                appProperties.getSofaScore().getUrl(),
+                Map.of(endpoint, SofaMatchesData.class),
+                page,
+                null);
+        if (!result.hasData(endpoint)) return Collections.emptyList();
+        SofaMatchesData matchData = result.get(endpoint, SofaMatchesData.class);
+        return matchData != null && matchData.getEvents() != null
+                ? matchData.getEvents() : Collections.emptyList();
     }
 
     @Override
