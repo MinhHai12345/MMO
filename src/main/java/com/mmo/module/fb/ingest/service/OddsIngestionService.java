@@ -75,7 +75,7 @@ public class OddsIngestionService {
 
     private void syncFixtureOdds(Match match, Provider selectedProvider) {
         String fixtureId = matchExternalIdRepository
-                .findByMatchIdAndProvider(match.getId(), Provider.API_FOOTBALL)
+                .findByMatchIdAndProvider(match.getId(), selectedProvider)
                 .map(MatchExternalId::getExternalId)
                 .orElseThrow(() -> new IllegalStateException("No fixture ID for provider " + selectedProvider));
 
