@@ -66,7 +66,7 @@ public class FixtureIngestionService {
                     .orElse(null);
             if (externalLeagueId == null) continue;
 
-            List<ProviderFixture> fixtures = fixtureProvider(selectedProvider).fetchFixtures(
+            List<ProviderFixture> fixtures = providerRegistry.fixture(selectedProvider).fetchFixtures(
                     new FixtureQuery(externalLeagueId, season.getYear(), from, to));
             log.info("Fetched {} fixtures for league {} season {} from {}",
                     fixtures.size(), externalLeagueId, season.getYear(), selectedProvider);
