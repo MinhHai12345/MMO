@@ -2,7 +2,7 @@ package com.mmo.module.fb.ingest.job;
 
 import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.job.AbstractJob;
-import com.mmo.module.fb.ingest.provider.model.enums.Provider;
+import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.ingest.provider.strategy.CrawlerStrategy;
 import com.mmo.module.fb.provider.strategy.CrawlerStrategyRegistry;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +20,7 @@ public class LeagueSyncJob extends AbstractJob<CronJob> {
 
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
-        CrawlerStrategy strategy = crawlerStrategyRegistry.getStrategy(Provider.SOFA_SCORE);
+        CrawlerStrategy strategy = crawlerStrategyRegistry.getStrategy(Provider.API_FOOTBALL);
         strategy.syncLeagues();
     }
 
