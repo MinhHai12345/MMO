@@ -12,7 +12,6 @@ import com.mmo.module.fb.domain.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.domain.repository.TeamRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.provider.model.TeamQuery;
-import com.mmo.module.fb.ingest.provider.spi.TeamProvider;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
