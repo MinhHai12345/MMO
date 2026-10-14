@@ -44,9 +44,9 @@ public class FixtureIngestionService {
      */
     @Transactional
     public void syncCurrentSeasonFixtures(LocalDate from, LocalDate to) {
-        if (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled()) {
-            return;
-        }
+        Provider selectedProvider = appProperties.getIngestion().getProviders().getFixture();
+        Provider leagueProvider = appProperties.getIngestion().getProviders().getLeague();
+        if (selectedProvider == Provider.API_FOOTBALL && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
         if (from != null && to != null && from.isAfter(to)) {
             throw new IllegalArgumentException("'from' must be before or equal to 'to'");
         }
@@ -60,16 +60,16 @@ public class FixtureIngestionService {
 
         for (Season season : seasons) {
             Long externalLeagueId = leagueExternalIdRepository
-                    .findByLeagueIdAndProvider(season.getLeague().getId(), Provider.API_FOOTBALL)
+                    .findByLeagueIdAndProvider(season.getLeague().getId(), leagueProvider)
                     .map(LeagueExternalId::getExternalId)
                     .map(FixtureIngestionService::parseLong)
                     .orElse(null);
             if (externalLeagueId == null) continue;
 
-            List<ProviderFixture> fixtures = fixtureProvider().fetchFixtures(
+            List<ProviderFixture> fixtures = fixtureProvider(selectedProvider).fetchFixtures(
                     new FixtureQuery(externalLeagueId, season.getYear(), from, to));
-            log.info("Fetched {} fixtures for league {} season {} from API-Football",
-                    fixtures.size(), externalLeagueId, season.getYear());
+            log.info("Fetched {} fixtures for league {} season {} from {}",
+                    fixtures.size(), externalLeagueId, season.getYear(), selectedProvider);
 
             for (ProviderFixture fixture : fixtures) {
                 Team home = findTeam(fixture.homeTeamExternalId());
@@ -82,7 +82,7 @@ public class FixtureIngestionService {
                 }
 
                 Match match = matchExternalIdRepository
-                        .findByProviderAndExternalId(Provider.API_FOOTBALL, fixture.externalId())
+                        .findByProviderAndExternalId(selectedProvider, fixture.externalId())
                         .map(MatchExternalId::getMatch)
                         .orElseGet(Match::new);
 
@@ -104,10 +104,10 @@ public class FixtureIngestionService {
 
                 Match savedMatch = match;
                 MatchExternalId externalId = matchExternalIdRepository
-                        .findByMatchIdAndProvider(savedMatch.getId(), Provider.API_FOOTBALL)
+                        .findByMatchIdAndProvider(savedMatch.getId(), selectedProvider)
                         .orElseGet(() -> MatchExternalId.builder()
                                 .match(savedMatch)
-                                .provider(Provider.API_FOOTBALL)
+                                .provider(selectedProvider)
                                 .externalId(fixture.externalId())
                                 .build());
                 externalId.setExternalId(fixture.externalId());
@@ -116,21 +116,21 @@ public class FixtureIngestionService {
             }
         }
 
-        log.info("API-Football fixture ingestion completed. {} saved/updated, {} skipped; date range {} to {}",
-                saved, skipped, from, to);
+        log.info("Fixture ingestion via {} completed. {} saved/updated, {} skipped; date range {} to {}",
+                selectedProvider, saved, skipped, from, to);
     }
 
-    private FixtureProvider fixtureProvider() {
+    private FixtureProvider fixtureProvider(Provider selectedProvider) {
         return fixtureProviders.stream()
-                .filter(provider -> provider.getProvider() == Provider.API_FOOTBALL)
+                .filter(provider -> provider.getProvider() == selectedProvider)
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("No FixtureProvider configured for API_FOOTBALL"));
+                .orElseThrow(() -> new IllegalStateException("No FixtureProvider configured for " + selectedProvider));
     }
 
     private Team findTeam(String externalId) {
         if (externalId == null || externalId.isBlank()) return null;
         return teamExternalIdRepository
-                .findByProviderAndExternalId(Provider.API_FOOTBALL, externalId)
+                .findByProviderAndExternalId(appProperties.getIngestion().getProviders().getTeam(), externalId)
                 .map(TeamExternalId::getTeam)
                 .orElse(null);
     }
