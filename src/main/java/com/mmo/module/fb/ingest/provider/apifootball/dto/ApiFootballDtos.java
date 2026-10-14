@@ -60,7 +60,11 @@ public final class ApiFootballDtos {
     public record GoalsDto(@JsonProperty("for") Integer forGoals, @JsonProperty("against") Integer againstGoals) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record OddsItem(FixtureRefDto fixture, LeagueRefDto league, String update, List<OddsBookmakerDto> bookmakers) {}\n    @JsonIgnoreProperties(ignoreUnknown = true)\n    public record FixtureRefDto(Long id) {}\n    @JsonIgnoreProperties(ignoreUnknown = true)\n    public record LeagueRefDto(Long id, String name, String country, Integer season, String logo, String flag, String round) {}
+    public record OddsItem(FixtureRefDto fixture, LeagueRefDto league, String update, List<OddsBookmakerDto> bookmakers) {}
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record FixtureRefDto(Long id) {}
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record LeagueRefDto(Long id, String name, String country, Integer season, String logo, String flag, String round) {}
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record OddsBookmakerDto(Long id, String name, List<OddsBetDto> bets) {}
     @JsonIgnoreProperties(ignoreUnknown = true)
