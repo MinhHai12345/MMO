@@ -74,10 +74,10 @@ public class OddsIngestionService {
             fixtureIngestionService.syncFixturesForProvider(selectedProvider, today, today.plusDays(3));
 
             // The bootstrap may have created mappings; refresh the in-memory lookup before selecting fixtures.
-            providerMappings = matchExternalIdRepository.findAllByProvider(selectedProvider);
+            List<MatchExternalId> refreshedMappings = matchExternalIdRepository.findAllByProvider(selectedProvider);
             mappedMatchIds.clear();
             fixtureIdsByMatchId.clear();
-            providerMappings.forEach(mapping -> {
+            refreshedMappings.forEach(mapping -> {
                 Long matchId = mapping.getMatch().getId();
                 mappedMatchIds.add(matchId);
                 fixtureIdsByMatchId.put(matchId, mapping.getExternalId());
