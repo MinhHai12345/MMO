@@ -12,6 +12,10 @@ import java.time.Instant;
 @Component
 public class ApiFootballFixtureMapper extends AbstractMapper<FixtureItem, ProviderFixture> {
 
+    public ProviderFixture toModel(FixtureItem item) {
+        return map(item, null);
+    }
+
     @Override
     public ProviderFixture map(FixtureItem item, ProviderFixture target) {
         if (item == null || item.fixture() == null || item.fixture().id() == null
