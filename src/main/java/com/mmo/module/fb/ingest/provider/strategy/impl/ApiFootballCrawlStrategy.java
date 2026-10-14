@@ -127,7 +127,7 @@ public class ApiFootballCrawlStrategy extends AbstractCrawler {
     public void syncTeams() {
         if (!isEnabled()) return;
         int synced = 0;
-        for (Season season : currentSeasons()) {
+        for (Season season : allSeasons()) {
             Long apiLeagueId = apiLeagueId(season.getLeague().getId());
             if (apiLeagueId == null) continue;
 
@@ -263,8 +263,20 @@ public class ApiFootballCrawlStrategy extends AbstractCrawler {
                 .map(TeamExternalId::getTeam).orElse(null);
     }
 
+    /**
+     * All seasons returned by /leagues, including completed seasons. Historical team membership
+     * matters because clubs can be promoted, relegated, renamed, or leave a competition.
+     */
+    private List<Season> allSeasons() {
+        return seasonRepository.findAll().stream()
+                .filter(season -> season.getLeague() != null)
+                .toList();
+    }
+
     private List<Season> currentSeasons() {
-        return seasonRepository.findAll().stream().filter(Season::isCurrent).toList();
+        return seasonRepository.findAll().stream()
+                .filter(Season::isCurrent)
+                .toList();
     }
 
     private Long apiLeagueId(Long localLeagueId) {
