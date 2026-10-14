@@ -48,7 +48,7 @@ public class TeamIngestionService {
                     .orElse(null);
             if (leagueExternalId == null) continue;
 
-            List<ProviderTeam> teams = teamProvider(selectedProvider).fetchTeams(
+            List<ProviderTeam> teams = providerRegistry.team(selectedProvider).fetchTeams(
                     new TeamQuery(leagueExternalId, season.getYear()));
             for (ProviderTeam source : teams) {
                 Team team = teamExternalIdRepository
