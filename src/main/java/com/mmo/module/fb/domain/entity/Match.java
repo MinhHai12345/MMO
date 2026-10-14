@@ -18,6 +18,8 @@ import java.util.List;
         indexes = {
                 @Index(name = "idx_match_time", columnList = "match_time"),
                 @Index(name = "idx_match_status", columnList = "status"),
+                @Index(name = "idx_match_season_teams_time",
+                        columnList = "season_id, home_team_id, away_team_id, match_time"),
                 @Index(name = "idx_ext_id", columnList = "external_id", unique = true)
         })
 @Getter
