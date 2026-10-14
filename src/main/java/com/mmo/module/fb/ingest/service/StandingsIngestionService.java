@@ -35,14 +35,17 @@ public class StandingsIngestionService {
 
     @Transactional
     public void syncStandings() {
-        if (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled()) return;
+        Provider selectedProvider = appProperties.getIngestion().getProviders().getStandings();
+        Provider leagueProvider = appProperties.getIngestion().getProviders().getLeague();
+        Provider teamProvider = appProperties.getIngestion().getProviders().getTeam();
+        if (selectedProvider == Provider.API_FOOTBALL && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
 
-        StandingsProvider provider = standingsProvider();
+        StandingsProvider provider = standingsProvider(selectedProvider);
         int saved = 0;
         for (Season season : seasonRepository.findAll()) {
             if (season.getLeague() == null || season.getYear() == null) continue;
             Long externalLeagueId = leagueExternalIdRepository
-                    .findByLeagueIdAndProvider(season.getLeague().getId(), Provider.API_FOOTBALL)
+                    .findByLeagueIdAndProvider(season.getLeague().getId(), leagueProvider)
                     .map(LeagueExternalId::getExternalId)
                     .map(StandingsIngestionService::parseLong)
                     .orElse(null);
@@ -52,7 +55,7 @@ public class StandingsIngestionService {
                     new StandingsQuery(externalLeagueId, season.getYear()));
             for (ProviderStanding row : rows) {
                 var team = teamExternalIdRepository
-                        .findByProviderAndExternalId(Provider.API_FOOTBALL, row.teamExternalId())
+                        .findByProviderAndExternalId(teamProvider, row.teamExternalId())
                         .map(TeamExternalId::getTeam)
                         .orElse(null);
                 if (team == null) continue;
@@ -80,12 +83,12 @@ public class StandingsIngestionService {
         log.info("Standings ingestion completed. {} rows upserted.", saved);
     }
 
-    private StandingsProvider standingsProvider() {
+    private StandingsProvider standingsProvider(Provider selectedProvider) {
         return standingsProviders.stream()
-                .filter(provider -> provider.getProvider() == Provider.API_FOOTBALL)
+                .filter(provider -> provider.getProvider() == selectedProvider)
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException(
-                        "No StandingsProvider configured for API_FOOTBALL"));
+                        "No StandingsProvider configured for " + selectedProvider));
     }
 
     private static Long parseLong(String value) {
