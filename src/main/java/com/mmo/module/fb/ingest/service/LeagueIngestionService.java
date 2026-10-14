@@ -13,7 +13,7 @@ import com.mmo.module.fb.domain.repository.SeasonRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
 import com.mmo.module.fb.ingest.provider.spi.LeagueProvider;
-import com.mmo.module.fb.ingest.provider.spi.ProviderResolver;
+import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,7 +26,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class LeagueIngestionService {
 
-    private final List<LeagueProvider> leagueProviders;
+    private final ProviderRegistry providerRegistry;
     private final AppProperties appProperties;
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
@@ -99,9 +99,7 @@ public class LeagueIngestionService {
         log.info("League ingestion completed. {} leagues processed.", synced);
     }
 
-    private LeagueProvider leagueProvider(Provider selectedProvider) {
-        return ProviderResolver.resolve(leagueProviders, selectedProvider, LeagueProvider::getProvider, "LeagueProvider");
-    }
+
 
     private static String slug(String value) {
         if (value == null) return "unknown";
