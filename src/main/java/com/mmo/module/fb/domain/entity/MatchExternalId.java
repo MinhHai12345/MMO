@@ -11,7 +11,10 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "fb_match_external_ids",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"match_id", "provider"}))
+       uniqueConstraints = {
+               @UniqueConstraint(name = "uk_fb_match_provider_entity", columnNames = {"match_id", "provider"}),
+               @UniqueConstraint(name = "uk_fb_match_provider_external", columnNames = {"provider", "external_id"})
+       })
 @Getter
 @Setter
 @Builder
