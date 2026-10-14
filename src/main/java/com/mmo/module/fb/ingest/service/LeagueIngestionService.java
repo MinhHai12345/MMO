@@ -90,8 +90,8 @@ public class LeagueIngestionService {
                         .findBySeasonIdAndProvider(savedSeason.getId(), selectedProvider)
                         .orElseGet(() -> SeasonExternalId.builder()
                                 .season(savedSeason).provider(selectedProvider)
-                                .externalId(sourceSeason.year()).build());
-                seasonExternal.setExternalId(sourceSeason.year());
+                                .externalId(sourceSeason.externalId()).build());
+                seasonExternal.setExternalId(sourceSeason.externalId());
                 seasonExternalIdRepository.save(seasonExternal);
             }
             synced++;
