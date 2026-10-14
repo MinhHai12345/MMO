@@ -38,7 +38,9 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             WHERE m.status = :status
               AND m.matchTime BETWEEN :startTime AND :endTime
               AND externalId.provider = :provider
-            ORDER BY m.matchTime ASC
+            ORDER BY CASE WHEN m.lastOddsSyncedAt IS NULL THEN 0 ELSE 1 END ASC,
+                     m.lastOddsSyncedAt ASC,
+                     m.matchTime ASC
             """)
     List<Match> findUpcomingWithProviderMapping(@Param("status") MatchStatus status,
                                                 @Param("startTime") Instant startTime,
@@ -55,7 +57,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     List<Match> findTop10ByHomeTeamOrAwayTeamAndStatusOrderByMatchTimeDesc(@Param("team") Team team, 
                                                                             @Param("status") String status);
     
-    @Query("SELECT m FROM Match m WHERE (m.homeTeam = :homeTeam AND m.awayTeam = :awayTeam) OR (m.homeTeam = :awayTeam AND m.awayTeam = :homeTeam) AND m.status = :status")
+    @Query("SELECT m FROM Match m WHERE ((m.homeTeam = :homeTeam AND m.awayTeam = :awayTeam) OR (m.homeTeam = :awayTeam AND m.awayTeam = :homeTeam)) AND m.status = :status")
     List<Match> findByHomeTeamAndAwayTeamOrHomeTeamAndAwayTeamAndStatus(@Param("homeTeam") Team homeTeam,
                                                                           @Param("awayTeam") Team awayTeam,
                                                                           @Param("homeTeam2") Team homeTeam2,
