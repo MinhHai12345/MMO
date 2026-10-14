@@ -71,6 +71,16 @@ public class OddsIngestionService {
             // Bootstrap missing cross-provider fixture IDs without repeating a full fixture sync every odds run.
             LocalDate today = LocalDate.now();
             fixtureIngestionService.syncFixturesForProvider(selectedProvider, today, today.plusDays(3));
+
+            // The bootstrap may have created mappings; refresh the in-memory lookup before selecting fixtures.
+            providerMappings = matchExternalIdRepository.findAllByProvider(selectedProvider);
+            mappedMatchIds.clear();
+            fixtureIdsByMatchId.clear();
+            providerMappings.forEach(mapping -> {
+                Long matchId = mapping.getMatch().getId();
+                mappedMatchIds.add(matchId);
+                fixtureIdsByMatchId.put(matchId, mapping.getExternalId());
+            });
         }
 
         List<Match> upcoming = matchRepository.findUpcomingWithProviderMapping(
