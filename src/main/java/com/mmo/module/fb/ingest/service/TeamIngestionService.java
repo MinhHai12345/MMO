@@ -54,6 +54,9 @@ public class TeamIngestionService {
         leagueIngestionService.syncLeaguesForProvider(selectedProvider);
 
         int synced = 0;
+        Map<Long, String> leagueExternalIdsByLeagueId = new HashMap<>();
+        leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
+                leagueExternalIdsByLeagueId.put(mapping.getLeague().getId(), mapping.getExternalId()));
         List<Team> knownTeams = new ArrayList<>(teamRepository.findAll());
         Map<String, Team> teamsByExternalId = new HashMap<>();
         Map<Long, TeamExternalId> mappingByTeamId = new HashMap<>();
@@ -64,11 +67,7 @@ public class TeamIngestionService {
 
         for (Season season : seasonRepository.findAll()) {
             if (season.getLeague() == null || season.getYear() == null) continue;
-            Long leagueExternalId = leagueExternalIdRepository
-                    .findByLeagueIdAndProvider(season.getLeague().getId(), selectedProvider)
-                    .map(LeagueExternalId::getExternalId)
-                    .map(TeamIngestionService::parseLong)
-                    .orElse(null);
+            Long leagueExternalId = parseLong(leagueExternalIdsByLeagueId.get(season.getLeague().getId()));
             if (leagueExternalId == null) continue;
 
             List<ProviderTeam> teams = providerRegistry.team(selectedProvider).fetchTeams(
