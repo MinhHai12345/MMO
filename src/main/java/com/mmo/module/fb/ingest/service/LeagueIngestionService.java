@@ -107,12 +107,31 @@ public class LeagueIngestionService {
             leagueExternalIdRepository.save(external);
 
             for (ProviderSeason sourceSeason : source.seasons()) {
-                Season season = seasonRepository.findAll().stream()
-                        .filter(existing -> existing.getLeague().getId().equals(savedLeague.getId())
-                                && existing.getYear().equals(sourceSeason.year()))
-                        .findFirst()
-                        .orElseGet(() -> Season.builder()
-                                .league(savedLeague).year(sourceSeason.year()).build());
+                if (sourceSeason.externalId() == null || sourceSeason.externalId().isBlank()
+                        || sourceSeason.year() == null || sourceSeason.year().isBlank()) {
+                    log.warn("Skipping season without provider ID/year for league {} from {}",
+                            source.name(), selectedProvider);
+                    continue;
+                }
+
+                Season season = seasonExternalIdRepository
+                        .findByProviderAndExternalId(selectedProvider, sourceSeason.externalId())
+                        .map(SeasonExternalId::getSeason)
+                        .orElse(null);
+                if (season != null && (!season.getLeague().getId().equals(savedLeague.getId())
+                        || !season.getYear().equals(sourceSeason.year()))) {
+                    log.warn("Provider {} season ID {} is already mapped to a different canonical season; skipping",
+                            selectedProvider, sourceSeason.externalId());
+                    continue;
+                }
+                if (season == null) {
+                    season = seasonRepository.findAll().stream()
+                            .filter(existing -> existing.getLeague().getId().equals(savedLeague.getId())
+                                    && existing.getYear().equals(sourceSeason.year()))
+                            .findFirst()
+                            .orElseGet(() -> Season.builder()
+                                    .league(savedLeague).year(sourceSeason.year()).build());
+                }
                 season.setCurrent(sourceSeason.current());
                 season.setStartDate(sourceSeason.startDate());
                 season.setEndDate(sourceSeason.endDate());
