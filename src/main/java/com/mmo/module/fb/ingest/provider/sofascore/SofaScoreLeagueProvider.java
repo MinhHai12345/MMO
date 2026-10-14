@@ -49,6 +49,6 @@ public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implement
 
     private ProviderSeason toSeason(SofaSeasonData.SeasonDTO season) {
         String year = season.getYear() != null ? season.getYear() : season.getName();
-        return new ProviderSeason(year, season.isCurrent(), null, null);
+        return new ProviderSeason(season.getId().toString(), year, season.isCurrent(), null, null);
     }
 }
