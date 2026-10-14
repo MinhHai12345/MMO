@@ -8,7 +8,7 @@ spring:
     url: jdbc:mysql://localhost:3306/football_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:password}
-    
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -31,7 +31,7 @@ spring:
 app:
   initial-data:
     auto-import: true
-  
+
   telegram:
     bot:
       token: ${TELEGRAM_TOKEN}
@@ -40,7 +40,7 @@ app:
       id: ${TELEGRAM_CHANNEL_ID}
       free: ${FREE_CHANNEL_ID}
       premium: ${PREMIUM_CHANNEL_ID}
-      
+
   twitter:
     consumer:
       key: ${TWITTER_CONSUMER_KEY}
@@ -60,14 +60,19 @@ app:
       key: ${STRIPE_API_KEY}
       webhook:
         secret: ${STRIPE_WEBHOOK_SECRET}
-        
+
   sofa-score:
     api: https://api.sofascore.com/api/v1/
     url: https://www.sofascore.com
-    
+
   api-football:
-    base-url: https://api football-v1.p.rapidapi.com/v3
-    api-key: ${API_FOOTBALL_API_KEY}
-    
+    enabled: ${API_FOOTBALL_ENABLED:true}
+    base-url: ${API_FOOTBALL_BASE_URL:https://v3.football.api-sports.io}
+    api-key: ${API_FOOTBALL_API_KEY:}
+    # Add API-Football league IDs you want to sync; avoid syncing every league by default.
+    league-ids: ${API_FOOTBALL_LEAGUE_IDS:}
+    # API-Football season start years, comma-separated. Empty uses current year.
+    seasons: ${API_FOOTBALL_SEASONS:}
+
   understats:
     base-url: https://understat.com

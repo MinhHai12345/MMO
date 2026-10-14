@@ -29,6 +29,13 @@ public interface CrawlerStrategy {
     void storeMatches();
 
     /**
+     * Bootstrap all fixtures for the current season. Providers may override this with a full-season sync.
+     */
+    default void syncAllCurrentSeasonFixtures() {
+        storeMatches();
+    }
+
+    /**
      * Store match statistics to system
      */
     void storeMatchStatistics();
