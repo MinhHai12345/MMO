@@ -13,6 +13,7 @@ import com.mmo.module.fb.domain.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
 import com.mmo.module.fb.ingest.provider.model.StandingsQuery;
 import com.mmo.module.fb.ingest.provider.spi.StandingsProvider;
+import com.mmo.module.fb.ingest.provider.spi.ProviderResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -84,11 +85,7 @@ public class StandingsIngestionService {
     }
 
     private StandingsProvider standingsProvider(Provider selectedProvider) {
-        return standingsProviders.stream()
-                .filter(provider -> provider.getProvider() == selectedProvider)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        "No StandingsProvider configured for " + selectedProvider));
+        return ProviderResolver.resolve(standingsProviders, selectedProvider, StandingsProvider::getProvider, "StandingsProvider");
     }
 
     private static Long parseLong(String value) {
