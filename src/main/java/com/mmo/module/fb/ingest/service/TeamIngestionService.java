@@ -34,23 +34,25 @@ public class TeamIngestionService {
 
     @Transactional
     public void syncTeams() {
-        if (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled()) return;
+        Provider selectedProvider = appProperties.getIngestion().getProviders().getTeam();
+        Provider leagueProvider = appProperties.getIngestion().getProviders().getLeague();
+        if (selectedProvider == Provider.API_FOOTBALL && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
 
         int synced = 0;
         for (Season season : seasonRepository.findAll()) {
             if (season.getLeague() == null || season.getYear() == null) continue;
             Long leagueExternalId = leagueExternalIdRepository
-                    .findByLeagueIdAndProvider(season.getLeague().getId(), Provider.API_FOOTBALL)
+                    .findByLeagueIdAndProvider(season.getLeague().getId(), leagueProvider)
                     .map(LeagueExternalId::getExternalId)
                     .map(TeamIngestionService::parseLong)
                     .orElse(null);
             if (leagueExternalId == null) continue;
 
-            List<ProviderTeam> teams = teamProvider().fetchTeams(
+            List<ProviderTeam> teams = teamProvider(selectedProvider).fetchTeams(
                     new TeamQuery(leagueExternalId, season.getYear()));
             for (ProviderTeam source : teams) {
                 Team team = teamExternalIdRepository
-                        .findByProviderAndExternalId(Provider.API_FOOTBALL, source.externalId())
+                        .findByProviderAndExternalId(selectedProvider, source.externalId())
                         .map(TeamExternalId::getTeam)
                         .orElseGet(() -> teamRepository.findByName(source.name()).orElseGet(Team::new));
 
@@ -69,10 +71,10 @@ public class TeamIngestionService {
 
                 Team savedTeam = team;
                 TeamExternalId external = teamExternalIdRepository
-                        .findByTeamIdAndProvider(savedTeam.getId(), Provider.API_FOOTBALL)
+                        .findByTeamIdAndProvider(savedTeam.getId(), selectedProvider)
                         .orElseGet(() -> TeamExternalId.builder()
                                 .team(savedTeam)
-                                .provider(Provider.API_FOOTBALL)
+                                .provider(selectedProvider)
                                 .externalId(source.externalId())
                                 .build());
                 external.setExternalId(source.externalId());
@@ -80,14 +82,14 @@ public class TeamIngestionService {
                 synced++;
             }
         }
-        log.info("API-Football team ingestion completed. {} records saved/updated.", synced);
+        log.info("Team ingestion via {} completed. {} records saved/updated.", selectedProvider, synced);
     }
 
-    private TeamProvider teamProvider() {
+    private TeamProvider teamProvider(Provider selectedProvider) {
         return teamProviders.stream()
-                .filter(provider -> provider.getProvider() == Provider.API_FOOTBALL)
+                .filter(provider -> provider.getProvider() == selectedProvider)
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("No TeamProvider configured for API_FOOTBALL"));
+                .orElseThrow(() -> new IllegalStateException("No TeamProvider configured for " + selectedProvider));
     }
 
     private static Long parseLong(String value) {
