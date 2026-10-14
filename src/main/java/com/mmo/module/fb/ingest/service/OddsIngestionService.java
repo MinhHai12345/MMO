@@ -16,6 +16,7 @@ import com.mmo.module.fb.domain.repository.OddsHistoryRepository;
 import com.mmo.module.fb.ingest.provider.model.OddsQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import com.mmo.module.fb.ingest.provider.spi.OddsProvider;
+import com.mmo.module.fb.ingest.provider.spi.ProviderResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -115,10 +116,7 @@ public class OddsIngestionService {
     }
 
     private OddsProvider oddsProvider(Provider selectedProvider) {
-        return oddsProviders.stream()
-                .filter(provider -> provider.getProvider() == selectedProvider)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("No OddsProvider configured for " + selectedProvider));
+        return ProviderResolver.resolve(oddsProviders, selectedProvider, OddsProvider::getProvider, "OddsProvider");
     }
 
     private static void applyOdd(MatchOdds odds, String market, String label, java.math.BigDecimal odd) {
