@@ -3,7 +3,6 @@ package com.mmo.module.fb.ingest.service;
 import com.mmo.AppProperties;
 import com.mmo.module.fb.domain.entity.Bookmaker;
 import com.mmo.module.fb.domain.entity.Match;
-import com.mmo.module.fb.domain.entity.MatchExternalId;
 import com.mmo.module.fb.domain.entity.MatchOdds;
 import com.mmo.module.fb.domain.entity.OddsHistory;
 import com.mmo.module.fb.domain.enums.MatchStatus;
