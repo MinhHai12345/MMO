@@ -34,8 +34,19 @@ public class LeagueIngestionService {
 
     @Transactional
     public void syncLeagues() {
-        Provider selectedProvider = appProperties.getIngestion().getProviders().getLeague();
-        if (selectedProvider == Provider.API_FOOTBALL && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
+        syncLeaguesForProvider(appProperties.getIngestion().getProviders().getLeague());
+    }
+
+    /**
+     * Ensures league and season external IDs exist for a provider, even when another provider
+     * is configured for the league ingestion schedule. Downstream resources depend on these IDs.
+     */
+    @Transactional
+    public void syncLeaguesForProvider(Provider selectedProvider) {
+        if (selectedProvider == Provider.API_FOOTBALL
+                && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
+            return;
+        }
         List<Long> configuredIds = selectedProvider == Provider.API_FOOTBALL
                 ? appProperties.getApiFootball().getLeagueIds() : List.of();
         if (selectedProvider == Provider.API_FOOTBALL
@@ -49,9 +60,22 @@ public class LeagueIngestionService {
             League league = leagueExternalIdRepository
                     .findByProviderAndExternalId(selectedProvider, source.externalId())
                     .map(LeagueExternalId::getLeague)
-                    .orElseGet(() -> leagueRepository.findByIsActive(true).stream()
-                            .filter(existing -> existing.getName().equalsIgnoreCase(source.name()))
-                            .findFirst().orElseGet(League::new));
+                    .orElse(null);
+
+            if (league == null) {
+                List<League> candidates = leagueRepository.findByIsActive(true).stream()
+                        .filter(existing -> normalizeName(existing.getName()).equals(normalizeName(source.name())))
+                        .filter(existing -> source.country() == null || source.country().isBlank()
+                                || existing.getCountry() == null || existing.getCountry().isBlank()
+                                || normalizeName(existing.getCountry()).equals(normalizeName(source.country())))
+                        .toList();
+                if (candidates.size() > 1) {
+                    log.warn("Ambiguous league mapping for provider {} external ID {} name '{}'; skipping",
+                            selectedProvider, source.externalId(), source.name());
+                    continue;
+                }
+                league = candidates.isEmpty() ? new League() : candidates.get(0);
+            }
 
             league.setName(source.name());
             league.setSlug(slug(source.name()) + "-" + source.externalId());
@@ -99,6 +123,10 @@ public class LeagueIngestionService {
     }
 
 
+
+    private static String normalizeName(String value) {
+        return value == null ? "" : value.toLowerCase().replaceAll("[^a-z0-9]", "");
+    }
 
     private static String slug(String value) {
         if (value == null) return "unknown";
