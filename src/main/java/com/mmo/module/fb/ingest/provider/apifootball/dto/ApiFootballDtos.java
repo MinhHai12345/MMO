@@ -32,10 +32,7 @@ public final class ApiFootballDtos {
     public record FixtureDto(Long id, String referee, String timezone, String date, Long timestamp,
                              FixtureStatusDto status, VenueDto venue) {}
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record FixtureStatusDto(String longName, String shortName, Integer elapsed, Integer extra) {
-        @JsonProperty("long") public String longName() { return longName; }
-        @JsonProperty("short") public String shortName() { return shortName; }
-    }
+    public record FixtureStatusDto(@JsonProperty("long") String longName, @JsonProperty("short") String shortName, Integer elapsed, Integer extra) {}
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record FixtureLeagueDto(Long id, String name, String country, String season, String round) {}
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -60,10 +57,7 @@ public final class ApiFootballDtos {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record StandingStatsDto(Integer played, Integer win, Integer draw, Integer lose, GoalsDto goals) {}
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record GoalsDto(Integer scored, Integer conceded) {
-        @JsonProperty("for") public Integer forGoals() { return scored; }
-        @JsonProperty("against") public Integer againstGoals() { return conceded; }
-    }
+    public record GoalsDto(@JsonProperty("for") Integer forGoals, @JsonProperty("against") Integer againstGoals) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record OddsItem(Long leagueId, Long fixtureId, String update, List<OddsBookmakerDto> bookmakers) {}
