@@ -1,5 +1,6 @@
 package com.mmo.module.fb.ingest.provider.apifootball.mapper;
 
+import com.mmo.core.converter.AbstractMapper;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.FixtureItem;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import org.springframework.stereotype.Component;
@@ -9,9 +10,10 @@ import java.time.Instant;
 
 /** Converts API-Football's response schema into the source-neutral fixture model. */
 @Component
-public class ApiFootballFixtureMapper {
+public class ApiFootballFixtureMapper extends AbstractMapper<FixtureItem, ProviderFixture> {
 
-    public ProviderFixture toModel(FixtureItem item) {
+    @Override
+    public ProviderFixture map(FixtureItem item, ProviderFixture target) {
         if (item == null || item.fixture() == null || item.fixture().id() == null
                 || item.teams() == null || item.teams().home() == null
                 || item.teams().away() == null
@@ -21,9 +23,7 @@ public class ApiFootballFixtureMapper {
 
         Instant kickoff = parseInstant(item.fixture().date());
         Long timestamp = item.fixture().timestamp();
-        if (timestamp == null && kickoff != null) {
-            timestamp = kickoff.getEpochSecond();
-        }
+        if (timestamp == null && kickoff != null) timestamp = kickoff.getEpochSecond();
 
         return new ProviderFixture(
                 item.fixture().id().toString(),
