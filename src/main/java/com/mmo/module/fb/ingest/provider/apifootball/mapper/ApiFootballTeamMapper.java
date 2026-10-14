@@ -1,13 +1,15 @@
 package com.mmo.module.fb.ingest.provider.apifootball.mapper;
 
+import com.mmo.core.converter.AbstractMapper;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.TeamItem;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ApiFootballTeamMapper {
+public class ApiFootballTeamMapper extends AbstractMapper<TeamItem, ProviderTeam> {
 
-    public ProviderTeam toModel(TeamItem item) {
+    @Override
+    public ProviderTeam map(TeamItem item, ProviderTeam target) {
         if (item == null || item.team() == null || item.team().id() == null) return null;
         var team = item.team();
         return new ProviderTeam(
