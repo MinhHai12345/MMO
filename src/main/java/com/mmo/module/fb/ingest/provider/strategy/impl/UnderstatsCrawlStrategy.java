@@ -3,8 +3,6 @@ package com.mmo.module.fb.ingest.provider.strategy.impl;
 import com.mmo.module.fb.domain.entity.League;
 import com.mmo.module.fb.domain.entity.LeagueExternalId;
 import com.mmo.module.fb.domain.entity.Match;
-import com.mmo.module.fb.domain.entity.Player;
-import com.mmo.module.fb.domain.entity.Team;
 import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.repository.LeagueRepository;
@@ -56,7 +54,7 @@ public class UnderstatsCrawlStrategy extends AbstractCrawler {
         log.info("🔍 Understats teams are discovered during match scraping. Syncing teams from existing matches...");
 
         List<Match> matchesWithoutUnderstatsTeamIds = matchRepository.findAll().stream()
-                .filter(m -> matchExternalIdRepository.findByMatchIdAndProvider(m.getId(), Provider.UNDERSTATS).isEmpty())
+                .filter(m -> matchExternalIdRepository.findByMatchIdAndProvider(m.getId(), Provider.UNDER_STATS).isEmpty())
                 .limit(100)
                 .toList();
 
@@ -86,7 +84,7 @@ public class UnderstatsCrawlStrategy extends AbstractCrawler {
 
         for (League league : activeLeagues) {
             Optional<LeagueExternalId> understatsLeagueId = leagueExternalIdRepository
-                    .findByLeagueIdAndProvider(league.getId(), Provider.UNDERSTATS);
+                    .findByLeagueIdAndProvider(league.getId(), Provider.UNDER_STATS);
 
             if (understatsLeagueId.isEmpty()) {
                 log.debug("⚠️ League {} does not have Understats ID, skipping", league.getName());
@@ -143,7 +141,7 @@ public class UnderstatsCrawlStrategy extends AbstractCrawler {
 
     @Override
     public Provider getProvider() {
-        return Provider.UNDERSTATS;
+        return Provider.UNDER_STATS;
     }
 
     // Helper method to find or create team by name
