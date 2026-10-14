@@ -104,11 +104,13 @@ public class LeagueIngestionService {
             league.setActive(true);
             league.setIsActive(true);
             league = leagueRepository.save(league);
-            if (knownActiveLeagues.stream().noneMatch(existing -> existing.getId().equals(league.getId()))) {
-                knownActiveLeagues.add(league);
+            League savedLeague = league;
+            Long savedLeagueId = savedLeague.getId();
+            if (knownActiveLeagues.stream().noneMatch(existing -> existing.getId().equals(savedLeagueId))) {
+                knownActiveLeagues.add(savedLeague);
             }
 
-            League savedLeague = league;
+
             LeagueExternalId external = leagueExternalIdRepository
                     .findByLeagueIdAndProvider(savedLeague.getId(), selectedProvider)
                     .orElseGet(() -> LeagueExternalId.builder()
