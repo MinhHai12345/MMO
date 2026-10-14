@@ -38,7 +38,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             WHERE m.status = :status
               AND m.matchTime BETWEEN :startTime AND :endTime
               AND externalId.provider = :provider
-            ORDER BY m.matchTime ASC
+            ORDER BY m.lastOddsSyncedAt ASC, m.matchTime ASC
             """)
     List<Match> findUpcomingWithProviderMapping(@Param("status") MatchStatus status,
                                                 @Param("startTime") Instant startTime,
@@ -49,20 +49,21 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     @Query("SELECT m FROM Match m WHERE m.matchTime BETWEEN :startTime AND :endTime AND m.status = :status")
     List<Match> findByMatchTimeBetweenAndStatus(@Param("startTime") Instant startTime, 
                                                 @Param("endTime") Instant endTime, 
-                                                @Param("status") String status);
+                                                @Param("status") MatchStatus status);
     
     @Query("SELECT m FROM Match m WHERE (m.homeTeam = :team OR m.awayTeam = :team) AND m.status = :status ORDER BY m.matchTime DESC")
     List<Match> findTop10ByHomeTeamOrAwayTeamAndStatusOrderByMatchTimeDesc(@Param("team") Team team, 
-                                                                            @Param("status") String status);
+                                                                            @Param("status") MatchStatus status,
+                                                                            Pageable pageable);
     
-    @Query("SELECT m FROM Match m WHERE (m.homeTeam = :homeTeam AND m.awayTeam = :awayTeam) OR (m.homeTeam = :awayTeam AND m.awayTeam = :homeTeam) AND m.status = :status")
+    @Query("SELECT m FROM Match m WHERE ((m.homeTeam = :homeTeam AND m.awayTeam = :awayTeam) OR (m.homeTeam = :homeTeam2 AND m.awayTeam = :awayTeam2)) AND m.status = :status")
     List<Match> findByHomeTeamAndAwayTeamOrHomeTeamAndAwayTeamAndStatus(@Param("homeTeam") Team homeTeam,
                                                                           @Param("awayTeam") Team awayTeam,
                                                                           @Param("homeTeam2") Team homeTeam2,
                                                                           @Param("awayTeam2") Team awayTeam2,
-                                                                          @Param("status") String status);
+                                                                          @Param("status") MatchStatus status);
     
-    List<Match> findByStatus(String status);
+    List<Match> findByStatus(MatchStatus status);
     
     @Query("SELECT DISTINCT m.externalId FROM Match m WHERE m.season.league = :league")
     List<String> findDistinctExternalIdsByLeague(@Param("league") com.mmo.module.fb.domain.entity.League league);
@@ -71,5 +72,5 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     List<Match> findByStatusAndHomeXGIsNullAndAwayXGIsNull();
     
     @Query("SELECT m FROM Match m WHERE m.status = :status AND m.homeXG IS NULL AND m.awayXG IS NULL ORDER BY m.matchTime ASC")
-    List<Match> findTop30ByStatusAndHomeXGIsNullAndAwayXGIsNullOrderByMatchTimeAsc(@Param("status") String status);
+    List<Match> findTop30ByStatusAndHomeXGIsNullAndAwayXGIsNullOrderByMatchTimeAsc(@Param("status") MatchStatus status);
 }

@@ -39,9 +39,11 @@ public class AdminController {
             if (status != null && startDate != null && endDate != null) {
                 Instant start = Instant.parse(startDate);
                 Instant end = Instant.parse(endDate);
-                matches = matchRepository.findByMatchTimeBetweenAndStatus(start, end, status);
+                matches = matchRepository.findByMatchTimeBetweenAndStatus(
+                        start, end, MatchStatus.valueOf(status.trim().toUpperCase(java.util.Locale.ROOT)));
             } else if (status != null) {
-                matches = matchRepository.findByStatus(status);
+                matches = matchRepository.findByStatus(
+                        MatchStatus.valueOf(status.trim().toUpperCase(java.util.Locale.ROOT)));
             } else {
                 matches = matchRepository.findAll();
             }

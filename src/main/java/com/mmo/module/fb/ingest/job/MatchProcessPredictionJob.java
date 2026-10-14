@@ -5,6 +5,7 @@ import com.mmo.core.cronjob.job.AbstractJob;
 import com.mmo.module.fb.analytics.engine.CompositePredictionEngine;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
+import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.repository.MatchPredictionRepository;
 import com.mmo.module.fb.domain.repository.MatchRepository;
 import jakarta.annotation.Resource;
@@ -42,7 +43,7 @@ public class MatchProcessPredictionJob extends AbstractJob<CronJob> {
         Instant endTimeWindow = startTimeWindow.plus(48, ChronoUnit.HOURS);
 
         List<Match> upcomingMatches = matchRepository.findByMatchTimeBetweenAndStatus(
-                startTimeWindow, endTimeWindow, "SCHEDULED");
+                startTimeWindow, endTimeWindow, MatchStatus.SCHEDULED);
 
         if (CollectionUtils.isEmpty(upcomingMatches)) {
             log.info("✅ No upcoming matches found for prediction");
