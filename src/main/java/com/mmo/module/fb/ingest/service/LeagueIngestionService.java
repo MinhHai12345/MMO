@@ -12,7 +12,6 @@ import com.mmo.module.fb.domain.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.domain.repository.SeasonRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
-import com.mmo.module.fb.ingest.provider.spi.LeagueProvider;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
