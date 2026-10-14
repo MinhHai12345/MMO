@@ -42,7 +42,8 @@ public class ApiFootballStandingsSyncService {
         if (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled()) return;
         int saved = 0;
 
-        for (Season season : seasonRepository.findAll().stream().filter(Season::isCurrent).toList()) {
+        // /standings accepts historical seasons too; persist each season independently.
+        for (Season season : seasonRepository.findAll()) {
             Long apiLeagueId = leagueExternalIdRepository
                     .findByLeagueIdAndProvider(season.getLeague().getId(), Provider.API_FOOTBALL)
                     .map(LeagueExternalId::getExternalId)
