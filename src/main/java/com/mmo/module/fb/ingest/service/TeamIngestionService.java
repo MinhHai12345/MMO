@@ -18,7 +18,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -51,6 +54,14 @@ public class TeamIngestionService {
         leagueIngestionService.syncLeaguesForProvider(selectedProvider);
 
         int synced = 0;
+        List<Team> knownTeams = new ArrayList<>(teamRepository.findAll());
+        Map<String, Team> teamsByExternalId = new HashMap<>();
+        Map<Long, TeamExternalId> mappingByTeamId = new HashMap<>();
+        teamExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping -> {
+            teamsByExternalId.put(mapping.getExternalId(), mapping.getTeam());
+            mappingByTeamId.put(mapping.getTeam().getId(), mapping);
+        });
+
         for (Season season : seasonRepository.findAll()) {
             if (season.getLeague() == null || season.getYear() == null) continue;
             Long leagueExternalId = leagueExternalIdRepository
@@ -63,13 +74,14 @@ public class TeamIngestionService {
             List<ProviderTeam> teams = providerRegistry.team(selectedProvider).fetchTeams(
                     new TeamQuery(leagueExternalId, season.getYear()));
             for (ProviderTeam source : teams) {
-                Team team = teamExternalIdRepository
-                        .findByProviderAndExternalId(selectedProvider, source.externalId())
-                        .map(TeamExternalId::getTeam)
-                        .orElse(null);
+                if (source.externalId() == null || source.externalId().isBlank()) {
+                    log.warn("Skipping team with empty external ID from {}", selectedProvider);
+                    continue;
+                }
+                Team team = teamsByExternalId.get(source.externalId());
 
                 if (team == null) {
-                    List<Team> candidates = teamRepository.findAll().stream()
+                    List<Team> candidates = knownTeams.stream()
                             .filter(existing -> sameTeamName(existing.getName(), source.name())
                                     || sameTeamName(existing.getShortName(), source.name())
                                     || sameTeamName(existing.getName(), source.shortName()))
@@ -82,8 +94,12 @@ public class TeamIngestionService {
                     team = candidates.isEmpty() ? new Team() : candidates.get(0);
                 }
 
-                team.setName(source.name());
-                team.setShortName(source.shortName());
+                if (team.getName() == null || team.getName().isBlank()) {
+                    team.setName(source.name());
+                }
+                if (team.getShortName() == null || team.getShortName().isBlank()) {
+                    team.setShortName(source.shortName());
+                }
                 if (team.getSlug() == null || team.getSlug().isBlank()) {
                     team.setSlug(slug(source.name()) + "-" + selectedProvider.name().toLowerCase()
                             + "-" + source.externalId());
@@ -101,15 +117,21 @@ public class TeamIngestionService {
                 team = teamRepository.save(team);
 
                 Team savedTeam = team;
-                TeamExternalId external = teamExternalIdRepository
-                        .findByTeamIdAndProvider(savedTeam.getId(), selectedProvider)
-                        .orElseGet(() -> TeamExternalId.builder()
-                                .team(savedTeam)
-                                .provider(selectedProvider)
-                                .externalId(source.externalId())
-                                .build());
+                TeamExternalId external = mappingByTeamId.get(savedTeam.getId());
+                if (external == null) {
+                    external = TeamExternalId.builder()
+                            .team(savedTeam)
+                            .provider(selectedProvider)
+                            .externalId(source.externalId())
+                            .build();
+                }
                 external.setExternalId(source.externalId());
                 teamExternalIdRepository.save(external);
+                teamsByExternalId.put(source.externalId(), savedTeam);
+                mappingByTeamId.put(savedTeam.getId(), external);
+                if (knownTeams.stream().noneMatch(existing -> existing.getId().equals(savedTeam.getId()))) {
+                    knownTeams.add(savedTeam);
+                }
                 synced++;
             }
         }
