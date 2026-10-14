@@ -37,8 +37,6 @@ public class StandingsIngestionService {
     @Transactional
     public void syncStandings() {
         Provider selectedProvider = appProperties.getIngestion().getProviders().getStandings();
-        Provider leagueProvider = appProperties.getIngestion().getProviders().getLeague();
-        Provider teamProvider = appProperties.getIngestion().getProviders().getTeam();
         if (selectedProvider == Provider.API_FOOTBALL && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
 
         StandingsProvider provider = standingsProvider(selectedProvider);
@@ -46,7 +44,7 @@ public class StandingsIngestionService {
         for (Season season : seasonRepository.findAll()) {
             if (season.getLeague() == null || season.getYear() == null) continue;
             Long externalLeagueId = leagueExternalIdRepository
-                    .findByLeagueIdAndProvider(season.getLeague().getId(), leagueProvider)
+                    .findByLeagueIdAndProvider(season.getLeague().getId(), selectedProvider)
                     .map(LeagueExternalId::getExternalId)
                     .map(StandingsIngestionService::parseLong)
                     .orElse(null);
@@ -56,7 +54,7 @@ public class StandingsIngestionService {
                     new StandingsQuery(externalLeagueId, season.getYear()));
             for (ProviderStanding row : rows) {
                 var team = teamExternalIdRepository
-                        .findByProviderAndExternalId(teamProvider, row.teamExternalId())
+                        .findByProviderAndExternalId(selectedProvider, row.teamExternalId())
                         .map(TeamExternalId::getTeam)
                         .orElse(null);
                 if (team == null) continue;
