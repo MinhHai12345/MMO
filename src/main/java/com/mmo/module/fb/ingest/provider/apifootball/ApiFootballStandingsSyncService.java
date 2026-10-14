@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.provider.apifootball;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.mmo.module.fb.AppProperties;
+import com.mmo.AppProperties;
 import com.mmo.module.fb.domain.entity.LeagueStanding;
 import com.mmo.module.fb.domain.entity.LeagueExternalId;
 import com.mmo.module.fb.domain.entity.Season;
