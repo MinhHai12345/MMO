@@ -95,10 +95,11 @@ public class ApiFootballCrawlStrategy extends AbstractCrawler {
                 league.setIsActive(true);
                 league = leagueRepository.save(league);
 
+                final League savedLeagueEntity = league;
                 LeagueExternalId external = leagueExternalIdRepository
-                        .findByLeagueIdAndProvider(league.getId(), Provider.API_FOOTBALL)
+                        .findByLeagueIdAndProvider(savedLeagueEntity.getId(), Provider.API_FOOTBALL)
                         .orElseGet(() -> LeagueExternalId.builder()
-                                .league(league)
+                                .league(savedLeagueEntity)
                                 .provider(Provider.API_FOOTBALL)
                                 .externalId(externalId)
                                 .build());
@@ -125,10 +126,11 @@ public class ApiFootballCrawlStrategy extends AbstractCrawler {
                     season.setExternalId(String.valueOf(year));
                     season = seasonRepository.save(season);
 
+                    final Season savedSeasonEntity = season;
                     SeasonExternalId seasonExternal = seasonExternalIdRepository
-                            .findBySeasonIdAndProvider(season.getId(), Provider.API_FOOTBALL)
+                            .findBySeasonIdAndProvider(savedSeasonEntity.getId(), Provider.API_FOOTBALL)
                             .orElseGet(() -> SeasonExternalId.builder()
-                                    .season(season)
+                                    .season(savedSeasonEntity)
                                     .provider(Provider.API_FOOTBALL)
                                     .externalId(String.valueOf(year))
                                     .build());
@@ -180,10 +182,11 @@ public class ApiFootballCrawlStrategy extends AbstractCrawler {
                 team.setIsActive(true);
                 team = teamRepository.save(team);
 
+                final Team savedTeamEntity = team;
                 TeamExternalId teamExternal = teamExternalIdRepository
-                        .findByTeamIdAndProvider(team.getId(), Provider.API_FOOTBALL)
+                        .findByTeamIdAndProvider(savedTeamEntity.getId(), Provider.API_FOOTBALL)
                         .orElseGet(() -> TeamExternalId.builder()
-                                .team(team).provider(Provider.API_FOOTBALL).externalId(externalId).build());
+                                .team(savedTeamEntity).provider(Provider.API_FOOTBALL).externalId(externalId).build());
                 teamExternal.setExternalId(externalId);
                 teamExternalIdRepository.save(teamExternal);
                 synced++;
@@ -274,10 +277,11 @@ public class ApiFootballCrawlStrategy extends AbstractCrawler {
                 }
                 match = matchRepository.save(match);
 
+                final Match savedMatchEntity = match;
                 MatchExternalId external = matchExternalIdRepository
-                        .findByMatchIdAndProvider(match.getId(), Provider.API_FOOTBALL)
+                        .findByMatchIdAndProvider(savedMatchEntity.getId(), Provider.API_FOOTBALL)
                         .orElseGet(() -> MatchExternalId.builder()
-                                .match(match).provider(Provider.API_FOOTBALL).externalId(fixtureId).build());
+                                .match(savedMatchEntity).provider(Provider.API_FOOTBALL).externalId(fixtureId).build());
                 external.setExternalId(fixtureId);
                 matchExternalIdRepository.save(external);
                 synced++;
