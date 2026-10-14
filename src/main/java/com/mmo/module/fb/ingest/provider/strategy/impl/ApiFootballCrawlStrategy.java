@@ -7,6 +7,7 @@ import com.mmo.module.fb.ingest.provider.apifootball.ApiFootballClient;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.*;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
 import com.mmo.module.fb.ingest.service.FixtureIngestionService;
+import com.mmo.module.fb.ingest.service.TeamIngestionService;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData;
 import com.mmo.module.fb.ingest.provider.strategy.AbstractCrawler;
 import com.mmo.AppProperties;
@@ -38,6 +39,7 @@ public class ApiFootballCrawlStrategy extends AbstractCrawler {
     private final ApiFootballClient apiFootballClient;
     private final AppProperties appProperties;
     private final FixtureIngestionService fixtureIngestionService;
+    private final TeamIngestionService teamIngestionService;
 
     @Override
     @Transactional
@@ -119,49 +121,8 @@ public class ApiFootballCrawlStrategy extends AbstractCrawler {
     }
 
     @Override
-    @Transactional
     public void syncTeams() {
-        if (!isEnabled()) return;
-        int synced = 0;
-        for (Season season : allSeasons()) {
-            Long apiLeagueId = apiLeagueId(season.getLeague().getId());
-            if (apiLeagueId == null) continue;
-
-            ApiFootballResponse<TeamItem> response = apiFootballClient.get("/teams", Map.of(
-                    "league", apiLeagueId, "season", season.getYear()), TEAMS_TYPE);
-            for (TeamItem item : safe(response.response())) {
-                if (item.team() == null || item.team().id() == null) continue;
-                TeamDto dto = item.team();
-                String externalId = dto.id().toString();
-
-                Team team = teamExternalIdRepository
-                        .findByProviderAndExternalId(Provider.API_FOOTBALL, externalId)
-                        .map(TeamExternalId::getTeam)
-                        .orElseGet(() -> teamRepository.findByName(dto.name()).orElseGet(Team::new));
-                team.setName(dto.name());
-                team.setShortName(dto.code());
-                team.setSlug(slug(dto.name()) + "-" + externalId);
-                team.setLogoUrl(dto.logo());
-                team.setExternalId(externalId);
-                team.setFoundedYear(dto.founded());
-                team.setIsActive(true);
-                if (item.venue() != null) {
-                    team.setStadiumName(item.venue().name());
-                    team.setStadiumCapacity(item.venue().capacity());
-                }
-                team = teamRepository.save(team);
-
-                final Team savedTeam = team;
-                TeamExternalId external = teamExternalIdRepository
-                        .findByTeamIdAndProvider(savedTeam.getId(), Provider.API_FOOTBALL)
-                        .orElseGet(() -> TeamExternalId.builder().team(savedTeam)
-                                .provider(Provider.API_FOOTBALL).externalId(externalId).build());
-                external.setExternalId(externalId);
-                teamExternalIdRepository.save(external);
-                synced++;
-            }
-        }
-        log.info("API-Football team sync completed. {} teams processed.", synced);
+        teamIngestionService.syncTeams();
     }
 
     @Override
