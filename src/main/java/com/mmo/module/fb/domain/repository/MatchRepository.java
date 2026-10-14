@@ -38,9 +38,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             WHERE m.status = :status
               AND m.matchTime BETWEEN :startTime AND :endTime
               AND externalId.provider = :provider
-            ORDER BY CASE WHEN m.lastOddsSyncedAt IS NULL THEN 0 ELSE 1 END ASC,
-                     m.lastOddsSyncedAt ASC,
-                     m.matchTime ASC
+            ORDER BY m.lastOddsSyncedAt ASC, m.matchTime ASC
             """)
     List<Match> findUpcomingWithProviderMapping(@Param("status") MatchStatus status,
                                                 @Param("startTime") Instant startTime,
