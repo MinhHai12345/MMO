@@ -1,24 +1,28 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
+import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaUniqueTournamentsData;
 import com.mmo.module.fb.ingest.provider.service.SofaCrawlerService;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreLeagueMapper;
 import com.mmo.module.fb.ingest.provider.spi.LeagueProvider;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Objects;
 
 @Component
+@RequiredArgsConstructor
 public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implements LeagueProvider {
 
     private final SofaScoreLeagueMapper mapper;
+    private final SofaCrawlerService sofaCrawlerService;
 
-    public SofaScoreLeagueProvider(SofaCrawlerService sofaCrawlerService, SofaScoreLeagueMapper mapper) {
-        super(sofaCrawlerService);
-        this.mapper = mapper;
+    @Override
+    public Provider getProvider() {
+        return Provider.SOFA_SCORE;
     }
 
     @Override
@@ -32,7 +36,7 @@ public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implement
                     .filter(Objects::nonNull)
                     .filter(tournament -> tournament.getId() != null)
                     .filter(tournament -> externalLeagueIds == null || externalLeagueIds.isEmpty()
-                            || externalLeagueIds.contains(tournament.getId()))
+                                          || externalLeagueIds.contains(tournament.getId()))
                     .map(tournament -> {
                         List<SofaSeasonData.SeasonDTO> seasons =
                                 sofaCrawlerService.fetchSeasonByTournamentId(tournament.getId(), page);

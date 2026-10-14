@@ -9,6 +9,7 @@ import com.mmo.module.fb.ingest.provider.model.sofa.SofaStandingsData;
 import com.mmo.module.fb.ingest.provider.service.SofaCrawlerService;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreTeamMapper;
 import com.mmo.module.fb.ingest.provider.spi.TeamProvider;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -16,13 +17,15 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Component
+@RequiredArgsConstructor
 public class SofaScoreTeamProvider extends AbstractSofaScoreProvider implements TeamProvider {
 
     private final SofaScoreTeamMapper mapper;
+    private final SofaCrawlerService sofaCrawlerService;
 
-    public SofaScoreTeamProvider(SofaCrawlerService sofaCrawlerService, SofaScoreTeamMapper mapper) {
-        super(sofaCrawlerService);
-        this.mapper = mapper;
+    @Override
+    public Provider getProvider() {
+        return Provider.SOFA_SCORE;
     }
 
     @Override

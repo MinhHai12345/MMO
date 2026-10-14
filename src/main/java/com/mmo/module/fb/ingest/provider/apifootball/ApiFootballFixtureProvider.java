@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.provider.apifootball;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballClient;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.FixtureItem;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
 import com.mmo.module.fb.ingest.provider.apifootball.mapper.ApiFootballFixtureMapper;

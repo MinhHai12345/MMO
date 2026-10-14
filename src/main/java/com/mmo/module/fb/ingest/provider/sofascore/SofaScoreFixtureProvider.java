@@ -1,6 +1,6 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
-import com.microsoft.playwright.Page;
+import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData;
@@ -8,6 +8,7 @@ import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
 import com.mmo.module.fb.ingest.provider.service.SofaCrawlerService;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreFixtureMapper;
 import com.mmo.module.fb.ingest.provider.spi.FixtureProvider;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -19,13 +20,15 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Component
+@RequiredArgsConstructor
 public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implements FixtureProvider {
 
     private final SofaScoreFixtureMapper mapper;
+    private final SofaCrawlerService sofaCrawlerService;
 
-    public SofaScoreFixtureProvider(SofaCrawlerService sofaCrawlerService, SofaScoreFixtureMapper mapper) {
-        super(sofaCrawlerService);
-        this.mapper = mapper;
+    @Override
+    public Provider getProvider() {
+        return Provider.SOFA_SCORE;
     }
 
     @Override
@@ -38,7 +41,7 @@ public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implemen
             SofaSeasonData.SeasonDTO season = seasons.stream()
                     .filter(Objects::nonNull)
                     .filter(item -> query.season() == null || query.season().equals(item.getYear())
-                            || query.season().equals(item.getName()))
+                                    || query.season().equals(item.getName()))
                     .findFirst().orElse(null);
             if (season == null || season.getId() == null) return List.of();
 

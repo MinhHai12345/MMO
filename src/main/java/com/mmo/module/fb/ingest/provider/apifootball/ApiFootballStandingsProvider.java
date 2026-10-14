@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.provider.apifootball;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.mmo.module.fb.domain.enums.Provider;
+import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballClient;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.StandingsItem;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
 import com.mmo.module.fb.ingest.provider.apifootball.mapper.ApiFootballStandingsMapper;
@@ -19,7 +20,8 @@ import java.util.Map;
 public class ApiFootballStandingsProvider implements StandingsProvider {
 
     private static final TypeReference<ApiFootballResponse<StandingsItem>> RESPONSE_TYPE =
-            new TypeReference<>() {};
+            new TypeReference<>() {
+            };
 
     private final ApiFootballClient client;
     private final ApiFootballStandingsMapper mapper;

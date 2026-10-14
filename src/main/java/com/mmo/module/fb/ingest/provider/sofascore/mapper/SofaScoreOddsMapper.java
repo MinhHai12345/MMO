@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 @Component
 public class SofaScoreOddsMapper {
@@ -19,14 +20,14 @@ public class SofaScoreOddsMapper {
         String marketName = normalizeMarket(market.getMarketName());
         if (marketName == null) return List.of();
         return market.getChoices().stream()
-                .filter(choice -> choice != null)
+                .filter(Objects::nonNull)
                 .map(choice -> {
                     String outcome = normalizeOutcome(choice.getName());
                     BigDecimal odds = toDecimalOdds(choice.getFractionalValue());
                     return outcome == null || odds == null ? null
                             : new ProviderOdds(AGGREGATED_SOURCE, marketName, outcome, odds);
                 })
-                .filter(odds -> odds != null)
+                .filter(Objects::nonNull)
                 .toList();
     }
 

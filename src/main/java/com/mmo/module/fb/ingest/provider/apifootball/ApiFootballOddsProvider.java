@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.provider.apifootball;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.mmo.module.fb.domain.enums.Provider;
+import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballClient;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsItem;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
 import com.mmo.module.fb.ingest.provider.apifootball.mapper.ApiFootballOddsMapper;
@@ -19,7 +20,8 @@ import java.util.Map;
 public class ApiFootballOddsProvider implements OddsProvider {
 
     private static final TypeReference<ApiFootballResponse<OddsItem>> RESPONSE_TYPE =
-            new TypeReference<>() {};
+            new TypeReference<>() {
+            };
 
     private final ApiFootballClient client;
     private final ApiFootballOddsMapper mapper;

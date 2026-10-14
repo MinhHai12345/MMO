@@ -10,12 +10,11 @@ import com.mmo.module.fb.domain.repository.LeagueRepository;
 import com.mmo.module.fb.domain.repository.MatchPredictionRepository;
 import com.mmo.module.fb.domain.repository.MatchRepository;
 import com.mmo.module.fb.domain.repository.SeasonExternalIdRepository;
+import com.mmo.module.fb.domain.repository.SeasonRepository;
 import com.mmo.module.fb.domain.repository.TeamRepository;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
 import com.mmo.module.fb.ingest.provider.service.SofaCrawlerService;
-import com.mmo.module.fb.ingest.provider.strategy.AbstractCrawler;
-import com.mmo.module.fb.repository.SeasonRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -30,7 +29,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class SofaScoreCrawlStrategy extends AbstractCrawler {
+public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
     private final TeamRepository teamRepository;
     private final MatchRepository matchRepository;
     private final com.mmo.core.converter.DynamicConverter dynamicConverter;
@@ -41,7 +40,6 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final SeasonExternalIdRepository seasonExternalIdRepository;
 
-    @Override
     public void syncLeagues() {
         executeSimpleStorePipeline(
                 sofaCrawlerService::fetchLeagues,
@@ -80,7 +78,6 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
         );
     }
 
-    @Override
     public void storeSeasons() {
         List<League> activeLeagues = leagueRepository.findByActiveIsTrue();
         Set<String> existingSofaSeasonIds = seasonExternalIdRepository.findAll().stream()
@@ -134,7 +131,6 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
         );
     }
 
-    @Override
     public void syncTeams() {
 //        List<League> activeLeagues = leagueRepository.findByActiveIsTrue();
 //        Set<Long> existingSofaTeamIds = teamRepository.findAll().stream()
@@ -170,7 +166,6 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
 //        );
     }
 
-    @Override
     public void storeMatches() {
 //        List<League> activeLeagues = leagueRepository.findByActiveIsTrue();
 //        Map<Long, Team> teamMap = getTeamMap();
@@ -201,7 +196,6 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
 //        );
     }
 
-    @Override
     public void storeMatchStatistics() {
 //        do {
 //            List<Match> targetMatches =
@@ -240,7 +234,6 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
 //        } while (true);
     }
 
-    @Override
     public void prepareMatchUpcomingDaily() {
 //        List<League> activeLeagues = leagueRepository.findByActiveIsTrue();
 //        executeStorePipeline(
@@ -267,7 +260,6 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
 //        );
     }
 
-    @Override
     public void prepareMatchResultDaily() {
 //        List<MatchPrediction> targetMatches = matchPredictionRepository.findByStatus(MatchPredictionStatus.POSTED);
 //        if (CollectionUtils.isEmpty(targetMatches)) {
@@ -290,7 +282,6 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
 //        );
     }
 
-    @Override
     public List<SofaMatchesData.SofaEventDTO> getLatestHistoriesMatchesByTeamId(Long sofaTeamId) {
 //        Team team = teamRepository.findBySofaScoreId(sofaTeamId);
 //        if (team == null) return Collections.emptyList();
@@ -299,7 +290,6 @@ public class SofaScoreCrawlStrategy extends AbstractCrawler {
         return Collections.emptyList();
     }
 
-    @Override
     public Provider getProvider() {
         return Provider.SOFA_SCORE;
     }
