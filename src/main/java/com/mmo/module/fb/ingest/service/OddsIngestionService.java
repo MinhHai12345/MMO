@@ -80,7 +80,7 @@ public class OddsIngestionService {
                 .map(MatchExternalId::getExternalId)
                 .orElseThrow(() -> new IllegalStateException("No fixture ID for provider " + selectedProvider));
 
-        List<ProviderOdds> values = oddsProvider(selectedProvider).fetchOdds(new OddsQuery(fixtureId));
+        List<ProviderOdds> values = providerRegistry.odds(selectedProvider).fetchOdds(new OddsQuery(fixtureId));
         Map<String, List<ProviderOdds>> byBookmaker = new LinkedHashMap<>();
         for (ProviderOdds value : values) {
             if (value.bookmaker() != null && !value.bookmaker().isBlank()) {
