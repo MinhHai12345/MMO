@@ -88,11 +88,33 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
                 appProperties.getSofaScore().getUrl(),
                 Map.of(endpoint, SofaOddsData.class),
                 page,
-                null);
+                this::triggerOdds);
         if (!result.hasData(endpoint)) return Collections.emptyMap();
         SofaOddsData oddsData = result.get(endpoint, SofaOddsData.class);
         return oddsData != null && oddsData.getOdds() != null
                 ? oddsData.getOdds() : Collections.emptyMap();
+    }
+
+    private void triggerOdds(Page page) {
+        try {
+            Locator oddsText = page.locator("span:has-text('Odds'), div:has-text('Odds')").first();
+            oddsText.waitFor(new Locator.WaitForOptions()
+                    .setState(com.microsoft.playwright.options.WaitForSelectorState.ATTACHED)
+                    .setTimeout(15000));
+            page.evaluate("""
+                    () => {
+                        const input = document.querySelector("input[role='switch']");
+                        if (input) {
+                            const target = input.nextElementSibling || input.closest('label') || input;
+                            target.click();
+                        }
+                    }
+                    """);
+        } catch (TimeoutError ex) {
+            log.warn("SofaScore odds toggle was not found before timeout.");
+        } catch (Exception ex) {
+            log.warn("Could not activate SofaScore odds view: {}", ex.getMessage());
+        }
     }
 
     @Override
