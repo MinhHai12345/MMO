@@ -46,7 +46,7 @@ public class LeagueIngestionService {
         }
 
         int synced = 0;
-        for (ProviderLeague source : leagueProvider(selectedProvider).fetchLeagues(configuredIds)) {
+        for (ProviderLeague source : providerRegistry.league(selectedProvider).fetchLeagues(configuredIds)) {
             League league = leagueExternalIdRepository
                     .findByProviderAndExternalId(selectedProvider, source.externalId())
                     .map(LeagueExternalId::getLeague)
