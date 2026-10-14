@@ -65,6 +65,15 @@ app:
     api: https://api.sofascore.com/api/v1/
     url: https://www.sofascore.com
 
+  ingestion:
+    providers:
+      # Values must match com.mmo.module.fb.domain.enums.Provider.
+      league: ${INGESTION_LEAGUE_PROVIDER:API_FOOTBALL}
+      team: ${INGESTION_TEAM_PROVIDER:API_FOOTBALL}
+      fixture: ${INGESTION_FIXTURE_PROVIDER:API_FOOTBALL}
+      standings: ${INGESTION_STANDINGS_PROVIDER:API_FOOTBALL}
+      odds: ${INGESTION_ODDS_PROVIDER:API_FOOTBALL}
+
   api-football:
     enabled: ${API_FOOTBALL_ENABLED:true}
     base-url: ${API_FOOTBALL_BASE_URL:https://v3.football.api-sports.io}
