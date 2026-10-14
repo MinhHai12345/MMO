@@ -7,6 +7,7 @@ import com.mmo.module.fb.ingest.provider.apifootball.mapper.ApiFootballTeamMappe
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.provider.model.TeamQuery;
 import com.mmo.module.fb.ingest.provider.spi.TeamProvider;
+import com.mmo.module.fb.domain.enums.Provider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -23,6 +24,11 @@ public class ApiFootballTeamProvider implements TeamProvider {
 
     private final ApiFootballClient client;
     private final ApiFootballTeamMapper mapper;
+
+    @Override
+    public Provider getProvider() {
+        return Provider.API_FOOTBALL;
+    }
 
     @Override
     public List<ProviderTeam> fetchTeams(TeamQuery query) {
