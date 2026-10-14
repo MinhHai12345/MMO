@@ -108,7 +108,9 @@ public class FixtureIngestionService {
 
                 Match match = matchesByExternalId.get(fixture.externalId());
 
-                if (match != null && (!match.getSeason().getId().equals(season.getId())
+                if (match != null && (match.getSeason() == null
+                        || match.getHomeTeam() == null || match.getAwayTeam() == null
+                        || !match.getSeason().getId().equals(season.getId())
                         || !match.getHomeTeam().getId().equals(home.getId())
                         || !match.getAwayTeam().getId().equals(away.getId()))) {
                     skipped++;
@@ -148,14 +150,25 @@ public class FixtureIngestionService {
                 match.setAwayTeam(away);
                 if (fixture.kickoff() != null) match.setMatchTime(fixture.kickoff());
                 if (fixture.startTimestamp() != null) match.setStartTimestamp(fixture.startTimestamp());
-                match.setRoundInfo(fixture.round());
-                match.setVenue(fixture.venue());
-                match.setReferee(fixture.referee());
-                match.setStatus(toMatchStatus(fixture.status()));
-                if (fixture.homeScore() != null || fixture.awayScore() != null) {
-                    match.setHomeScore(fixture.homeScore());
-                    match.setAwayScore(fixture.awayScore());
+                if (fixture.round() != null && !fixture.round().isBlank()) {
+                    match.setRoundInfo(fixture.round());
                 }
+                if (fixture.venue() != null && !fixture.venue().isBlank()) {
+                    match.setVenue(fixture.venue());
+                }
+                if (fixture.referee() != null && !fixture.referee().isBlank()) {
+                    match.setReferee(fixture.referee());
+                }
+                MatchStatus incomingStatus = toMatchStatus(fixture.status());
+                if (incomingStatus != null
+                        && (match.getStatus() != MatchStatus.FINISHED || incomingStatus == MatchStatus.FINISHED)
+                        && (match.getStatus() != MatchStatus.LIVE || incomingStatus != MatchStatus.SCHEDULED)) {
+                    match.setStatus(incomingStatus);
+                } else if (match.getStatus() == null) {
+                    match.setStatus(MatchStatus.SCHEDULED);
+                }
+                if (fixture.homeScore() != null) match.setHomeScore(fixture.homeScore());
+                if (fixture.awayScore() != null) match.setAwayScore(fixture.awayScore());
                 match = matchRepository.save(match);
 
                 Match savedMatch = match;
@@ -180,13 +193,14 @@ public class FixtureIngestionService {
 
 
     private static MatchStatus toMatchStatus(String status) {
-        if (status == null) return MatchStatus.SCHEDULED;
+        if (status == null || status.isBlank()) return null;
         return switch (status.toUpperCase()) {
+            case "NS", "TBD", "SCHEDULED" -> MatchStatus.SCHEDULED;
             case "1H", "HT", "2H", "ET", "P", "LIVE", "BT" -> MatchStatus.LIVE;
             case "FT", "AET", "PEN" -> MatchStatus.FINISHED;
             case "PST", "SUSP", "INT" -> MatchStatus.POSTPONED;
             case "CANC", "ABD", "WO" -> MatchStatus.CANCELLED;
-            default -> MatchStatus.SCHEDULED;
+            default -> null;
         };
     }
 
