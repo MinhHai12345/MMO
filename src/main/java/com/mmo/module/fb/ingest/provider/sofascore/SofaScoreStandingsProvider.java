@@ -6,6 +6,7 @@ import com.mmo.module.fb.ingest.provider.model.StandingsQuery;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaStandingsData;
 import com.mmo.module.fb.ingest.provider.service.SofaCrawlerService;
+import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreStandingsMapper;
 import com.mmo.module.fb.ingest.provider.spi.StandingsProvider;
 import org.springframework.stereotype.Component;
 
@@ -15,8 +16,11 @@ import java.util.Objects;
 @Component
 public class SofaScoreStandingsProvider extends AbstractSofaScoreProvider implements StandingsProvider {
 
-    public SofaScoreStandingsProvider(SofaCrawlerService sofaCrawlerService) {
+    private final SofaScoreStandingsMapper mapper;
+
+    public SofaScoreStandingsProvider(SofaCrawlerService sofaCrawlerService, SofaScoreStandingsMapper mapper) {
         super(sofaCrawlerService);
+        this.mapper = mapper;
     }
 
     @Override
@@ -26,36 +30,16 @@ public class SofaScoreStandingsProvider extends AbstractSofaScoreProvider implem
             List<SofaSeasonData.SeasonDTO> seasons =
                     sofaCrawlerService.fetchSeasonByTournamentId(query.leagueId(), page);
             if (seasons == null) return List.of();
-            SofaSeasonData.SeasonDTO season = seasons.stream().filter(Objects::nonNull)
-                    .filter(s -> query.season() == null || query.season().equals(s.getYear())
-                            || query.season().equals(s.getName()))
+            SofaSeasonData.SeasonDTO season = seasons.stream()
+                    .filter(Objects::nonNull)
+                    .filter(item -> query.season() == null || query.season().equals(item.getYear())
+                            || query.season().equals(item.getName()))
                     .findFirst().orElse(null);
             if (season == null || season.getId() == null) return List.of();
 
             List<SofaStandingsData.StandingGroupDTO> groups =
                     sofaCrawlerService.fetchStandingTotal(query.leagueId(), season.getId(), page);
-            if (groups == null) return List.of();
-            return groups.stream().filter(Objects::nonNull)
-                    .filter(group -> group.getRows() != null)
-                    .flatMap(group -> group.getRows().stream()
-                            .filter(Objects::nonNull)
-                            .map(row -> new ProviderStanding(
-                                    row.getTeam() == null || row.getTeam().getId() == null
-                                            ? null : row.getTeam().getId().toString(),
-                                    row.getPosition(), row.getPoints(), parseGoalDifference(row.getScoreDiffFormatted()),
-                                    null, group.getName(), row.getMatches(), row.getWins(), row.getDraws(),
-                                    row.getLosses(), row.getScoresFor(), row.getScoresAgainst())))
-                    .filter(row -> row.teamExternalId() != null)
-                    .toList();
+            return mapper.toProviderStandings(groups);
         });
-    }
-
-    private Integer parseGoalDifference(String value) {
-        if (value == null || value.isBlank()) return null;
-        try {
-            return Integer.valueOf(value.replace("+", ""));
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
     }
 }

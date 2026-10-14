@@ -6,20 +6,26 @@ import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
 import com.mmo.module.fb.ingest.provider.service.SofaCrawlerService;
+import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreFixtureMapper;
 import com.mmo.module.fb.ingest.provider.spi.FixtureProvider;
 import org.springframework.stereotype.Component;
 
-import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Component
 public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implements FixtureProvider {
 
-    public SofaScoreFixtureProvider(SofaCrawlerService sofaCrawlerService) {
+    private final SofaScoreFixtureMapper mapper;
+
+    public SofaScoreFixtureProvider(SofaCrawlerService sofaCrawlerService, SofaScoreFixtureMapper mapper) {
         super(sofaCrawlerService);
+        this.mapper = mapper;
     }
 
     @Override
@@ -29,16 +35,16 @@ public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implemen
             List<SofaSeasonData.SeasonDTO> seasons =
                     sofaCrawlerService.fetchSeasonByTournamentId(query.leagueId(), page);
             if (seasons == null) return List.of();
-            SofaSeasonData.SeasonDTO season = seasons.stream().filter(Objects::nonNull)
-                    .filter(s -> query.season() == null || query.season().equals(s.getYear())
-                            || query.season().equals(s.getName()))
+            SofaSeasonData.SeasonDTO season = seasons.stream()
+                    .filter(Objects::nonNull)
+                    .filter(item -> query.season() == null || query.season().equals(item.getYear())
+                            || query.season().equals(item.getName()))
                     .findFirst().orElse(null);
             if (season == null || season.getId() == null) return List.of();
 
             List<ProviderFixture> fixtures = new ArrayList<>();
-            int maxRounds = 50;
             int emptyRounds = 0;
-            for (int round = 1; round <= maxRounds; round++) {
+            for (int round = 1; round <= 50; round++) {
                 List<SofaMatchesData.SofaEventDTO> events =
                         sofaCrawlerService.fetchMatchesByRound(query.leagueId(), season.getId(), round, page);
                 if (events == null || events.isEmpty()) {
@@ -47,48 +53,21 @@ public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implemen
                     continue;
                 }
                 emptyRounds = 0;
-                events.stream().filter(Objects::nonNull)
-                        .map(this::toFixture)
+                events.stream()
+                        .map(mapper::toProviderFixture)
                         .filter(Objects::nonNull)
-                        .filter(f -> inDateRange(f, query.from(), query.to()))
+                        .filter(fixture -> inDateRange(fixture, query.from(), query.to()))
                         .forEach(fixtures::add);
             }
-            return fixtures.stream().collect(java.util.stream.Collectors.toMap(
+            return fixtures.stream().collect(Collectors.toMap(
                     ProviderFixture::externalId, fixture -> fixture, (first, ignored) -> first,
-                    java.util.LinkedHashMap::new)).values().stream().toList();
+                    LinkedHashMap::new)).values().stream().toList();
         });
-    }
-
-    private ProviderFixture toFixture(SofaMatchesData.SofaEventDTO event) {
-        if (event.getId() == null || event.getHomeTeam() == null || event.getAwayTeam() == null
-                || event.getHomeTeam().getId() == null || event.getAwayTeam().getId() == null) return null;
-        Instant kickoff = event.getStartTimestamp() == null ? null
-                : Instant.ofEpochSecond(event.getStartTimestamp());
-        String status = event.getStatus() == null ? null : mapStatus(event.getStatus().getType());
-        return new ProviderFixture(event.getId().toString(),
-                event.getHomeTeam().getId().toString(), event.getAwayTeam().getId().toString(),
-                kickoff, event.getStartTimestamp(),
-                event.getRoundInfo() == null || event.getRoundInfo().getRound() == null
-                        ? null : event.getRoundInfo().getRound().toString(),
-                null, null, status,
-                event.getHomeScore() == null ? null : event.getHomeScore().getCurrent(),
-                event.getAwayScore() == null ? null : event.getAwayScore().getCurrent());
-    }
-
-    private String mapStatus(String status) {
-        if (status == null) return "NS";
-        return switch (status.toLowerCase()) {
-            case "finished" -> "FT";
-            case "inprogress", "live" -> "LIVE";
-            case "postponed" -> "PST";
-            case "canceled", "cancelled" -> "CANC";
-            default -> "NS";
-        };
     }
 
     private boolean inDateRange(ProviderFixture fixture, LocalDate from, LocalDate to) {
         if (fixture.kickoff() == null) return from == null && to == null;
-        LocalDate date = fixture.kickoff().atZone(java.time.ZoneOffset.UTC).toLocalDate();
+        LocalDate date = fixture.kickoff().atZone(ZoneOffset.UTC).toLocalDate();
         return (from == null || !date.isBefore(from)) && (to == null || !date.isAfter(to));
     }
 }

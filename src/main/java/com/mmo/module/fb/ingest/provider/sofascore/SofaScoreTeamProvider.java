@@ -1,11 +1,13 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
 import com.microsoft.playwright.Page;
+import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.provider.model.TeamQuery;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaStandingsData;
 import com.mmo.module.fb.ingest.provider.service.SofaCrawlerService;
+import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreTeamMapper;
 import com.mmo.module.fb.ingest.provider.spi.TeamProvider;
 import org.springframework.stereotype.Component;
 
@@ -16,8 +18,11 @@ import java.util.stream.Collectors;
 @Component
 public class SofaScoreTeamProvider extends AbstractSofaScoreProvider implements TeamProvider {
 
-    public SofaScoreTeamProvider(SofaCrawlerService sofaCrawlerService) {
+    private final SofaScoreTeamMapper mapper;
+
+    public SofaScoreTeamProvider(SofaCrawlerService sofaCrawlerService, SofaScoreTeamMapper mapper) {
         super(sofaCrawlerService);
+        this.mapper = mapper;
     }
 
     @Override
@@ -31,16 +36,15 @@ public class SofaScoreTeamProvider extends AbstractSofaScoreProvider implements 
                     sofaCrawlerService.fetchStandingTotal(query.leagueId(), season.getId(), page);
             if (groups == null) return List.of();
 
-            return groups.stream().filter(Objects::nonNull)
+            return groups.stream()
+                    .filter(Objects::nonNull)
                     .filter(group -> group.getRows() != null)
                     .flatMap(group -> group.getRows().stream())
                     .filter(Objects::nonNull)
                     .map(SofaStandingsData.StandingRowDTO::getTeam)
+                    .map(mapper::toProviderTeam)
                     .filter(Objects::nonNull)
-                    .filter(team -> team.getId() != null && team.getName() != null)
-                    .collect(Collectors.toMap(team -> team.getId().toString(),
-                            team -> new ProviderTeam(team.getId().toString(), team.getName(),
-                                    team.getShortName(), null, null, null, null),
+                    .collect(Collectors.toMap(ProviderTeam::externalId, team -> team,
                             (first, ignored) -> first))
                     .values().stream().toList();
         });
@@ -50,8 +54,9 @@ public class SofaScoreTeamProvider extends AbstractSofaScoreProvider implements 
         List<SofaSeasonData.SeasonDTO> seasons =
                 sofaCrawlerService.fetchSeasonByTournamentId(tournamentId, page);
         if (seasons == null) return null;
-        return seasons.stream().filter(Objects::nonNull)
-                .filter(s -> year == null || year.equals(s.getYear()) || year.equals(s.getName()))
+        return seasons.stream()
+                .filter(Objects::nonNull)
+                .filter(season -> year == null || year.equals(season.getYear()) || year.equals(season.getName()))
                 .findFirst().orElse(null);
     }
 }

@@ -1,10 +1,10 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
-import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaUniqueTournamentsData;
 import com.mmo.module.fb.ingest.provider.service.SofaCrawlerService;
+import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreLeagueMapper;
 import com.mmo.module.fb.ingest.provider.spi.LeagueProvider;
 import org.springframework.stereotype.Component;
 
@@ -14,8 +14,11 @@ import java.util.Objects;
 @Component
 public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implements LeagueProvider {
 
-    public SofaScoreLeagueProvider(SofaCrawlerService sofaCrawlerService) {
+    private final SofaScoreLeagueMapper mapper;
+
+    public SofaScoreLeagueProvider(SofaCrawlerService sofaCrawlerService, SofaScoreLeagueMapper mapper) {
         super(sofaCrawlerService);
+        this.mapper = mapper;
     }
 
     @Override
@@ -27,28 +30,16 @@ public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implement
 
             return tournaments.stream()
                     .filter(Objects::nonNull)
-                    .filter(t -> t.getId() != null)
-                    .filter(t -> externalLeagueIds == null || externalLeagueIds.isEmpty()
-                            || externalLeagueIds.contains(t.getId()))
+                    .filter(tournament -> tournament.getId() != null)
+                    .filter(tournament -> externalLeagueIds == null || externalLeagueIds.isEmpty()
+                            || externalLeagueIds.contains(tournament.getId()))
                     .map(tournament -> {
-                        List<SofaSeasonData.SeasonDTO> seasonDtos =
+                        List<SofaSeasonData.SeasonDTO> seasons =
                                 sofaCrawlerService.fetchSeasonByTournamentId(tournament.getId(), page);
-                        List<ProviderSeason> seasons = seasonDtos == null ? List.of() : seasonDtos.stream()
-                                .filter(Objects::nonNull)
-                                .filter(s -> s.getId() != null)
-                                .map(this::toSeason)
-                                .toList();
-                        String country = tournament.getCategory() == null
-                                ? null : tournament.getCategory().getName();
-                        return new ProviderLeague(tournament.getId().toString(), tournament.getName(),
-                                country, null, seasons);
+                        return mapper.toProviderLeague(tournament, seasons);
                     })
+                    .filter(Objects::nonNull)
                     .toList();
         });
-    }
-
-    private ProviderSeason toSeason(SofaSeasonData.SeasonDTO season) {
-        String year = season.getYear() != null ? season.getYear() : season.getName();
-        return new ProviderSeason(season.getId().toString(), year, season.isCurrent(), null, null);
     }
 }
