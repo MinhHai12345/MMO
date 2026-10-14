@@ -51,12 +51,23 @@ public class OddsIngestionService {
         Provider selectedProvider = appProperties.getIngestion().getProviders().getOdds();
         if (selectedProvider == Provider.API_FOOTBALL && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
 
-        // Ensure this provider's fixture IDs are linked to canonical matches before odds lookup.
-        LocalDate today = LocalDate.now();
-        fixtureIngestionService.syncFixturesForProvider(selectedProvider, today, today.plusDays(3));
-
         Instant now = Instant.now();
         Instant until = now.plus(72, ChronoUnit.HOURS);
+        List<Match> scheduledMatches = matchRepository.findAll().stream()
+                .filter(match -> match.getStatus() == MatchStatus.SCHEDULED)
+                .filter(match -> match.getMatchTime() != null
+                        && !match.getMatchTime().isBefore(now) && !match.getMatchTime().isAfter(until))
+                .toList();
+
+        boolean missingProviderMappings = scheduledMatches.isEmpty()
+                || scheduledMatches.stream().anyMatch(match -> matchExternalIdRepository
+                        .findByMatchIdAndProvider(match.getId(), selectedProvider).isEmpty());
+        if (missingProviderMappings) {
+            // Bootstrap missing cross-provider fixture IDs without repeating a full fixture sync every odds run.
+            LocalDate today = LocalDate.now();
+            fixtureIngestionService.syncFixturesForProvider(selectedProvider, today, today.plusDays(3));
+        }
+
         List<Match> upcoming = matchRepository.findAll().stream()
                 .filter(match -> match.getStatus() == MatchStatus.SCHEDULED)
                 .filter(match -> match.getMatchTime() != null
