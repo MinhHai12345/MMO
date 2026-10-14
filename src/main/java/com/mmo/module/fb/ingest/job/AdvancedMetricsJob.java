@@ -5,6 +5,7 @@ import com.mmo.core.cronjob.job.AbstractJob;
 import com.mmo.module.fb.domain.entity.H2HRecord;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.Team;
+import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.repository.H2HRecordRepository;
 import com.mmo.module.fb.domain.repository.MatchRepository;
 import com.mmo.module.fb.domain.repository.TeamFormRepository;
@@ -57,7 +58,7 @@ public class AdvancedMetricsJob extends AbstractJob<CronJob> {
         for (Team team : teams) {
             try {
                 List<Match> recentMatches = matchRepository.findTop10ByHomeTeamOrAwayTeamAndStatusOrderByMatchTimeDesc(
-                        team, "FINISHED");
+                        team, MatchStatus.FINISHED);
 
                 if (CollectionUtils.isEmpty(recentMatches)) {
                     continue;
@@ -122,7 +123,7 @@ public class AdvancedMetricsJob extends AbstractJob<CronJob> {
 
                     List<Match> h2hMatches = matchRepository
                             .findByHomeTeamAndAwayTeamOrHomeTeamAndAwayTeamAndStatus(
-                                    homeTeam, awayTeam, awayTeam, homeTeam, "FINISHED");
+                                    homeTeam, awayTeam, awayTeam, homeTeam, MatchStatus.FINISHED);
 
                     if (CollectionUtils.isEmpty(h2hMatches)) {
                         continue;
