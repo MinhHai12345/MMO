@@ -16,7 +16,6 @@ import com.mmo.module.fb.domain.repository.SeasonRepository;
 import com.mmo.module.fb.domain.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
-import com.mmo.module.fb.ingest.provider.spi.FixtureProvider;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
