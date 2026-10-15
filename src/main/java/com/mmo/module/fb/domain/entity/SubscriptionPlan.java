@@ -30,6 +30,7 @@ public class SubscriptionPlan extends AbstractEntity {
     @Column(nullable = false)
     private String price;
 
+    @Builder.Default
     private String currency = "USD";
 
     @Column(name = "billing_cycle", nullable = false)
@@ -42,8 +43,10 @@ public class SubscriptionPlan extends AbstractEntity {
     private String features;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 
     @OneToMany(mappedBy = "subscriptionPlan", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<Subscriber> subscribers = new ArrayList<>();
 }
