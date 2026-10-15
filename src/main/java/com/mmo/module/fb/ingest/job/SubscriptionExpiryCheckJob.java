@@ -4,7 +4,7 @@ import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.job.AbstractJob;
 import com.mmo.module.fb.domain.entity.Subscriber;
 import com.mmo.module.fb.domain.repository.SubscriberRepository;
-import com.mmo.module.fb.monetization.SubscriptionService;
+//import com.mmo.module.fb.monetization.SubscriptionService;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,8 +26,8 @@ public class SubscriptionExpiryCheckJob extends AbstractJob<CronJob> {
     @Resource
     private SubscriberRepository subscriberRepository;
 
-    @Resource
-    private SubscriptionService subscriptionService;
+//    @Resource
+//    private SubscriptionService subscriptionService;
 
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {

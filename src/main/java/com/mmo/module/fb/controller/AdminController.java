@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -70,12 +71,7 @@ public class AdminController {
     public ResponseEntity<List<Team>> getAllTeams(
             @RequestParam(required = false) String leagueId) {
         try {
-            List<Team> teams;
-            if (leagueId != null) {
-                teams = teamRepository.findByLeagueId(Long.valueOf(leagueId));
-            } else {
-                teams = teamRepository.findAll();
-            }
+            List<Team> teams= teamRepository.findAll();
             return ResponseEntity.ok(teams);
         } catch (Exception e) {
             log.error("❌ Error fetching teams: {}", e.getMessage());
