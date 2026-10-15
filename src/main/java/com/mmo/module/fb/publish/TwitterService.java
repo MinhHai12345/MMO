@@ -1,8 +1,8 @@
 package com.mmo.module.fb.publish;
 
+import com.mmo.AppProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import twitter4j.Status;
 import twitter4j.StatusUpdate;
@@ -16,27 +16,17 @@ import twitter4j.conf.ConfigurationBuilder;
 @RequiredArgsConstructor
 public class TwitterService {
 
-    @Value("${twitter.consumer.key}")
-    private String consumerKey;
-
-    @Value("${twitter.consumer.secret}")
-    private String consumerSecret;
-
-    @Value("${twitter.access.token}")
-    private String accessToken;
-
-    @Value("${twitter.access.secret}")
-    private String accessSecret;
+    private final AppProperties appProperties;
 
     private Twitter twitter;
 
     private Twitter getTwitterInstance() {
         if (twitter == null) {
             ConfigurationBuilder cb = new ConfigurationBuilder();
-            cb.setOAuthConsumerKey(consumerKey)
-              .setOAuthConsumerSecret(consumerSecret)
-              .setOAuthAccessToken(accessToken)
-              .setOAuthAccessTokenSecret(accessSecret);
+            cb.setOAuthConsumerKey(appProperties.getTwitter().getConsumer().getKey())
+              .setOAuthConsumerSecret(appProperties.getTwitter().getConsumer().getSecret())
+              .setOAuthAccessToken(appProperties.getTwitter().getAccess().getToken())
+              .setOAuthAccessTokenSecret(appProperties.getTwitter().getAccess().getSecret());
             twitter = new TwitterFactory(cb.build()).getInstance();
         }
         return twitter;
