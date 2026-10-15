@@ -83,6 +83,7 @@ public class Match extends AbstractEntity {
     private MatchStatus status;
 
     @OneToMany(mappedBy = "match", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<MatchExternalId> externalIds = new ArrayList<>();
 
 }
