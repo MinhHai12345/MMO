@@ -13,28 +13,132 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Strongly typed access to application-specific configuration under the {@code app} prefix.
+ */
 @Getter
 @Setter
 @Component
 @ConfigurationProperties(prefix = "app")
 public class AppProperties {
 
-    @NotNull
-    private InitialData initialData;
-
-    @NotNull
-    private Telegram telegram;
-
-    @NotNull
-    private SofaScore sofaScore;
-
+    private InitialData initialData = new InitialData();
+    private Telegram telegram = new Telegram();
+    private Twitter twitter = new Twitter();
+    private Facebook facebook = new Facebook();
+    private Stripe stripe = new Stripe();
+    private SofaScore sofaScore = new SofaScore();
     private Sync sync = new Sync();
-
     private ApiFootball apiFootball = new ApiFootball();
+    private Ingestion ingestion = new Ingestion();
+    private Understats understats = new Understats();
+
+    @Getter
+    @Setter
+    public static class InitialData {
+        private boolean autoImport = true;
+    }
+
+    @Getter
+    @Setter
+    public static class Telegram {
+        private Bot bot = new Bot();
+        private Channel channel = new Channel();
+
+        @Getter
+        @Setter
+        public static class Bot {
+            private String token = "mock";
+            private String username = "H2_FB_Bot";
+        }
+
+        @Getter
+        @Setter
+        public static class Channel {
+            private String id = "mock";
+            private String free = "mock";
+            private String premium = "mock";
+        }
+    }
+
+    @Getter
+    @Setter
+    public static class Twitter {
+        private Consumer consumer = new Consumer();
+        private Access access = new Access();
+
+        @Getter
+        @Setter
+        public static class Consumer {
+            private String key = "mock";
+            private String secret = "mock";
+        }
+
+        @Getter
+        @Setter
+        public static class Access {
+            private String token = "mock";
+            private String secret = "mock";
+        }
+    }
+
+    @Getter
+    @Setter
+    public static class Facebook {
+        private Page page = new Page();
+        private Access access = new Access();
+
+        @Getter
+        @Setter
+        public static class Page {
+            private String id = "mock";
+        }
+
+        @Getter
+        @Setter
+        public static class Access {
+            private String token = "mock";
+        }
+    }
+
+    @Getter
+    @Setter
+    public static class Stripe {
+        private Api api = new Api();
+
+        @Getter
+        @Setter
+        public static class Api {
+            private String key = "mock";
+            private Webhook webhook = new Webhook();
+        }
+
+        @Getter
+        @Setter
+        public static class Webhook {
+            private String secret = "mock";
+        }
+    }
+
+    @Getter
+    @Setter
+    public static class SofaScore {
+        @NotBlank
+        private String api = "https://api.sofascore.com/api/v1/";
+        @NotBlank
+        private String url = "https://www.sofascore.com";
+    }
+
+    @Getter
+    @Setter
+    public static class Sync {
+        private boolean bootstrapOnStart = true;
+        private Set<Long> tournamentIds = new HashSet<>();
+        private int seasonsPerLeague = 3;
+        private int maxRounds = 50;
+    }
 
     /** Select the data source independently for each ingestion resource. */
-    private Ingestion ingestion = new Ingestion();
-
     @Getter
     @Setter
     public static class Ingestion {
@@ -53,69 +157,19 @@ public class AppProperties {
 
     @Getter
     @Setter
-    public static class InitialData {
-        private boolean autoImport;
-    }
-
-    @Getter
-    @Setter
-    public static class Telegram {
-        @NotNull
-        private Bot bot;
-        @NotNull
-        private Channel channel;
-
-        @Getter
-        @Setter
-        public static class Bot {
-            @NotBlank
-            private String token;
-            @NotBlank
-            private String username;
-        }
-
-        @Getter
-        @Setter
-        public static class Channel {
-            @NotBlank
-            private String free;
-            @NotBlank
-            private String premium;
-        }
-    }
-
-    @Getter
-    @Setter
-    public static class SofaScore {
-        @NotBlank
-        private String api;
-        @NotBlank
-        private String url;
-    }
-
-    @Getter
-    @Setter
-    public static class Sync {
-        private boolean bootstrapOnStart = true;
-        private Set<Long> tournamentIds = new HashSet<>();
-        private int seasonsPerLeague = 3;
-        private int maxRounds = 50;
-    }
-
-    @Getter
-    @Setter
     public static class ApiFootball {
-        private String baseUrl = "https://v3.football.api-sports.io";
-        private String apiKey;
-        /**
-         * API-Football league IDs to sync. Keep this list explicit to control API quota.
-         */
-        private List<Long> leagueIds = new ArrayList<>();
-        /**
-         * Season start years supported by API-Football, e.g. 2024, 2025.
-         * Empty means the current calendar year only.
-         */
-        private List<Integer> seasons = new ArrayList<>();
         private boolean enabled = true;
+        private String baseUrl = "https://v3.football.api-sports.io";
+        private String apiKey = "mock";
+        /** API-Football league IDs to sync. Empty means no explicit league filter. */
+        private List<Long> leagueIds = new ArrayList<>();
+        /** Season start years supported by API-Football. Empty means the current calendar year only. */
+        private List<Integer> seasons = new ArrayList<>();
+    }
+
+    @Getter
+    @Setter
+    public static class Understats {
+        private String baseUrl = "https://understat.com";
     }
 }
