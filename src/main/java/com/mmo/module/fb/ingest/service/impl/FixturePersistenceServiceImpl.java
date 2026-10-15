@@ -11,6 +11,7 @@ import com.mmo.module.fb.domain.repository.MatchRepository;
 import com.mmo.module.fb.domain.repository.SeasonRepository;
 import com.mmo.module.fb.domain.repository.TeamRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
+import com.mmo.module.fb.ingest.service.FixturePersistenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,7 +24,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class FixturePersistenceServiceImpl implements com.mmo.module.fb.ingest.service.FixturePersistenceService {
+public class FixturePersistenceServiceImpl implements FixturePersistenceService {
 
     private final SeasonRepository seasonRepository;
     private final TeamRepository teamRepository;

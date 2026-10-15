@@ -9,6 +9,7 @@ import com.mmo.module.fb.domain.repository.MatchOddsRepository;
 import com.mmo.module.fb.domain.repository.MatchRepository;
 import com.mmo.module.fb.domain.repository.OddsHistoryRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
+import com.mmo.module.fb.ingest.service.OddsPersistenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,7 +23,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-public class OddsPersistenceServiceImpl implements com.mmo.module.fb.ingest.service.OddsPersistenceService {
+public class OddsPersistenceServiceImpl implements OddsPersistenceService {
 
     private static final String MARKET = "PREMATCH";
 
@@ -64,12 +65,12 @@ public class OddsPersistenceServiceImpl implements com.mmo.module.fb.ingest.serv
             }
 
             boolean resultOddsChanged = !sameOdd(previousHome, odds.getHomeWinOdds())
-                    || !sameOdd(previousDraw, odds.getDrawOdds())
-                    || !sameOdd(previousAway, odds.getAwayWinOdds());
+                                        || !sameOdd(previousDraw, odds.getDrawOdds())
+                                        || !sameOdd(previousAway, odds.getAwayWinOdds());
 
             odds = matchOddsRepository.save(odds);
             if (resultOddsChanged
-                    && (odds.getHomeWinOdds() != null || odds.getDrawOdds() != null || odds.getAwayWinOdds() != null)) {
+                && (odds.getHomeWinOdds() != null || odds.getDrawOdds() != null || odds.getAwayWinOdds() != null)) {
                 oddsHistoryRepository.save(OddsHistory.builder()
                         .matchOdds(odds)
                         .homeWinOdds(odds.getHomeWinOdds())

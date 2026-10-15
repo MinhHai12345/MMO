@@ -7,6 +7,7 @@ import com.mmo.module.fb.domain.repository.LeagueStandingRepository;
 import com.mmo.module.fb.domain.repository.SeasonRepository;
 import com.mmo.module.fb.domain.repository.TeamRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
+import com.mmo.module.fb.ingest.service.StandingsPersistenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,7 +16,7 @@ import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
-public class StandingsPersistenceServiceImpl implements com.mmo.module.fb.ingest.service.StandingsPersistenceService {
+public class StandingsPersistenceServiceImpl implements StandingsPersistenceService {
 
     private final SeasonRepository seasonRepository;
     private final TeamRepository teamRepository;

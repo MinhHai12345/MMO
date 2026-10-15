@@ -11,6 +11,7 @@ import com.mmo.module.fb.domain.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.domain.repository.SeasonRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
+import com.mmo.module.fb.ingest.service.LeaguePersistenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,7 +22,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class LeaguePersistenceServiceImpl implements com.mmo.module.fb.ingest.service.LeaguePersistenceService {
+public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
 
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
@@ -49,7 +50,7 @@ public class LeaguePersistenceServiceImpl implements com.mmo.module.fb.ingest.se
                 if (candidates.size() > 1 && source.country() != null && !source.country().isBlank()) {
                     List<League> countryMatches = candidates.stream()
                             .filter(existing -> existing.getCountry() != null
-                                    && normalizeName(existing.getCountry()).equals(normalizeName(source.country())))
+                                                && normalizeName(existing.getCountry()).equals(normalizeName(source.country())))
                             .toList();
                     if (!countryMatches.isEmpty()) {
                         candidates = countryMatches;
@@ -68,7 +69,7 @@ public class LeaguePersistenceServiceImpl implements com.mmo.module.fb.ingest.se
             }
             if (league.getSlug() == null || league.getSlug().isBlank()) {
                 league.setSlug(slug(source.name()) + "-" + selectedProvider.name().toLowerCase()
-                        + "-" + source.externalId());
+                               + "-" + source.externalId());
             }
             if (source.country() != null && !source.country().isBlank()) {
                 league.setCountry(source.country());
@@ -99,7 +100,7 @@ public class LeaguePersistenceServiceImpl implements com.mmo.module.fb.ingest.se
 
             for (ProviderSeason sourceSeason : source.seasons()) {
                 if (sourceSeason.externalId() == null || sourceSeason.externalId().isBlank()
-                        || sourceSeason.year() == null || sourceSeason.year().isBlank()) {
+                    || sourceSeason.year() == null || sourceSeason.year().isBlank()) {
                     log.warn("Skipping season without provider ID/year for league {} from {}",
                             source.name(), selectedProvider);
                     continue;
@@ -110,7 +111,7 @@ public class LeaguePersistenceServiceImpl implements com.mmo.module.fb.ingest.se
                         .map(SeasonExternalId::getSeason)
                         .orElse(null);
                 if (season != null && (!season.getLeague().getId().equals(savedLeague.getId())
-                        || !season.getYear().equals(sourceSeason.year()))) {
+                                       || !season.getYear().equals(sourceSeason.year()))) {
                     log.warn("Provider {} season ID {} is already mapped to a different canonical season; skipping",
                             selectedProvider, sourceSeason.externalId());
                     continue;
@@ -138,6 +139,7 @@ public class LeaguePersistenceServiceImpl implements com.mmo.module.fb.ingest.se
             synced++;
         }
         log.info("League ingestion completed. {} leagues processed.", synced);
+    }
 
     private static String normalizeName(String value) {
         return value == null ? "" : value.toLowerCase().replaceAll("[^a-z0-9]", "");

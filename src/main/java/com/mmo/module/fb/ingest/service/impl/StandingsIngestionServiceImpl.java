@@ -11,6 +11,7 @@ import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
 import com.mmo.module.fb.ingest.provider.model.StandingsQuery;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import com.mmo.module.fb.ingest.provider.spi.StandingsProvider;
+import com.mmo.module.fb.ingest.service.StandingsIngestionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,7 +25,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class StandingsIngestionServiceImpl implements com.mmo.module.fb.ingest.service.StandingsIngestionService {
+public class StandingsIngestionServiceImpl implements StandingsIngestionService {
 
     private final ProviderRegistry providerRegistry;
     private final AppProperties appProperties;

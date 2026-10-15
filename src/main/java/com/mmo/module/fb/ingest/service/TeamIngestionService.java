@@ -1,6 +1,8 @@
 package com.mmo.module.fb.ingest.service;
 
+import com.mmo.module.fb.domain.enums.Provider;
+
 public interface TeamIngestionService {
     void syncTeams();
-    void syncTeamsForProvider(com.mmo.module.fb.domain.enums.Provider selectedProvider);
+    void syncTeamsForProvider(Provider selectedProvider);
 }

@@ -2,7 +2,6 @@ package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.domain.entity.Season;
-import com.mmo.module.fb.domain.entity.Team;
 import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.repository.SeasonRepository;
@@ -10,11 +9,12 @@ import com.mmo.module.fb.domain.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
+import com.mmo.module.fb.ingest.service.FixtureIngestionService;
+import com.mmo.module.fb.ingest.service.FixturePersistenceService;
+import com.mmo.module.fb.ingest.service.TeamIngestionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import com.mmo.module.fb.ingest.service.FixturePersistenceService;
-import com.mmo.module.fb.ingest.service.TeamIngestionService;
 
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -24,7 +24,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class FixtureIngestionServiceImpl implements com.mmo.module.fb.ingest.service.FixtureIngestionService {
+public class FixtureIngestionServiceImpl implements FixtureIngestionService {
 
     private final ProviderRegistry providerRegistry;
     private final AppProperties appProperties;
@@ -44,7 +44,7 @@ public class FixtureIngestionServiceImpl implements com.mmo.module.fb.ingest.ser
      */
     public void syncFixturesForProvider(Provider selectedProvider, LocalDate from, LocalDate to) {
         if (selectedProvider == Provider.API_FOOTBALL
-                && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
+            && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
             return;
         }
         if (from != null && to != null && from.isAfter(to)) {

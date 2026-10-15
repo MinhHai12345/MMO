@@ -10,6 +10,7 @@ import com.mmo.module.fb.domain.repository.MatchRepository;
 import com.mmo.module.fb.ingest.provider.model.OddsQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
+import com.mmo.module.fb.ingest.service.OddsIngestionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -29,7 +30,7 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class OddsIngestionServiceImpl implements com.mmo.module.fb.ingest.service.OddsIngestionService {
+public class OddsIngestionServiceImpl implements OddsIngestionService {
 
     private static final int MAX_FIXTURES_PER_RUN = 10;
 
@@ -92,11 +93,9 @@ public class OddsIngestionServiceImpl implements com.mmo.module.fb.ingest.servic
 
     private Map<Long, String> loadFixtureIds(Provider provider) {
         List<MatchExternalId> mappings = matchExternalIdRepository.findAllByProvider(provider);
-        Set<Long> mappedMatchIds = new HashSet<>();
         Map<Long, String> fixtureIdsByMatchId = new HashMap<>();
         mappings.forEach(mapping -> {
             Long matchId = mapping.getMatch().getId();
-            mappedMatchIds.add(matchId);
             fixtureIdsByMatchId.put(matchId, mapping.getExternalId());
         });
         return fixtureIdsByMatchId;
