@@ -135,6 +135,15 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                             .orElseGet(() -> Season.builder()
                                     .league(savedLeague).year(sourceSeason.year()).build());
                 }
+                SeasonExternalId existingSeasonMapping = season.getId() == null ? null
+                        : seasonExternalIdRepository.findBySeasonIdAndProvider(season.getId(), selectedProvider).orElse(null);
+                if (existingSeasonMapping != null
+                        && !sourceSeason.externalId().equals(existingSeasonMapping.getExternalId())) {
+                    log.warn("Skipping season {} from {} because canonical season {} is already mapped to provider ID {}",
+                            sourceSeason.year(), selectedProvider, season.getId(), existingSeasonMapping.getExternalId());
+                    continue;
+                }
+
                 season.setCurrent(sourceSeason.current());
                 season.setStartDate(sourceSeason.startDate());
                 season.setEndDate(sourceSeason.endDate());
@@ -142,14 +151,6 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                 season = seasonRepository.save(season);
 
                 Season savedSeason = season;
-                SeasonExternalId existingSeasonMapping = seasonExternalIdRepository
-                        .findBySeasonIdAndProvider(savedSeason.getId(), selectedProvider).orElse(null);
-                if (existingSeasonMapping != null
-                        && !sourceSeason.externalId().equals(existingSeasonMapping.getExternalId())) {
-                    log.warn("Skipping season {} from {} because canonical season {} is already mapped to provider ID {}",
-                            sourceSeason.year(), selectedProvider, savedSeason.getId(), existingSeasonMapping.getExternalId());
-                    continue;
-                }
                 SeasonExternalId seasonExternal = seasonExternalIdRepository
                         .findBySeasonIdAndProvider(savedSeason.getId(), selectedProvider)
                         .orElseGet(() -> SeasonExternalId.builder()
