@@ -15,6 +15,7 @@ import com.mmo.module.fb.ingest.service.LeaguePersistenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +34,7 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
      * Ensures league and season external IDs exist for a provider, even when another provider
      * is configured for the league ingestion schedule. Downstream resources depend on these IDs.
      */
-    @org.springframework.transaction.annotation.Transactional
+    @Transactional
     public void persistLeagues(Provider selectedProvider, List<ProviderLeague> sources) {
         int synced = 0;
         List<League> knownActiveLeagues = new ArrayList<>(leagueRepository.findByIsActive(true));
