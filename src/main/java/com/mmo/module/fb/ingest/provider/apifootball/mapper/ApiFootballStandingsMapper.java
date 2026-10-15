@@ -1,6 +1,5 @@
 package com.mmo.module.fb.ingest.provider.apifootball.mapper;
 
-import com.mmo.core.converter.AbstractMapper;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.StandingRowDto;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.StandingsItem;
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
@@ -10,10 +9,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Component
-public class ApiFootballStandingsMapper extends AbstractMapper<StandingRowDto, ProviderStanding> {
+public class ApiFootballStandingsMapper {
 
-    @Override
-    public ProviderStanding map(StandingRowDto row, ProviderStanding target) {
+    private ProviderStanding map(StandingRowDto row) {
         if (row == null || row.team() == null || row.team().id() == null) return null;
         var all = row.all();
         var goals = all == null ? null : all.goals();
@@ -41,7 +39,7 @@ public class ApiFootballStandingsMapper extends AbstractMapper<StandingRowDto, P
             for (List<StandingRowDto> group : item.league().standings()) {
                 if (group == null) continue;
                 for (StandingRowDto row : group) {
-                    ProviderStanding mapped = map(row, null);
+                    ProviderStanding mapped = map(row);
                     if (mapped != null) result.add(mapped);
                 }
             }
