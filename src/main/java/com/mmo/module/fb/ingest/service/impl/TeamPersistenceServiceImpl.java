@@ -57,6 +57,13 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
                     team = candidates.isEmpty() ? new Team() : candidates.get(0);
                 }
 
+                TeamExternalId existingMapping = team.getId() == null ? null : mappingByTeamId.get(team.getId());
+                if (existingMapping != null && !source.externalId().equals(existingMapping.getExternalId())) {
+                    log.warn("Skipping team '{}' from {} because canonical team {} is already mapped to provider ID {}",
+                            source.name(), selectedProvider, team.getId(), existingMapping.getExternalId());
+                    continue;
+                }
+
                 if (team.getName() == null || team.getName().isBlank()) {
                     team.setName(source.name());
                 }
