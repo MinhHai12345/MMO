@@ -1,8 +1,8 @@
 package com.mmo.module.fb.publish;
 
+import com.mmo.AppProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.polls.SendPoll;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -22,19 +22,12 @@ public class TelegramService {
 
     private final TelegramClient telegramClient;
 
-    @Value("${telegram.channel.id}")
-    private String channelId;
-
-    @Value("${telegram.channel.free}")
-    private String freeChannelId;
-
-    @Value("${telegram.channel.premium}")
-    private String premiumChannelId;
+    private final AppProperties appProperties;
 
     public void sendMessage(String message) {
         try {
             SendMessage sendMessage = SendMessage.builder()
-                    .chatId(channelId)
+                    .chatId(appProperties.getTelegram().getChannel().getId())
                     .text(message)
                     .parseMode("HTML")
                     .build();
@@ -91,17 +84,17 @@ public class TelegramService {
     }
 
     public void sendPollToFreeChannel(String question, List<String> options) {
-        sendPoll(question, options, freeChannelId);
+        sendPoll(question, options, appProperties.getTelegram().getChannel().getFree());
     }
 
     public void sendPollToPremiumChannel(String question, List<String> options) {
-        sendPoll(question, options, premiumChannelId);
+        sendPoll(question, options, appProperties.getTelegram().getChannel().getPremium());
     }
 
     public void sendToFreeChannel(String message) {
         try {
             SendMessage sendMessage = SendMessage.builder()
-                    .chatId(freeChannelId)
+                    .chatId(appProperties.getTelegram().getChannel().getFree())
                     .text(message)
                     .parseMode("HTML")
                     .build();
@@ -115,7 +108,7 @@ public class TelegramService {
     public void sendToPremiumChannel(String message) {
         try {
             SendMessage sendMessage = SendMessage.builder()
-                    .chatId(premiumChannelId)
+                    .chatId(appProperties.getTelegram().getChannel().getPremium())
                     .text(message)
                     .parseMode("HTML")
                     .build();
