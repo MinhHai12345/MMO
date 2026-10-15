@@ -58,8 +58,13 @@ public class OddsIngestionServiceImpl implements OddsIngestionService {
                 MatchStatus.SCHEDULED, now, until);
         Map<Long, String> fixtureIdsByMatchId = loadFixtureIds(selectedProvider);
 
-        boolean missingProviderMappings = !scheduledMatches.isEmpty()
-                && scheduledMatches.stream().anyMatch(match -> !fixtureIdsByMatchId.containsKey(match.getId()));
+        boolean missingProviderMappings = false;
+        for (Match match : scheduledMatches) {
+            if (!fixtureIdsByMatchId.containsKey(match.getId())) {
+                missingProviderMappings = true;
+                break;
+            }
+        }
         if (missingProviderMappings) {
             LocalDate today = LocalDate.now();
             fixtureIngestionService.syncFixturesForProvider(selectedProvider, today, today.plusDays(3));
