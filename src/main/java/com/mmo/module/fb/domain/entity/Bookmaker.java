@@ -23,5 +23,6 @@ public class Bookmaker extends AbstractEntity {
     private String website;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 }

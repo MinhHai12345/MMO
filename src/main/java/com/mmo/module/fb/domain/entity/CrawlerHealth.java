@@ -33,6 +33,7 @@ public class CrawlerHealth extends AbstractEntity {
     private Instant lastSuccess;
 
     @Column(name = "error_count")
+    @Builder.Default
     private Integer errorCount = 0;
 
     @Lob

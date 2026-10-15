@@ -41,6 +41,7 @@ public class Season extends AbstractEntity {
     private LocalDate endDate;
 
     @OneToMany(mappedBy = "season", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<SeasonExternalId> externalIds = new ArrayList<>();
 
 }

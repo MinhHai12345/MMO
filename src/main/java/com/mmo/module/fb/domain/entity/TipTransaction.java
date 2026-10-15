@@ -28,6 +28,7 @@ public class TipTransaction extends AbstractEntity {
     private MatchPrediction matchPrediction;
 
     @Column(name = "delivery_status")
+    @Builder.Default
     private String deliveryStatus = "PENDING";
 
     @Column(name = "delivery_platform")

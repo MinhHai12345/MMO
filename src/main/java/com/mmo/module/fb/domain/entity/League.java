@@ -40,15 +40,18 @@ public class League extends AbstractEntity {
     private String logoUrl;
 
     @Column(name = "popularity_score")
+    @Builder.Default
     private BigDecimal popularityScore = BigDecimal.ZERO;
 
     @Column(name = "betting_market")
     private String bettingMarket;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 
     @OneToMany(mappedBy = "league", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<LeagueExternalId> externalIds = new ArrayList<>();
 
 }

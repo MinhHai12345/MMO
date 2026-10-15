@@ -37,6 +37,7 @@ public class Subscriber extends AbstractEntity {
     private String email;
 
     @Column(name = "subscription_status")
+    @Builder.Default
     private String subscriptionStatus = "ACTIVE";
 
     @Column(name = "start_date")
@@ -46,11 +47,14 @@ public class Subscriber extends AbstractEntity {
     private Instant endDate;
 
     @Column(name = "auto_renew")
+    @Builder.Default
     private Boolean autoRenew = true;
 
     @OneToMany(mappedBy = "subscriber", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<TipTransaction> tipTransactions = new ArrayList<>();
 
     @OneToMany(mappedBy = "subscriber", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<AffiliateTracking> affiliateTrackings = new ArrayList<>();
 }

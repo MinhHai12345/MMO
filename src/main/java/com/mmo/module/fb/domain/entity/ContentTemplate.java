@@ -34,5 +34,6 @@ public class ContentTemplate extends AbstractEntity {
     private String variables;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 }

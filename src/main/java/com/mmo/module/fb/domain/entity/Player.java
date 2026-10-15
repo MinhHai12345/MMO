@@ -42,11 +42,14 @@ public class Player extends AbstractEntity {
     private BigDecimal marketValue;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 
     @OneToMany(mappedBy = "player", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<PlayerMatchStats> matchStats = new ArrayList<>();
 
     @OneToMany(mappedBy = "player", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<PlayerExternalId> externalIds = new ArrayList<>();
 }

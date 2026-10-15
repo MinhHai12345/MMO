@@ -52,9 +52,11 @@ public class Team extends AbstractEntity {
     private BigDecimal marketValue;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 
     @OneToMany(mappedBy = "team", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<TeamExternalId> externalIds = new ArrayList<>();
 
 }

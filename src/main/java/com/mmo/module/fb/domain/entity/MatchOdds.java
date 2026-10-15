@@ -59,6 +59,7 @@ public class MatchOdds extends AbstractEntity {
     @Column(precision = 8, scale = 3)
     private BigDecimal asianHandicapAway;
 
+    @Builder.Default
     @OneToMany(mappedBy = "matchOdds", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OddsHistory> history = new ArrayList<>();
 

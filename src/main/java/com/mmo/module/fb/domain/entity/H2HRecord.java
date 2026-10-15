@@ -29,20 +29,26 @@ public class H2HRecord extends AbstractEntity {
     private Team awayTeam;
 
     @Column(name = "total_matches")
+    @Builder.Default
     private Integer totalMatches = 0;
 
     @Column(name = "home_wins")
+    @Builder.Default
     private Integer homeWins = 0;
 
     @Column(name = "away_wins")
+    @Builder.Default
     private Integer awayWins = 0;
 
+    @Builder.Default
     private Integer draws = 0;
 
     @Column(name = "home_goals")
+    @Builder.Default
     private Integer homeGoals = 0;
 
     @Column(name = "away_goals")
+    @Builder.Default
     private Integer awayGoals = 0;
 
     @Column(name = "last_updated")
