@@ -49,12 +49,14 @@ public class MatchPrediction extends AbstractEntity {
     private String predictedResult;
 
     @Column(name = "prediction_status")
+    @Builder.Default
     private String predictionStatus = "PENDING";
 
     @Column
     private String result;
 
     @Column(name = "is_premium")
+    @Builder.Default
     private Boolean isPremium = false;
 
     @Column(name = "value_bet_type")
@@ -82,6 +84,7 @@ public class MatchPrediction extends AbstractEntity {
     private String imageUrl;
 
     @OneToMany(mappedBy = "prediction", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<PredictionPerformance> performance = new ArrayList<>();
 
 }
