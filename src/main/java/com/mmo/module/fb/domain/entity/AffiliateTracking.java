@@ -31,6 +31,7 @@ public class AffiliateTracking extends AbstractEntity {
     private Integer clickCount = 0;
 
     @Column(name = "conversion_count")
+    @Builder.Default
     private Integer conversionCount = 0;
 
     @Column(name = "commission_rate")
@@ -41,5 +42,6 @@ public class AffiliateTracking extends AbstractEntity {
     private BigDecimal totalCommission = BigDecimal.ZERO;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 }
