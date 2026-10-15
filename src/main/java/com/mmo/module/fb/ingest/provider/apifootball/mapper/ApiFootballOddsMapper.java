@@ -1,6 +1,5 @@
 package com.mmo.module.fb.ingest.provider.apifootball.mapper;
 
-import com.mmo.core.converter.AbstractMapper;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsBetDto;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsBookmakerDto;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsItem;
@@ -13,13 +12,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Component
-public class ApiFootballOddsMapper extends AbstractMapper<ApiFootballOddsMapper.OddsMappingInput, ProviderOdds> {
+public class ApiFootballOddsMapper {
 
-    @Override
-    public ProviderOdds map(OddsMappingInput input, ProviderOdds target) {
+    private ProviderOdds map(OddsMappingInput input) {
         if (input == null || input.bookmaker() == null || input.bet() == null || input.value() == null
-                || input.bookmaker().name() == null || input.bet().name() == null
-                || input.value().value() == null) {
+            || input.bookmaker().name() == null || input.bet().name() == null
+            || input.value().value() == null) {
             return null;
         }
         BigDecimal odd = decimal(input.value().odd());
@@ -42,7 +40,7 @@ public class ApiFootballOddsMapper extends AbstractMapper<ApiFootballOddsMapper.
                 for (OddsBetDto bet : bookmaker.bets()) {
                     if (bet == null || bet.values() == null) continue;
                     for (OddsValueDto value : bet.values()) {
-                        ProviderOdds mapped = map(new OddsMappingInput(bookmaker, bet, value), null);
+                        ProviderOdds mapped = map(new OddsMappingInput(bookmaker, bet, value));
                         if (mapped != null) result.add(mapped);
                     }
                 }

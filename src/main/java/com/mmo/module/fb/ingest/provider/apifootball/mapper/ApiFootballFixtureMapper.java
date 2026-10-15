@@ -1,6 +1,5 @@
 package com.mmo.module.fb.ingest.provider.apifootball.mapper;
 
-import com.mmo.core.converter.AbstractMapper;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.FixtureItem;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import org.springframework.stereotype.Component;
@@ -8,20 +7,17 @@ import org.springframework.util.StringUtils;
 
 import java.time.Instant;
 
-/** Converts API-Football's response schema into the source-neutral fixture model. */
+/**
+ * Converts API-Football's response schema into the source-neutral fixture model.
+ */
 @Component
-public class ApiFootballFixtureMapper extends AbstractMapper<FixtureItem, ProviderFixture> {
+public class ApiFootballFixtureMapper {
 
     public ProviderFixture toModel(FixtureItem item) {
-        return map(item, null);
-    }
-
-    @Override
-    public ProviderFixture map(FixtureItem item, ProviderFixture target) {
         if (item == null || item.fixture() == null || item.fixture().id() == null
-                || item.teams() == null || item.teams().home() == null
-                || item.teams().away() == null
-                || item.teams().home().id() == null || item.teams().away().id() == null) {
+            || item.teams() == null || item.teams().home() == null
+            || item.teams().away() == null
+            || item.teams().home().id() == null || item.teams().away().id() == null) {
             return null;
         }
 
