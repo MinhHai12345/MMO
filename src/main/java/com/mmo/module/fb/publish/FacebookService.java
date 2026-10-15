@@ -24,11 +24,11 @@ public class FacebookService {
 
     public void postMessage(String message) {
         try {
-            String url = GRAPH_API_URL + "/" + pageId + "/feed";
+            String url = GRAPH_API_URL + "/" + appProperties.getFacebook().getPage().getId() + "/feed";
             
             MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
             params.add("message", message);
-            params.add("access_token", pageAccessToken);
+            params.add("access_token", appProperties.getFacebook().getAccess().getToken());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -50,11 +50,11 @@ public class FacebookService {
 
     public void postWithImage(String message, byte[] imageBytes) {
         try {
-            String url = GRAPH_API_URL + "/" + pageId + "/photos";
+            String url = GRAPH_API_URL + "/" + appProperties.getFacebook().getPage().getId() + "/photos";
             
             MultiValueMap<String, Object> params = new LinkedMultiValueMap<>();
             params.add("caption", message);
-            params.add("access_token", pageAccessToken);
+            params.add("access_token", appProperties.getFacebook().getAccess().getToken());
             params.add("source", new org.springframework.core.io.ByteArrayResource(imageBytes) {
                 @Override
                 public String getFilename() {
@@ -82,11 +82,11 @@ public class FacebookService {
 
     public void schedulePost(String message, String scheduledTime) {
         try {
-            String url = GRAPH_API_URL + "/" + pageId + "/feed";
+            String url = GRAPH_API_URL + "/" + appProperties.getFacebook().getPage().getId() + "/feed";
             
             MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
             params.add("message", message);
-            params.add("access_token", pageAccessToken);
+            params.add("access_token", appProperties.getFacebook().getAccess().getToken());
             params.add("published", "false");
             params.add("scheduled_publish_time", scheduledTime);
 
@@ -113,7 +113,7 @@ public class FacebookService {
             String url = GRAPH_API_URL + "/" + postId;
             
             MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-            params.add("access_token", pageAccessToken);
+            params.add("access_token", appProperties.getFacebook().getAccess().getToken());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -140,11 +140,11 @@ public class FacebookService {
 
     public Map<String, Object> getPageInsights() {
         try {
-            String url = GRAPH_API_URL + "/" + pageId + "/insights";
+            String url = GRAPH_API_URL + "/" + appProperties.getFacebook().getPage().getId() + "/insights";
             
             MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
             params.add("metric", "page_post_engagements,page_impressions,page_reach");
-            params.add("access_token", pageAccessToken);
+            params.add("access_token", appProperties.getFacebook().getAccess().getToken());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -178,7 +178,7 @@ public class FacebookService {
             
             MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
             params.add("message", comment);
-            params.add("access_token", pageAccessToken);
+            params.add("access_token", appProperties.getFacebook().getAccess().getToken());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
