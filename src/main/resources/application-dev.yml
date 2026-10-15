@@ -1,29 +1,29 @@
 server:
-  port: ${SERVER_PORT:8188}
+  port: 8188
 
 spring:
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/fb_ai?serverTimezone=Asia/Ho_Chi_Minh&useSSL=false&allowPublicKeyRetrieval=true}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:1234}
-    driver-class-name: ${DB_DRIVER_CLASS_NAME:com.mysql.cj.jdbc.Driver}
+    driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
-      maximum-pool-size: ${DB_POOL_MAX_SIZE:30}
-      minimum-idle: ${DB_POOL_MIN_IDLE:10}
-      connection-timeout: ${DB_CONNECTION_TIMEOUT:30000}
-      idle-timeout: ${DB_IDLE_TIMEOUT:600000}
+      maximum-pool-size: 30
+      minimum-idle: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
 
   jpa:
-    show-sql: ${JPA_SHOW_SQL:true}
+    show-sql: true
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:update}
-    open-in-view: ${JPA_OPEN_IN_VIEW:false}
+      ddl-auto: update
+    open-in-view: false
     properties:
       hibernate:
-        dialect: ${HIBERNATE_DIALECT:org.hibernate.dialect.MySQLDialect}
-        format_sql: ${HIBERNATE_FORMAT_SQL:true}
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
 
   servlet:
     multipart:
-      max-request-size: ${MULTIPART_MAX_REQUEST_SIZE:10MB}
-      max-file-size: ${MULTIPART_MAX_FILE_SIZE:10MB}
+      max-request-size: 10MB
+      max-file-size: 10MB
