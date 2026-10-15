@@ -39,6 +39,11 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
         int synced = 0;
         List<League> knownActiveLeagues = new ArrayList<>(leagueRepository.findByIsActive(true));
         for (ProviderLeague source : sources) {
+            if (source.externalId() == null || source.externalId().isBlank()) {
+                log.warn("Skipping league with empty external ID from {}", selectedProvider);
+                continue;
+            }
+
             League league = leagueExternalIdRepository
                     .findByProviderAndExternalId(selectedProvider, source.externalId())
                     .map(LeagueExternalId::getLeague)
@@ -63,6 +68,14 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                     continue;
                 }
                 league = candidates.isEmpty() ? new League() : candidates.get(0);
+            }
+
+            LeagueExternalId existingLeagueMapping = league.getId() == null ? null
+                    : leagueExternalIdRepository.findByLeagueIdAndProvider(league.getId(), selectedProvider).orElse(null);
+            if (existingLeagueMapping != null && !source.externalId().equals(existingLeagueMapping.getExternalId())) {
+                log.warn("Skipping league '{}' from {} because canonical league {} is already mapped to provider ID {}",
+                        source.name(), selectedProvider, league.getId(), existingLeagueMapping.getExternalId());
+                continue;
             }
 
             if (league.getName() == null || league.getName().isBlank()) {
@@ -129,6 +142,14 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                 season = seasonRepository.save(season);
 
                 Season savedSeason = season;
+                SeasonExternalId existingSeasonMapping = seasonExternalIdRepository
+                        .findBySeasonIdAndProvider(savedSeason.getId(), selectedProvider).orElse(null);
+                if (existingSeasonMapping != null
+                        && !sourceSeason.externalId().equals(existingSeasonMapping.getExternalId())) {
+                    log.warn("Skipping season {} from {} because canonical season {} is already mapped to provider ID {}",
+                            sourceSeason.year(), selectedProvider, savedSeason.getId(), existingSeasonMapping.getExternalId());
+                    continue;
+                }
                 SeasonExternalId seasonExternal = seasonExternalIdRepository
                         .findBySeasonIdAndProvider(savedSeason.getId(), selectedProvider)
                         .orElseGet(() -> SeasonExternalId.builder()
