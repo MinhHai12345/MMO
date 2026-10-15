@@ -5,7 +5,7 @@ spring:
     name: mmo
 
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/fb_ai?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true)}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/fb_ai?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
