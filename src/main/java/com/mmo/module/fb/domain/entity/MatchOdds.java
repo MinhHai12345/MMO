@@ -61,6 +61,7 @@ public class MatchOdds extends AbstractEntity {
 
     @Builder.Default
     @OneToMany(mappedBy = "matchOdds", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<OddsHistory> history = new ArrayList<>();
 
 }
