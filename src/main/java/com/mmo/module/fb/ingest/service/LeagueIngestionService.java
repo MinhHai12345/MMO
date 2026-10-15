@@ -40,7 +40,6 @@ public class LeagueIngestionService {
      * Ensures league and season external IDs exist for a provider, even when another provider
      * is configured for the league ingestion schedule. Downstream resources depend on these IDs.
      */
-    @Transactional
     public void syncLeaguesForProvider(Provider selectedProvider) {
         if (selectedProvider == Provider.API_FOOTBALL
                 && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
@@ -159,7 +158,6 @@ public class LeagueIngestionService {
         }
         log.info("League ingestion completed. {} leagues processed.", synced);
     }
-
 
 
     private static String normalizeName(String value) {
