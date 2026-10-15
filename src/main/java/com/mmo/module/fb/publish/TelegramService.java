@@ -41,7 +41,7 @@ public class TelegramService {
     public void sendPhoto(String message, byte[] imageBytes) {
         try {
             SendPhoto sendPhoto = SendPhoto.builder()
-                    .chatId(channelId)
+                    .chatId(appProperties.getTelegram().getChannel().getId())
                     .photo(new InputFile(new ByteArrayInputStream(imageBytes), "insight.png"))
                     .caption(message)
                     .parseMode("HTML")
@@ -122,7 +122,7 @@ public class TelegramService {
     public void sendPhotoToFreeChannel(String message, byte[] imageBytes) {
         try {
             SendPhoto sendPhoto = SendPhoto.builder()
-                    .chatId(freeChannelId)
+                    .chatId(appProperties.getTelegram().getChannel().getFree())
                     .photo(new InputFile(new ByteArrayInputStream(imageBytes), "insight.png"))
                     .caption(message)
                     .parseMode("HTML")
@@ -137,7 +137,7 @@ public class TelegramService {
     public void sendPhotoToPremiumChannel(String message, byte[] imageBytes) {
         try {
             SendPhoto sendPhoto = SendPhoto.builder()
-                    .chatId(premiumChannelId)
+                    .chatId(appProperties.getTelegram().getChannel().getPremium())
                     .photo(new InputFile(new ByteArrayInputStream(imageBytes), "insight.png"))
                     .caption(message)
                     .parseMode("HTML")
