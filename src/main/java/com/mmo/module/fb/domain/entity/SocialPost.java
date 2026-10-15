@@ -40,6 +40,7 @@ public class SocialPost extends AbstractEntity {
     private String mediaUrls;
 
     @Column(name = "post_status")
+    @Builder.Default
     private String postStatus = "DRAFT";
 
     @Column(name = "scheduled_at")
@@ -52,5 +53,6 @@ public class SocialPost extends AbstractEntity {
     private String engagementStats;
 
     @OneToMany(mappedBy = "socialPost", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<ContentQueue> queue = new ArrayList<>();
 }
