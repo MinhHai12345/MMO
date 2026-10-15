@@ -73,10 +73,10 @@ public class Match extends AbstractEntity {
     @Column
     private Integer awayScore;
 
-    @Column(precision = 5, scale = 2)
+    @Column
     private Double homeXG;
 
-    @Column(precision = 5, scale = 2)
+    @Column
     private Double awayXG;
 
     @Enumerated(EnumType.STRING)

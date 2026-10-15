@@ -30,13 +30,13 @@ public class MatchInsight extends AbstractEntity {
     @JoinColumn(name = "match_id")
     private Match match;
 
-    @Column(precision = 5, scale = 2)
+    @Column
     private Double homeAvgXg;
 
-    @Column(precision = 5, scale = 2)
+    @Column
     private Double homeAvgXgConceded;
 
-    @Column(precision = 5, scale = 2)
+    @Column
     private Double awayAvgXg;
 
     @Column
