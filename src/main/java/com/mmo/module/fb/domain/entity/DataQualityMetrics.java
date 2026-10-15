@@ -31,6 +31,7 @@ public class DataQualityMetrics extends AbstractEntity {
 
     private BigDecimal threshold;
 
+    @Builder.Default
     private String status = "OK";
 
     @Column(columnDefinition = "JSON")
