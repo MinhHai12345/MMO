@@ -17,7 +17,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.List;
 
 @Slf4j
 @Service
@@ -139,3 +138,13 @@ public class LeaguePersistenceServiceImpl implements com.mmo.module.fb.ingest.se
             synced++;
         }
         log.info("League ingestion completed. {} leagues processed.", synced);
+
+    private static String normalizeName(String value) {
+        return value == null ? "" : value.toLowerCase().replaceAll("[^a-z0-9]", "");
+    }
+
+    private static String slug(String value) {
+        if (value == null) return "unknown";
+        return value.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
+    }
+}
