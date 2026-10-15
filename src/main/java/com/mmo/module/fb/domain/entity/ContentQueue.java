@@ -25,11 +25,13 @@ public class ContentQueue extends AbstractEntity {
     private SocialPost socialPost;
 
     @Column(name = "queue_status")
+    @Builder.Default
     private String queueStatus = "PENDING";
 
     private Integer priority = 5;
 
     @Column(name = "retry_count")
+    @Builder.Default
     private Integer retryCount = 0;
 
     @Column(name = "max_retries")
