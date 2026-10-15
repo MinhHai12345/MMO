@@ -1,8 +1,8 @@
 package com.mmo.module.fb.publish;
 
+import com.mmo.AppProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
@@ -18,11 +18,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class FacebookService {
 
-    @Value("${facebook.page.id}")
-    private String pageId;
-
-    @Value("${facebook.access.token}")
-    private String pageAccessToken;
+    private final AppProperties appProperties;
 
     private static final String GRAPH_API_URL = "https://graph.facebook.com/v18.0";
 
