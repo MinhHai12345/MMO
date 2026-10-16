@@ -62,6 +62,8 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final MatchAdvancedStatsRepository matchAdvancedStatsRepository;
 
+    private static final Pattern NUMERIC_VALUE_PATTERN = Pattern.compile("-?\\d+(?:[.,]\\d+)?");
+
     public void syncLeagues() {
         executeSimpleStorePipeline(
                 sofaCrawlerService::fetchLeagues,
@@ -407,7 +409,7 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
         if (value == null || value.isBlank() || "-".equals(value.trim())) {
             return null;
         }
-        Matcher matcher = Pattern.compile("-?\\d+(?:[.,]\\d+)?").matcher(value);
+        Matcher matcher = NUMERIC_VALUE_PATTERN.matcher(value);
         if (!matcher.find()) {
             return null;
         }
