@@ -118,6 +118,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             JOIN m.externalIds externalId
             WHERE m.status = :status
               AND externalId.provider = :provider
+              AND (m.statisticsLastAttemptAt IS NULL OR m.statisticsLastAttemptAt < :retryBefore)
               AND (
                     NOT EXISTS (
                         SELECT homeStats.id FROM MatchAdvancedStats homeStats
@@ -132,6 +133,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             """)
     List<Match> findFinishedMatchesMissingAdvancedStats(@Param("status") MatchStatus status,
                                                        @Param("provider") Provider provider,
+                                                       @Param("retryBefore") Instant retryBefore,
                                                        Pageable pageable);
     
     @Query("SELECT DISTINCT m.externalId FROM Match m WHERE m.season.league = :league")
