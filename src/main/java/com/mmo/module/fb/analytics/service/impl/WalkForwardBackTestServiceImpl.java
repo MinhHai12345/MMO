@@ -11,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -94,10 +95,6 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
                 nextTrainingIndex++;
             }
 
-            if (!kickoff.isBefore(toExclusive)) {
-                break;
-            }
-
             if (!kickoff.isBefore(fromInclusive)) {
                 if (prior.size() >= MIN_CALIBRATION_SAMPLES
                         && groupsSinceCalibration >= CALIBRATION_REFRESH_GROUPS) {
@@ -157,7 +154,7 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
         return new Sample(match.getMatchTime(), probabilities, actualClass);
     }
 
-    private double value(java.math.BigDecimal value) {
+    private double value(BigDecimal value) {
         return value == null ? Double.NaN : value.doubleValue();
     }
 
