@@ -71,6 +71,33 @@ class MatchHistoryAnalyticsServiceTest {
     }
 
     @Test
+    void shrinksExtremeTeamRatesTowardLeagueBaselineWhenHistoryIsSparse() {
+        List<Match> homeHistory = List.of(
+                historyMatch(homeTeam, team(3L, "Opponent 1"), 4, 0, 3.8, 0.2),
+                historyMatch(homeTeam, team(4L, "Opponent 2"), 4, 0, 3.5, 0.1),
+                historyMatch(homeTeam, team(5L, "Opponent 3"), 4, 0, 3.6, 0.2)
+        );
+        List<Match> awayHistory = List.of(
+                historyMatch(team(6L, "Opponent 4"), awayTeam, 4, 0, 3.4, 0.1),
+                historyMatch(team(7L, "Opponent 5"), awayTeam, 4, 0, 3.7, 0.2),
+                historyMatch(team(8L, "Opponent 6"), awayTeam, 4, 0, 3.5, 0.1)
+        );
+        when(matchRepository.findRecentFinishedMatchesForTeamInLeague(
+                eq(1L), eq(9L), eq(MatchStatus.FINISHED), any(Pageable.class))).thenReturn(homeHistory);
+        when(matchRepository.findRecentFinishedMatchesForTeamInLeague(
+                eq(2L), eq(9L), eq(MatchStatus.FINISHED), any(Pageable.class))).thenReturn(awayHistory);
+        when(matchRepository.findRecentFinishedMatchesInLeague(
+                eq(9L), eq(MatchStatus.FINISHED), any(Pageable.class))).thenReturn(leagueBaseline());
+
+        var result = analyticsService.estimateFromGoals(upcomingMatch()).orElseThrow();
+
+        // Without regularization these sparse attack/defence rates would imply an
+        // implausibly large expected-goals value and be clipped at the model ceiling.
+        assertTrue(result.home() < 4.5);
+        assertTrue(result.home() > 0.15);
+    }
+
+    @Test
     void estimatesExpectedGoalsOnlyWhenTeamAndLeagueXgCoverageExists() {
         List<Match> homeHistory = List.of(
                 historyMatch(homeTeam, team(3L, "Opponent 1"), 3, 1, 2.1, 0.5),
