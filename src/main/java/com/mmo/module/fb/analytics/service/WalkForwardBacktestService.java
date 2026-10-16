@@ -29,6 +29,7 @@ public class WalkForwardBacktestService {
 
     private static final int MAX_SAMPLES = 10_000;
     private static final int MIN_CALIBRATION_SAMPLES = 100;
+    private static final int CALIBRATION_REFRESH_GROUPS = 50;
     private static final double EPSILON = 1.0e-12;
     // The schema has no final-whistle timestamp. A conservative lag reduces leakage from
     // matches that kicked off earlier but were still in progress when the next match started.
@@ -57,6 +58,8 @@ public class WalkForwardBacktestService {
         int calibratedCount = 0;
         int nextTrainingIndex = 0;
         int index = 0;
+        int groupsSinceCalibration = CALIBRATION_REFRESH_GROUPS;
+        double temperature = 1.0;
 
         while (index < samples.size()) {
             Instant kickoff = samples.get(index).kickoff();
@@ -73,16 +76,21 @@ public class WalkForwardBacktestService {
                 nextTrainingIndex++;
             }
 
-            if (!kickoff.isBefore(toExclusive) && !kickoff.isBefore(fromInclusive)) {
+            if (!kickoff.isBefore(toExclusive)) {
                 break;
             }
 
             if (!kickoff.isBefore(fromInclusive)) {
+                if (prior.size() >= MIN_CALIBRATION_SAMPLES
+                        && groupsSinceCalibration >= CALIBRATION_REFRESH_GROUPS) {
+                    temperature = fitTemperature(prior);
+                    groupsSinceCalibration = 0;
+                }
+
                 for (int i = index; i < groupEnd; i++) {
                     Sample sample = samples.get(i);
                     double[] calibrated = sample.probabilities();
                     if (prior.size() >= MIN_CALIBRATION_SAMPLES) {
-                        double temperature = fitTemperature(prior);
                         calibrated = applyTemperature(sample.probabilities(), temperature);
                         calibratedCount++;
                     }
@@ -91,6 +99,7 @@ public class WalkForwardBacktestService {
                     calibratedMetrics.add(calibrated, sample.actualClass());
                     tested++;
                 }
+                groupsSinceCalibration++;
             }
 
             index = groupEnd;
@@ -157,16 +166,16 @@ public class WalkForwardBacktestService {
         double bestTemperature = 1.0;
         double bestLoss = Double.POSITIVE_INFINITY;
         for (int step = 5; step <= 30; step++) {
-            double temperature = step / 10.0;
+            double candidateTemperature = step / 10.0;
             double totalLoss = 0.0;
             for (Sample sample : training) {
-                double[] scaled = applyTemperature(sample.probabilities(), temperature);
+                double[] scaled = applyTemperature(sample.probabilities(), candidateTemperature);
                 totalLoss -= Math.log(Math.max(EPSILON, scaled[sample.actualClass()]));
             }
             double averageLoss = totalLoss / training.size();
             if (averageLoss < bestLoss) {
                 bestLoss = averageLoss;
-                bestTemperature = temperature;
+                bestTemperature = candidateTemperature;
             }
         }
         return bestTemperature;
