@@ -80,6 +80,31 @@ class WalkForwardBacktestServiceTest {
         assertEquals("INSUFFICIENT_TEST_SAMPLES", report.status());
     }
 
+    @Test
+    void pagesThroughEntireTestWindowBeyondTenThousandMatches() {
+        Instant from = Instant.parse("2025-06-01T00:00:00Z");
+        Instant to = from.plus(2, ChronoUnit.DAYS);
+        Instant kickoff = from.plus(1, ChronoUnit.HOURS);
+        MatchPrediction sample = prediction(kickoff, kickoff.minus(1, ChronoUnit.HOURS),
+                2, 0, "0.55", "0.25", "0.20");
+        List<MatchPrediction> firstPage = new ArrayList<>();
+        for (int i = 0; i < 10_000; i++) {
+            firstPage.add(sample);
+        }
+
+        when(repository.findWalkForwardTrainingCandidates(eq(from), eq(MatchStatus.FINISHED), any(Pageable.class)))
+                .thenReturn(List.of());
+        when(repository.findWalkForwardTestCandidates(
+                eq(from), eq(to), eq(MatchStatus.FINISHED), any(Pageable.class)))
+                .thenReturn(firstPage, List.of(sample));
+
+        WalkForwardBacktestService.BacktestReport report = service.run(from, to);
+
+        assertEquals(10_001, report.testedMatches());
+        verify(repository, org.mockito.Mockito.times(2)).findWalkForwardTestCandidates(
+                eq(from), eq(to), eq(MatchStatus.FINISHED), any(Pageable.class));
+    }
+
     private MatchPrediction prediction(Instant kickoff, Instant calculatedAt,
                                        int homeScore, int awayScore,
                                        String homeProbability, String drawProbability, String awayProbability) {
