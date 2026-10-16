@@ -1,5 +1,6 @@
 package com.mmo.module.fb.analytics.service;
 
+import com.mmo.module.fb.analytics.service.impl.PredictionEvaluationServiceImpl;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
 import com.mmo.module.fb.domain.entity.PredictionPerformance;
@@ -27,7 +28,7 @@ class PredictionEvaluationServiceTest {
     void setUp() {
         predictionRepository = mock(MatchPredictionRepository.class);
         performanceRepository = mock(PredictionPerformanceRepository.class);
-        service = new PredictionEvaluationService(predictionRepository, performanceRepository);
+        service = new PredictionEvaluationServiceImpl(predictionRepository, performanceRepository);
     }
 
     @Test

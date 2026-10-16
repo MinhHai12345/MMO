@@ -1,5 +1,6 @@
 package com.mmo.module.fb.analytics.service;
 
+import com.mmo.module.fb.analytics.service.impl.WalkForwardBacktestServiceImpl;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
 import com.mmo.module.fb.domain.enums.MatchStatus;
@@ -27,7 +28,7 @@ class WalkForwardBacktestServiceTest {
     @BeforeEach
     void setUp() {
         repository = mock(MatchPredictionRepository.class);
-        service = new WalkForwardBacktestService(repository);
+        service = new WalkForwardBacktestServiceImpl(repository);
     }
 
     @Test
@@ -44,8 +45,11 @@ class WalkForwardBacktestServiceTest {
         predictions.add(prediction(from.plus(1, ChronoUnit.HOURS),
                 from.minus(1, ChronoUnit.HOURS), 2, 0, "0.55", "0.25", "0.20"));
 
-        when(repository.findWalkForwardCandidates(eq(to), eq(MatchStatus.FINISHED), any(Pageable.class)))
-                .thenReturn(predictions);
+        when(repository.findWalkForwardTrainingCandidates(eq(from), eq(MatchStatus.FINISHED), any(Pageable.class)))
+                .thenReturn(predictions.subList(0, 100));
+        when(repository.findWalkForwardTestCandidates(
+                eq(from), eq(to), eq(MatchStatus.FINISHED), any(Pageable.class)))
+                .thenReturn(List.of(predictions.get(100)));
 
         WalkForwardBacktestService.BacktestReport report = service.run(from, to);
 
@@ -65,13 +69,41 @@ class WalkForwardBacktestServiceTest {
         MatchPrediction leaked = prediction(kickoff, kickoff.plus(1, ChronoUnit.MINUTES),
                 1, 0, "0.90", "0.05", "0.05");
         Instant to = from.plus(1, ChronoUnit.DAYS);
-        when(repository.findWalkForwardCandidates(eq(to), eq(MatchStatus.FINISHED), any(Pageable.class)))
+        when(repository.findWalkForwardTrainingCandidates(eq(from), eq(MatchStatus.FINISHED), any(Pageable.class)))
+                .thenReturn(List.of());
+        when(repository.findWalkForwardTestCandidates(
+                eq(from), eq(to), eq(MatchStatus.FINISHED), any(Pageable.class)))
                 .thenReturn(List.of(leaked));
 
         WalkForwardBacktestService.BacktestReport report = service.run(from, to);
 
         assertEquals(0, report.testedMatches());
         assertEquals("INSUFFICIENT_TEST_SAMPLES", report.status());
+    }
+
+    @Test
+    void pagesThroughEntireTestWindowBeyondTenThousandMatches() {
+        Instant from = Instant.parse("2025-06-01T00:00:00Z");
+        Instant to = from.plus(2, ChronoUnit.DAYS);
+        Instant kickoff = from.plus(1, ChronoUnit.HOURS);
+        MatchPrediction sample = prediction(kickoff, kickoff.minus(1, ChronoUnit.HOURS),
+                2, 0, "0.55", "0.25", "0.20");
+        List<MatchPrediction> firstPage = new ArrayList<>();
+        for (int i = 0; i < 10_000; i++) {
+            firstPage.add(sample);
+        }
+
+        when(repository.findWalkForwardTrainingCandidates(eq(from), eq(MatchStatus.FINISHED), any(Pageable.class)))
+                .thenReturn(List.of());
+        when(repository.findWalkForwardTestCandidates(
+                eq(from), eq(to), eq(MatchStatus.FINISHED), any(Pageable.class)))
+                .thenReturn(firstPage, List.of(sample));
+
+        WalkForwardBacktestService.BacktestReport report = service.run(from, to);
+
+        assertEquals(10_001, report.testedMatches());
+        verify(repository, org.mockito.Mockito.times(2)).findWalkForwardTestCandidates(
+                eq(from), eq(to), eq(MatchStatus.FINISHED), any(Pageable.class));
     }
 
     private MatchPrediction prediction(Instant kickoff, Instant calculatedAt,
