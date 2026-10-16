@@ -2,7 +2,6 @@ package com.mmo.module.fb.analytics.service.impl;
 
 import com.mmo.module.fb.analytics.service.MatchHistoryAnalyticsService;
 import com.mmo.module.fb.analytics.service.MatchHistoryAnalyticsService.ExpectedGoals;
-
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.Team;
 import com.mmo.module.fb.domain.enums.MatchStatus;
@@ -31,6 +30,7 @@ public class MatchHistoryAnalyticsServiceImpl implements MatchHistoryAnalyticsSe
 
     private final MatchRepository matchRepository;
 
+    @Override
     public Optional<ExpectedGoals> estimateFromGoals(Match match) {
         if (!hasTeamsAndLeague(match)) {
             return Optional.empty();
@@ -66,6 +66,7 @@ public class MatchHistoryAnalyticsServiceImpl implements MatchHistoryAnalyticsSe
                 Math.min(Math.min(awayAttack.samples(), homeDefence.samples()), leagueAwayGoals.samples())));
     }
 
+    @Override
     public Optional<ExpectedGoals> estimateFromExpectedGoals(Match match) {
         if (!hasTeamsAndLeague(match)) {
             return Optional.empty();
