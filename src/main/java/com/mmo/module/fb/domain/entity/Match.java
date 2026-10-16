@@ -53,6 +53,9 @@ public class Match extends AbstractEntity {
     @Column(name = "last_odds_synced_at")
     private Instant lastOddsSyncedAt;
 
+    @Column(name = "statistics_last_attempt_at")
+    private Instant statisticsLastAttemptAt;
+
     @Column
     private Integer round;
 
