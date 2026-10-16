@@ -112,6 +112,27 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
                                                                           @Param("status") MatchStatus status);
     
     List<Match> findByStatus(MatchStatus status);
+
+    @Query("""
+            SELECT DISTINCT m FROM Match m
+            JOIN m.externalIds externalId
+            WHERE m.status = :status
+              AND externalId.provider = :provider
+              AND (
+                    NOT EXISTS (
+                        SELECT homeStats.id FROM MatchAdvancedStats homeStats
+                        WHERE homeStats.match = m AND homeStats.team = m.homeTeam
+                    )
+                    OR NOT EXISTS (
+                        SELECT awayStats.id FROM MatchAdvancedStats awayStats
+                        WHERE awayStats.match = m AND awayStats.team = m.awayTeam
+                    )
+              )
+            ORDER BY m.matchTime DESC
+            """)
+    List<Match> findFinishedMatchesMissingAdvancedStats(@Param("status") MatchStatus status,
+                                                       @Param("provider") Provider provider,
+                                                       Pageable pageable);
     
     @Query("SELECT DISTINCT m.externalId FROM Match m WHERE m.season.league = :league")
     List<String> findDistinctExternalIdsByLeague(@Param("league") com.mmo.module.fb.domain.entity.League league);
