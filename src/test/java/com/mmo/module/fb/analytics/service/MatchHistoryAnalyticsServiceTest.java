@@ -1,5 +1,6 @@
 package com.mmo.module.fb.analytics.service;
 
+import com.mmo.module.fb.analytics.service.impl.MatchHistoryAnalyticsServiceImpl;
 import com.mmo.module.fb.domain.entity.League;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.Season;
@@ -28,7 +29,7 @@ class MatchHistoryAnalyticsServiceTest {
     @BeforeEach
     void setUp() {
         matchRepository = mock(MatchRepository.class);
-        analyticsService = new MatchHistoryAnalyticsService(matchRepository);
+        analyticsService = new MatchHistoryAnalyticsServiceImpl(matchRepository);
 
         homeTeam = team(1L, "Home");
         awayTeam = team(2L, "Away");
