@@ -10,6 +10,7 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 
 @Slf4j
 @Component
@@ -21,8 +22,7 @@ public class CompositePredictionEngine implements PredictionEngine {
     private final List<PredictionEngine> engines;
 
     public CompositePredictionEngine(List<PredictionEngine> engines) {
-        // CompositePredictionEngine is itself a PredictionEngine bean. Exclude it to
-        // prevent the injected list from recursively invoking this engine.
+        // This class is itself a PredictionEngine bean. Exclude it to prevent recursion.
         this.engines = engines.stream()
                 .filter(Objects::nonNull)
                 .filter(engine -> !"COMPOSITE".equalsIgnoreCase(engine.getEngineName()))
@@ -44,11 +44,9 @@ public class CompositePredictionEngine implements PredictionEngine {
             return createDefaultPrediction(match);
         }
 
-        double homeXg = weightedAverage(predictions, p -> p.getPredictedHomeXg());
-        double awayXg = weightedAverage(predictions, p -> p.getPredictedAwayXg());
-        double homeProbability = weightedAverage(predictions, p -> p.getWinHomeProb());
-        double drawProbability = weightedAverage(predictions, p -> p.getDrawProb());
-        double awayProbability = weightedAverage(predictions, p -> p.getWinAwayProb());
+        double homeProbability = weightedAverage(predictions, MatchPrediction::getWinHomeProb);
+        double drawProbability = weightedAverage(predictions, MatchPrediction::getDrawProb);
+        double awayProbability = weightedAverage(predictions, MatchPrediction::getWinAwayProb);
 
         double probabilityTotal = homeProbability + drawProbability + awayProbability;
         if (probabilityTotal <= 0) {
@@ -63,8 +61,8 @@ public class CompositePredictionEngine implements PredictionEngine {
 
         return MatchPrediction.builder()
                 .match(match)
-                .predictedHomeXg(decimalOrNull(homeXg, XG_SCALE))
-                .predictedAwayXg(decimalOrNull(awayXg, XG_SCALE))
+                .predictedHomeXg(weightedAverageDecimal(predictions, MatchPrediction::getPredictedHomeXg, XG_SCALE))
+                .predictedAwayXg(weightedAverageDecimal(predictions, MatchPrediction::getPredictedAwayXg, XG_SCALE))
                 .winHomeProb(BigDecimal.valueOf(homeProbability).setScale(PROBABILITY_SCALE, RoundingMode.HALF_UP))
                 .drawProb(BigDecimal.valueOf(drawProbability).setScale(PROBABILITY_SCALE, RoundingMode.HALF_UP))
                 .winAwayProb(BigDecimal.valueOf(awayProbability).setScale(PROBABILITY_SCALE, RoundingMode.HALF_UP))
@@ -91,7 +89,7 @@ public class CompositePredictionEngine implements PredictionEngine {
     }
 
     private double weightedAverage(List<WeightedPrediction> predictions,
-                                   java.util.function.Function<MatchPrediction, BigDecimal> valueExtractor) {
+                                   Function<MatchPrediction, BigDecimal> valueExtractor) {
         double weightedSum = 0;
         double totalWeight = 0;
 
@@ -107,8 +105,25 @@ public class CompositePredictionEngine implements PredictionEngine {
         return totalWeight == 0 ? 0 : weightedSum / totalWeight;
     }
 
-    private BigDecimal decimalOrNull(double value, int scale) {
-        return value == 0 ? null : BigDecimal.valueOf(value).setScale(scale, RoundingMode.HALF_UP);
+    private BigDecimal weightedAverageDecimal(List<WeightedPrediction> predictions,
+                                              Function<MatchPrediction, BigDecimal> valueExtractor,
+                                              int scale) {
+        double weightedSum = 0;
+        double totalWeight = 0;
+
+        for (WeightedPrediction item : predictions) {
+            BigDecimal value = valueExtractor.apply(item.prediction());
+            if (value == null || !Double.isFinite(value.doubleValue())) {
+                continue;
+            }
+            weightedSum += value.doubleValue() * item.weight();
+            totalWeight += item.weight();
+        }
+
+        if (totalWeight == 0) {
+            return null;
+        }
+        return BigDecimal.valueOf(weightedSum / totalWeight).setScale(scale, RoundingMode.HALF_UP);
     }
 
     private String determineResult(double homeProb, double drawProb, double awayProb) {
