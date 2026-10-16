@@ -34,7 +34,7 @@ class MatchHistoryAnalyticsServiceTest {
         awayTeam = team(2L, "Away");
         League league = League.builder().name("Test League").slug("test-league").active(true).build();
         ReflectionTestUtils.setField(league, "id", 9L);
-        season = Season.builder().league(league).year("2026").isCurrent(true).build();
+        season = Season.builder().league(league).year("2026").build();
         ReflectionTestUtils.setField(season, "id", 10L);
     }
 
