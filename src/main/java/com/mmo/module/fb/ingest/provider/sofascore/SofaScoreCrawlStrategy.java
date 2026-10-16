@@ -40,6 +40,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -218,7 +220,8 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
 
     public void storeMatchStatistics() {
         List<Match> targetMatches = matchRepository.findFinishedMatchesMissingAdvancedStats(
-                MatchStatus.FINISHED, Provider.SOFA_SCORE, PageRequest.of(0, 30));
+                MatchStatus.FINISHED, Provider.SOFA_SCORE,
+                Instant.now().minus(24, ChronoUnit.HOURS), PageRequest.of(0, 30));
 
         if (CollectionUtils.isEmpty(targetMatches)) {
             log.debug("No finished matches are missing SofaScore advanced statistics");
@@ -235,8 +238,10 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
                         return Collections.emptyList();
                     }
                     try {
-                        return sofaCrawlerService.fetchMatchStatistics(
-                                Long.valueOf(externalId.get().getExternalId()), page);
+                        List<SofaMatchStatisticsData.PeriodStatisticsDTO> statistics =
+                                sofaCrawlerService.fetchMatchStatistics(
+                                        Long.valueOf(externalId.get().getExternalId()), page);
+                        return statistics == null ? Collections.emptyList() : statistics;
                     } catch (NumberFormatException exception) {
                         log.warn("Invalid SofaScore match ID mapping for matchId={}", match.getId());
                         return Collections.emptyList();
@@ -248,7 +253,12 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
 
     private void persistMatchStatistics(Match match,
                                        List<SofaMatchStatisticsData.PeriodStatisticsDTO> periods) {
-        if (match == null || CollectionUtils.isEmpty(periods)) {
+        if (match == null) {
+            return;
+        }
+        match.setStatisticsLastAttemptAt(Instant.now());
+        matchRepository.save(match);
+        if (CollectionUtils.isEmpty(periods)) {
             return;
         }
 
