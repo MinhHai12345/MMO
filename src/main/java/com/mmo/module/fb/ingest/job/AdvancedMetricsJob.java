@@ -4,10 +4,13 @@ import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.job.AbstractJob;
 import com.mmo.module.fb.domain.entity.H2HRecord;
 import com.mmo.module.fb.domain.entity.Match;
+import com.mmo.module.fb.domain.entity.Season;
 import com.mmo.module.fb.domain.entity.Team;
+import com.mmo.module.fb.domain.entity.TeamForm;
 import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.repository.H2HRecordRepository;
 import com.mmo.module.fb.domain.repository.MatchRepository;
+import com.mmo.module.fb.domain.repository.SeasonRepository;
 import com.mmo.module.fb.domain.repository.TeamFormRepository;
 import com.mmo.module.fb.domain.repository.TeamRepository;
 import jakarta.annotation.Resource;
@@ -16,8 +19,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionContext;
-import org.springframework.stereotype.Component;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.List;
@@ -29,11 +32,16 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class AdvancedMetricsJob extends AbstractJob<CronJob> {
 
+    private static final String TEAM_FORM_TYPE_LAST_10 = "LAST_10";
+
     @Resource
     private MatchRepository matchRepository;
 
     @Resource
     private TeamRepository teamRepository;
+
+    @Resource
+    private SeasonRepository seasonRepository;
 
     @Resource
     private TeamFormRepository teamFormRepository;
@@ -43,64 +51,79 @@ public class AdvancedMetricsJob extends AbstractJob<CronJob> {
 
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
-        log.info("📊 Starting advanced metrics calculation...");
-
+        log.info("Starting advanced metrics calculation...");
         calculateTeamForms();
         calculateH2HRecords();
-
-        log.info("✅ Advanced metrics calculation completed");
+        log.info("Advanced metrics calculation completed");
     }
 
     private void calculateTeamForms() {
-        log.info("📈 Calculating team forms...");
+        log.info("Calculating team forms...");
+
+        List<Season> currentSeasons = seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
+        if (CollectionUtils.isEmpty(currentSeasons)) {
+            log.warn("No current seasons available; skipping team form calculation");
+            return;
+        }
 
         List<Team> teams = teamRepository.findAll();
+        int savedForms = 0;
 
-        for (Team team : teams) {
-            try {
-                List<Match> recentMatches = matchRepository.findTop10ByHomeTeamOrAwayTeamAndStatusOrderByMatchTimeDesc(
-                        team, MatchStatus.FINISHED, PageRequest.of(0, 10));
+        for (Season season : currentSeasons) {
+            for (Team team : teams) {
+                try {
+                    List<Match> recentMatches = matchRepository.findRecentFinishedMatchesForTeamInSeason(
+                            team.getId(), season.getId(), MatchStatus.FINISHED, PageRequest.of(0, 10));
 
-                if (CollectionUtils.isEmpty(recentMatches)) {
-                    continue;
+                    if (CollectionUtils.isEmpty(recentMatches)) {
+                        continue;
+                    }
+
+                    String formData = calculateFormData(recentMatches, team);
+                    if (formData.isEmpty()) {
+                        continue;
+                    }
+
+                    TeamForm teamForm = teamFormRepository
+                            .findByTeamIdAndSeasonIdAndFormType(team.getId(), season.getId(), TEAM_FORM_TYPE_LAST_10)
+                            .orElseGet(() -> TeamForm.builder()
+                                    .team(team)
+                                    .season(season)
+                                    .formType(TEAM_FORM_TYPE_LAST_10)
+                                    .build());
+
+                    teamForm.setFormData(formData);
+                    teamForm.setCalculatedAt(Instant.now());
+                    teamFormRepository.save(teamForm);
+                    savedForms++;
+                } catch (Exception e) {
+                    log.error("Failed to calculate form for teamId={} seasonId={}",
+                            team.getId(), season.getId(), e);
                 }
-
-                String formData = calculateFormData(recentMatches, team);
-
-                // TODO: Get current season for the team
-                // For now, skip season-specific form calculation
-                log.debug("📊 Form data for team {}: {}", team.getName(), formData);
-
-            } catch (Exception e) {
-                log.error("❌ Error calculating form for team {}: {}", team.getId(), e.getMessage());
             }
         }
+
+        log.info("Saved {} team form records", savedForms);
     }
 
-    private String calculateFormData(List<Match> matches, Team team) {
+    static String calculateFormData(List<Match> matches, Team team) {
         StringBuilder formBuilder = new StringBuilder();
 
         for (Match match : matches) {
-            if (match.getHomeTeam().getId().equals(team.getId())) {
-                if (match.getHomeScore() != null && match.getAwayScore() != null) {
-                    if (match.getHomeScore() > match.getAwayScore()) {
-                        formBuilder.append("W");
-                    } else if (match.getHomeScore() < match.getAwayScore()) {
-                        formBuilder.append("L");
-                    } else {
-                        formBuilder.append("D");
-                    }
-                }
+            if (match.getHomeScore() == null || match.getAwayScore() == null) {
+                continue;
+            }
+
+            boolean isHomeTeam = match.getHomeTeam().getId().equals(team.getId());
+            int teamScore = isHomeTeam ? match.getHomeScore() : match.getAwayScore();
+            int opponentScore = isHomeTeam ? match.getAwayScore() : match.getHomeScore();
+
+            if (teamScore > opponentScore) {
+                formBuilder.append('W');
+            } else if (teamScore < opponentScore) {
+                formBuilder.append('L');
             } else {
-                if (match.getHomeScore() != null && match.getAwayScore() != null) {
-                    if (match.getAwayScore() > match.getHomeScore()) {
-                        formBuilder.append("W");
-                    } else if (match.getAwayScore() < match.getHomeScore()) {
-                        formBuilder.append("L");
-                    } else {
-                        formBuilder.append("D");
-                    }
-                }
+                formBuilder.append('D');
             }
         }
 
@@ -108,9 +131,9 @@ public class AdvancedMetricsJob extends AbstractJob<CronJob> {
     }
 
     private void calculateH2HRecords() {
-        log.info("🔄 Calculating head-to-head records...");
-
+        log.info("Calculating head-to-head records...");
         List<Team> teams = teamRepository.findAll();
+        int savedRecords = 0;
 
         for (Team homeTeam : teams) {
             for (Team awayTeam : teams) {
@@ -135,57 +158,60 @@ public class AdvancedMetricsJob extends AbstractJob<CronJob> {
                     int draws = 0;
                     int homeGoals = 0;
                     int awayGoals = 0;
+                    int validMatches = 0;
 
                     for (Match match : h2hMatches) {
-                        if (match.getHomeScore() != null && match.getAwayScore() != null) {
-                            homeGoals += match.getHomeScore();
-                            awayGoals += match.getAwayScore();
+                        if (match.getHomeScore() == null || match.getAwayScore() == null) {
+                            continue;
+                        }
 
-                            if (match.getHomeTeam().getId().equals(homeTeam.getId())) {
-                                if (match.getHomeScore() > match.getAwayScore()) {
-                                    homeWins++;
-                                } else if (match.getHomeScore() < match.getAwayScore()) {
-                                    awayWins++;
-                                } else {
-                                    draws++;
-                                }
-                            } else {
-                                if (match.getAwayScore() > match.getHomeScore()) {
-                                    homeWins++;
-                                } else if (match.getAwayScore() < match.getHomeScore()) {
-                                    awayWins++;
-                                } else {
-                                    draws++;
-                                }
-                            }
+                        validMatches++;
+                        boolean selectedHomeTeamIsActualHome =
+                                match.getHomeTeam().getId().equals(homeTeam.getId());
+
+                        int selectedHomeGoals = selectedHomeTeamIsActualHome
+                                ? match.getHomeScore() : match.getAwayScore();
+                        int selectedAwayGoals = selectedHomeTeamIsActualHome
+                                ? match.getAwayScore() : match.getHomeScore();
+
+                        homeGoals += selectedHomeGoals;
+                        awayGoals += selectedAwayGoals;
+
+                        if (selectedHomeGoals > selectedAwayGoals) {
+                            homeWins++;
+                        } else if (selectedHomeGoals < selectedAwayGoals) {
+                            awayWins++;
+                        } else {
+                            draws++;
                         }
                     }
 
-                    H2HRecord record;
-                    if (existingRecord.isPresent()) {
-                        record = existingRecord.get();
-                    } else {
-                        record = H2HRecord.builder()
-                                .homeTeam(homeTeam)
-                                .awayTeam(awayTeam)
-                                .build();
+                    // Do not overwrite an existing record with empty/incomplete score data.
+                    if (validMatches == 0) {
+                        continue;
                     }
 
-                    record.setTotalMatches(h2hMatches.size());
+                    H2HRecord record = existingRecord.orElseGet(() -> H2HRecord.builder()
+                            .homeTeam(homeTeam)
+                            .awayTeam(awayTeam)
+                            .build());
+
+                    record.setTotalMatches(validMatches);
                     record.setHomeWins(homeWins);
                     record.setAwayWins(awayWins);
                     record.setDraws(draws);
                     record.setHomeGoals(homeGoals);
                     record.setAwayGoals(awayGoals);
                     record.setLastUpdated(Instant.now());
-
                     h2HRecordRepository.save(record);
-
+                    savedRecords++;
                 } catch (Exception e) {
-                    log.error("❌ Error calculating H2H for {} vs {}: {}",
-                            homeTeam.getName(), awayTeam.getName(), e.getMessage());
+                    log.error("Failed to calculate H2H for homeTeamId={} awayTeamId={}",
+                            homeTeam.getId(), awayTeam.getId(), e);
                 }
             }
         }
+
+        log.info("Saved {} head-to-head records", savedRecords);
     }
 }
