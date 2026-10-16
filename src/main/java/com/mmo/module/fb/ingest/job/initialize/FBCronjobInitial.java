@@ -17,6 +17,7 @@ import com.mmo.module.fb.ingest.job.MatchLineupOddsUpdateJob;
 import com.mmo.module.fb.ingest.job.MatchProcessPredictionJob;
 import com.mmo.module.fb.ingest.job.MatchResultSyncJob;
 import com.mmo.module.fb.ingest.job.MatchStatisticsSyncJob;
+import com.mmo.module.fb.ingest.job.PredictionEvaluationJob;
 import com.mmo.module.fb.ingest.job.MatchSeasonFixtureSyncJob;
 import com.mmo.module.fb.ingest.job.MatchStatusTrackerJob;
 import com.mmo.module.fb.ingest.job.NotificationPublisherJob;
@@ -65,6 +66,10 @@ public class FBCronjobInitial implements DataInitializer {
         createJobIfNotExist(MatchStatisticsSyncJob.class.getSimpleName(), MatchStatisticsSyncJob.class,
                 "0 0 */4 * * ?",
                 "Fetch real SofaScore statistics for finished matches (every 4 hours UTC)"
+        );
+        createJobIfNotExist(PredictionEvaluationJob.class.getSimpleName(), PredictionEvaluationJob.class,
+                "0 0/30 * * * ?",
+                "Evaluate completed predictions using actual results and normalized Brier quality (every 30 minutes)"
         );
         createJobIfNotExist(MatchDailyRecapJob.class.getSimpleName(), MatchDailyRecapJob.class,
                 "0 0 5 * * ?",
