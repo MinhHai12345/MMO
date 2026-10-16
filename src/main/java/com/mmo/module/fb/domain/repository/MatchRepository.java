@@ -46,9 +46,17 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
                                                 @Param("provider") Provider provider,
                                                 Pageable pageable);
     
-    @Query("SELECT m FROM Match m WHERE m.matchTime BETWEEN :startTime AND :endTime AND m.status = :status")
-    List<Match> findByMatchTimeBetweenAndStatus(@Param("startTime") Instant startTime, 
-                                                @Param("endTime") Instant endTime, 
+    @Query("""
+            SELECT m FROM Match m
+            JOIN FETCH m.season season
+            JOIN FETCH season.league
+            JOIN FETCH m.homeTeam
+            JOIN FETCH m.awayTeam
+            WHERE m.matchTime BETWEEN :startTime AND :endTime
+              AND m.status = :status
+            """)
+    List<Match> findByMatchTimeBetweenAndStatus(@Param("startTime") Instant startTime,
+                                                @Param("endTime") Instant endTime,
                                                 @Param("status") MatchStatus status);
     
     @Query("SELECT m FROM Match m WHERE (m.homeTeam = :team OR m.awayTeam = :team) AND m.status = :status ORDER BY m.matchTime DESC")
@@ -67,6 +75,20 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     List<Match> findRecentFinishedMatchesForTeam(@Param("teamId") Long teamId,
                                                  @Param("status") MatchStatus status,
                                                  Pageable pageable);
+
+    @Query("""
+            SELECT m FROM Match m
+            WHERE (m.homeTeam.id = :teamId OR m.awayTeam.id = :teamId)
+              AND m.season.league.id = :leagueId
+              AND m.status = :status
+              AND m.homeScore IS NOT NULL
+              AND m.awayScore IS NOT NULL
+            ORDER BY m.matchTime DESC
+            """)
+    List<Match> findRecentFinishedMatchesForTeamInLeague(@Param("teamId") Long teamId,
+                                                         @Param("leagueId") Long leagueId,
+                                                         @Param("status") MatchStatus status,
+                                                         Pageable pageable);
 
     @Query("""
             SELECT m FROM Match m
