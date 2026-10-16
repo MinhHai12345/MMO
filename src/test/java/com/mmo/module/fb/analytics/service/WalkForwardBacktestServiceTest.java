@@ -1,5 +1,6 @@
 package com.mmo.module.fb.analytics.service;
 
+import com.mmo.module.fb.analytics.service.impl.WalkForwardBacktestServiceImpl;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
 import com.mmo.module.fb.domain.enums.MatchStatus;
@@ -27,7 +28,7 @@ class WalkForwardBacktestServiceTest {
     @BeforeEach
     void setUp() {
         repository = mock(MatchPredictionRepository.class);
-        service = new WalkForwardBacktestService(repository);
+        service = new WalkForwardBacktestServiceImpl(repository);
     }
 
     @Test
