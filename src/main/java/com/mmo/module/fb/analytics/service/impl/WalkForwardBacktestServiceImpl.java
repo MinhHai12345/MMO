@@ -3,7 +3,6 @@ package com.mmo.module.fb.analytics.service.impl;
 import com.mmo.module.fb.analytics.service.WalkForwardBacktestService;
 import com.mmo.module.fb.analytics.service.WalkForwardBacktestService.BacktestReport;
 import com.mmo.module.fb.analytics.service.WalkForwardBacktestService.MetricSnapshot;
-
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
 import com.mmo.module.fb.domain.enums.MatchStatus;
@@ -41,6 +40,7 @@ public class WalkForwardBacktestServiceImpl implements WalkForwardBacktestServic
 
     private final MatchPredictionRepository matchPredictionRepository;
 
+    @Override
     @Transactional(readOnly = true)
     public BacktestReport run(Instant fromInclusive, Instant toExclusive) {
         if (fromInclusive == null || toExclusive == null || !fromInclusive.isBefore(toExclusive)) {
