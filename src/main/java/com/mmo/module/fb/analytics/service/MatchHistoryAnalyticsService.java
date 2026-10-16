@@ -16,132 +16,203 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class MatchHistoryAnalyticsService {
 
-    private static final int HISTORY_SIZE = 20;
+    private static final int TEAM_HISTORY_SIZE = 20;
+    private static final int LEAGUE_BASELINE_SIZE = 100;
     private static final int MIN_VENUE_SAMPLES = 3;
     private static final int MIN_OVERALL_SAMPLES = 5;
-    private static final double RECENCY_DECAY = 0.92;
+    private static final int MIN_LEAGUE_BASELINE_SAMPLES = 10;
+    private static final double TEAM_RECENCY_DECAY = 0.92;
+    private static final double LEAGUE_RECENCY_DECAY = 0.99;
     private static final double MIN_EXPECTED_GOALS = 0.15;
     private static final double MAX_EXPECTED_GOALS = 4.50;
 
     private final MatchRepository matchRepository;
 
     public Optional<ExpectedGoals> estimateFromGoals(Match match) {
-        if (!hasTeams(match)) {
+        if (!hasTeamsAndLeague(match)) {
             return Optional.empty();
         }
 
         Long leagueId = match.getSeason().getLeague().getId();
-        TeamHistory home = load(match.getHomeTeam(), leagueId);
-        TeamHistory away = load(match.getAwayTeam(), leagueId);
+        TeamHistory home = loadTeamHistory(match.getHomeTeam(), leagueId);
+        TeamHistory away = loadTeamHistory(match.getAwayTeam(), leagueId);
+        List<Match> leagueMatches = loadLeagueHistory(leagueId);
 
-        Rate homeAttack = chooseRate(home, true, Metric.GOALS_FOR);
-        Rate homeDefence = chooseRate(home, true, Metric.GOALS_AGAINST);
-        Rate awayAttack = chooseRate(away, false, Metric.GOALS_FOR);
-        Rate awayDefence = chooseRate(away, false, Metric.GOALS_AGAINST);
+        Rate homeAttack = chooseTeamRate(home, true, Metric.GOALS_FOR);
+        Rate homeDefence = chooseTeamRate(home, true, Metric.GOALS_AGAINST);
+        Rate awayAttack = chooseTeamRate(away, false, Metric.GOALS_FOR);
+        Rate awayDefence = chooseTeamRate(away, false, Metric.GOALS_AGAINST);
 
-        // When venue-specific history is sparse, chooseRate falls back to all recent
-        // matches only when there are enough observations; it never invents a rate.
-        if (homeAttack == null || homeDefence == null || awayAttack == null || awayDefence == null) {
+        Rate leagueHomeGoals = calculateLeagueAverage(leagueMatches, true, false);
+        Rate leagueAwayGoals = calculateLeagueAverage(leagueMatches, false, false);
+
+        if (homeAttack == null || homeDefence == null || awayAttack == null || awayDefence == null
+                || !validLeagueBaseline(leagueHomeGoals) || !validLeagueBaseline(leagueAwayGoals)) {
             return Optional.empty();
         }
 
+        // Attack and defence are normalized against the same competition's venue-specific
+        // scoring baseline, preventing one league's scoring environment from leaking into another.
+        double expectedHome = homeAttack.value() * awayDefence.value() / leagueHomeGoals.value();
+        double expectedAway = awayAttack.value() * homeDefence.value() / leagueAwayGoals.value();
+
         return Optional.of(new ExpectedGoals(
-                combineAttackAndDefence(homeAttack.value(), awayDefence.value()),
-                combineAttackAndDefence(awayAttack.value(), homeDefence.value()),
-                Math.min(homeAttack.samples(), awayDefence.samples()),
-                Math.min(awayAttack.samples(), homeDefence.samples())));
+                clampExpectedGoals(expectedHome),
+                clampExpectedGoals(expectedAway),
+                Math.min(Math.min(homeAttack.samples(), awayDefence.samples()), leagueHomeGoals.samples()),
+                Math.min(Math.min(awayAttack.samples(), homeDefence.samples()), leagueAwayGoals.samples())));
     }
 
     public Optional<ExpectedGoals> estimateFromExpectedGoals(Match match) {
-        if (!hasTeams(match)) {
+        if (!hasTeamsAndLeague(match)) {
             return Optional.empty();
         }
 
         Long leagueId = match.getSeason().getLeague().getId();
-        TeamHistory home = load(match.getHomeTeam(), leagueId);
-        TeamHistory away = load(match.getAwayTeam(), leagueId);
+        TeamHistory home = loadTeamHistory(match.getHomeTeam(), leagueId);
+        TeamHistory away = loadTeamHistory(match.getAwayTeam(), leagueId);
+        List<Match> leagueMatches = loadLeagueHistory(leagueId);
 
-        Rate homeAttack = chooseRate(home, true, Metric.XG_FOR);
-        Rate homeDefence = chooseRate(home, true, Metric.XG_AGAINST);
-        Rate awayAttack = chooseRate(away, false, Metric.XG_FOR);
-        Rate awayDefence = chooseRate(away, false, Metric.XG_AGAINST);
+        Rate homeAttack = chooseTeamRate(home, true, Metric.XG_FOR);
+        Rate homeDefence = chooseTeamRate(home, true, Metric.XG_AGAINST);
+        Rate awayAttack = chooseTeamRate(away, false, Metric.XG_FOR);
+        Rate awayDefence = chooseTeamRate(away, false, Metric.XG_AGAINST);
 
-        if (homeAttack == null || homeDefence == null || awayAttack == null || awayDefence == null) {
+        Rate leagueHomeXg = calculateLeagueAverage(leagueMatches, true, true);
+        Rate leagueAwayXg = calculateLeagueAverage(leagueMatches, false, true);
+
+        if (homeAttack == null || homeDefence == null || awayAttack == null || awayDefence == null
+                || !validLeagueBaseline(leagueHomeXg) || !validLeagueBaseline(leagueAwayXg)) {
             return Optional.empty();
         }
 
+        double expectedHome = homeAttack.value() * awayDefence.value() / leagueHomeXg.value();
+        double expectedAway = awayAttack.value() * homeDefence.value() / leagueAwayXg.value();
+
         return Optional.of(new ExpectedGoals(
-                combineAttackAndDefence(homeAttack.value(), awayDefence.value()),
-                combineAttackAndDefence(awayAttack.value(), homeDefence.value()),
-                Math.min(homeAttack.samples(), awayDefence.samples()),
-                Math.min(awayAttack.samples(), homeDefence.samples())));
+                clampExpectedGoals(expectedHome),
+                clampExpectedGoals(expectedAway),
+                Math.min(Math.min(homeAttack.samples(), awayDefence.samples()), leagueHomeXg.samples()),
+                Math.min(Math.min(awayAttack.samples(), homeDefence.samples()), leagueAwayXg.samples())));
     }
 
-    private TeamHistory load(Team team, Long leagueId) {
+    private TeamHistory loadTeamHistory(Team team, Long leagueId) {
         List<Match> matches = matchRepository.findRecentFinishedMatchesForTeamInLeague(
-                team.getId(), leagueId, MatchStatus.FINISHED, PageRequest.of(0, HISTORY_SIZE));
+                team.getId(), leagueId, MatchStatus.FINISHED, PageRequest.of(0, TEAM_HISTORY_SIZE));
         return new TeamHistory(team, matches == null ? List.of() : matches);
     }
 
-    private Rate chooseRate(TeamHistory history, boolean homeVenue, Metric metric) {
-        Rate venueRate = calculateRate(history, homeVenue, metric);
+    private List<Match> loadLeagueHistory(Long leagueId) {
+        List<Match> matches = matchRepository.findRecentFinishedMatchesInLeague(
+                leagueId, MatchStatus.FINISHED, PageRequest.of(0, LEAGUE_BASELINE_SIZE));
+        return matches == null ? List.of() : matches;
+    }
+
+    private Rate chooseTeamRate(TeamHistory history, boolean homeVenue, Metric metric) {
+        Rate venueRate = calculateTeamRate(history, homeVenue, metric);
         if (venueRate.samples() >= MIN_VENUE_SAMPLES) {
             return venueRate;
         }
 
-        Rate overallRate = calculateRate(history, null, metric);
+        Rate overallRate = calculateTeamRate(history, null, metric);
         return overallRate.samples() >= MIN_OVERALL_SAMPLES ? overallRate : null;
     }
 
-    private Rate calculateRate(TeamHistory history, Boolean homeVenue, Metric metric) {
+    private Rate calculateTeamRate(TeamHistory history, Boolean homeVenue, Metric metric) {
         List<Match> eligible = new ArrayList<>();
         for (Match match : history.matches()) {
-            boolean isHome = match.getHomeTeam().getId().equals(history.team().getId());
-            if (homeVenue != null && isHome != homeVenue) {
+            boolean teamWasHome = match.getHomeTeam().getId().equals(history.team().getId());
+            if (homeVenue != null && teamWasHome != homeVenue) {
                 continue;
             }
-            Double metricValue = metric.value(match, isHome);
-            if (metricValue == null || !Double.isFinite(metricValue) || metricValue < 0) {
-                continue;
+            Double value = metric.value(match, teamWasHome);
+            if (isValidMetric(value)) {
+                eligible.add(match);
             }
-            eligible.add(match);
         }
 
-        if (eligible.isEmpty()) {
+        return weightedTeamRate(eligible, history.team(), metric);
+    }
+
+    private Rate weightedTeamRate(List<Match> matches, Team team, Metric metric) {
+        if (matches.isEmpty()) {
             return new Rate(0, 0);
         }
 
         double weightedTotal = 0;
         double totalWeight = 0;
-        for (int i = 0; i < eligible.size(); i++) {
-            Match match = eligible.get(i);
-            boolean isHome = match.getHomeTeam().getId().equals(history.team().getId());
-            Double value = metric.value(match, isHome);
-            if (value == null || !Double.isFinite(value) || value < 0) {
+        int validSamples = 0;
+        for (int i = 0; i < matches.size(); i++) {
+            Match match = matches.get(i);
+            boolean teamWasHome = match.getHomeTeam().getId().equals(team.getId());
+            Double value = metric.value(match, teamWasHome);
+            if (!isValidMetric(value)) {
                 continue;
             }
 
-            double weight = Math.pow(RECENCY_DECAY, i);
+            double weight = Math.pow(TEAM_RECENCY_DECAY, i);
             weightedTotal += value * weight;
             totalWeight += weight;
+            validSamples++;
         }
 
-        return totalWeight == 0
-                ? new Rate(0, 0)
-                : new Rate(weightedTotal / totalWeight, eligible.size());
+        return totalWeight == 0 ? new Rate(0, 0) : new Rate(weightedTotal / totalWeight, validSamples);
     }
 
-    private double combineAttackAndDefence(double attackingRate, double opponentConcedingRate) {
-        double combined = Math.sqrt(Math.max(0, attackingRate) * Math.max(0, opponentConcedingRate));
-        return Math.max(MIN_EXPECTED_GOALS, Math.min(MAX_EXPECTED_GOALS, combined));
+    private Rate calculateLeagueAverage(List<Match> matches, boolean homeSide, boolean xg) {
+        double weightedTotal = 0;
+        double totalWeight = 0;
+        int validSamples = 0;
+
+        for (int i = 0; i < matches.size(); i++) {
+            Match match = matches.get(i);
+            Double value;
+            if (xg) {
+                value = homeSide ? match.getHomeXG() : match.getAwayXG();
+            } else {
+                Integer score = homeSide ? match.getHomeScore() : match.getAwayScore();
+                value = score == null ? null : score.doubleValue();
+            }
+
+            if (!isValidMetric(value)) {
+                continue;
+            }
+
+            double weight = Math.pow(LEAGUE_RECENCY_DECAY, i);
+            weightedTotal += value * weight;
+            totalWeight += weight;
+            validSamples++;
+        }
+
+        return totalWeight == 0 ? new Rate(0, 0) : new Rate(weightedTotal / totalWeight, validSamples);
     }
 
-    private boolean hasTeams(Match match) {
-        return match != null && match.getHomeTeam() != null && match.getAwayTeam() != null
-                && match.getHomeTeam().getId() != null && match.getAwayTeam().getId() != null
-                && match.getSeason() != null && match.getSeason().getLeague() != null
-                && match.getSeason().getLeague().getId() != null
-                && !match.getHomeTeam().getId().equals(match.getAwayTeam().getId());
+    private boolean validLeagueBaseline(Rate rate) {
+        return rate != null && rate.samples() >= MIN_LEAGUE_BASELINE_SAMPLES
+                && Double.isFinite(rate.value()) && rate.value() > 0;
+    }
+
+    private boolean isValidMetric(Double value) {
+        return value != null && Double.isFinite(value) && value >= 0;
+    }
+
+    private double clampExpectedGoals(double expectedGoals) {
+        if (!Double.isFinite(expectedGoals)) {
+            throw new IllegalArgumentException("Calculated expected goals are not finite");
+        }
+        return Math.max(MIN_EXPECTED_GOALS, Math.min(MAX_EXPECTED_GOALS, expectedGoals));
+    }
+
+    private boolean hasTeamsAndLeague(Match match) {
+        return match != null
+                && match.getHomeTeam() != null
+                && match.getAwayTeam() != null
+                && match.getHomeTeam().getId() != null
+                && match.getAwayTeam().getId() != null
+                && !match.getHomeTeam().getId().equals(match.getAwayTeam().getId())
+                && match.getSeason() != null
+                && match.getSeason().getLeague() != null
+                && match.getSeason().getLeague().getId() != null;
     }
 
     public record ExpectedGoals(double home, double away, int homeSamples, int awaySamples) {
@@ -155,28 +226,28 @@ public class MatchHistoryAnalyticsService {
 
     private enum Metric {
         GOALS_FOR {
-            @Override Double value(Match match, boolean isHome) {
-                Integer value = isHome ? match.getHomeScore() : match.getAwayScore();
+            @Override Double value(Match match, boolean teamWasHome) {
+                Integer value = teamWasHome ? match.getHomeScore() : match.getAwayScore();
                 return value == null ? null : value.doubleValue();
             }
         },
         GOALS_AGAINST {
-            @Override Double value(Match match, boolean isHome) {
-                Integer value = isHome ? match.getAwayScore() : match.getHomeScore();
+            @Override Double value(Match match, boolean teamWasHome) {
+                Integer value = teamWasHome ? match.getAwayScore() : match.getHomeScore();
                 return value == null ? null : value.doubleValue();
             }
         },
         XG_FOR {
-            @Override Double value(Match match, boolean isHome) {
-                return isHome ? match.getHomeXG() : match.getAwayXG();
+            @Override Double value(Match match, boolean teamWasHome) {
+                return teamWasHome ? match.getHomeXG() : match.getAwayXG();
             }
         },
         XG_AGAINST {
-            @Override Double value(Match match, boolean isHome) {
-                return isHome ? match.getAwayXG() : match.getHomeXG();
+            @Override Double value(Match match, boolean teamWasHome) {
+                return teamWasHome ? match.getAwayXG() : match.getHomeXG();
             }
         };
 
-        abstract Double value(Match match, boolean isHome);
+        abstract Double value(Match match, boolean teamWasHome);
     }
 }
