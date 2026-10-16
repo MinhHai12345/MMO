@@ -55,6 +55,20 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     List<Match> findTop10ByHomeTeamOrAwayTeamAndStatusOrderByMatchTimeDesc(@Param("team") Team team, 
                                                                             @Param("status") MatchStatus status,
                                                                             Pageable pageable);
+
+    @Query("""
+            SELECT m FROM Match m
+            WHERE (m.homeTeam.id = :teamId OR m.awayTeam.id = :teamId)
+              AND m.season.id = :seasonId
+              AND m.status = :status
+              AND m.homeScore IS NOT NULL
+              AND m.awayScore IS NOT NULL
+            ORDER BY m.matchTime DESC
+            """)
+    List<Match> findRecentFinishedMatchesForTeamInSeason(@Param("teamId") Long teamId,
+                                                         @Param("seasonId") Long seasonId,
+                                                         @Param("status") MatchStatus status,
+                                                         Pageable pageable);
     
     @Query("SELECT m FROM Match m WHERE ((m.homeTeam = :homeTeam AND m.awayTeam = :awayTeam) OR (m.homeTeam = :homeTeam2 AND m.awayTeam = :awayTeam2)) AND m.status = :status")
     List<Match> findByHomeTeamAndAwayTeamOrHomeTeamAndAwayTeamAndStatus(@Param("homeTeam") Team homeTeam,
