@@ -92,6 +92,18 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
 
     @Query("""
             SELECT m FROM Match m
+            WHERE m.season.league.id = :leagueId
+              AND m.status = :status
+              AND m.homeScore IS NOT NULL
+              AND m.awayScore IS NOT NULL
+            ORDER BY m.matchTime DESC
+            """)
+    List<Match> findRecentFinishedMatchesInLeague(@Param("leagueId") Long leagueId,
+                                                  @Param("status") MatchStatus status,
+                                                  Pageable pageable);
+
+    @Query("""
+            SELECT m FROM Match m
             WHERE (m.homeTeam.id = :teamId OR m.awayTeam.id = :teamId)
               AND m.season.id = :seasonId
               AND m.status = :status
