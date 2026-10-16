@@ -48,8 +48,8 @@ public class MatchHistoryAnalyticsService {
         return Optional.of(new ExpectedGoals(
                 combineAttackAndDefence(homeAttack.value(), awayDefence.value()),
                 combineAttackAndDefence(awayAttack.value(), homeDefence.value()),
-                homeAttack.samples() + awayDefence.samples(),
-                awayAttack.samples() + homeDefence.samples()));
+                Math.min(homeAttack.samples(), awayDefence.samples()),
+                Math.min(awayAttack.samples(), homeDefence.samples())));
     }
 
     public Optional<ExpectedGoals> estimateFromExpectedGoals(Match match) {
@@ -99,7 +99,8 @@ public class MatchHistoryAnalyticsService {
             if (homeVenue != null && isHome != homeVenue) {
                 continue;
             }
-            if (metric.isExpectedGoals() && metric.value(match, isHome) == null) {
+            Double metricValue = metric.value(match, isHome);
+            if (metricValue == null || !Double.isFinite(metricValue) || metricValue < 0) {
                 continue;
             }
             eligible.add(match);
