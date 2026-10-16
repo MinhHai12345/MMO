@@ -1,8 +1,6 @@
 package com.mmo.module.fb.analytics.service.impl;
 
-import com.mmo.module.fb.analytics.service.WalkForwardBacktestService;
-import com.mmo.module.fb.analytics.service.WalkForwardBacktestService.BacktestReport;
-import com.mmo.module.fb.analytics.service.WalkForwardBacktestService.MetricSnapshot;
+import com.mmo.module.fb.analytics.service.WalkForwardBackTestService;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
 import com.mmo.module.fb.domain.enums.MatchStatus;
@@ -18,6 +16,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Evaluates only predictions recorded before kickoff.
@@ -28,7 +27,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class WalkForwardBacktestServiceImpl implements WalkForwardBacktestService {
+public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestService {
 
     private static final int MAX_SAMPLES = 10_000;
     private static final int MIN_CALIBRATION_SAMPLES = 100;
@@ -42,7 +41,7 @@ public class WalkForwardBacktestServiceImpl implements WalkForwardBacktestServic
 
     @Override
     @Transactional(readOnly = true)
-    public BacktestReport run(Instant fromInclusive, Instant toExclusive) {
+    public BackTestReport run(Instant fromInclusive, Instant toExclusive) {
         if (fromInclusive == null || toExclusive == null || !fromInclusive.isBefore(toExclusive)) {
             throw new IllegalArgumentException("fromInclusive must be before toExclusive");
         }
@@ -53,7 +52,7 @@ public class WalkForwardBacktestServiceImpl implements WalkForwardBacktestServic
                         fromInclusive, MatchStatus.FINISHED, PageRequest.of(0, MAX_SAMPLES))
                 .stream()
                 .map(this::toSample)
-                .filter(sample -> sample != null)
+                .filter(Objects::nonNull)
                 .forEach(samples::add);
 
         int page = 0;
@@ -63,7 +62,7 @@ public class WalkForwardBacktestServiceImpl implements WalkForwardBacktestServic
                     fromInclusive, toExclusive, MatchStatus.FINISHED, PageRequest.of(page, MAX_SAMPLES));
             pageContent.stream()
                     .map(this::toSample)
-                    .filter(sample -> sample != null)
+                    .filter(Objects::nonNull)
                     .forEach(samples::add);
             page++;
         } while (pageContent.size() == MAX_SAMPLES);
@@ -124,7 +123,7 @@ public class WalkForwardBacktestServiceImpl implements WalkForwardBacktestServic
             index = groupEnd;
         }
 
-        BacktestReport report = new BacktestReport(
+        BackTestReport report = new BackTestReport(
                 fromInclusive, toExclusive, tested, calibratedCount, prior.size(),
                 rawMetrics.snapshot(), calibratedMetrics.snapshot(),
                 tested < MIN_CALIBRATION_SAMPLES

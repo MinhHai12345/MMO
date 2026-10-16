@@ -2,7 +2,7 @@ package com.mmo.module.fb.ingest.job;
 
 import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.job.AbstractJob;
-import com.mmo.module.fb.analytics.service.WalkForwardBacktestService;
+import com.mmo.module.fb.analytics.service.WalkForwardBackTestService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.DisallowConcurrentExecution;
@@ -16,16 +16,16 @@ import java.time.temporal.ChronoUnit;
 @Component
 @DisallowConcurrentExecution
 @RequiredArgsConstructor
-public class WalkForwardBacktestJob extends AbstractJob<CronJob> {
+public class WalkForwardBackTestJob extends AbstractJob<CronJob> {
 
-    private final WalkForwardBacktestService backtestService;
+    private final WalkForwardBackTestService backTestService;
 
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
         Instant to = Instant.now();
         Instant from = to.minus(180, ChronoUnit.DAYS);
         log.info("Starting leakage-safe walk-forward backtest: from={}, to={}", from, to);
-        WalkForwardBacktestService.BacktestReport report = backtestService.run(from, to);
+        WalkForwardBackTestService.BackTestReport report = backTestService.run(from, to);
         log.info("Walk-forward report: testedMatches={}, calibratedMatches={}, status={}, raw={}, calibrated={}",
                 report.testedMatches(), report.calibratedMatches(), report.status(),
                 report.raw(), report.calibrated());

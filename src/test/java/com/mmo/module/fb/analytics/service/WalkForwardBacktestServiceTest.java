@@ -1,6 +1,6 @@
 package com.mmo.module.fb.analytics.service;
 
-import com.mmo.module.fb.analytics.service.impl.WalkForwardBacktestServiceImpl;
+import com.mmo.module.fb.analytics.service.impl.WalkForwardBackTestServiceImpl;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
 import com.mmo.module.fb.domain.enums.MatchStatus;
@@ -23,12 +23,12 @@ import static org.mockito.Mockito.when;
 class WalkForwardBacktestServiceTest {
 
     private MatchPredictionRepository repository;
-    private WalkForwardBacktestService service;
+    private WalkForwardBackTestService service;
 
     @BeforeEach
     void setUp() {
         repository = mock(MatchPredictionRepository.class);
-        service = new WalkForwardBacktestServiceImpl(repository);
+        service = new WalkForwardBackTestServiceImpl(repository);
     }
 
     @Test
@@ -51,7 +51,7 @@ class WalkForwardBacktestServiceTest {
                 eq(from), eq(to), eq(MatchStatus.FINISHED), any(Pageable.class)))
                 .thenReturn(List.of(predictions.get(100)));
 
-        WalkForwardBacktestService.BacktestReport report = service.run(from, to);
+        WalkForwardBackTestService.BackTestReport report = service.run(from, to);
 
         assertEquals(1, report.testedMatches());
         assertEquals(1, report.calibratedMatches());
@@ -75,7 +75,7 @@ class WalkForwardBacktestServiceTest {
                 eq(from), eq(to), eq(MatchStatus.FINISHED), any(Pageable.class)))
                 .thenReturn(List.of(leaked));
 
-        WalkForwardBacktestService.BacktestReport report = service.run(from, to);
+        WalkForwardBackTestService.BackTestReport report = service.run(from, to);
 
         assertEquals(0, report.testedMatches());
         assertEquals("INSUFFICIENT_TEST_SAMPLES", report.status());
@@ -99,7 +99,7 @@ class WalkForwardBacktestServiceTest {
                 eq(from), eq(to), eq(MatchStatus.FINISHED), any(Pageable.class)))
                 .thenReturn(firstPage, List.of(sample));
 
-        WalkForwardBacktestService.BacktestReport report = service.run(from, to);
+        WalkForwardBackTestService.BackTestReport report = service.run(from, to);
 
         assertEquals(10_001, report.testedMatches());
         verify(repository, org.mockito.Mockito.times(2)).findWalkForwardTestCandidates(

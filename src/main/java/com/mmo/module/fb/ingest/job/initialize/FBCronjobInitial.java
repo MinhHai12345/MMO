@@ -23,7 +23,7 @@ import com.mmo.module.fb.ingest.job.MatchStatusTrackerJob;
 import com.mmo.module.fb.ingest.job.NotificationPublisherJob;
 import com.mmo.module.fb.ingest.job.SubscriptionExpiryCheckJob;
 import com.mmo.module.fb.ingest.job.TeamSyncJob;
-import com.mmo.module.fb.ingest.job.WalkForwardBacktestJob;
+import com.mmo.module.fb.ingest.job.WalkForwardBackTestJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -54,7 +54,7 @@ public class FBCronjobInitial implements DataInitializer {
                 "0 0 */4 * * ?", "Fetch real SofaScore statistics for finished matches (every 4 hours UTC)");
         createJobIfNotExist(PredictionEvaluationJob.class.getSimpleName(), PredictionEvaluationJob.class,
                 "0 0/30 * * * ?", "Evaluate completed predictions using actual results and normalized Brier quality (every 30 minutes)");
-        createJobIfNotExist(WalkForwardBacktestJob.class.getSimpleName(), WalkForwardBacktestJob.class,
+        createJobIfNotExist(WalkForwardBackTestJob.class.getSimpleName(), WalkForwardBackTestJob.class,
                 "0 15 6 * * ?", "Run 180-day leakage-safe walk-forward backtest and probability calibration (daily UTC 06:15)");
         createJobIfNotExist(MatchDailyRecapJob.class.getSimpleName(), MatchDailyRecapJob.class,
                 "0 0 5 * * ?", "Calculate yesterday's prediction accuracy & ROI (UTC 05:00 / VN 12:00 PM)");

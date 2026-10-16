@@ -2,14 +2,14 @@ package com.mmo.module.fb.analytics.service;
 
 import java.time.Instant;
 
-public interface WalkForwardBacktestService {
+public interface WalkForwardBackTestService {
 
-    BacktestReport run(Instant fromInclusive, Instant toExclusive);
+    BackTestReport run(Instant fromInclusive, Instant toExclusive);
 
     record MetricSnapshot(double brierScore, double logLoss, double accuracy) {
     }
 
-    record BacktestReport(
+    record BackTestReport(
             Instant from,
             Instant to,
             int testedMatches,
