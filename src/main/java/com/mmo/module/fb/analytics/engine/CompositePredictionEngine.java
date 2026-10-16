@@ -72,19 +72,20 @@ public class CompositePredictionEngine {
         drawProbability /= total;
         awayProbability /= total;
 
-        BigDecimal roundedHome = probability(homeProbability);
-        BigDecimal roundedDraw = probability(drawProbability);
-        BigDecimal roundedAway = probability(awayProbability);
-        normalizeRoundedProbabilities(roundedHome, roundedDraw, roundedAway,
-                homeProbability, drawProbability, awayProbability);
+        BigDecimal[] rounded = {
+                probability(homeProbability),
+                probability(drawProbability),
+                probability(awayProbability)
+        };
+        normalizeRoundedProbabilities(rounded, homeProbability, drawProbability, awayProbability);
 
         return MatchPrediction.builder()
                 .match(match)
                 .predictedHomeXg(weightedAverageDecimal(samples, PredictionSample::homeXg))
                 .predictedAwayXg(weightedAverageDecimal(samples, PredictionSample::awayXg))
-                .winHomeProb(roundedHome)
-                .drawProb(roundedDraw)
-                .winAwayProb(roundedAway)
+                .winHomeProb(rounded[0])
+                .drawProb(rounded[1])
+                .winAwayProb(rounded[2])
                 .predictedResult(determineResult(homeProbability, drawProbability, awayProbability))
                 .predictionStatus("PENDING")
                 .confidenceScore(BigDecimal.valueOf(Math.max(homeProbability,
@@ -138,11 +139,11 @@ public class CompositePredictionEngine {
     }
 
     private BigDecimal weightedAverageDecimal(List<PredictionSample> samples,
-                                              java.util.function.Function<MatchPrediction, BigDecimal> extractor) {
+                                              java.util.function.Function<PredictionSample, BigDecimal> extractor) {
         double weightedSum = 0;
         double totalWeight = 0;
         for (PredictionSample sample : samples) {
-            BigDecimal value = extractor.apply(sample.prediction());
+            BigDecimal value = extractor.apply(sample);
             if (value == null || !Double.isFinite(value.doubleValue()) || value.signum() < 0) {
                 continue;
             }
@@ -159,19 +160,22 @@ public class CompositePredictionEngine {
         return BigDecimal.valueOf(value).setScale(PROBABILITY_SCALE, RoundingMode.HALF_UP);
     }
 
-    private void normalizeRoundedProbabilities(BigDecimal home, BigDecimal draw, BigDecimal away,
+    private void normalizeRoundedProbabilities(BigDecimal[] rounded,
                                                double rawHome, double rawDraw, double rawAway) {
         BigDecimal difference = BigDecimal.ONE.setScale(PROBABILITY_SCALE)
-                .subtract(home.add(draw).add(away));
-
+                .subtract(rounded[0].add(rounded[1]).add(rounded[2]));
         if (difference.signum() == 0) {
             return;
         }
 
-        if (rawHome >= rawDraw && rawHome >= rawAway) {
-            home.setScale(PROBABILITY_SCALE, RoundingMode.HALF_UP);
-            // BigDecimal is immutable; adjustment is applied by the caller's mutable holder below.
+        int largestIndex = 0;
+        if (rawDraw > rawHome && rawDraw >= rawAway) {
+            largestIndex = 1;
+        } else if (rawAway > rawHome && rawAway > rawDraw) {
+            largestIndex = 2;
         }
+
+        rounded[largestIndex] = rounded[largestIndex].add(difference);
     }
 
     private String determineResult(double homeProbability, double drawProbability, double awayProbability) {
