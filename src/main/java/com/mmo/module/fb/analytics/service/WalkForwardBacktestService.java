@@ -43,13 +43,28 @@ public class WalkForwardBacktestService {
             throw new IllegalArgumentException("fromInclusive must be before toExclusive");
         }
 
-        List<Sample> samples = matchPredictionRepository.findWalkForwardCandidates(
-                        toExclusive, MatchStatus.FINISHED, PageRequest.of(0, MAX_SAMPLES))
+        // Keep a bounded recent training history, but never cap the requested test window.
+        List<Sample> samples = new ArrayList<>();
+        matchPredictionRepository.findWalkForwardTrainingCandidates(
+                        fromInclusive, MatchStatus.FINISHED, PageRequest.of(0, MAX_SAMPLES))
                 .stream()
                 .map(this::toSample)
                 .filter(sample -> sample != null)
-                .sorted(Comparator.comparing(Sample::kickoff))
-                .toList();
+                .forEach(samples::add);
+
+        int page = 0;
+        List<MatchPrediction> pageContent;
+        do {
+            pageContent = matchPredictionRepository.findWalkForwardTestCandidates(
+                    fromInclusive, toExclusive, MatchStatus.FINISHED, PageRequest.of(page, MAX_SAMPLES));
+            pageContent.stream()
+                    .map(this::toSample)
+                    .filter(sample -> sample != null)
+                    .forEach(samples::add);
+            page++;
+        } while (pageContent.size() == MAX_SAMPLES);
+
+        samples.sort(Comparator.comparing(Sample::kickoff));
 
         List<Sample> prior = new ArrayList<>();
         Metrics rawMetrics = new Metrics();
