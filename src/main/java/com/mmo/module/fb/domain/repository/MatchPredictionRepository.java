@@ -39,6 +39,7 @@ public interface MatchPredictionRepository extends JpaRepository<MatchPrediction
     /**
      * Only predictions timestamped strictly before kickoff are eligible.
      * Include already-evaluated predictions: their results are training labels for later folds.
+     * Descending order makes the bounded query retain recent history; callers re-sort chronologically.
      */
     @Query("""
             SELECT p FROM MatchPrediction p
@@ -52,7 +53,7 @@ public interface MatchPredictionRepository extends JpaRepository<MatchPrediction
               AND p.winHomeProb IS NOT NULL
               AND p.drawProb IS NOT NULL
               AND p.winAwayProb IS NOT NULL
-            ORDER BY m.matchTime ASC
+            ORDER BY m.matchTime DESC
             """)
     List<MatchPrediction> findWalkForwardCandidates(
             @Param("throughExclusive") Instant throughExclusive,
