@@ -1,42 +1,57 @@
 package com.mmo.module.fb.analytics.engine;
 
+import com.mmo.module.fb.analytics.service.MatchHistoryAnalyticsService;
+import com.mmo.module.fb.analytics.service.MatchHistoryAnalyticsService.ExpectedGoals;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
+import java.util.Optional;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class XGBasedPredictionEngine implements PredictionEngine {
+
+    private static final int PROBABILITY_SCALE = 4;
+    private static final int XG_SCALE = 2;
+
+    private final MatchHistoryAnalyticsService analyticsService;
 
     @Override
     public MatchPrediction predict(Match match) {
-        log.info("🔮 Running xG-based prediction for match {}", match.getId());
+        Optional<ExpectedGoals> expectedGoals = analyticsService.estimateFromExpectedGoals(match);
+        if (expectedGoals.isEmpty()) {
+            log.debug("Insufficient historical xG coverage for xG prediction, matchId={}",
+                    match == null ? null : match.getId());
+            return null;
+        }
 
-        // TODO: Implement xG-based prediction logic
-        // This would use historical xG data from MatchAdvancedStats and PlayerMatchStats
-        // to calculate expected goals and win probabilities
-
-        double homeXg = calculateExpectedGoals(match.getHomeTeam(), match.getAwayTeam(), true);
-        double awayXg = calculateExpectedGoals(match.getAwayTeam(), match.getHomeTeam(), false);
-
-        double homeWinProb = calculateWinProbability(homeXg, awayXg, true);
-        double drawProb = calculateDrawProbability(homeXg, awayXg);
-        double awayWinProb = calculateWinProbability(homeXg, awayXg, false);
+        ExpectedGoals estimate = expectedGoals.get();
+        PoissonProbabilityCalculator.Result probabilities =
+                PoissonProbabilityCalculator.calculate(estimate.home(), estimate.away());
 
         return MatchPrediction.builder()
                 .match(match)
-                .predictedHomeXg(BigDecimal.valueOf(homeXg).setScale(2, RoundingMode.HALF_UP))
-                .predictedAwayXg(BigDecimal.valueOf(awayXg).setScale(2, RoundingMode.HALF_UP))
-                .winHomeProb(BigDecimal.valueOf(homeWinProb).setScale(4, RoundingMode.HALF_UP))
-                .drawProb(BigDecimal.valueOf(drawProb).setScale(4, RoundingMode.HALF_UP))
-                .winAwayProb(BigDecimal.valueOf(awayWinProb).setScale(4, RoundingMode.HALF_UP))
-                .predictedResult(determineResult(homeWinProb, drawProb, awayWinProb))
+                .predictedHomeXg(BigDecimal.valueOf(estimate.home()).setScale(XG_SCALE, RoundingMode.HALF_UP))
+                .predictedAwayXg(BigDecimal.valueOf(estimate.away()).setScale(XG_SCALE, RoundingMode.HALF_UP))
+                .winHomeProb(probability(probabilities.homeWin()))
+                .drawProb(probability(probabilities.draw()))
+                .winAwayProb(probability(probabilities.awayWin()))
+                .predictedResult(determineResult(probabilities))
                 .predictionStatus("PENDING")
-                .confidenceScore(BigDecimal.valueOf(Math.max(homeWinProb, Math.max(drawProb, awayWinProb))).setScale(2, RoundingMode.HALF_UP))
+                .confidenceScore(BigDecimal.valueOf(Math.max(probabilities.homeWin(),
+                        Math.max(probabilities.draw(), probabilities.awayWin())))
+                        .setScale(2, RoundingMode.HALF_UP))
+                .calculatedAt(Instant.now())
+                .predictionReasoning(String.format(
+                        "Historical xG Poisson model; expected xG %.2f-%.2f; samples home=%d away=%d",
+                        estimate.home(), estimate.away(), estimate.homeSamples(), estimate.awaySamples()))
                 .build();
     }
 
@@ -50,32 +65,19 @@ public class XGBasedPredictionEngine implements PredictionEngine {
         return 0.4;
     }
 
-    private double calculateExpectedGoals(com.mmo.module.fb.domain.entity.Team attackingTeam, 
-                                          com.mmo.module.fb.domain.entity.Team defendingTeam, 
-                                          boolean isHome) {
-        // TODO: Implement expected goals calculation based on:
-        // - Team's historical xG for/against
-        // - Home/away advantage
-        // - Recent form
-        // - Player availability
-        return isHome ? 1.5 : 1.2;
+    private BigDecimal probability(double value) {
+        return BigDecimal.valueOf(value).setScale(PROBABILITY_SCALE, RoundingMode.HALF_UP);
     }
 
-    private double calculateWinProbability(double homeXg, double awayXg, boolean isHome) {
-        // TODO: Implement Poisson distribution for win probability
-        double xg = isHome ? homeXg : awayXg;
-        double opponentXg = isHome ? awayXg : homeXg;
-        return Math.exp(-opponentXg) * (1 - Math.exp(-xg));
-    }
-
-    private double calculateDrawProbability(double homeXg, double awayXg) {
-        // TODO: Implement draw probability calculation
-        return 0.25;
-    }
-
-    private String determineResult(double homeProb, double drawProb, double awayProb) {
-        if (homeProb > drawProb && homeProb > awayProb) return "HOME";
-        if (awayProb > drawProb && awayProb > homeProb) return "AWAY";
+    private String determineResult(PoissonProbabilityCalculator.Result probabilities) {
+        if (probabilities.homeWin() > probabilities.draw()
+                && probabilities.homeWin() > probabilities.awayWin()) {
+            return "HOME";
+        }
+        if (probabilities.awayWin() > probabilities.draw()
+                && probabilities.awayWin() > probabilities.homeWin()) {
+            return "AWAY";
+        }
         return "DRAW";
     }
 }

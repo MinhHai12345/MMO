@@ -8,9 +8,9 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Function;
 
 @Slf4j
 @Component
@@ -22,8 +22,6 @@ public class CompositePredictionEngine {
     private final List<PredictionEngine> engines;
 
     public CompositePredictionEngine(List<PredictionEngine> engines) {
-        // Keep the aggregate separate from PredictionEngine beans to avoid a Spring
-        // self-injection cycle. The filter also protects manual/test configurations.
         this.engines = engines.stream()
                 .filter(Objects::nonNull)
                 .filter(engine -> !"COMPOSITE".equalsIgnoreCase(engine.getEngineName()))
@@ -32,113 +30,181 @@ public class CompositePredictionEngine {
 
     public MatchPrediction predict(Match match) {
         Objects.requireNonNull(match, "match must not be null");
-        log.info("Running composite prediction for match {}", match.getId());
 
-        List<WeightedPrediction> predictions = engines.stream()
-                .map(engine -> new WeightedPrediction(engine.predict(match), validWeight(engine.getWeight())))
-                .filter(item -> item.prediction() != null && item.weight() > 0)
-                .toList();
+        List<PredictionSample> samples = new ArrayList<>();
+        for (PredictionEngine engine : engines) {
+            double weight = validWeight(engine.getWeight());
+            if (weight == 0) {
+                continue;
+            }
 
-        if (predictions.isEmpty()) {
-            log.warn("No usable prediction engines available for match {}", match.getId());
-            return createDefaultPrediction(match);
+            try {
+                MatchPrediction prediction = engine.predict(match);
+                PredictionSample sample = toSample(engine.getEngineName(), prediction, weight);
+                if (sample != null) {
+                    samples.add(sample);
+                } else {
+                    log.debug("Prediction engine {} had insufficient or invalid data for matchId={}",
+                            engine.getEngineName(), match.getId());
+                }
+            } catch (RuntimeException exception) {
+                // One unavailable model must not prevent other independent models from running.
+                log.warn("Prediction engine {} failed for matchId={}: {}",
+                        engine.getEngineName(), match.getId(), exception.getMessage());
+            }
         }
 
-        double homeProbability = weightedAverage(predictions, MatchPrediction::getWinHomeProb);
-        double drawProbability = weightedAverage(predictions, MatchPrediction::getDrawProb);
-        double awayProbability = weightedAverage(predictions, MatchPrediction::getWinAwayProb);
-
-        double probabilityTotal = homeProbability + drawProbability + awayProbability;
-        if (probabilityTotal <= 0) {
-            homeProbability = 1.0 / 3.0;
-            drawProbability = 1.0 / 3.0;
-            awayProbability = 1.0 / 3.0;
-        } else {
-            homeProbability /= probabilityTotal;
-            drawProbability /= probabilityTotal;
-            awayProbability /= probabilityTotal;
+        if (samples.isEmpty()) {
+            log.info("No analytics model has enough valid data for matchId={}", match.getId());
+            return insufficientDataPrediction(match);
         }
+
+        double homeProbability = weightedAverage(samples, PredictionSample::homeProbability);
+        double drawProbability = weightedAverage(samples, PredictionSample::drawProbability);
+        double awayProbability = weightedAverage(samples, PredictionSample::awayProbability);
+        double total = homeProbability + drawProbability + awayProbability;
+
+        if (!Double.isFinite(total) || total <= 0) {
+            return insufficientDataPrediction(match);
+        }
+
+        homeProbability /= total;
+        drawProbability /= total;
+        awayProbability /= total;
+
+        BigDecimal[] rounded = {
+                probability(homeProbability),
+                probability(drawProbability),
+                probability(awayProbability)
+        };
+        normalizeRoundedProbabilities(rounded, homeProbability, drawProbability, awayProbability);
 
         return MatchPrediction.builder()
                 .match(match)
-                .predictedHomeXg(weightedAverageDecimal(predictions, MatchPrediction::getPredictedHomeXg, XG_SCALE))
-                .predictedAwayXg(weightedAverageDecimal(predictions, MatchPrediction::getPredictedAwayXg, XG_SCALE))
-                .winHomeProb(BigDecimal.valueOf(homeProbability).setScale(PROBABILITY_SCALE, RoundingMode.HALF_UP))
-                .drawProb(BigDecimal.valueOf(drawProbability).setScale(PROBABILITY_SCALE, RoundingMode.HALF_UP))
-                .winAwayProb(BigDecimal.valueOf(awayProbability).setScale(PROBABILITY_SCALE, RoundingMode.HALF_UP))
+                .predictedHomeXg(weightedAverageDecimal(samples, PredictionSample::homeXg))
+                .predictedAwayXg(weightedAverageDecimal(samples, PredictionSample::awayXg))
+                .winHomeProb(rounded[0])
+                .drawProb(rounded[1])
+                .winAwayProb(rounded[2])
                 .predictedResult(determineResult(homeProbability, drawProbability, awayProbability))
                 .predictionStatus("PENDING")
                 .confidenceScore(BigDecimal.valueOf(Math.max(homeProbability,
-                        Math.max(drawProbability, awayProbability))).setScale(PROBABILITY_SCALE, RoundingMode.HALF_UP))
+                        Math.max(drawProbability, awayProbability))).setScale(2, RoundingMode.HALF_UP))
                 .calculatedAt(Instant.now())
+                .predictionReasoning("Ensemble models: " + String.join(", ",
+                        samples.stream().map(PredictionSample::engineName).toList()))
                 .build();
+    }
+
+    private PredictionSample toSample(String engineName, MatchPrediction prediction, double weight) {
+        if (prediction == null || prediction.getWinHomeProb() == null
+                || prediction.getDrawProb() == null || prediction.getWinAwayProb() == null) {
+            return null;
+        }
+
+        double home = prediction.getWinHomeProb().doubleValue();
+        double draw = prediction.getDrawProb().doubleValue();
+        double away = prediction.getWinAwayProb().doubleValue();
+        if (!validProbability(home) || !validProbability(draw) || !validProbability(away)) {
+            return null;
+        }
+
+        double total = home + draw + away;
+        if (!Double.isFinite(total) || total <= 0) {
+            return null;
+        }
+
+        return new PredictionSample(engineName, prediction, weight,
+                home / total, draw / total, away / total);
+    }
+
+    private boolean validProbability(double value) {
+        return Double.isFinite(value) && value >= 0 && value <= 1;
     }
 
     private double validWeight(double weight) {
         return Double.isFinite(weight) && weight > 0 ? weight : 0;
     }
 
-    private double weightedAverage(List<WeightedPrediction> predictions,
-                                   Function<MatchPrediction, BigDecimal> valueExtractor) {
+    private double weightedAverage(List<PredictionSample> samples,
+                                   java.util.function.ToDoubleFunction<PredictionSample> extractor) {
         double weightedSum = 0;
         double totalWeight = 0;
-
-        for (WeightedPrediction item : predictions) {
-            BigDecimal value = valueExtractor.apply(item.prediction());
-            if (value == null || !Double.isFinite(value.doubleValue())) {
-                continue;
-            }
-            weightedSum += value.doubleValue() * item.weight();
-            totalWeight += item.weight();
+        for (PredictionSample sample : samples) {
+            double value = extractor.applyAsDouble(sample);
+            weightedSum += value * sample.weight();
+            totalWeight += sample.weight();
         }
-
         return totalWeight == 0 ? 0 : weightedSum / totalWeight;
     }
 
-    private BigDecimal weightedAverageDecimal(List<WeightedPrediction> predictions,
-                                              Function<MatchPrediction, BigDecimal> valueExtractor,
-                                              int scale) {
+    private BigDecimal weightedAverageDecimal(List<PredictionSample> samples,
+                                              java.util.function.Function<PredictionSample, BigDecimal> extractor) {
         double weightedSum = 0;
         double totalWeight = 0;
-
-        for (WeightedPrediction item : predictions) {
-            BigDecimal value = valueExtractor.apply(item.prediction());
-            if (value == null || !Double.isFinite(value.doubleValue())) {
+        for (PredictionSample sample : samples) {
+            BigDecimal value = extractor.apply(sample);
+            if (value == null || !Double.isFinite(value.doubleValue()) || value.signum() < 0) {
                 continue;
             }
-            weightedSum += value.doubleValue() * item.weight();
-            totalWeight += item.weight();
+            weightedSum += value.doubleValue() * sample.weight();
+            totalWeight += sample.weight();
         }
 
-        if (totalWeight == 0) {
-            return null;
-        }
-        return BigDecimal.valueOf(weightedSum / totalWeight).setScale(scale, RoundingMode.HALF_UP);
+        return totalWeight == 0
+                ? null
+                : BigDecimal.valueOf(weightedSum / totalWeight).setScale(XG_SCALE, RoundingMode.HALF_UP);
     }
 
-    private String determineResult(double homeProb, double drawProb, double awayProb) {
-        if (homeProb > drawProb && homeProb > awayProb) {
+    private BigDecimal probability(double value) {
+        return BigDecimal.valueOf(value).setScale(PROBABILITY_SCALE, RoundingMode.HALF_UP);
+    }
+
+    private void normalizeRoundedProbabilities(BigDecimal[] rounded,
+                                               double rawHome, double rawDraw, double rawAway) {
+        BigDecimal difference = BigDecimal.ONE.setScale(PROBABILITY_SCALE)
+                .subtract(rounded[0].add(rounded[1]).add(rounded[2]));
+        if (difference.signum() == 0) {
+            return;
+        }
+
+        int largestIndex = 0;
+        if (rawDraw > rawHome && rawDraw >= rawAway) {
+            largestIndex = 1;
+        } else if (rawAway > rawHome && rawAway > rawDraw) {
+            largestIndex = 2;
+        }
+
+        rounded[largestIndex] = rounded[largestIndex].add(difference);
+    }
+
+    private String determineResult(double homeProbability, double drawProbability, double awayProbability) {
+        if (homeProbability > drawProbability && homeProbability > awayProbability) {
             return "HOME";
         }
-        if (awayProb > drawProb && awayProb > homeProb) {
+        if (awayProbability > drawProbability && awayProbability > homeProbability) {
             return "AWAY";
         }
         return "DRAW";
     }
 
-    private MatchPrediction createDefaultPrediction(Match match) {
+    private MatchPrediction insufficientDataPrediction(Match match) {
         return MatchPrediction.builder()
                 .match(match)
-                .predictionStatus("PENDING")
-                .winHomeProb(BigDecimal.valueOf(0.33))
-                .drawProb(BigDecimal.valueOf(0.34))
-                .winAwayProb(BigDecimal.valueOf(0.33))
-                .predictedResult("DRAW")
-                .confidenceScore(BigDecimal.valueOf(0.34))
+                .predictionStatus("INSUFFICIENT_DATA")
+                .predictionReasoning("Not enough valid historical score or xG data to calculate a reliable prediction.")
                 .calculatedAt(Instant.now())
                 .build();
     }
 
-    private record WeightedPrediction(MatchPrediction prediction, double weight) {
+    private record PredictionSample(String engineName, MatchPrediction prediction, double weight,
+                                    double homeProbability, double drawProbability, double awayProbability) {
+        private BigDecimal homeXg() {
+            return prediction.getPredictedHomeXg();
+        }
+
+        private BigDecimal awayXg() {
+            return prediction.getPredictedAwayXg();
+        }
     }
 }

@@ -46,15 +46,61 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
                                                 @Param("provider") Provider provider,
                                                 Pageable pageable);
     
-    @Query("SELECT m FROM Match m WHERE m.matchTime BETWEEN :startTime AND :endTime AND m.status = :status")
-    List<Match> findByMatchTimeBetweenAndStatus(@Param("startTime") Instant startTime, 
-                                                @Param("endTime") Instant endTime, 
+    @Query("""
+            SELECT m FROM Match m
+            JOIN FETCH m.season season
+            JOIN FETCH season.league
+            JOIN FETCH m.homeTeam
+            JOIN FETCH m.awayTeam
+            WHERE m.matchTime BETWEEN :startTime AND :endTime
+              AND m.status = :status
+            """)
+    List<Match> findByMatchTimeBetweenAndStatus(@Param("startTime") Instant startTime,
+                                                @Param("endTime") Instant endTime,
                                                 @Param("status") MatchStatus status);
     
     @Query("SELECT m FROM Match m WHERE (m.homeTeam = :team OR m.awayTeam = :team) AND m.status = :status ORDER BY m.matchTime DESC")
     List<Match> findTop10ByHomeTeamOrAwayTeamAndStatusOrderByMatchTimeDesc(@Param("team") Team team, 
                                                                             @Param("status") MatchStatus status,
                                                                             Pageable pageable);
+
+    @Query("""
+            SELECT m FROM Match m
+            WHERE (m.homeTeam.id = :teamId OR m.awayTeam.id = :teamId)
+              AND m.status = :status
+              AND m.homeScore IS NOT NULL
+              AND m.awayScore IS NOT NULL
+            ORDER BY m.matchTime DESC
+            """)
+    List<Match> findRecentFinishedMatchesForTeam(@Param("teamId") Long teamId,
+                                                 @Param("status") MatchStatus status,
+                                                 Pageable pageable);
+
+    @Query("""
+            SELECT m FROM Match m
+            WHERE (m.homeTeam.id = :teamId OR m.awayTeam.id = :teamId)
+              AND m.season.league.id = :leagueId
+              AND m.status = :status
+              AND m.homeScore IS NOT NULL
+              AND m.awayScore IS NOT NULL
+            ORDER BY m.matchTime DESC
+            """)
+    List<Match> findRecentFinishedMatchesForTeamInLeague(@Param("teamId") Long teamId,
+                                                         @Param("leagueId") Long leagueId,
+                                                         @Param("status") MatchStatus status,
+                                                         Pageable pageable);
+
+    @Query("""
+            SELECT m FROM Match m
+            WHERE m.season.league.id = :leagueId
+              AND m.status = :status
+              AND m.homeScore IS NOT NULL
+              AND m.awayScore IS NOT NULL
+            ORDER BY m.matchTime DESC
+            """)
+    List<Match> findRecentFinishedMatchesInLeague(@Param("leagueId") Long leagueId,
+                                                  @Param("status") MatchStatus status,
+                                                  Pageable pageable);
 
     @Query("""
             SELECT m FROM Match m
@@ -78,6 +124,29 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
                                                                           @Param("status") MatchStatus status);
     
     List<Match> findByStatus(MatchStatus status);
+
+    @Query("""
+            SELECT DISTINCT m FROM Match m
+            JOIN m.externalIds externalId
+            WHERE m.status = :status
+              AND externalId.provider = :provider
+              AND (m.statisticsLastAttemptAt IS NULL OR m.statisticsLastAttemptAt < :retryBefore)
+              AND (
+                    NOT EXISTS (
+                        SELECT homeStats.id FROM MatchAdvancedStats homeStats
+                        WHERE homeStats.match = m AND homeStats.team = m.homeTeam
+                    )
+                    OR NOT EXISTS (
+                        SELECT awayStats.id FROM MatchAdvancedStats awayStats
+                        WHERE awayStats.match = m AND awayStats.team = m.awayTeam
+                    )
+              )
+            ORDER BY m.matchTime DESC
+            """)
+    List<Match> findFinishedMatchesMissingAdvancedStats(@Param("status") MatchStatus status,
+                                                       @Param("provider") Provider provider,
+                                                       @Param("retryBefore") Instant retryBefore,
+                                                       Pageable pageable);
     
     @Query("SELECT DISTINCT m.externalId FROM Match m WHERE m.season.league = :league")
     List<String> findDistinctExternalIdsByLeague(@Param("league") com.mmo.module.fb.domain.entity.League league);

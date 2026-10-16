@@ -57,14 +57,15 @@ public class MatchProcessPredictionJob extends AbstractJob<CronJob> {
             try {
                 MatchPrediction existingPrediction = matchPredictionRepository.findByMatchId(match.getId()).orElse(null);
 
-                if (existingPrediction != null && "PENDING".equals(existingPrediction.getPredictionStatus())) {
-                    MatchPrediction updatedPrediction = compositePredictionEngine.predict(match);
-                    updatedPrediction.setId(existingPrediction.getId());
-                    matchPredictionRepository.save(updatedPrediction);
-                    processedCount++;
-                } else if (existingPrediction == null) {
-                    MatchPrediction newPrediction = compositePredictionEngine.predict(match);
-                    matchPredictionRepository.save(newPrediction);
+                if (existingPrediction == null
+                        || "PENDING".equals(existingPrediction.getPredictionStatus())
+                        || "INSUFFICIENT_DATA".equals(existingPrediction.getPredictionStatus())) {
+                    MatchPrediction prediction = compositePredictionEngine.predict(match);
+                    if (prediction == null) {
+                        continue;
+                    }
+                    // MatchPrediction uses @MapsId, so the match ID is its primary key.
+                    matchPredictionRepository.save(prediction);
                     processedCount++;
                 }
             } catch (Exception e) {

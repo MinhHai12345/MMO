@@ -53,7 +53,7 @@ class CompositePredictionEngineTest {
     }
 
     @Test
-    void shouldReturnDefaultPredictionWhenNoUsableEngineExists() {
+    void shouldMarkPredictionAsInsufficientDataWhenNoUsableEngineExists() {
         PredictionEngine zeroWeightEngine = engine("ZERO", 0.0, prediction(0.9, 0.05, 0.05, 3.0, 0.2));
         PredictionEngine nullResultEngine = engine("NULL", 1.0, null);
 
@@ -63,12 +63,29 @@ class CompositePredictionEngineTest {
 
         MatchPrediction result = composite.predict(match);
 
-        assertEquals("PENDING", result.getPredictionStatus());
-        assertEquals("DRAW", result.getPredictedResult());
-        assertEquals(0, new BigDecimal("0.33").compareTo(result.getWinHomeProb()));
-        assertEquals(0, new BigDecimal("0.34").compareTo(result.getDrawProb()));
-        assertEquals(0, new BigDecimal("0.33").compareTo(result.getWinAwayProb()));
+        assertEquals("INSUFFICIENT_DATA", result.getPredictionStatus());
+        assertNull(result.getPredictedResult());
+        assertNull(result.getWinHomeProb());
+        assertNull(result.getDrawProb());
+        assertNull(result.getWinAwayProb());
+        assertNull(result.getPredictedHomeXg());
+        assertNull(result.getPredictedAwayXg());
         assertNotNull(result.getCalculatedAt());
+    }
+
+    @Test
+    void shouldContinueWhenOneEngineThrows() {
+        PredictionEngine broken = engine("BROKEN", 1.0, null);
+        when(broken.predict(any(Match.class))).thenThrow(new IllegalStateException("provider unavailable"));
+        PredictionEngine healthy = engine("HEALTHY", 1.0, prediction(0.6, 0.25, 0.15, 1.7, 0.8));
+
+        MatchPrediction result = new CompositePredictionEngine(List.of(broken, healthy))
+                .predict(Match.builder().build());
+
+        assertEquals("PENDING", result.getPredictionStatus());
+        assertEquals(0, new BigDecimal("1.00").compareTo(
+                result.getWinHomeProb().add(result.getDrawProb()).add(result.getWinAwayProb())));
+        verify(healthy).predict(any(Match.class));
     }
 
     private PredictionEngine engine(String name, double weight, MatchPrediction result) {

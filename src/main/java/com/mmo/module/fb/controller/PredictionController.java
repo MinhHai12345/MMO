@@ -87,7 +87,8 @@ public class PredictionController {
             
             List<MatchPrediction> predictions = matches.stream()
                     .map(match -> matchPredictionRepository.findByMatchId(match.getId()).orElse(null))
-                    .filter(prediction -> prediction != null)
+                    .filter(prediction -> prediction != null
+                            && "PENDING".equals(prediction.getPredictionStatus()))
                     .toList();
             
             return ResponseEntity.ok(predictions);
