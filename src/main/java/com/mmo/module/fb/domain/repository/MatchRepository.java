@@ -83,7 +83,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
               AND m.status = :status
               AND m.homeScore IS NOT NULL
               AND m.awayScore IS NOT NULL
-            ORDER BY m.matchTime DESC
+            ORDER BY m.matchTime DESC, m.id DESC
             """)
     List<Match> findRecentFinishedMatchesForTeamInLeague(@Param("teamId") Long teamId,
                                                          @Param("leagueId") Long leagueId,
@@ -96,7 +96,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
               AND m.status = :status
               AND m.homeScore IS NOT NULL
               AND m.awayScore IS NOT NULL
-            ORDER BY m.matchTime DESC
+            ORDER BY m.matchTime DESC, m.id DESC
             """)
     List<Match> findRecentFinishedMatchesInLeague(@Param("leagueId") Long leagueId,
                                                   @Param("status") MatchStatus status,
@@ -109,7 +109,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
               AND m.status = :status
               AND m.homeScore IS NOT NULL
               AND m.awayScore IS NOT NULL
-            ORDER BY m.matchTime DESC
+            ORDER BY m.matchTime DESC, m.id DESC
             """)
     List<Match> findRecentFinishedMatchesForTeamInSeason(@Param("teamId") Long teamId,
                                                          @Param("seasonId") Long seasonId,
