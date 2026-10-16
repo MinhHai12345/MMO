@@ -14,7 +14,7 @@ import java.util.function.Function;
 
 @Slf4j
 @Component
-public class CompositePredictionEngine implements PredictionEngine {
+public class CompositePredictionEngine {
 
     private static final int PROBABILITY_SCALE = 2;
     private static final int XG_SCALE = 2;
@@ -22,14 +22,14 @@ public class CompositePredictionEngine implements PredictionEngine {
     private final List<PredictionEngine> engines;
 
     public CompositePredictionEngine(List<PredictionEngine> engines) {
-        // This class is itself a PredictionEngine bean. Exclude it to prevent recursion.
+        // Keep the aggregate separate from PredictionEngine beans to avoid a Spring
+        // self-injection cycle. The filter also protects manual/test configurations.
         this.engines = engines.stream()
                 .filter(Objects::nonNull)
                 .filter(engine -> !"COMPOSITE".equalsIgnoreCase(engine.getEngineName()))
                 .toList();
     }
 
-    @Override
     public MatchPrediction predict(Match match) {
         Objects.requireNonNull(match, "match must not be null");
         log.info("Running composite prediction for match {}", match.getId());
@@ -72,16 +72,6 @@ public class CompositePredictionEngine implements PredictionEngine {
                         Math.max(drawProbability, awayProbability))).setScale(PROBABILITY_SCALE, RoundingMode.HALF_UP))
                 .calculatedAt(Instant.now())
                 .build();
-    }
-
-    @Override
-    public String getEngineName() {
-        return "COMPOSITE";
-    }
-
-    @Override
-    public double getWeight() {
-        return 1.0;
     }
 
     private double validWeight(double weight) {
