@@ -10,16 +10,17 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
 /**
- * Evaluates only predictions that were recorded before kickoff.
+ * Evaluates only predictions recorded before kickoff.
  *
- * Calibration is walk-forward: each test prediction is calibrated using only earlier
- * eligible predictions whose matches had already finished before that kickoff.
+ * Calibration is walk-forward: each test prediction is calibrated only with earlier
+ * predictions whose outcomes should have been available before the test kickoff.
  */
 @Slf4j
 @Service
@@ -29,6 +30,9 @@ public class WalkForwardBacktestService {
     private static final int MAX_SAMPLES = 10_000;
     private static final int MIN_CALIBRATION_SAMPLES = 100;
     private static final double EPSILON = 1.0e-12;
+    // The schema has no final-whistle timestamp. A conservative lag reduces leakage from
+    // matches that kicked off earlier but were still in progress when the next match started.
+    private static final Duration RESULT_AVAILABILITY_LAG = Duration.ofHours(4);
 
     private final MatchPredictionRepository matchPredictionRepository;
 
@@ -51,28 +55,45 @@ public class WalkForwardBacktestService {
         Metrics calibratedMetrics = new Metrics();
         int tested = 0;
         int calibratedCount = 0;
+        int nextTrainingIndex = 0;
+        int index = 0;
 
-        for (Sample sample : samples) {
-            // Outcomes from matches kicking off at or after this kickoff are never used.
-            if (!sample.kickoff().isBefore(toExclusive)) {
-                continue;
-            }
-            if (sample.kickoff().isBefore(fromInclusive)) {
-                prior.add(sample);
-                continue;
-            }
-
-            double[] calibrated = sample.probabilities();
-            if (prior.size() >= MIN_CALIBRATION_SAMPLES) {
-                double temperature = fitTemperature(prior);
-                calibrated = applyTemperature(sample.probabilities(), temperature);
-                calibratedCount++;
+        while (index < samples.size()) {
+            Instant kickoff = samples.get(index).kickoff();
+            int groupEnd = index + 1;
+            while (groupEnd < samples.size() && samples.get(groupEnd).kickoff().equals(kickoff)) {
+                groupEnd++;
             }
 
-            rawMetrics.add(sample.probabilities(), sample.actualClass());
-            calibratedMetrics.add(calibrated, sample.actualClass());
-            tested++;
-            prior.add(sample);
+            // Only train on outcomes that are at least four hours older than this kickoff.
+            Instant trainingCutoff = kickoff.minus(RESULT_AVAILABILITY_LAG);
+            while (nextTrainingIndex < index
+                    && samples.get(nextTrainingIndex).kickoff().isBefore(trainingCutoff)) {
+                prior.add(samples.get(nextTrainingIndex));
+                nextTrainingIndex++;
+            }
+
+            if (!kickoff.isBefore(toExclusive) && !kickoff.isBefore(fromInclusive)) {
+                break;
+            }
+
+            if (!kickoff.isBefore(fromInclusive)) {
+                for (int i = index; i < groupEnd; i++) {
+                    Sample sample = samples.get(i);
+                    double[] calibrated = sample.probabilities();
+                    if (prior.size() >= MIN_CALIBRATION_SAMPLES) {
+                        double temperature = fitTemperature(prior);
+                        calibrated = applyTemperature(sample.probabilities(), temperature);
+                        calibratedCount++;
+                    }
+
+                    rawMetrics.add(sample.probabilities(), sample.actualClass());
+                    calibratedMetrics.add(calibrated, sample.actualClass());
+                    tested++;
+                }
+            }
+
+            index = groupEnd;
         }
 
         BacktestReport report = new BacktestReport(
@@ -81,8 +102,8 @@ public class WalkForwardBacktestService {
                 tested < MIN_CALIBRATION_SAMPLES
                         ? "INSUFFICIENT_TEST_SAMPLES"
                         : calibratedCount == 0 ? "INSUFFICIENT_CALIBRATION_HISTORY" : "OK");
-        log.info("Walk-forward backtest: from={}, to={}, matches={}, calibrated={}, rawBrier={}, calibratedBrier={}, rawLogLoss={}, calibratedLogLoss={}, status={}",
-                fromInclusive, toExclusive, tested, calibratedCount,
+        log.info("Walk-forward backtest: from={}, to={}, matches={}, calibrated={}, calibrationHistory={}, rawBrier={}, calibratedBrier={}, rawLogLoss={}, calibratedLogLoss={}, status={}",
+                fromInclusive, toExclusive, tested, calibratedCount, prior.size(),
                 report.raw().brierScore(), report.calibrated().brierScore(),
                 report.raw().logLoss(), report.calibrated().logLoss(), report.status());
         return report;
@@ -175,7 +196,7 @@ public class WalkForwardBacktestService {
             Instant to,
             int testedMatches,
             int calibratedMatches,
-            int eligibleHistoricalMatches,
+            int calibrationHistorySamples,
             MetricSnapshot raw,
             MetricSnapshot calibrated,
             String status) {
