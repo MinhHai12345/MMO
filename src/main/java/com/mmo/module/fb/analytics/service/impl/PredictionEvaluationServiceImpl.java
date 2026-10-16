@@ -1,7 +1,6 @@
 package com.mmo.module.fb.analytics.service.impl;
 
 import com.mmo.module.fb.analytics.service.PredictionEvaluationService;
-
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
 import com.mmo.module.fb.domain.entity.PredictionPerformance;
@@ -30,6 +29,7 @@ public class PredictionEvaluationServiceImpl implements PredictionEvaluationServ
     private final MatchPredictionRepository matchPredictionRepository;
     private final PredictionPerformanceRepository predictionPerformanceRepository;
 
+    @Override
     @Transactional
     public int evaluateFinishedPredictions() {
         List<MatchPrediction> predictions = matchPredictionRepository.findUnevaluatedPredictions(
