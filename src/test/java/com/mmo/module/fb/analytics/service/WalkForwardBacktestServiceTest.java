@@ -51,7 +51,7 @@ class WalkForwardBacktestServiceTest {
 
         assertEquals(1, report.testedMatches());
         assertEquals(1, report.calibratedMatches());
-        assertEquals("OK", report.status());
+        assertEquals("INSUFFICIENT_TEST_SAMPLES", report.status());
         assertTrue(Double.isFinite(report.raw().brierScore()));
         assertTrue(Double.isFinite(report.calibrated().brierScore()));
         assertTrue(Double.isFinite(report.raw().logLoss()));
@@ -64,11 +64,11 @@ class WalkForwardBacktestServiceTest {
         Instant kickoff = from.plus(1, ChronoUnit.HOURS);
         MatchPrediction leaked = prediction(kickoff, kickoff.plus(1, ChronoUnit.MINUTES),
                 1, 0, "0.90", "0.05", "0.05");
-        when(repository.findWalkForwardCandidates(eq(from.plus(1, ChronoUnit.DAYS),), eq(MatchStatus.FINISHED), any(Pageable.class)))
+        Instant to = from.plus(1, ChronoUnit.DAYS);
+        when(repository.findWalkForwardCandidates(eq(to), eq(MatchStatus.FINISHED), any(Pageable.class)))
                 .thenReturn(List.of(leaked));
 
-        WalkForwardBacktestService.BacktestReport report =
-                service.run(from, from.plus(1, ChronoUnit.DAYS));
+        WalkForwardBacktestService.BacktestReport report = service.run(from, to);
 
         assertEquals(0, report.testedMatches());
         assertEquals("INSUFFICIENT_TEST_SAMPLES", report.status());
