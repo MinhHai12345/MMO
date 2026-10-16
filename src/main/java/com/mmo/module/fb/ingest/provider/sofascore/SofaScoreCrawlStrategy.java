@@ -304,11 +304,15 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
 
         MatchAdvancedStats homeStats = upsertTeamStatistics(match, match.getHomeTeam(), items, true);
         MatchAdvancedStats awayStats = upsertTeamStatistics(match, match.getAwayTeam(), items, false);
+        // If xG was received, persist a per-team snapshot even when the provider does
+        // not expose the other advanced fields. This records that the event was processed
+        // and prevents repeatedly fetching a match whose source simply lacks those fields.
+        boolean hasMatchXg = match.getHomeXG() != null || match.getAwayXG() != null;
         List<MatchAdvancedStats> statsToSave = new ArrayList<>(2);
-        if (hasAdvancedMetrics(homeStats)) {
+        if (hasAdvancedMetrics(homeStats) || hasMatchXg) {
             statsToSave.add(homeStats);
         }
-        if (hasAdvancedMetrics(awayStats)) {
+        if (hasAdvancedMetrics(awayStats) || hasMatchXg) {
             statsToSave.add(awayStats);
         }
         if (!statsToSave.isEmpty()) {
