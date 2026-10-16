@@ -30,8 +30,9 @@ public class MatchHistoryAnalyticsService {
             return Optional.empty();
         }
 
-        TeamHistory home = load(match.getHomeTeam());
-        TeamHistory away = load(match.getAwayTeam());
+        Long leagueId = match.getSeason().getLeague().getId();
+        TeamHistory home = load(match.getHomeTeam(), leagueId);
+        TeamHistory away = load(match.getAwayTeam(), leagueId);
 
         Rate homeAttack = chooseRate(home, true, Metric.GOALS_FOR);
         Rate homeDefence = chooseRate(home, true, Metric.GOALS_AGAINST);
@@ -75,9 +76,9 @@ public class MatchHistoryAnalyticsService {
                 awayAttack.samples() + homeDefence.samples()));
     }
 
-    private TeamHistory load(Team team) {
-        List<Match> matches = matchRepository.findRecentFinishedMatchesForTeam(
-                team.getId(), MatchStatus.FINISHED, PageRequest.of(0, HISTORY_SIZE));
+    private TeamHistory load(Team team, Long leagueId) {
+        List<Match> matches = matchRepository.findRecentFinishedMatchesForTeamInLeague(
+                team.getId(), leagueId, MatchStatus.FINISHED, PageRequest.of(0, HISTORY_SIZE));
         return new TeamHistory(team, matches == null ? List.of() : matches);
     }
 
@@ -136,6 +137,8 @@ public class MatchHistoryAnalyticsService {
     private boolean hasTeams(Match match) {
         return match != null && match.getHomeTeam() != null && match.getAwayTeam() != null
                 && match.getHomeTeam().getId() != null && match.getAwayTeam().getId() != null
+                && match.getSeason() != null && match.getSeason().getLeague() != null
+                && match.getSeason().getLeague().getId() != null
                 && !match.getHomeTeam().getId().equals(match.getAwayTeam().getId());
     }
 
