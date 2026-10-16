@@ -32,42 +32,15 @@ public class MatchHistoryAnalyticsServiceImpl implements MatchHistoryAnalyticsSe
 
     @Override
     public Optional<ExpectedGoals> estimateFromGoals(Match match) {
-        if (!hasTeamsAndLeague(match)) {
-            return Optional.empty();
-        }
-
-        Long leagueId = match.getSeason().getLeague().getId();
-        TeamHistory home = loadTeamHistory(match.getHomeTeam(), leagueId);
-        TeamHistory away = loadTeamHistory(match.getAwayTeam(), leagueId);
-        List<Match> leagueMatches = loadLeagueHistory(leagueId);
-
-        Rate homeAttack = chooseTeamRate(home, true, Metric.GOALS_FOR);
-        Rate homeDefence = chooseTeamRate(home, true, Metric.GOALS_AGAINST);
-        Rate awayAttack = chooseTeamRate(away, false, Metric.GOALS_FOR);
-        Rate awayDefence = chooseTeamRate(away, false, Metric.GOALS_AGAINST);
-
-        Rate leagueHomeGoals = calculateLeagueAverage(leagueMatches, true, false);
-        Rate leagueAwayGoals = calculateLeagueAverage(leagueMatches, false, false);
-
-        if (homeAttack == null || homeDefence == null || awayAttack == null || awayDefence == null
-                || !validLeagueBaseline(leagueHomeGoals) || !validLeagueBaseline(leagueAwayGoals)) {
-            return Optional.empty();
-        }
-
-        // Attack and defence are normalized against the same competition's venue-specific
-        // scoring baseline, preventing one league's scoring environment from leaking into another.
-        double expectedHome = homeAttack.value() * awayDefence.value() / leagueHomeGoals.value();
-        double expectedAway = awayAttack.value() * homeDefence.value() / leagueAwayGoals.value();
-
-        return Optional.of(new ExpectedGoals(
-                clampExpectedGoals(expectedHome),
-                clampExpectedGoals(expectedAway),
-                Math.min(Math.min(homeAttack.samples(), awayDefence.samples()), leagueHomeGoals.samples()),
-                Math.min(Math.min(awayAttack.samples(), homeDefence.samples()), leagueAwayGoals.samples())));
+        return estimate(match, false);
     }
 
     @Override
     public Optional<ExpectedGoals> estimateFromExpectedGoals(Match match) {
+        return estimate(match, true);
+    }
+
+    private Optional<ExpectedGoals> estimate(Match match, boolean useExpectedGoals) {
         if (!hasTeamsAndLeague(match)) {
             return Optional.empty();
         }
@@ -77,27 +50,28 @@ public class MatchHistoryAnalyticsServiceImpl implements MatchHistoryAnalyticsSe
         TeamHistory away = loadTeamHistory(match.getAwayTeam(), leagueId);
         List<Match> leagueMatches = loadLeagueHistory(leagueId);
 
-        Rate homeAttack = chooseTeamRate(home, true, Metric.XG_FOR);
-        Rate homeDefence = chooseTeamRate(home, true, Metric.XG_AGAINST);
-        Rate awayAttack = chooseTeamRate(away, false, Metric.XG_FOR);
-        Rate awayDefence = chooseTeamRate(away, false, Metric.XG_AGAINST);
-
-        Rate leagueHomeXg = calculateLeagueAverage(leagueMatches, true, true);
-        Rate leagueAwayXg = calculateLeagueAverage(leagueMatches, false, true);
+        Metric attackMetric = useExpectedGoals ? Metric.XG_FOR : Metric.GOALS_FOR;
+        Metric defenceMetric = useExpectedGoals ? Metric.XG_AGAINST : Metric.GOALS_AGAINST;
+        Rate homeAttack = chooseTeamRate(home, true, attackMetric);
+        Rate homeDefence = chooseTeamRate(home, true, defenceMetric);
+        Rate awayAttack = chooseTeamRate(away, false, attackMetric);
+        Rate awayDefence = chooseTeamRate(away, false, defenceMetric);
+        Rate leagueHomeBaseline = calculateLeagueAverage(leagueMatches, true, useExpectedGoals);
+        Rate leagueAwayBaseline = calculateLeagueAverage(leagueMatches, false, useExpectedGoals);
 
         if (homeAttack == null || homeDefence == null || awayAttack == null || awayDefence == null
-                || !validLeagueBaseline(leagueHomeXg) || !validLeagueBaseline(leagueAwayXg)) {
+                || !validLeagueBaseline(leagueHomeBaseline) || !validLeagueBaseline(leagueAwayBaseline)) {
             return Optional.empty();
         }
 
-        double expectedHome = homeAttack.value() * awayDefence.value() / leagueHomeXg.value();
-        double expectedAway = awayAttack.value() * homeDefence.value() / leagueAwayXg.value();
+        double expectedHome = homeAttack.value() * awayDefence.value() / leagueHomeBaseline.value();
+        double expectedAway = awayAttack.value() * homeDefence.value() / leagueAwayBaseline.value();
 
         return Optional.of(new ExpectedGoals(
                 clampExpectedGoals(expectedHome),
                 clampExpectedGoals(expectedAway),
-                Math.min(Math.min(homeAttack.samples(), awayDefence.samples()), leagueHomeXg.samples()),
-                Math.min(Math.min(awayAttack.samples(), homeDefence.samples()), leagueAwayXg.samples())));
+                Math.min(Math.min(homeAttack.samples(), awayDefence.samples()), leagueHomeBaseline.samples()),
+                Math.min(Math.min(awayAttack.samples(), homeDefence.samples()), leagueAwayBaseline.samples())));
     }
 
     private TeamHistory loadTeamHistory(Team team, Long leagueId) {
