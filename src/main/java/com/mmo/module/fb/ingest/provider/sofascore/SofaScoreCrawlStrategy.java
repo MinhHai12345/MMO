@@ -2,16 +2,23 @@ package com.mmo.module.fb.ingest.provider.sofascore;
 
 import com.mmo.module.fb.domain.entity.League;
 import com.mmo.module.fb.domain.entity.LeagueExternalId;
+import com.mmo.module.fb.domain.entity.Match;
+import com.mmo.module.fb.domain.entity.MatchAdvancedStats;
+import com.mmo.module.fb.domain.entity.MatchExternalId;
 import com.mmo.module.fb.domain.entity.Season;
 import com.mmo.module.fb.domain.entity.SeasonExternalId;
+import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.repository.LeagueRepository;
+import com.mmo.module.fb.domain.repository.MatchAdvancedStatsRepository;
+import com.mmo.module.fb.domain.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.domain.repository.MatchPredictionRepository;
 import com.mmo.module.fb.domain.repository.MatchRepository;
 import com.mmo.module.fb.domain.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.domain.repository.SeasonRepository;
 import com.mmo.module.fb.domain.repository.TeamRepository;
+import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchStatisticsData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
 import com.mmo.module.fb.ingest.provider.service.SofaCrawlerService;
@@ -20,10 +27,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Component;
 
+import org.springframework.data.domain.PageRequest;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -39,6 +57,8 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
     private final MatchPredictionRepository matchPredictionRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final SeasonExternalIdRepository seasonExternalIdRepository;
+    private final MatchExternalIdRepository matchExternalIdRepository;
+    private final MatchAdvancedStatsRepository matchAdvancedStatsRepository;
 
     public void syncLeagues() {
         executeSimpleStorePipeline(
@@ -197,41 +217,195 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
     }
 
     public void storeMatchStatistics() {
-//        do {
-//            List<Match> targetMatches =
-//                    matchRepository.findTop30ByStatusAndHomeXGIsNullAndAwayXGIsNullAndXgRetryCountLessThanOrderByXgRetryCountAsc(MatchStatus.FINISHED, 3);
-//            if (CollectionUtils.isEmpty(targetMatches)) {
-//                log.info("🏁 [Statistics] Hoàn thành! Không còn trận đấu nào cần cào xG nữa.");
-//                break;
-//            }
-//            executeStorePipeline(
-//                    targetMatches,
-//                    (match, page) -> sofaCrawlerService.fetchMatchStatistics(match.getSofaScoreId(), page),
-//                    (match, statistics) -> {
-//                        if (CollectionUtils.isEmpty(statistics)) return;
-//                        boolean hasXg = false;
-//                        SofaMatchStatisticsData.StatisticItemDTO xGItem = statistics.stream()
-//                                .filter(Objects::nonNull)
-//                                .map(SofaMatchStatisticsData.PeriodStatisticsDTO::getGroups)
-//                                .flatMap(List::stream)
-//                                .map(SofaMatchStatisticsData.GroupDTO::getStatisticsItems)
-//                                .flatMap(List::stream)
-//                                .filter(dto -> "expectedGoals".equalsIgnoreCase(dto.getKey()))
-//                                .findFirst().orElse(null);
-//
-//                        if (xGItem != null && xGItem.getAwayValue() != null && xGItem.getHomeValue() != null) {
-//                            match.setStatus(MatchStatus.FINISHED);
-//                            match.setAwayXG(xGItem.getAwayValue());
-//                            match.setHomeXG(xGItem.getHomeValue());
-//                            hasXg = true;
-//                        }
-//                        if (!hasXg) {
-//                            match.setXgRetryCount(match.getXgRetryCount() + 1);
-//                        }
-//                        matchRepository.save(match);
-//                    }
-//            );
-//        } while (true);
+        List<Match> targetMatches = matchRepository.findFinishedMatchesMissingAdvancedStats(
+                MatchStatus.FINISHED, Provider.SOFA_SCORE, PageRequest.of(0, 30));
+
+        if (CollectionUtils.isEmpty(targetMatches)) {
+            log.debug("No finished matches are missing SofaScore advanced statistics");
+            return;
+        }
+
+        log.info("Fetching advanced statistics for {} finished matches", targetMatches.size());
+        executeStorePipeline(
+                targetMatches,
+                (match, page) -> {
+                    Optional<MatchExternalId> externalId = matchExternalIdRepository
+                            .findByMatchIdAndProvider(match.getId(), Provider.SOFA_SCORE);
+                    if (externalId.isEmpty()) {
+                        return Collections.emptyList();
+                    }
+                    try {
+                        return sofaCrawlerService.fetchMatchStatistics(
+                                Long.valueOf(externalId.get().getExternalId()), page);
+                    } catch (NumberFormatException exception) {
+                        log.warn("Invalid SofaScore match ID mapping for matchId={}", match.getId());
+                        return Collections.emptyList();
+                    }
+                },
+                this::persistMatchStatistics
+        );
+    }
+
+    private void persistMatchStatistics(Match match,
+                                       List<SofaMatchStatisticsData.PeriodStatisticsDTO> periods) {
+        if (match == null || CollectionUtils.isEmpty(periods)) {
+            return;
+        }
+
+        List<SofaMatchStatisticsData.StatisticItemDTO> items = periods.stream()
+                .filter(Objects::nonNull)
+                .filter(period -> "ALL".equalsIgnoreCase(period.getPeriod()))
+                .findFirst()
+                .map(SofaMatchStatisticsData.PeriodStatisticsDTO::getGroups)
+                .orElseGet(() -> periods.stream()
+                        .filter(Objects::nonNull)
+                        .filter(period -> CollectionUtils.isNotEmpty(period.getGroups()))
+                        .findFirst()
+                        .map(SofaMatchStatisticsData.PeriodStatisticsDTO::getGroups)
+                        .orElse(Collections.emptyList()))
+                .stream()
+                .filter(Objects::nonNull)
+                .map(SofaMatchStatisticsData.GroupDTO::getStatisticsItems)
+                .filter(CollectionUtils::isNotEmpty)
+                .flatMap(List::stream)
+                .filter(Objects::nonNull)
+                .toList();
+
+        if (items.isEmpty()) {
+            return;
+        }
+
+        BigDecimal homeXg = statisticValue(items, true, "expectedGoals", "xg");
+        BigDecimal awayXg = statisticValue(items, false, "expectedGoals", "xg");
+        boolean matchChanged = false;
+        if (homeXg != null && match.getHomeXG() == null) {
+            match.setHomeXG(homeXg.doubleValue());
+            matchChanged = true;
+        }
+        if (awayXg != null && match.getAwayXG() == null) {
+            match.setAwayXG(awayXg.doubleValue());
+            matchChanged = true;
+        }
+        if (matchChanged) {
+            matchRepository.save(match);
+        }
+
+        MatchAdvancedStats homeStats = upsertTeamStatistics(match, match.getHomeTeam(), items, true);
+        MatchAdvancedStats awayStats = upsertTeamStatistics(match, match.getAwayTeam(), items, false);
+        List<MatchAdvancedStats> statsToSave = new ArrayList<>(2);
+        if (hasAdvancedMetrics(homeStats)) {
+            statsToSave.add(homeStats);
+        }
+        if (hasAdvancedMetrics(awayStats)) {
+            statsToSave.add(awayStats);
+        }
+        if (!statsToSave.isEmpty()) {
+            matchAdvancedStatsRepository.saveAll(statsToSave);
+        }
+    }
+
+    private MatchAdvancedStats upsertTeamStatistics(Match match,
+                                                     com.mmo.module.fb.domain.entity.Team team,
+                                                     List<SofaMatchStatisticsData.StatisticItemDTO> items,
+                                                     boolean homeSide) {
+        MatchAdvancedStats stats = matchAdvancedStatsRepository
+                .findByMatchIdAndTeamId(match.getId(), team.getId())
+                .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
+
+        setDecimalIfPresent(items, homeSide, value -> stats.setPpda(value),
+                "ppda", "opponentHalfPressuresPerDefensiveAction");
+        setIntegerIfPresent(items, homeSide, value -> stats.setPpdaAtt(value), "ppdaAtt");
+        setIntegerIfPresent(items, homeSide, value -> stats.setPpdaDef(value), "ppdaDef");
+        setDecimalIfPresent(items, homeSide, value -> stats.setFieldTilt(value), "fieldTilt");
+        setDecimalIfPresent(items, homeSide, value -> stats.setXgChain(value), "xgChain");
+        setDecimalIfPresent(items, homeSide, value -> stats.setXgBuildup(value), "xgBuildup");
+        setDecimalIfPresent(items, homeSide, value -> stats.setPossession(value), "ballPossession", "possession");
+        setIntegerIfPresent(items, homeSide, value -> stats.setDeepCompletions(value), "deepCompletions");
+        setIntegerIfPresent(items, homeSide, value -> stats.setFinalThirdEntries(value), "finalThirdEntries");
+        setIntegerIfPresent(items, homeSide, value -> stats.setShotsFromBox(value),
+                "shotsInsideBox", "shotsFromInsideTheBox", "shotsFromBox");
+        setIntegerIfPresent(items, homeSide, value -> stats.setShotsOutsideBox(value),
+                "shotsOutsideBox", "shotsFromOutsideTheBox");
+        setDecimalIfPresent(items, homeSide, value -> stats.setSetPieceXg(value),
+                "setPieceXg", "setPieceExpectedGoals");
+        setDecimalIfPresent(items, homeSide, value -> stats.setCounterAttackXg(value),
+                "counterAttackXg", "counterAttackExpectedGoals");
+        return stats;
+    }
+
+    private boolean hasAdvancedMetrics(MatchAdvancedStats stats) {
+        return stats.getPpda() != null || stats.getPpdaAtt() != null || stats.getPpdaDef() != null
+                || stats.getFieldTilt() != null || stats.getXgChain() != null || stats.getXgBuildup() != null
+                || stats.getPossession() != null || stats.getDeepCompletions() != null
+                || stats.getFinalThirdEntries() != null || stats.getShotsFromBox() != null
+                || stats.getShotsOutsideBox() != null || stats.getSetPieceXg() != null
+                || stats.getCounterAttackXg() != null;
+    }
+
+    private void setDecimalIfPresent(List<SofaMatchStatisticsData.StatisticItemDTO> items,
+                                     boolean homeSide,
+                                     java.util.function.Consumer<BigDecimal> setter,
+                                     String... aliases) {
+        BigDecimal value = statisticValue(items, homeSide, aliases);
+        if (value != null) {
+            setter.accept(value);
+        }
+    }
+
+    private void setIntegerIfPresent(List<SofaMatchStatisticsData.StatisticItemDTO> items,
+                                     boolean homeSide,
+                                     java.util.function.Consumer<Integer> setter,
+                                     String... aliases) {
+        BigDecimal value = statisticValue(items, homeSide, aliases);
+        if (value != null && value.signum() >= 0) {
+            setter.accept(value.setScale(0, RoundingMode.HALF_UP).intValue());
+        }
+    }
+
+    private BigDecimal statisticValue(List<SofaMatchStatisticsData.StatisticItemDTO> items,
+                                      boolean homeSide,
+                                      String... aliases) {
+        Set<String> normalizedAliases = java.util.Arrays.stream(aliases)
+                .map(this::normalizeStatisticKey)
+                .collect(Collectors.toSet());
+
+        for (SofaMatchStatisticsData.StatisticItemDTO item : items) {
+            String key = normalizeStatisticKey(item.getKey());
+            String name = normalizeStatisticKey(item.getName());
+            if (!normalizedAliases.contains(key) && !normalizedAliases.contains(name)) {
+                continue;
+            }
+
+            BigDecimal typedValue = homeSide ? item.getHomeValue() : item.getAwayValue();
+            if (typedValue != null && typedValue.signum() >= 0) {
+                return typedValue;
+            }
+
+            BigDecimal parsedValue = parseNumericValue(homeSide ? item.getHome() : item.getAway());
+            if (parsedValue != null && parsedValue.signum() >= 0) {
+                return parsedValue;
+            }
+        }
+        return null;
+    }
+
+    private String normalizeStatisticKey(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
+    }
+
+    private BigDecimal parseNumericValue(String value) {
+        if (value == null || value.isBlank() || "-".equals(value.trim())) {
+            return null;
+        }
+        Matcher matcher = Pattern.compile("-?\\d+(?:[.,]\\d+)?").matcher(value);
+        if (!matcher.find()) {
+            return null;
+        }
+        try {
+            return new BigDecimal(matcher.group().replace(',', '.'));
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     public void prepareMatchUpcomingDaily() {
