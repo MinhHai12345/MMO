@@ -57,8 +57,9 @@ public class MatchHistoryAnalyticsService {
             return Optional.empty();
         }
 
-        TeamHistory home = load(match.getHomeTeam());
-        TeamHistory away = load(match.getAwayTeam());
+        Long leagueId = match.getSeason().getLeague().getId();
+        TeamHistory home = load(match.getHomeTeam(), leagueId);
+        TeamHistory away = load(match.getAwayTeam(), leagueId);
 
         Rate homeAttack = chooseRate(home, true, Metric.XG_FOR);
         Rate homeDefence = chooseRate(home, true, Metric.XG_AGAINST);
@@ -72,8 +73,8 @@ public class MatchHistoryAnalyticsService {
         return Optional.of(new ExpectedGoals(
                 combineAttackAndDefence(homeAttack.value(), awayDefence.value()),
                 combineAttackAndDefence(awayAttack.value(), homeDefence.value()),
-                homeAttack.samples() + awayDefence.samples(),
-                awayAttack.samples() + homeDefence.samples()));
+                Math.min(homeAttack.samples(), awayDefence.samples()),
+                Math.min(awayAttack.samples(), homeDefence.samples())));
     }
 
     private TeamHistory load(Team team, Long leagueId) {
