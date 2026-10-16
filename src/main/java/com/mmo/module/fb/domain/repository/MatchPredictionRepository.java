@@ -37,9 +37,8 @@ public interface MatchPredictionRepository extends JpaRepository<MatchPrediction
                                                      Pageable pageable);
 
     /**
-     * Only predictions timestamped strictly before kickoff are eligible.
-     * Include already-evaluated predictions: their results are training labels for later folds.
-     * Descending order makes the bounded query retain recent history; callers re-sort chronologically.
+     * Recent pre-window history used to fit calibration. The caller deliberately bounds
+     * this query to MAX_SAMPLES; unlike the test window, training history may be capped.
      */
     @Query("""
             SELECT p FROM MatchPrediction p
@@ -47,16 +46,41 @@ public interface MatchPredictionRepository extends JpaRepository<MatchPrediction
             WHERE m.status = :matchStatus
               AND m.homeScore IS NOT NULL
               AND m.awayScore IS NOT NULL
-              AND m.matchTime < :throughExclusive
+              AND m.matchTime < :fromInclusive
               AND p.calculatedAt IS NOT NULL
               AND p.calculatedAt < m.matchTime
               AND p.winHomeProb IS NOT NULL
               AND p.drawProb IS NOT NULL
               AND p.winAwayProb IS NOT NULL
-            ORDER BY m.matchTime DESC
+            ORDER BY m.matchTime DESC, p.id DESC
             """)
-    List<MatchPrediction> findWalkForwardCandidates(
-            @Param("throughExclusive") Instant throughExclusive,
+    List<MatchPrediction> findWalkForwardTrainingCandidates(
+            @Param("fromInclusive") Instant fromInclusive,
+            @Param("matchStatus") MatchStatus matchStatus,
+            Pageable pageable);
+
+    /**
+     * Return every eligible prediction in the requested test window. The service pages
+     * this query until exhaustion so a busy window cannot be silently truncated.
+     */
+    @Query("""
+            SELECT p FROM MatchPrediction p
+            JOIN FETCH p.match m
+            WHERE m.status = :matchStatus
+              AND m.homeScore IS NOT NULL
+              AND m.awayScore IS NOT NULL
+              AND m.matchTime >= :fromInclusive
+              AND m.matchTime < :toExclusive
+              AND p.calculatedAt IS NOT NULL
+              AND p.calculatedAt < m.matchTime
+              AND p.winHomeProb IS NOT NULL
+              AND p.drawProb IS NOT NULL
+              AND p.winAwayProb IS NOT NULL
+            ORDER BY m.matchTime ASC, p.id ASC
+            """)
+    List<MatchPrediction> findWalkForwardTestCandidates(
+            @Param("fromInclusive") Instant fromInclusive,
+            @Param("toExclusive") Instant toExclusive,
             @Param("matchStatus") MatchStatus matchStatus,
             Pageable pageable);
 
