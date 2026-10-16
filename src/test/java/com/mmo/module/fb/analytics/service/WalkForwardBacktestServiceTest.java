@@ -44,8 +44,11 @@ class WalkForwardBacktestServiceTest {
         predictions.add(prediction(from.plus(1, ChronoUnit.HOURS),
                 from.minus(1, ChronoUnit.HOURS), 2, 0, "0.55", "0.25", "0.20"));
 
-        when(repository.findWalkForwardCandidates(eq(to), eq(MatchStatus.FINISHED), any(Pageable.class)))
-                .thenReturn(predictions);
+        when(repository.findWalkForwardTrainingCandidates(eq(from), eq(MatchStatus.FINISHED), any(Pageable.class)))
+                .thenReturn(predictions.subList(0, 100));
+        when(repository.findWalkForwardTestCandidates(
+                eq(from), eq(to), eq(MatchStatus.FINISHED), any(Pageable.class)))
+                .thenReturn(List.of(predictions.get(100)));
 
         WalkForwardBacktestService.BacktestReport report = service.run(from, to);
 
@@ -65,7 +68,10 @@ class WalkForwardBacktestServiceTest {
         MatchPrediction leaked = prediction(kickoff, kickoff.plus(1, ChronoUnit.MINUTES),
                 1, 0, "0.90", "0.05", "0.05");
         Instant to = from.plus(1, ChronoUnit.DAYS);
-        when(repository.findWalkForwardCandidates(eq(to), eq(MatchStatus.FINISHED), any(Pageable.class)))
+        when(repository.findWalkForwardTrainingCandidates(eq(from), eq(MatchStatus.FINISHED), any(Pageable.class)))
+                .thenReturn(List.of());
+        when(repository.findWalkForwardTestCandidates(
+                eq(from), eq(to), eq(MatchStatus.FINISHED), any(Pageable.class)))
                 .thenReturn(List.of(leaked));
 
         WalkForwardBacktestService.BacktestReport report = service.run(from, to);
