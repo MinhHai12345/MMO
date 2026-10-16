@@ -54,6 +54,8 @@ class MatchHistoryAnalyticsServiceTest {
                 eq(1L), eq(9L), eq(MatchStatus.FINISHED), any(Pageable.class))).thenReturn(homeHistory);
         when(matchRepository.findRecentFinishedMatchesForTeamInLeague(
                 eq(2L), eq(9L), eq(MatchStatus.FINISHED), any(Pageable.class))).thenReturn(awayHistory);
+        when(matchRepository.findRecentFinishedMatchesInLeague(
+                eq(9L), eq(MatchStatus.FINISHED), any(Pageable.class))).thenReturn(leagueBaseline());
 
         var result = analyticsService.estimateFromGoals(upcomingMatch()).orElseThrow();
 
@@ -65,6 +67,33 @@ class MatchHistoryAnalyticsServiceTest {
                 eq(1L), eq(9L), eq(MatchStatus.FINISHED), any(Pageable.class));
         verify(matchRepository).findRecentFinishedMatchesForTeamInLeague(
                 eq(2L), eq(9L), eq(MatchStatus.FINISHED), any(Pageable.class));
+    }
+
+    @Test
+    void estimatesExpectedGoalsOnlyWhenTeamAndLeagueXgCoverageExists() {
+        List<Match> homeHistory = List.of(
+                historyMatch(homeTeam, team(3L, "Opponent 1"), 3, 1, 2.1, 0.5),
+                historyMatch(homeTeam, team(4L, "Opponent 2"), 2, 0, 1.4, 0.2),
+                historyMatch(homeTeam, team(5L, "Opponent 3"), 1, 0, 0.9, 0.3)
+        );
+        List<Match> awayHistory = List.of(
+                historyMatch(team(6L, "Opponent 4"), awayTeam, 1, 2, 1.0, 1.8),
+                historyMatch(team(7L, "Opponent 5"), awayTeam, 2, 1, 1.7, 1.2),
+                historyMatch(team(8L, "Opponent 6"), awayTeam, 0, 1, 0.6, 1.1)
+        );
+        when(matchRepository.findRecentFinishedMatchesForTeamInLeague(
+                eq(1L), eq(9L), eq(MatchStatus.FINISHED), any(Pageable.class))).thenReturn(homeHistory);
+        when(matchRepository.findRecentFinishedMatchesForTeamInLeague(
+                eq(2L), eq(9L), eq(MatchStatus.FINISHED), any(Pageable.class))).thenReturn(awayHistory);
+        when(matchRepository.findRecentFinishedMatchesInLeague(
+                eq(9L), eq(MatchStatus.FINISHED), any(Pageable.class))).thenReturn(leagueBaseline());
+
+        var result = analyticsService.estimateFromExpectedGoals(upcomingMatch()).orElseThrow();
+
+        assertTrue(result.home() > 0);
+        assertTrue(result.away() > 0);
+        assertTrue(result.homeSamples() >= 3);
+        assertTrue(result.awaySamples() >= 3);
     }
 
     @Test
@@ -85,6 +114,21 @@ class MatchHistoryAnalyticsServiceTest {
                 eq(2L), eq(9L), eq(MatchStatus.FINISHED), any(Pageable.class))).thenReturn(awayHistory);
 
         assertTrue(analyticsService.estimateFromExpectedGoals(upcomingMatch()).isEmpty());
+    }
+
+    private List<Match> leagueBaseline() {
+        return List.of(
+                historyMatch(team(30L, "League 1"), team(31L, "League 2"), 2, 1, 1.8, 0.9),
+                historyMatch(team(32L, "League 3"), team(33L, "League 4"), 1, 0, 1.2, 0.4),
+                historyMatch(team(34L, "League 5"), team(35L, "League 6"), 3, 2, 2.5, 1.4),
+                historyMatch(team(36L, "League 7"), team(37L, "League 8"), 0, 1, 0.6, 1.1),
+                historyMatch(team(38L, "League 9"), team(39L, "League 10"), 2, 2, 1.7, 1.5),
+                historyMatch(team(40L, "League 11"), team(41L, "League 12"), 1, 2, 1.0, 1.6),
+                historyMatch(team(42L, "League 13"), team(43L, "League 14"), 2, 0, 1.9, 0.5),
+                historyMatch(team(44L, "League 15"), team(45L, "League 16"), 0, 0, 0.3, 0.2),
+                historyMatch(team(46L, "League 17"), team(47L, "League 18"), 3, 1, 2.2, 0.7),
+                historyMatch(team(48L, "League 19"), team(49L, "League 20"), 1, 1, 1.1, 1.0)
+        );
     }
 
     private Match upcomingMatch() {
