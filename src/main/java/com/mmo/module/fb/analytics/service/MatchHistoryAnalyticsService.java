@@ -154,38 +154,28 @@ public class MatchHistoryAnalyticsService {
     }
 
     private enum Metric {
-        GOALS_FOR(false) {
+        GOALS_FOR {
             @Override Double value(Match match, boolean isHome) {
                 Integer value = isHome ? match.getHomeScore() : match.getAwayScore();
                 return value == null ? null : value.doubleValue();
             }
         },
-        GOALS_AGAINST(false) {
+        GOALS_AGAINST {
             @Override Double value(Match match, boolean isHome) {
                 Integer value = isHome ? match.getAwayScore() : match.getHomeScore();
                 return value == null ? null : value.doubleValue();
             }
         },
-        XG_FOR(true) {
+        XG_FOR {
             @Override Double value(Match match, boolean isHome) {
                 return isHome ? match.getHomeXG() : match.getAwayXG();
             }
         },
-        XG_AGAINST(true) {
+        XG_AGAINST {
             @Override Double value(Match match, boolean isHome) {
                 return isHome ? match.getAwayXG() : match.getHomeXG();
             }
         };
-
-        private final boolean expectedGoals;
-
-        Metric(boolean expectedGoals) {
-            this.expectedGoals = expectedGoals;
-        }
-
-        boolean isExpectedGoals() {
-            return expectedGoals;
-        }
 
         abstract Double value(Match match, boolean isHome);
     }
