@@ -126,10 +126,11 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
                 tested < MIN_CALIBRATION_SAMPLES
                         ? "INSUFFICIENT_TEST_SAMPLES"
                         : calibratedCount == 0 ? "INSUFFICIENT_CALIBRATION_HISTORY" : "OK");
-        log.info("Walk-forward backtest: from={}, to={}, matches={}, calibrated={}, calibrationHistory={}, rawBrier={}, calibratedBrier={}, rawLogLoss={}, calibratedLogLoss={}, status={}",
+        log.info("Walk-forward backtest: from={}, to={}, matches={}, calibrated={}, calibrationHistory={}, rawBrier={}, calibratedBrier={}, rawLogLoss={}, calibratedLogLoss={}, rawEce={}, calibratedEce={}, status={}",
                 fromInclusive, toExclusive, tested, calibratedCount, prior.size(),
                 report.raw().brierScore(), report.calibrated().brierScore(),
-                report.raw().logLoss(), report.calibrated().logLoss(), report.status());
+                report.raw().logLoss(), report.calibrated().logLoss(),
+                report.raw().expectedCalibrationError(), report.calibrated().expectedCalibrationError(), report.status());
         return report;
     }
 
