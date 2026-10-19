@@ -41,8 +41,8 @@ class PoissonProbabilityCalculatorTest {
         PoissonProbabilityCalculator.Result result = PoissonProbabilityCalculator.calculate(0.0, 1.5);
 
         assertEquals(0.0, result.homeWin(), 1.0e-12);
-        assertEquals(0.0, result.draw(), 1.0e-12);
-        assertEquals(1.0, result.awayWin(), 1.0e-12);
+        assertEquals(Math.exp(-1.5), result.draw(), 1.0e-12);
+        assertEquals(1.0 - Math.exp(-1.5), result.awayWin(), 1.0e-12);
     }
 
     @Test
