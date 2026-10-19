@@ -56,10 +56,33 @@ class WalkForwardBacktestServiceTest {
         assertEquals(1, report.testedMatches());
         assertEquals(1, report.calibratedMatches());
         assertEquals("INSUFFICIENT_TEST_SAMPLES", report.status());
+        assertTrue(Double.isFinite(report.baseline().brierScore()));
+        assertTrue(Double.isFinite(report.baseline().logLoss()));
         assertTrue(Double.isFinite(report.raw().brierScore()));
         assertTrue(Double.isFinite(report.calibrated().brierScore()));
         assertTrue(Double.isFinite(report.raw().logLoss()));
         assertTrue(Double.isFinite(report.calibrated().logLoss()));
+    }
+
+    @Test
+    void usesSmoothedUniformBaselineWhenNoMatureHistoryExists() {
+        Instant from = Instant.parse("2025-06-01T00:00:00Z");
+        Instant to = from.plus(1, ChronoUnit.DAYS);
+        Instant kickoff = from.plus(1, ChronoUnit.HOURS);
+        MatchPrediction sample = prediction(kickoff, from, 2, 0,
+                "0.70", "0.20", "0.10");
+
+        when(repository.findWalkForwardTrainingCandidates(eq(from), eq(MatchStatus.FINISHED), any(Pageable.class)))
+                .thenReturn(List.of());
+        when(repository.findWalkForwardTestCandidates(
+                eq(from), eq(to), eq(MatchStatus.FINISHED), any(Pageable.class)))
+                .thenReturn(List.of(sample));
+
+        WalkForwardBackTestService.BackTestReport report = service.run(from, to);
+
+        assertEquals(1, report.testedMatches());
+        assertEquals(2.0 / 3.0, report.baseline().brierScore(), 1.0e-12);
+        assertEquals(Math.log(3.0), report.baseline().logLoss(), 1.0e-12);
     }
 
     @Test
