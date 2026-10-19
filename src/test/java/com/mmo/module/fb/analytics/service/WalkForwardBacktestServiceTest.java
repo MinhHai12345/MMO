@@ -3,6 +3,8 @@ package com.mmo.module.fb.analytics.service;
 import com.mmo.module.fb.analytics.service.impl.WalkForwardBackTestServiceImpl;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
+import com.mmo.module.fb.domain.entity.League;
+import com.mmo.module.fb.domain.entity.Season;
 import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.repository.MatchPredictionRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,6 +58,11 @@ class WalkForwardBacktestServiceTest {
         assertEquals(1, report.testedMatches());
         assertEquals(1, report.calibratedMatches());
         assertEquals("INSUFFICIENT_TEST_SAMPLES", report.status());
+        assertEquals(1, report.breakdown().size());
+        assertEquals("Premier League", report.breakdown().get(0).league());
+        assertEquals("2025", report.breakdown().get(0).season());
+        assertEquals(1, report.breakdown().get(0).testedMatches());
+        assertTrue(Double.isFinite(report.breakdown().get(0).raw().brierScore()));
         assertTrue(Double.isFinite(report.baseline().brierScore()));
         assertTrue(Double.isFinite(report.baseline().logLoss()));
         assertTrue(Double.isFinite(report.raw().brierScore()));
@@ -140,6 +147,10 @@ class WalkForwardBacktestServiceTest {
                                        String homeProbability, String drawProbability, String awayProbability) {
         Match match = Match.builder()
                 .matchTime(kickoff)
+                .season(Season.builder()
+                        .year("2025")
+                        .league(League.builder().name("Premier League").build())
+                        .build())
                 .status(MatchStatus.FINISHED)
                 .homeScore(homeScore)
                 .awayScore(awayScore)
