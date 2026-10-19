@@ -217,11 +217,22 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
         private double logLoss;
         private int correct;
         private int count;
+        private static final int CALIBRATION_BINS = 10;
+        private final int[][] binCounts = new int[3][CALIBRATION_BINS];
+        private final double[][] binProbabilitySums = new double[3][CALIBRATION_BINS];
+        private final int[][] binOutcomeSums = new int[3][CALIBRATION_BINS];
 
         private void add(double[] probabilities, int actualClass) {
             for (int i = 0; i < probabilities.length; i++) {
-                double error = probabilities[i] - (i == actualClass ? 1.0 : 0.0);
+                double outcome = i == actualClass ? 1.0 : 0.0;
+                double error = probabilities[i] - outcome;
                 brier += error * error;
+
+                int bin = Math.min(CALIBRATION_BINS - 1,
+                        (int) (probabilities[i] * CALIBRATION_BINS));
+                binCounts[i][bin]++;
+                binProbabilitySums[i][bin] += probabilities[i];
+                binOutcomeSums[i][bin] += (int) outcome;
             }
             logLoss -= Math.log(Math.max(EPSILON, probabilities[actualClass]));
             int predicted = 0;
@@ -236,11 +247,29 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
             count++;
         }
 
+        private double expectedCalibrationError() {
+            double weightedAbsoluteError = 0.0;
+            for (int outcomeClass = 0; outcomeClass < 3; outcomeClass++) {
+                for (int bin = 0; bin < CALIBRATION_BINS; bin++) {
+                    int binCount = binCounts[outcomeClass][bin];
+                    if (binCount == 0) {
+                        continue;
+                    }
+                    double meanPredicted = binProbabilitySums[outcomeClass][bin] / binCount;
+                    double observedFrequency = (double) binOutcomeSums[outcomeClass][bin] / binCount;
+                    weightedAbsoluteError += ((double) binCount / (3.0 * count))
+                            * Math.abs(meanPredicted - observedFrequency);
+                }
+            }
+            return weightedAbsoluteError;
+        }
+
         private MetricSnapshot snapshot() {
             if (count == 0) {
-                return new MetricSnapshot(Double.NaN, Double.NaN, Double.NaN);
+                return new MetricSnapshot(Double.NaN, Double.NaN, Double.NaN, Double.NaN);
             }
-            return new MetricSnapshot(brier / count, logLoss / count, (double) correct / count);
+            return new MetricSnapshot(brier / count, logLoss / count, (double) correct / count,
+                    expectedCalibrationError());
         }
     }
 }
