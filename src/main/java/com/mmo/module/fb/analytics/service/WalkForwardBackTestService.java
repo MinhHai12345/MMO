@@ -15,6 +15,7 @@ public interface WalkForwardBackTestService {
             int testedMatches,
             int calibratedMatches,
             int calibrationHistorySamples,
+            MetricSnapshot baseline,
             MetricSnapshot raw,
             MetricSnapshot calibrated,
             String status) {
