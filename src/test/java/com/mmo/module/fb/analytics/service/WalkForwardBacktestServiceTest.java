@@ -66,6 +66,10 @@ class WalkForwardBacktestServiceTest {
         assertTrue(Double.isFinite(report.baseline().brierScore()));
         assertTrue(Double.isFinite(report.baseline().logLoss()));
         assertTrue(Double.isFinite(report.raw().brierScore()));
+        assertEquals(1, report.dixonColesMatches());
+        assertTrue(Double.isFinite(report.dixonColes().brierScore()));
+        assertEquals(1, report.breakdown().get(0).dixonColesMatches());
+        assertTrue(Double.isFinite(report.breakdown().get(0).dixonColes().logLoss()));
         assertTrue(Double.isFinite(report.calibrated().brierScore()));
         assertTrue(Double.isFinite(report.raw().logLoss()));
         assertTrue(Double.isFinite(report.calibrated().logLoss()));
@@ -157,6 +161,8 @@ class WalkForwardBacktestServiceTest {
                 .build();
         return MatchPrediction.builder()
                 .match(match)
+                .predictedHomeXg(new BigDecimal("1.60"))
+                .predictedAwayXg(new BigDecimal("0.90"))
                 .calculatedAt(calculatedAt)
                 .winHomeProb(new BigDecimal(homeProbability))
                 .drawProb(new BigDecimal(drawProbability))
