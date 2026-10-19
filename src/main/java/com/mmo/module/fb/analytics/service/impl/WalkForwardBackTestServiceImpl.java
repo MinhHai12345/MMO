@@ -71,6 +71,7 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
         samples.sort(Comparator.comparing(Sample::kickoff));
 
         List<Sample> prior = new ArrayList<>();
+        Metrics baselineMetrics = new Metrics();
         Metrics rawMetrics = new Metrics();
         Metrics calibratedMetrics = new Metrics();
         int tested = 0;
@@ -102,6 +103,8 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
                     groupsSinceCalibration = 0;
                 }
 
+                // Smoothed historical class-frequency baseline uses only matured prior outcomes.
+                double[] baselineProbabilities = baselineProbabilities(prior);
                 for (int i = index; i < groupEnd; i++) {
                     Sample sample = samples.get(i);
                     double[] calibrated = sample.probabilities();
@@ -110,6 +113,7 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
                         calibratedCount++;
                     }
 
+                    baselineMetrics.add(baselineProbabilities, sample.actualClass());
                     rawMetrics.add(sample.probabilities(), sample.actualClass());
                     calibratedMetrics.add(calibrated, sample.actualClass());
                     tested++;
@@ -122,7 +126,7 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
 
         BackTestReport report = new BackTestReport(
                 fromInclusive, toExclusive, tested, calibratedCount, prior.size(),
-                rawMetrics.snapshot(), calibratedMetrics.snapshot(),
+                baselineMetrics.snapshot(), rawMetrics.snapshot(), calibratedMetrics.snapshot(),
                 tested < MIN_CALIBRATION_SAMPLES
                         ? "INSUFFICIENT_TEST_SAMPLES"
                         : calibratedCount == 0 ? "INSUFFICIENT_CALIBRATION_HISTORY" : "OK");
@@ -131,6 +135,22 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
                 report.raw().brierScore(), report.calibrated().brierScore(),
                 report.raw().logLoss(), report.calibrated().logLoss(), report.status());
         return report;
+    }
+
+    /**
+     * Laplace-smoothed historical outcome frequencies provide a simple benchmark.
+     * The +1 prior per class prevents zero probabilities and uses no future outcomes.
+     */
+    private double[] baselineProbabilities(List<Sample> prior) {
+        double[] counts = {1.0, 1.0, 1.0};
+        for (Sample sample : prior) {
+            counts[sample.actualClass()]++;
+        }
+        double total = counts[0] + counts[1] + counts[2];
+        for (int i = 0; i < counts.length; i++) {
+            counts[i] /= total;
+        }
+        return counts;
     }
 
     private Sample toSample(MatchPrediction prediction) {
