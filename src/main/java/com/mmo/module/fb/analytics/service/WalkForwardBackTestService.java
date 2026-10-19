@@ -32,6 +32,8 @@ public interface WalkForwardBackTestService {
             MetricSnapshot calibrated,
             int dixonColesMatches,
             MetricSnapshot dixonColes,
+            double lastEstimatedDixonColesRho,
+            int dixonColesRhoTrainingSamples,
             List<GroupMetricSnapshot> breakdown,
             String status) {
         public BackTestReport {
