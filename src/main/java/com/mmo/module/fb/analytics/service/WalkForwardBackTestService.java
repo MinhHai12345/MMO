@@ -6,7 +6,7 @@ public interface WalkForwardBackTestService {
 
     BackTestReport run(Instant fromInclusive, Instant toExclusive);
 
-    record MetricSnapshot(double brierScore, double logLoss, double accuracy) {
+    record MetricSnapshot(double brierScore, double logLoss, double accuracy, double expectedCalibrationError) {
     }
 
     record BackTestReport(
