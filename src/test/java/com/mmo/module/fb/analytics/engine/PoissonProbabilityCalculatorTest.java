@@ -3,6 +3,7 @@ package com.mmo.module.fb.analytics.engine;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PoissonProbabilityCalculatorTest {
@@ -26,10 +27,31 @@ class PoissonProbabilityCalculatorTest {
     }
 
     @Test
+    void adaptiveTailSupportsHighScoringMatchesWithoutFixedTwelveGoalCutoff() {
+        PoissonProbabilityCalculator.Result result = PoissonProbabilityCalculator.calculate(20.0, 2.0);
+
+        assertTrue(result.homeWin() > 0.999999);
+        assertTrue(result.draw() >= 0.0);
+        assertTrue(result.awayWin() >= 0.0);
+        assertEquals(1.0, result.homeWin() + result.draw() + result.awayWin(), 1.0e-12);
+    }
+
+    @Test
+    void zeroExpectedGoalsProducesDeterministicZeroScoreForThatTeam() {
+        PoissonProbabilityCalculator.Result result = PoissonProbabilityCalculator.calculate(0.0, 1.5);
+
+        assertEquals(0.0, result.homeWin(), 1.0e-12);
+        assertEquals(0.0, result.draw(), 1.0e-12);
+        assertEquals(1.0, result.awayWin(), 1.0e-12);
+    }
+
+    @Test
     void rejectsInvalidExpectedGoals() {
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+        assertThrows(IllegalArgumentException.class,
                 () -> PoissonProbabilityCalculator.calculate(Double.NaN, 1.2));
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+        assertThrows(IllegalArgumentException.class,
                 () -> PoissonProbabilityCalculator.calculate(1.2, Double.POSITIVE_INFINITY));
+        assertThrows(IllegalArgumentException.class,
+                () -> PoissonProbabilityCalculator.calculate(100.1, 1.2));
     }
 }
