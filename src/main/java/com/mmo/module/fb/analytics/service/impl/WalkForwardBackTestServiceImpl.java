@@ -113,7 +113,10 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
 
                     GroupMetrics group = groupedMetrics.computeIfAbsent(
                             new GroupKey(sample.league(), sample.season()), ignored -> new GroupMetrics());
-                    group.baseline().add(baselineProbabilities, sample.actualClass());
+                    // Group-level baseline uses only matured outcomes from this league,
+                    // pooled across seasons to avoid a sparse per-season prior.
+                    double[] leagueBaseline = baselineProbabilities(prior, sample.league());
+                    group.baseline().add(leagueBaseline, sample.actualClass());
                     group.raw().add(sample.probabilities(), sample.actualClass());
                     group.calibrated().add(calibrated, sample.actualClass());
                     tested++;
@@ -157,9 +160,15 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
     }
 
     private double[] baselineProbabilities(List<Sample> prior) {
+        return baselineProbabilities(prior, null);
+    }
+
+    private double[] baselineProbabilities(List<Sample> prior, String league) {
         double[] counts = {1.0, 1.0, 1.0};
         for (Sample sample : prior) {
-            counts[sample.actualClass()]++;
+            if (league == null || league.equals(sample.league())) {
+                counts[sample.actualClass()]++;
+            }
         }
         double total = counts[0] + counts[1] + counts[2];
         for (int i = 0; i < counts.length; i++) {
