@@ -60,6 +60,12 @@ class WalkForwardBacktestServiceTest {
         assertTrue(Double.isFinite(report.calibrated().brierScore()));
         assertTrue(Double.isFinite(report.raw().logLoss()));
         assertTrue(Double.isFinite(report.calibrated().logLoss()));
+        assertTrue(Double.isFinite(report.raw().expectedCalibrationError()));
+        assertTrue(Double.isFinite(report.calibrated().expectedCalibrationError()));
+        assertTrue(report.raw().expectedCalibrationError() >= 0.0);
+        assertTrue(report.raw().expectedCalibrationError() <= 1.0);
+        assertTrue(report.calibrated().expectedCalibrationError() >= 0.0);
+        assertTrue(report.calibrated().expectedCalibrationError() <= 1.0);
     }
 
     @Test
