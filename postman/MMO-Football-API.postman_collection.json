@@ -1,0 +1,403 @@
+{
+  "info": {
+    "name": "MMO Football API",
+    "description": "Requests for implemented custom REST controllers in the MMO Spring Boot app. Default base URL: http://localhost:8188. Entity response fields depend on current JPA models. Admin mutations and Quartz job operations should not be exposed publicly without authorization.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8188",
+      "type": "string"
+    },
+    {
+      "key": "matchId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "jobId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "matchStatus",
+      "value": "FINISHED",
+      "type": "string"
+    },
+    {
+      "key": "date",
+      "value": "2026-10-20",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Predictions",
+      "item": [
+        {
+          "name": "Upcoming predictions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/predictions/upcoming",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "predictions",
+                "upcoming"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Prediction by match ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/predictions/match/{{matchId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "predictions",
+                "match",
+                "{{matchId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Premium predictions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/predictions/premium",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "predictions",
+                "premium"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Predictions by UTC date",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/predictions/date/{{date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "predictions",
+                "date",
+                "{{date}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin - read data",
+      "item": [
+        {
+          "name": "List matches",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/matches",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "matches"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List matches by status and date range",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/matches",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "matches"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "SCHEDULED"
+                },
+                {
+                  "key": "startDate",
+                  "value": "2026-10-20T00:00:00Z"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2026-10-21T00:00:00Z"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get match by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/matches/{{matchId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "matches",
+                "{{matchId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List teams",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/teams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "teams"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List teams (leagueId currently not applied)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/teams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "teams"
+              ],
+              "query": [
+                {
+                  "key": "leagueId",
+                  "value": "39"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List all leagues",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/leagues",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "leagues"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List active leagues",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/leagues",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "leagues"
+              ],
+              "query": [
+                {
+                  "key": "isActive",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin - mutations",
+      "item": [
+        {
+          "name": "Update match status (mutates database)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"{{matchStatus}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/matches/{{matchId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "matches",
+                "{{matchId}}",
+                "status"
+              ]
+            },
+            "description": "Administrative operation. Use only on local/test environments unless access control is configured."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Quartz jobs",
+      "item": [
+        {
+          "name": "Start job now",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cronjobs/{{jobId}}/start",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cronjobs",
+                "{{jobId}}",
+                "start"
+              ]
+            },
+            "description": "Triggers a scheduled job immediately. Confirm the job ID before running."
+          }
+        },
+        {
+          "name": "Pause job",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cronjobs/{{jobId}}/pause",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cronjobs",
+                "{{jobId}}",
+                "pause"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Resume job",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cronjobs/{{jobId}}/resume",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cronjobs",
+                "{{jobId}}",
+                "resume"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Stop job",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cronjobs/{{jobId}}/stop",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cronjobs",
+                "{{jobId}}",
+                "stop"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

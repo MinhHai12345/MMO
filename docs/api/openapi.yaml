@@ -1,0 +1,268 @@
+openapi: 3.0.3
+info:
+  title: MMO Football API
+  version: 1.0.0
+  description: |
+    API documentation for the existing custom REST controllers in the MMO Spring Boot app.
+    The API currently runs on port 8188 by default. Dates are interpreted in UTC.
+    This document describes implemented endpoints only; Spring Data REST repository endpoints
+    are not enumerated here.
+servers:
+  - url: http://localhost:8188
+    description: Local development
+tags:
+  - name: Predictions
+  - name: Admin
+  - name: Quartz jobs
+paths:
+  /api/predictions/upcoming:
+    get:
+      tags: [Predictions]
+      summary: Get upcoming predictions
+      description: Returns pending predictions for scheduled matches in the next 48 hours.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 10, minimum: 1, maximum: 100 }
+      responses:
+        '200':
+          description: List of prediction entities
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/JsonObject' }
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/predictions/match/{matchId}:
+    get:
+      tags: [Predictions]
+      summary: Get prediction for a match
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      responses:
+        '200':
+          description: Prediction entity
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JsonObject' }
+        '404':
+          description: Prediction not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/predictions/premium:
+    get:
+      tags: [Predictions]
+      summary: Get pending premium predictions
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 10, minimum: 1, maximum: 100 }
+      responses:
+        '200':
+          description: List of premium prediction entities
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/JsonObject' }
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/predictions/date/{date}:
+    get:
+      tags: [Predictions]
+      summary: Get pending predictions for a UTC date
+      parameters:
+        - name: date
+          in: path
+          required: true
+          description: Date in ISO format YYYY-MM-DD, interpreted as UTC.
+          schema: { type: string, format: date, example: '2026-10-20' }
+      responses:
+        '200':
+          description: List of prediction entities
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/JsonObject' }
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/admin/matches:
+    get:
+      tags: [Admin]
+      summary: List matches
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: MatchStatus enum value. Case-insensitive.
+          schema: { type: string, example: SCHEDULED }
+        - name: startDate
+          in: query
+          required: false
+          description: ISO-8601 instant, e.g. 2026-10-20T00:00:00Z. Date range is applied only when status, startDate and endDate are all provided.
+          schema: { type: string, format: date-time, example: '2026-10-20T00:00:00Z' }
+        - name: endDate
+          in: query
+          required: false
+          schema: { type: string, format: date-time, example: '2026-10-21T00:00:00Z' }
+      responses:
+        '200':
+          description: List of match entities
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/JsonObject' }
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/admin/matches/{matchId}:
+    get:
+      tags: [Admin]
+      summary: Get match by internal ID
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      responses:
+        '200':
+          description: Match entity
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JsonObject' }
+        '404':
+          description: Match not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/admin/matches/{matchId}/status:
+    post:
+      tags: [Admin]
+      summary: Update match status
+      description: Administrative mutation. No authentication/authorization is declared by this controller, so protect this endpoint before exposing it publicly.
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, example: FINISHED, description: MatchStatus enum value }
+      responses:
+        '200':
+          description: Status updated successfully; empty body
+        '404':
+          description: Match not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/admin/teams:
+    get:
+      tags: [Admin]
+      summary: List teams
+      parameters:
+        - name: leagueId
+          in: query
+          required: false
+          description: Accepted by the current controller but currently not used to filter results.
+          schema: { type: string }
+      responses:
+        '200':
+          description: List of team entities
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/JsonObject' }
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/admin/leagues:
+    get:
+      tags: [Admin]
+      summary: List leagues
+      parameters:
+        - name: isActive
+          in: query
+          required: false
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: List of league entities
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/JsonObject' }
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /cronjobs/{id}/start:
+    post:
+      tags: [Quartz jobs]
+      summary: Start a registered job immediately
+      description: Triggers the existing Quartz job now. Obtain the job ID from the cron_jobs table.
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200':
+          description: Quartz job metadata
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JsonObject' }
+  /cronjobs/{id}/pause:
+    post:
+      tags: [Quartz jobs]
+      summary: Pause a registered job
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200':
+          description: Quartz job metadata
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JsonObject' }
+  /cronjobs/{id}/resume:
+    post:
+      tags: [Quartz jobs]
+      summary: Resume a paused job
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200':
+          description: Quartz job metadata
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JsonObject' }
+  /cronjobs/{id}/stop:
+    post:
+      tags: [Quartz jobs]
+      summary: Stop a registered job
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200':
+          description: Quartz job metadata
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JsonObject' }
+components:
+  parameters:
+    MatchId:
+      name: matchId
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+    JobId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+  schemas:
+    JsonObject:
+      type: object
+      description: Entity JSON shape depends on the corresponding JPA entity.
+      additionalProperties: true
+  responses:
+    InternalServerError:
+      description: Unexpected server-side error
