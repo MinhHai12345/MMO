@@ -20,6 +20,8 @@ public class FootballDataClient {
     private static final int MAX_IN_MEMORY_SIZE_BYTES = 10 * 1024 * 1024;
     private static final String PLACEHOLDER_API_KEY = "mock";
     private static final long DEFAULT_RATE_LIMIT_WAIT_SECONDS = 60;
+    /** Conservative pacing for football-data.org free-tier quotas (about 10 requests/minute). */
+    private static final long MIN_REQUEST_INTERVAL_MILLIS = 6_000;
     private static final Pattern WAIT_SECONDS_PATTERN =
             Pattern.compile("(?i)wait\\s+(\\d+)\\s+seconds?");
 
@@ -46,9 +48,8 @@ public class FootballDataClient {
             throw new IllegalStateException("football-data.org base URL is missing.");
         }
 
-        awaitRateLimitCooldown();
-
         for (int attempt = 0; attempt < 2; attempt++) {
+            awaitRequestSlot();
             try {
                 String json = webClientBuilder.clone()
                         .baseUrl(properties.getBaseUrl())
@@ -65,11 +66,11 @@ public class FootballDataClient {
             } catch (WebClientResponseException ex) {
                 if (ex.getStatusCode().value() == 429) {
                     long waitSeconds = determineRetryDelaySeconds(ex);
-                    nextAllowedRequestAtMillis = System.currentTimeMillis() + waitSeconds * 1_000L;
+                    nextAllowedRequestAtMillis = Math.max(nextAllowedRequestAtMillis,
+                            System.currentTimeMillis() + waitSeconds * 1_000L);
                     if (attempt == 0) {
-                        // Retry once after the provider's stated cooldown. If it still fails,
-                        // propagate a clear error instead of retrying indefinitely.
-                        awaitRateLimitCooldown();
+                        // The next loop iteration waits for the provider's cooldown before retrying.
+                        // If it still fails, propagate a clear error instead of retrying indefinitely.
                         continue;
                     }
                     throw new IllegalStateException("football-data.org rate limit (HTTP 429) for "
@@ -109,15 +110,18 @@ public class FootballDataClient {
         return DEFAULT_RATE_LIMIT_WAIT_SECONDS;
     }
 
-    private void awaitRateLimitCooldown() {
+    private void awaitRequestSlot() {
         long remainingMillis = nextAllowedRequestAtMillis - System.currentTimeMillis();
-        if (remainingMillis <= 0) return;
-
-        try {
-            Thread.sleep(remainingMillis);
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted while waiting for football-data.org rate limit cooldown", ex);
+        if (remainingMillis > 0) {
+            try {
+                Thread.sleep(remainingMillis);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Interrupted while waiting for football-data.org request slot", ex);
+            }
         }
+
+        // Reserve the next slot while this synchronized method owns the client.
+        nextAllowedRequestAtMillis = System.currentTimeMillis() + MIN_REQUEST_INTERVAL_MILLIS;
     }
 }
