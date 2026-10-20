@@ -138,11 +138,10 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
                             ? dixonColesProbabilities(sample, leagueRho.rho()) : null;
                     double[] globalRhoDixonColes = sample.hasExpectedGoals()
                             ? dixonColesProbabilities(sample, dixonColesRho) : null;
-                    if (dixonColes != null) {
+                    if (dixonColes != null && globalRhoDixonColes != null) {
+                        // Compare both rho strategies on the exact same eligible match cohort.
                         dixonColesMetrics.add(dixonColes, sample.actualClass());
-                        if (globalRhoDixonColes != null) {
-                            globalRhoDixonColesMetrics.add(globalRhoDixonColes, sample.actualClass());
-                        }
+                        globalRhoDixonColesMetrics.add(globalRhoDixonColes, sample.actualClass());
                         matchedBaselineMetrics.add(baselineProbabilities(prior), sample.actualClass());
                         matchedRawMetrics.add(sample.probabilities(), sample.actualClass());
                         matchedCalibratedMetrics.add(calibrated, sample.actualClass());
@@ -159,11 +158,9 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
                     group.lastEstimatedDixonColesRho = leagueRho.rho();
                     group.dixonColesRhoTrainingSamples = leagueRho.trainingSamples();
                     group.leagueSpecificRho = leagueRho.leagueSpecific();
-                    if (dixonColes != null) {
+                    if (dixonColes != null && globalRhoDixonColes != null) {
                         group.dixonColes().add(dixonColes, sample.actualClass());
-                        if (globalRhoDixonColes != null) {
-                            group.globalRhoDixonColes().add(globalRhoDixonColes, sample.actualClass());
-                        }
+                        group.globalRhoDixonColes().add(globalRhoDixonColes, sample.actualClass());
                         group.matchedBaseline().add(leagueBaseline, sample.actualClass());
                         group.matchedRaw().add(sample.probabilities(), sample.actualClass());
                         group.matchedCalibrated().add(calibrated, sample.actualClass());
