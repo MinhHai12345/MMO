@@ -3,6 +3,7 @@ package com.mmo.module.fb.analytics.service.impl;
 import com.mmo.module.fb.analytics.service.WalkForwardBackTestService;
 import com.mmo.module.fb.analytics.service.WalkForwardBackTestService.GroupMetricSnapshot;
 import com.mmo.module.fb.analytics.service.WalkForwardBackTestService.MetricSnapshot;
+import com.mmo.module.fb.analytics.engine.DixonColesProbabilityCalculator;
 import com.mmo.module.fb.domain.entity.League;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
@@ -33,6 +34,10 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
     private static final int MAX_SAMPLES = 10_000;
     private static final int MIN_CALIBRATION_SAMPLES = 100;
     private static final int CALIBRATION_REFRESH_GROUPS = 50;
+    private static final int MIN_DIXON_COLES_TRAINING_SAMPLES = 100;
+    private static final double DIXON_COLES_RHO_MIN = -0.30;
+    private static final double DIXON_COLES_RHO_MAX = 0.30;
+    private static final double DIXON_COLES_RHO_STEP = 0.005;
     private static final double EPSILON = 1.0e-12;
     // The schema has no final-whistle timestamp. This lag is only a conservative proxy.
     private static final Duration RESULT_AVAILABILITY_LAG = Duration.ofHours(4);
@@ -67,6 +72,7 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
         Metrics baselineMetrics = new Metrics();
         Metrics rawMetrics = new Metrics();
         Metrics calibratedMetrics = new Metrics();
+        Metrics dixonColesMetrics = new Metrics();
         Map<GroupKey, GroupMetrics> groupedMetrics = new TreeMap<>(
                 Comparator.comparing(GroupKey::league).thenComparing(GroupKey::season));
         int tested = 0;
@@ -75,6 +81,8 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
         int index = 0;
         int groupsSinceCalibration = CALIBRATION_REFRESH_GROUPS;
         double temperature = 1.0;
+        double dixonColesRho = 0.0;
+        int dixonColesRhoTrainingSamples = 0;
 
         while (index < samples.size()) {
             Instant kickoff = samples.get(index).kickoff();
@@ -91,9 +99,15 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
             }
 
             if (!kickoff.isBefore(fromInclusive)) {
-                if (prior.size() >= MIN_CALIBRATION_SAMPLES
-                        && groupsSinceCalibration >= CALIBRATION_REFRESH_GROUPS) {
-                    temperature = fitTemperature(prior);
+                if (groupsSinceCalibration >= CALIBRATION_REFRESH_GROUPS) {
+                    if (prior.size() >= MIN_CALIBRATION_SAMPLES) {
+                        temperature = fitTemperature(prior);
+                    }
+                    List<Sample> rhoTraining = prior.stream().filter(Sample::hasExpectedGoals).toList();
+                    if (rhoTraining.size() >= MIN_DIXON_COLES_TRAINING_SAMPLES) {
+                        dixonColesRho = fitDixonColesRho(rhoTraining);
+                        dixonColesRhoTrainingSamples = rhoTraining.size();
+                    }
                     groupsSinceCalibration = 0;
                 }
 
@@ -110,6 +124,12 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
                     baselineMetrics.add(baselineProbabilities, sample.actualClass());
                     rawMetrics.add(sample.probabilities(), sample.actualClass());
                     calibratedMetrics.add(calibrated, sample.actualClass());
+                    if (sample.hasExpectedGoals()) {
+                        double[] dixonColes = dixonColesProbabilities(sample, dixonColesRho);
+                        if (dixonColes != null) {
+                            dixonColesMetrics.add(dixonColes, sample.actualClass());
+                        }
+                    }
 
                     GroupMetrics group = groupedMetrics.computeIfAbsent(
                             new GroupKey(sample.league(), sample.season()), ignored -> new GroupMetrics());
@@ -119,6 +139,12 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
                     group.baseline().add(leagueBaseline, sample.actualClass());
                     group.raw().add(sample.probabilities(), sample.actualClass());
                     group.calibrated().add(calibrated, sample.actualClass());
+                    if (sample.hasExpectedGoals()) {
+                        double[] dixonColes = dixonColesProbabilities(sample, dixonColesRho);
+                        if (dixonColes != null) {
+                            group.dixonColes().add(dixonColes, sample.actualClass());
+                        }
+                    }
                     tested++;
                 }
                 groupsSinceCalibration++;
@@ -133,27 +159,38 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
                         entry.getValue().raw().count(),
                         entry.getValue().baseline().snapshot(),
                         entry.getValue().raw().snapshot(),
-                        entry.getValue().calibrated().snapshot()))
+                        entry.getValue().calibrated().snapshot(),
+                        entry.getValue().dixonColes().count(),
+                        entry.getValue().dixonColes().snapshot()))
                 .toList();
 
         BackTestReport report = new BackTestReport(
                 fromInclusive, toExclusive, tested, calibratedCount, prior.size(),
                 baselineMetrics.snapshot(), rawMetrics.snapshot(), calibratedMetrics.snapshot(),
+                dixonColesMetrics.count(), dixonColesMetrics.snapshot(),
+                dixonColesRho, dixonColesRhoTrainingSamples,
                 breakdown,
                 tested < MIN_CALIBRATION_SAMPLES
                         ? "INSUFFICIENT_TEST_SAMPLES"
                         : calibratedCount == 0 ? "INSUFFICIENT_CALIBRATION_HISTORY" : "OK");
 
         log.info("Walk-forward backtest: from={}, to={}, matches={}, calibrated={}, calibrationHistory={}, " +
-                        "baselineBrier={}, rawBrier={}, calibratedBrier={}, groups={}, status={}",
+                        "baselineBrier={}, rawBrier={}, calibratedBrier={}, dixonColesMatches={}, " +
+                        "dixonColesBrier={}, dixonColesLogLoss={}, dixonColesRho={}, " +
+                        "dixonColesRhoTrainingSamples={}, groups={}, status={}",
                 fromInclusive, toExclusive, tested, calibratedCount, prior.size(),
                 report.baseline().brierScore(), report.raw().brierScore(),
-                report.calibrated().brierScore(), report.breakdown().size(), report.status());
+                report.calibrated().brierScore(), report.dixonColesMatches(),
+                report.dixonColes().brierScore(), report.dixonColes().logLoss(),
+                report.lastEstimatedDixonColesRho(), report.dixonColesRhoTrainingSamples(),
+                report.breakdown().size(), report.status());
         report.breakdown().forEach(group -> log.info(
                 "Walk-forward group: league={}, season={}, matches={}, baselineBrier={}, rawBrier={}, " +
-                        "calibratedBrier={}, rawLogLoss={}, calibratedLogLoss={}, rawAccuracy={}, rawEce={}",
+                        "calibratedBrier={}, dixonColesMatches={}, dixonColesBrier={}, rawLogLoss={}, " +
+                        "calibratedLogLoss={}, rawAccuracy={}, rawEce={}",
                 group.league(), group.season(), group.testedMatches(),
                 group.baseline().brierScore(), group.raw().brierScore(), group.calibrated().brierScore(),
+                group.dixonColesMatches(), group.dixonColes().brierScore(),
                 group.raw().logLoss(), group.calibrated().logLoss(),
                 group.raw().accuracy(), group.raw().expectedCalibrationError()));
         return report;
@@ -202,11 +239,76 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
 
         int actualClass = match.getHomeScore() > match.getAwayScore() ? 0
                 : match.getHomeScore().equals(match.getAwayScore()) ? 1 : 2;
-        return new Sample(match.getMatchTime(), probabilities, actualClass, league, season);
+        double homeExpectedGoals = value(prediction.getPredictedHomeXg());
+        double awayExpectedGoals = value(prediction.getPredictedAwayXg());
+        boolean hasExpectedGoals = validExpectedGoals(homeExpectedGoals) && validExpectedGoals(awayExpectedGoals);
+        return new Sample(match.getMatchTime(), probabilities, actualClass, league, season,
+                homeExpectedGoals, awayExpectedGoals, hasExpectedGoals,
+                match.getHomeScore(), match.getAwayScore());
     }
 
     private double value(BigDecimal value) {
         return value == null ? Double.NaN : value.doubleValue();
+    }
+
+    private boolean validExpectedGoals(double value) {
+        return Double.isFinite(value) && value >= 0.0 && value <= 100.0;
+    }
+
+    /**
+     * Fits rho by maximizing the low-score correction likelihood on matured historical matches only.
+     * Independent-Poisson terms do not depend on rho, so they cancel from this grid-search objective.
+     */
+    private double fitDixonColesRho(List<Sample> training) {
+        double bestRho = 0.0;
+        double bestLogLikelihood = lowScoreCorrectionLogLikelihood(training, 0.0);
+        int steps = (int) Math.round((DIXON_COLES_RHO_MAX - DIXON_COLES_RHO_MIN)
+                / DIXON_COLES_RHO_STEP);
+        for (int step = 0; step <= steps; step++) {
+            double candidate = DIXON_COLES_RHO_MIN + step * DIXON_COLES_RHO_STEP;
+            double likelihood = lowScoreCorrectionLogLikelihood(training, candidate);
+            if (likelihood > bestLogLikelihood) {
+                bestLogLikelihood = likelihood;
+                bestRho = candidate;
+            }
+        }
+        return bestRho;
+    }
+
+    private double lowScoreCorrectionLogLikelihood(List<Sample> training, double rho) {
+        double logLikelihood = 0.0;
+        for (Sample sample : training) {
+            double homeXg = sample.homeExpectedGoals();
+            double awayXg = sample.awayExpectedGoals();
+            int homeGoals = sample.actualHomeGoals();
+            int awayGoals = sample.actualAwayGoals();
+            double tau = 1.0;
+            if (homeGoals == 0 && awayGoals == 0) {
+                tau = 1.0 - homeXg * awayXg * rho;
+            } else if (homeGoals == 0 && awayGoals == 1) {
+                tau = 1.0 + homeXg * rho;
+            } else if (homeGoals == 1 && awayGoals == 0) {
+                tau = 1.0 + awayXg * rho;
+            } else if (homeGoals == 1 && awayGoals == 1) {
+                tau = 1.0 - rho;
+            }
+            if (!Double.isFinite(tau) || tau <= 0.0) {
+                return Double.NEGATIVE_INFINITY;
+            }
+            logLikelihood += Math.log(tau);
+        }
+        return logLikelihood;
+    }
+
+    private double[] dixonColesProbabilities(Sample sample, double rho) {
+        try {
+            DixonColesProbabilityCalculator.Result result = DixonColesProbabilityCalculator.calculate(
+                    sample.homeExpectedGoals(), sample.awayExpectedGoals(), rho);
+            return normalize(result.homeWin(), result.draw(), result.awayWin());
+        } catch (IllegalArgumentException exception) {
+            log.debug("Skipping Dixon-Coles sample with invalid expected-goal parameters: {}", exception.getMessage());
+            return null;
+        }
     }
 
     private double[] normalize(double home, double draw, double away) {
@@ -256,15 +358,17 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
         return scaled;
     }
 
-    private record Sample(Instant kickoff, double[] probabilities, int actualClass, String league, String season) {
+    private record Sample(Instant kickoff, double[] probabilities, int actualClass, String league, String season,
+                          double homeExpectedGoals, double awayExpectedGoals, boolean hasExpectedGoals,
+                          int actualHomeGoals, int actualAwayGoals) {
     }
 
     private record GroupKey(String league, String season) {
     }
 
-    private record GroupMetrics(Metrics baseline, Metrics raw, Metrics calibrated) {
+    private record GroupMetrics(Metrics baseline, Metrics raw, Metrics calibrated, Metrics dixonColes) {
         private GroupMetrics() {
-            this(new Metrics(), new Metrics(), new Metrics());
+            this(new Metrics(), new Metrics(), new Metrics(), new Metrics());
         }
     }
 
