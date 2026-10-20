@@ -12,11 +12,11 @@ import com.mmo.module.fb.ingest.provider.model.StandingsQuery;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import com.mmo.module.fb.ingest.provider.spi.StandingsProvider;
 import com.mmo.module.fb.ingest.service.StandingsIngestionService;
+import com.mmo.module.fb.ingest.service.StandingsPersistenceService;
+import com.mmo.module.fb.ingest.service.TeamIngestionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import com.mmo.module.fb.ingest.service.StandingsPersistenceService;
-import com.mmo.module.fb.ingest.service.TeamIngestionService;
 
 import java.util.HashMap;
 import java.util.List;
@@ -35,6 +35,7 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
     private final TeamExternalIdRepository teamExternalIdRepository;
     private final StandingsPersistenceService standingsPersistenceService;
 
+    @Override
     public void syncStandings() {
         syncStandingsForProvider(appProperties.getIngestion().getProviders().getStandings());
     }
@@ -43,13 +44,19 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
      * Fetch provider data outside a database transaction; each season's rows are persisted
      * in a separate short transaction by StandingsPersistenceService.
      */
+    @Override
     public void syncStandingsForProvider(Provider selectedProvider) {
         if (selectedProvider == Provider.API_FOOTBALL
                 && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
+            log.info("Skipping standings ingestion because API-Football is disabled");
             return;
         }
 
-        teamIngestionService.syncTeamsForProvider(selectedProvider);
+        // Allow standalone scheduled runs to bootstrap missing team mappings without repeating
+        // the full teams endpoint on every standings refresh.
+        if (teamExternalIdRepository.findAllByProvider(selectedProvider).isEmpty()) {
+            teamIngestionService.syncTeamsForProvider(selectedProvider);
+        }
         StandingsProvider provider = providerRegistry.standings(selectedProvider);
 
         Map<Long, String> leagueExternalIdsByLeagueId = new HashMap<>();
@@ -62,23 +69,31 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
         }
 
         int saved = 0;
+        int skipped = 0;
         List<Season> seasons = seasonRepository.findAll();
         for (Season season : seasons) {
             if (season.getLeague() == null || season.getYear() == null) continue;
             Long externalLeagueId = parseLong(leagueExternalIdsByLeagueId.get(season.getLeague().getId()));
-            if (externalLeagueId == null) continue;
+            if (externalLeagueId == null) {
+                skipped++;
+                continue;
+            }
 
             // This network call happens without a transaction.
             List<ProviderStanding> rows = provider.fetchStandings(
                     new StandingsQuery(externalLeagueId, season.getYear()));
             for (ProviderStanding row : rows) {
                 Long teamId = teamIdsByExternalId.get(row.teamExternalId());
-                if (teamId == null) continue;
+                if (teamId == null) {
+                    skipped++;
+                    continue;
+                }
                 standingsPersistenceService.upsertStanding(season.getId(), teamId, row);
                 saved++;
             }
         }
-        log.info("Standings ingestion completed. {} rows upserted.", saved);
+        log.info("Standings ingestion via {} completed. {} rows upserted, {} rows skipped.",
+                selectedProvider, saved, skipped);
     }
 
     private static Long parseLong(String value) {
