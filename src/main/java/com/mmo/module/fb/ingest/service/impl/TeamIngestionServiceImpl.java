@@ -14,6 +14,7 @@ import com.mmo.module.fb.ingest.service.TeamPersistenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,22 +38,38 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
     @Override
     public void syncTeamsForProvider(Provider selectedProvider) {
         if (selectedProvider == Provider.API_FOOTBALL
-                && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
-        leagueIngestionService.syncLeaguesForProvider(selectedProvider);
+                && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
+            log.info("Skipping team ingestion because API-Football is disabled");
+            return;
+        }
+
+        // Bootstrap missing prerequisites only. Do not consume provider quota by re-syncing
+        // every league whenever the scheduled team job runs.
+        if (leagueExternalIdRepository.findAllByProvider(selectedProvider).isEmpty()) {
+            leagueIngestionService.syncLeaguesForProvider(selectedProvider);
+        }
+
         Map<Long, String> leagueExternalIdsByLeagueId = new HashMap<>();
         leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
                 leagueExternalIdsByLeagueId.put(mapping.getLeague().getId(), mapping.getExternalId()));
+
+        int saved = 0;
+        int skipped = 0;
         for (Season season : seasonRepository.findAll()) {
             if (season.getLeague() == null || season.getYear() == null) continue;
             Long leagueExternalId;
             try {
                 leagueExternalId = Long.valueOf(leagueExternalIdsByLeagueId.get(season.getLeague().getId()));
             } catch (RuntimeException ex) {
+                skipped++;
                 continue;
             }
             List<ProviderTeam> teams = providerRegistry.team(selectedProvider).fetchTeams(
                     new TeamQuery(leagueExternalId, season.getYear()));
             teamPersistenceService.persistTeamsForSeason(selectedProvider, season, teams);
+            saved += teams.size();
         }
+        log.info("Team ingestion via {} completed. {} provider team records processed, {} seasons skipped",
+                selectedProvider, saved, skipped);
     }
 }
