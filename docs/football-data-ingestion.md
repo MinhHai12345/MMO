@@ -1,68 +1,48 @@
-# API-Football core data ingestion
+# Football core-data ingestion
 
-The first end-to-end ingestion pass intentionally focuses on the current season and core data:
+The core-data pipeline can use API-Football or football-data.org for league, team, fixture/result and standings resources. Providers are selected independently; odds remain on API-Football unless another provider explicitly implements the odds contract.
 
-1. leagues and season metadata
-2. teams for current seasons
-3. current-season fixtures and scores
-4. current-season standings
+## football-data.org configuration
 
-The pipeline is orchestrated by `FootballDataBootstrapService` and is invoked by the Quartz job `MatchSeasonFixtureSyncJob`. Routine fixture and result jobs refresh smaller date windows. Historical fixture backfill, advanced match statistics, and analytics tuning are intentionally separate follow-up work.
+Create an API token at https://www.football-data.org/ and set:
 
-## Required environment
+- `FOOTBALL_DATA_ENABLED=true`
+- `FOOTBALL_DATA_API_KEY=<your-token>`
+- `FOOTBALL_DATA_COMPETITION_IDS=<comma-separated numeric competition IDs>`
 
-Configure the following environment variables before starting the application:
-
-- `API_FOOTBALL_ENABLED=true`
-- `API_FOOTBALL_API_KEY=<your API-Football key>`
-- `API_FOOTBALL_LEAGUE_IDS=<comma-separated league IDs>`
-- `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` for MySQL
-
-Example for local PowerShell (replace the sample IDs with the leagues you actually want):
+Example for local PowerShell (replace the token and database credentials):
 
 ```powershell
-$env:API_FOOTBALL_ENABLED = "true"
-$env:API_FOOTBALL_API_KEY = "<your-api-key>"
-$env:API_FOOTBALL_LEAGUE_IDS = "39,140"
-$env:DB_URL = "jdbc:mysql://localhost:3306/fb_ai?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"
-$env:DB_USERNAME = "root"
-$env:DB_PASSWORD = "<your-db-password>"
+$env:FOOTBALL_DATA_ENABLED = "true"
+$env:FOOTBALL_DATA_API_KEY = "<your-token>"
+$env:FOOTBALL_DATA_COMPETITION_IDS = "2021,2001"
+$env:INGESTION_LEAGUE_PROVIDER = "FOOTBALL_DATA"
+$env:INGESTION_TEAM_PROVIDER = "FOOTBALL_DATA"
+$env:INGESTION_FIXTURE_PROVIDER = "FOOTBALL_DATA"
+$env:INGESTION_STANDINGS_PROVIDER = "FOOTBALL_DATA"
+$env:INGESTION_ODDS_PROVIDER = "API_FOOTBALL"
 mvn test
 mvn spring-boot:run
 ```
 
-Do not commit API keys or database credentials. The application deliberately rejects the placeholder key `mock`, and the bootstrap fails fast when the key or league list is missing. Keep the league list small enough for the API quota of your subscription.
+The IDs above are examples: `2021` is the Premier League and `2001` is the UEFA Champions League in football-data.org's API. Configure only competitions available to your token. The provider uses the v4 API and authenticates with the `X-Auth-Token` header.
 
-## Run the bootstrap once
+To keep API-Football as a fallback for odds, leave `INGESTION_ODDS_PROVIDER=API_FOOTBALL`. football-data.org does not implement the project's odds-provider contract.
 
-The application registers the Quartz job `MatchSeasonFixtureSyncJob` in the `cron_jobs` table. To trigger it immediately, find its ID and call the existing Quartz endpoint:
+## Using API-Football instead
 
-```sql
-SELECT id, job_name, job_status
-FROM cron_jobs
-WHERE job_name = 'FootballDataBootstrapJob'
-  AND job_group = 'FBJobGroup';
-```
+Set the following values and keep the provider selectors at `API_FOOTBALL`:
 
-Then call:
+- `API_FOOTBALL_ENABLED=true`
+- `API_FOOTBALL_API_KEY=<your-key>`
+- `API_FOOTBALL_LEAGUE_IDS=<comma-separated API-Football league IDs>`
 
-```http
-POST http://localhost:8188/cronjobs/{id}/start
-```
+## Ingestion behavior and limitations
 
-The job runs the core pipeline in dependency order. Review application logs for the start/completion messages and ingestion counters, then verify records in the `leagues`, `seasons`, `teams`, `matches`, and standings tables (actual table names may follow the entity mappings).
-
-## Expected routine refreshes
-
-- `MatchFixtureSyncJob`: today through the next 14 days (UTC)
-- `MatchResultSyncJob`: the previous 7 days through today (UTC)
-- `TeamSyncJob`: current-season team metadata
-- `LeagueSyncJob`: configured league and season metadata
-
-These jobs are safe to rerun: fixture persistence updates the canonical match and its provider mapping rather than blindly inserting a duplicate fixture. Provider calls are performed outside the short persistence transactions.
-
-## Scope and limits
-
-- This first pass does not claim historical fixture backfill or complete match-statistics ingestion.
-- The bootstrap requires league IDs explicitly to avoid an accidental all-leagues import and unexpected API quota consumption.
-- If a fixture is skipped because a team or league mapping is missing, check the configured league IDs and the ingestion logs before running analytics.
+- Provider selection is resource-specific. League, team, fixture, standings and odds can be configured independently.
+- External IDs are stored with their provider, so IDs from football-data.org do not overwrite IDs from API-Football.
+- The routine ingestion path targets current seasons already represented in the database; run league ingestion first so league/season mappings exist.
+- football-data.org availability and historical coverage depend on the account tier and competition.
+- The integration currently maps competitions, teams, fixtures/results and standings. It does not provide odds, xG, lineups or detailed event statistics.
+- The API is rate-limited. Avoid aggressive polling and inspect provider response errors (especially HTTP 429) before retrying.
+- Never commit provider tokens or database credentials.
