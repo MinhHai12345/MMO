@@ -5,6 +5,7 @@ import com.mmo.module.fb.domain.entity.Season;
 import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.repository.SeasonRepository;
+import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballPlanRestrictionException;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.provider.model.TeamQuery;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
@@ -66,8 +67,16 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
                 skipped++;
                 continue;
             }
-            List<ProviderTeam> teams = providerRegistry.team(selectedProvider).fetchTeams(
-                    new TeamQuery(leagueExternalId, season.getYear()));
+            List<ProviderTeam> teams;
+            try {
+                teams = providerRegistry.team(selectedProvider).fetchTeams(
+                        new TeamQuery(leagueExternalId, season.getYear()));
+            } catch (ApiFootballPlanRestrictionException ex) {
+                skipped++;
+                log.warn("Skipping team sync for league {} season {}: {}",
+                        leagueExternalId, season.getYear(), ex.getMessage());
+                continue;
+            }
             teamPersistenceService.persistTeamsForSeason(selectedProvider, season, teams);
             saved += teams.size();
         }
