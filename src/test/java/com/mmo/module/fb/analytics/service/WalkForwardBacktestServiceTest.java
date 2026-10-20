@@ -71,9 +71,24 @@ class WalkForwardBacktestServiceTest {
         assertTrue(Double.isFinite(report.baseline().logLoss()));
         assertTrue(Double.isFinite(report.raw().brierScore()));
         assertEquals(1, report.dixonColesMatches());
+        assertTrue(Double.isFinite(report.globalRhoDixonColes().accuracy()));
+        assertTrue(Double.isFinite(report.globalRhoDixonColes().brierScore()));
+        assertTrue(Double.isFinite(report.globalRhoDixonColes().logLoss()));
+        assertEquals(report.raw().brierScore(), report.matchedRaw().brierScore(), 1.0e-12,
+                "single eligible test match must produce identical raw and matched-cohort metrics");
         assertTrue(Double.isFinite(report.dixonColes().brierScore()));
+        assertTrue(Double.isFinite(report.matchedBaseline().logLoss()));
+        assertTrue(Double.isFinite(report.matchedRaw().brierScore()));
+        assertTrue(Double.isFinite(report.matchedCalibrated().expectedCalibrationError()));
         assertEquals(1, report.breakdown().get(0).dixonColesMatches());
         assertTrue(Double.isFinite(report.breakdown().get(0).dixonColes().logLoss()));
+        assertTrue(Double.isFinite(report.breakdown().get(0).globalRhoDixonColes().brierScore()));
+        assertTrue(Double.isFinite(report.breakdown().get(0).matchedBaseline().brierScore()));
+        assertTrue(Double.isFinite(report.breakdown().get(0).matchedRaw().logLoss()));
+        assertTrue(Double.isFinite(report.breakdown().get(0).matchedCalibrated().brierScore()));
+        assertEquals(100, report.breakdown().get(0).dixonColesRhoTrainingSamples());
+        assertTrue(report.breakdown().get(0).leagueSpecificRho());
+        assertTrue(Double.isFinite(report.breakdown().get(0).lastEstimatedDixonColesRho()));
         assertTrue(Double.isFinite(report.calibrated().brierScore()));
         assertTrue(Double.isFinite(report.raw().logLoss()));
         assertTrue(Double.isFinite(report.calibrated().logLoss()));
