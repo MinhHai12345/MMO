@@ -158,6 +158,47 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     List<Match> findTop30ByStatusAndHomeXGIsNullAndAwayXGIsNullOrderByMatchTimeAsc(@Param("status") MatchStatus status);
 
     /**
+     * Aggregated data coverage by league and season. Uses a projection to avoid loading
+     * every Match entity just to build a readiness report.
+     */
+    @Query("""
+            SELECT s.id AS seasonId,
+                   l.name AS leagueName,
+                   s.year AS seasonYear,
+                   COUNT(m.id) AS totalMatches,
+                   SUM(CASE WHEN m.status = :finished THEN 1 ELSE 0 END) AS finishedMatches,
+                   SUM(CASE WHEN m.status = :finished
+                                 AND m.homeScore IS NOT NULL
+                                 AND m.awayScore IS NOT NULL
+                            THEN 1 ELSE 0 END) AS finishedWithScores,
+                   SUM(CASE WHEN m.status = :finished
+                                 AND m.homeXG IS NOT NULL
+                                 AND m.awayXG IS NOT NULL
+                            THEN 1 ELSE 0 END) AS finishedWithExpectedGoals,
+                   SUM(CASE WHEN m.status <> :finished
+                                 AND m.matchTime > CURRENT_TIMESTAMP
+                            THEN 1 ELSE 0 END) AS upcomingMatches
+            FROM Match m
+            JOIN m.season s
+            JOIN s.league l
+            GROUP BY s.id, l.name, s.year
+            ORDER BY l.name ASC, s.year DESC
+            """)
+    List<SeasonDataReadinessProjection> findSeasonDataReadiness(
+            @Param("finished") MatchStatus finished);
+
+    interface SeasonDataReadinessProjection {
+        Long getSeasonId();
+        String getLeagueName();
+        String getSeasonYear();
+        Long getTotalMatches();
+        Long getFinishedMatches();
+        Long getFinishedWithScores();
+        Long getFinishedWithExpectedGoals();
+        Long getUpcomingMatches();
+    }
+
+    /**
      * Historical matches strictly before the prediction target kickoff.
      * The cutoff is required to prevent target/future outcomes leaking into features.
      */
