@@ -67,7 +67,15 @@ public class ApiFootballClient {
                 throw new IllegalStateException("Could not deserialize API-Football response for " + path);
             }
             if (response.hasErrors()) {
-                throw new IllegalStateException("API-Football returned errors for " + path + ": " + response.errors());
+                String message = "API-Football returned errors for " + path + ": " + response.errors();
+                String normalizedErrors = String.valueOf(response.errors()).toLowerCase(java.util.Locale.ROOT);
+                if (normalizedErrors.contains("free plans do not have access")
+                        || normalizedErrors.contains("plan does not have access")) {
+                    throw new ApiFootballPlanRestrictionException(message
+                            + ". The configured subscription cannot access this season; "
+                            + "skip it or use an API-Football plan that includes it.");
+                }
+                throw new IllegalStateException(message);
             }
             return response;
         } catch (WebClientResponseException ex) {
