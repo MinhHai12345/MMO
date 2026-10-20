@@ -71,9 +71,17 @@ class WalkForwardBacktestServiceTest {
         assertTrue(Double.isFinite(report.baseline().logLoss()));
         assertTrue(Double.isFinite(report.raw().brierScore()));
         assertEquals(1, report.dixonColesMatches());
+        assertEquals(report.dixonColesMatches(), report.matchedBaseline().brierScore() == report.matchedBaseline().brierScore()
+                ? report.dixonColesMatches() : 0);
         assertTrue(Double.isFinite(report.dixonColes().brierScore()));
+        assertTrue(Double.isFinite(report.matchedBaseline().logLoss()));
+        assertTrue(Double.isFinite(report.matchedRaw().brierScore()));
+        assertTrue(Double.isFinite(report.matchedCalibrated().expectedCalibrationError()));
         assertEquals(1, report.breakdown().get(0).dixonColesMatches());
         assertTrue(Double.isFinite(report.breakdown().get(0).dixonColes().logLoss()));
+        assertTrue(Double.isFinite(report.breakdown().get(0).matchedBaseline().brierScore()));
+        assertTrue(Double.isFinite(report.breakdown().get(0).matchedRaw().logLoss()));
+        assertTrue(Double.isFinite(report.breakdown().get(0).matchedCalibrated().brierScore()));
         assertTrue(Double.isFinite(report.calibrated().brierScore()));
         assertTrue(Double.isFinite(report.raw().logLoss()));
         assertTrue(Double.isFinite(report.calibrated().logLoss()));
