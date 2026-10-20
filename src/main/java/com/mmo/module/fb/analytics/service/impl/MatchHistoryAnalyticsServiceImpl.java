@@ -199,6 +199,7 @@ public class MatchHistoryAnalyticsServiceImpl implements MatchHistoryAnalyticsSe
 
     private boolean hasTeamsAndLeague(Match match) {
         return match != null
+                && match.getMatchTime() != null
                 && match.getHomeTeam() != null
                 && match.getAwayTeam() != null
                 && match.getHomeTeam().getId() != null
