@@ -40,7 +40,7 @@ The application registers the Quartz job `MatchSeasonFixtureSyncJob` in the `cro
 ```sql
 SELECT id, job_name, job_status
 FROM cron_jobs
-WHERE job_name = 'MatchSeasonFixtureSyncJob'
+WHERE job_name = 'FootballDataBootstrapJob'
   AND job_group = 'FBJobGroup';
 ```
 

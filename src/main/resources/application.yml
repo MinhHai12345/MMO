@@ -90,8 +90,8 @@ app:
       odds: ${INGESTION_ODDS_PROVIDER:API_FOOTBALL}
 
   api-football:
-    enabled: ${API_FOOTBALL_ENABLED:true}
-    base-url: ${API_FOOTBALL_BASE_URL:https://v3.football.api-sports.io}
+    enabled: true
+    base-url: https://v3.football.api-sports.io
     api-key: ${API_FOOTBALL_API_KEY:mock}
     # Required for the initial data bootstrap. Use comma-separated API-Football league IDs.
     # Keep the list focused to control API quota; an empty list intentionally prevents league ingestion.
@@ -100,4 +100,4 @@ app:
     seasons: ${API_FOOTBALL_SEASONS:}
 
   understats:
-    base-url: ${UNDERSTAT_BASE_URL:https://understat.com}
+    base-url: :https://understat.com

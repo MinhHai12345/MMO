@@ -230,8 +230,8 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
                 group.matchedRaw().brierScore(), group.matchedCalibrated().brierScore(),
                 group.matchedBaseline().brierScore(),
                 group.raw().accuracy(), group.raw().expectedCalibrationError(),
-                group.lastEstimatedDixonColesRho, group.dixonColesRhoTrainingSamples,
-                group.leagueSpecificRho));
+                group.lastEstimatedDixonColesRho(), group.dixonColesRhoTrainingSamples(),
+                group.leagueSpecificRho()));
         return report;
     }
 

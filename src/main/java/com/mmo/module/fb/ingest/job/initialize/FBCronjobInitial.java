@@ -8,6 +8,7 @@ import com.mmo.module.fb.ingest.job.AdvancedMetricsJob;
 import com.mmo.module.fb.ingest.job.ContentSchedulingJob;
 import com.mmo.module.fb.ingest.job.CrawlerHealthCheckJob;
 import com.mmo.module.fb.ingest.job.DataCleanupJob;
+import com.mmo.module.fb.ingest.job.FootballDataBootstrapJob;
 import com.mmo.module.fb.ingest.job.LeagueSyncJob;
 import com.mmo.module.fb.ingest.job.MatchDailyRecapJob;
 import com.mmo.module.fb.ingest.job.MatchDashboardJob;
@@ -18,7 +19,6 @@ import com.mmo.module.fb.ingest.job.MatchProcessPredictionJob;
 import com.mmo.module.fb.ingest.job.MatchResultSyncJob;
 import com.mmo.module.fb.ingest.job.MatchStatisticsSyncJob;
 import com.mmo.module.fb.ingest.job.PredictionEvaluationJob;
-import com.mmo.module.fb.ingest.job.MatchSeasonFixtureSyncJob;
 import com.mmo.module.fb.ingest.job.MatchStatusTrackerJob;
 import com.mmo.module.fb.ingest.job.NotificationPublisherJob;
 import com.mmo.module.fb.ingest.job.SubscriptionExpiryCheckJob;
@@ -40,13 +40,15 @@ public class FBCronjobInitial implements DataInitializer {
     @Override
     public void initialize() {
         log.info("Initializing Football Analytics CronJobs (UTC Timezone)...");
+        createJobIfNotExist(FootballDataBootstrapJob.class.getSimpleName(), FootballDataBootstrapJob.class,
+                "0 0 1 1 * ?", "Bootstrap current-season leagues, teams, fixtures, " +
+                               "scores and standings (UTC 01:00 / VN 08:00 AM - 1st of month)");
 
+        //
         createJobIfNotExist(LeagueSyncJob.class.getSimpleName(), LeagueSyncJob.class,
                 "0 0 2 1 * ?", "Sync League and Season info (UTC 02:00 / VN 09:00 AM - 1st of month)");
         createJobIfNotExist(TeamSyncJob.class.getSimpleName(), TeamSyncJob.class,
                 "0 0 3 1,15 * ?", "Sync Team metadata (UTC 03:00 / VN 10:00 AM - 1st & 15th of month)");
-        createJobIfNotExist(MatchSeasonFixtureSyncJob.class.getSimpleName(), MatchSeasonFixtureSyncJob.class,
-                "0 0 1 1 * ?", "Bootstrap current-season leagues, teams, fixtures, scores and standings (UTC 01:00 / VN 08:00 AM - 1st of month)");
 
         createJobIfNotExist(MatchResultSyncJob.class.getSimpleName(), MatchResultSyncJob.class,
                 "0 0 4 * * ?", "Refresh match statuses and scores from the previous 7 days through today (UTC 04:00 / VN 11:00 AM)");

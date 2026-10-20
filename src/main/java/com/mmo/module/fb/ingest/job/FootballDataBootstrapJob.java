@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 @Component
 @DisallowConcurrentExecution
 @RequiredArgsConstructor
-public class MatchSeasonFixtureSyncJob extends AbstractJob<CronJob> {
+public class FootballDataBootstrapJob extends AbstractJob<CronJob> {
 
     private final FootballDataBootstrapService footballDataBootstrapService;
 
