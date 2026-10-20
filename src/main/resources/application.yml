@@ -99,5 +99,12 @@ app:
     # Comma-separated season start years; empty uses current year.
     seasons: ${API_FOOTBALL_SEASONS:}
 
+  football-data:
+    enabled: ${FOOTBALL_DATA_ENABLED:false}
+    base-url: ${FOOTBALL_DATA_BASE_URL:https://api.football-data.org/v4}
+    api-key: ${FOOTBALL_DATA_API_KEY:mock}
+    # Numeric competition IDs, comma-separated; for example 2021 (Premier League), 2001 (Champions League).
+    competition-ids: ${FOOTBALL_DATA_COMPETITION_IDS:}
+
   understats:
-    base-url: :https://understat.com
+    base-url: https://understat.com
