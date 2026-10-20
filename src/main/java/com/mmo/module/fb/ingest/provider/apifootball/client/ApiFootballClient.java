@@ -20,6 +20,7 @@ import java.util.Map;
 public class ApiFootballClient {
 
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(25);
+    private static final String PLACEHOLDER_API_KEY = "mock";
 
     private final WebClient.Builder webClientBuilder;
     private final ObjectMapper objectMapper;
@@ -31,9 +32,18 @@ public class ApiFootballClient {
             TypeReference<ApiFootballResponse<T>> responseType
     ) {
         AppProperties.ApiFootball properties = appProperties.getApiFootball();
-        if (properties == null || !StringUtils.hasText(properties.getApiKey())) {
+        if (properties == null || !StringUtils.hasText(properties.getApiKey())
+                || PLACEHOLDER_API_KEY.equalsIgnoreCase(properties.getApiKey().trim())) {
             throw new IllegalStateException(
-                    "API-Football key is missing. Set API_FOOTBALL_API_KEY environment variable.");
+                    "API-Football API key is not configured. Set API_FOOTBALL_API_KEY environment variable.");
+        }
+        if (!properties.isEnabled()) {
+            throw new IllegalStateException(
+                    "API-Football integration is disabled. Set API_FOOTBALL_ENABLED=true to enable it.");
+        }
+        if (!StringUtils.hasText(properties.getBaseUrl())) {
+            throw new IllegalStateException(
+                    "API-Football base URL is missing. Set API_FOOTBALL_BASE_URL.");
         }
 
         try {
