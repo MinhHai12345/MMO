@@ -212,14 +212,17 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
                 "Walk-forward group: league={}, season={}, matches={}, baselineBrier={}, rawBrier={}, " +
                         "calibratedBrier={}, dixonColesMatches={}, dixonColesBrier={}, rawLogLoss={}, " +
                         "calibratedLogLoss={}, matchedRawBrier={}, matchedCalibratedBrier={}, " +
-                        "matchedBaselineBrier={}, rawAccuracy={}, rawEce={}",
+                        "matchedBaselineBrier={}, rawAccuracy={}, rawEce={}, leagueRho={}, " +
+                        "rhoTrainingSamples={}, leagueSpecificRho={}",
                 group.league(), group.season(), group.testedMatches(),
                 group.baseline().brierScore(), group.raw().brierScore(), group.calibrated().brierScore(),
                 group.dixonColesMatches(), group.dixonColes().brierScore(),
                 group.raw().logLoss(), group.calibrated().logLoss(),
                 group.matchedRaw().brierScore(), group.matchedCalibrated().brierScore(),
                 group.matchedBaseline().brierScore(),
-                group.raw().accuracy(), group.raw().expectedCalibrationError()));
+                group.raw().accuracy(), group.raw().expectedCalibrationError(),
+                group.lastEstimatedDixonColesRho, group.dixonColesRhoTrainingSamples,
+                group.leagueSpecificRho));
         return report;
     }
 
