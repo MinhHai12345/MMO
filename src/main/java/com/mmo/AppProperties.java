@@ -29,6 +29,7 @@ public class AppProperties {
     private SofaScore sofaScore = new SofaScore();
     private Sync sync = new Sync();
     private ApiFootball apiFootball = new ApiFootball();
+    private FootballData footballData = new FootballData();
     private Ingestion ingestion = new Ingestion();
     private Understats understats = new Understats();
 
@@ -164,6 +165,16 @@ public class AppProperties {
         private List<Long> leagueIds = new ArrayList<>();
         /** Season start years supported by API-Football. Empty means the current calendar year only. */
         private List<Integer> seasons = new ArrayList<>();
+    }
+
+    @Getter
+    @Setter
+    public static class FootballData {
+        private boolean enabled = false;
+        private String baseUrl = "https://api.football-data.org/v4";
+        private String apiKey = "mock";
+        /** Numeric football-data.org competition IDs, e.g. 2021 (Premier League) or 2001 (UEFA Champions League). */
+        private List<Long> competitionIds = new ArrayList<>();
     }
 
     @Getter
