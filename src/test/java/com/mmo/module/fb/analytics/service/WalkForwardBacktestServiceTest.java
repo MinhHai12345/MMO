@@ -3,6 +3,8 @@ package com.mmo.module.fb.analytics.service;
 import com.mmo.module.fb.analytics.service.impl.WalkForwardBackTestServiceImpl;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
+import com.mmo.module.fb.domain.entity.League;
+import com.mmo.module.fb.domain.entity.Season;
 import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.repository.MatchPredictionRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,10 +57,23 @@ class WalkForwardBacktestServiceTest {
 
         assertEquals(1, report.testedMatches());
         assertEquals(1, report.calibratedMatches());
+        assertEquals(100, report.dixonColesRhoTrainingSamples());
+        assertTrue(Double.isFinite(report.lastEstimatedDixonColesRho()));
+        assertTrue(report.lastEstimatedDixonColesRho() >= -0.30);
+        assertTrue(report.lastEstimatedDixonColesRho() <= 0.30);
         assertEquals("INSUFFICIENT_TEST_SAMPLES", report.status());
+        assertEquals(1, report.breakdown().size());
+        assertEquals("Premier League", report.breakdown().get(0).league());
+        assertEquals("2025", report.breakdown().get(0).season());
+        assertEquals(1, report.breakdown().get(0).testedMatches());
+        assertTrue(Double.isFinite(report.breakdown().get(0).raw().brierScore()));
         assertTrue(Double.isFinite(report.baseline().brierScore()));
         assertTrue(Double.isFinite(report.baseline().logLoss()));
         assertTrue(Double.isFinite(report.raw().brierScore()));
+        assertEquals(1, report.dixonColesMatches());
+        assertTrue(Double.isFinite(report.dixonColes().brierScore()));
+        assertEquals(1, report.breakdown().get(0).dixonColesMatches());
+        assertTrue(Double.isFinite(report.breakdown().get(0).dixonColes().logLoss()));
         assertTrue(Double.isFinite(report.calibrated().brierScore()));
         assertTrue(Double.isFinite(report.raw().logLoss()));
         assertTrue(Double.isFinite(report.calibrated().logLoss()));
@@ -87,6 +102,8 @@ class WalkForwardBacktestServiceTest {
         WalkForwardBackTestService.BackTestReport report = service.run(from, to);
 
         assertEquals(1, report.testedMatches());
+        assertEquals(0.0, report.lastEstimatedDixonColesRho(), 1.0e-12);
+        assertEquals(0, report.dixonColesRhoTrainingSamples());
         assertEquals(2.0 / 3.0, report.baseline().brierScore(), 1.0e-12);
         assertEquals(Math.log(3.0), report.baseline().logLoss(), 1.0e-12);
     }
@@ -140,12 +157,18 @@ class WalkForwardBacktestServiceTest {
                                        String homeProbability, String drawProbability, String awayProbability) {
         Match match = Match.builder()
                 .matchTime(kickoff)
+                .season(Season.builder()
+                        .year("2025")
+                        .league(League.builder().name("Premier League").build())
+                        .build())
                 .status(MatchStatus.FINISHED)
                 .homeScore(homeScore)
                 .awayScore(awayScore)
                 .build();
         return MatchPrediction.builder()
                 .match(match)
+                .predictedHomeXg(new BigDecimal("1.60"))
+                .predictedAwayXg(new BigDecimal("0.90"))
                 .calculatedAt(calculatedAt)
                 .winHomeProb(new BigDecimal(homeProbability))
                 .drawProb(new BigDecimal(drawProbability))
