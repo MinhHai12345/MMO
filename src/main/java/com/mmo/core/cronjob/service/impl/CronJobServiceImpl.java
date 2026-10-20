@@ -112,10 +112,28 @@ public class CronJobServiceImpl implements CronJobService {
                 .orElseThrow(() -> new RuntimeException(String.format(NO_JOB_MSG, jobId)));
 
         try {
-            scheduler.triggerJob(new JobKey(cronJob.getJobName(), cronJob.getJobGroup()));
+            final JobKey jobKey = new JobKey(cronJob.getJobName(), cronJob.getJobGroup());
+
+            // The application database is the source of truth for job definitions.
+            // Quartz can lose a non-durable JobDetail when its trigger is removed,
+            // or have no matching JobDetail after scheduler-store changes/restarts.
+            // Re-register it from the persisted CronJob record before triggering it.
+            if (!scheduler.checkExists(jobKey)) {
+                LOGGER.warn("Quartz JobDetail {} is missing; restoring it from the persisted CronJob definition.",
+                        jobKey);
+                scheduleNewJob(cronJob);
+            }
+
+            if (!scheduler.checkExists(jobKey)) {
+                throw new ScheduleJobException(
+                        String.format("Cannot start job %s: Quartz JobDetail %s is still missing after recovery.",
+                                cronJob.getJobName(), jobKey));
+            }
+
+            scheduler.triggerJob(jobKey);
             cronJob.setJobStatus(JobState.RUNNING);
             cronJobRepository.save(cronJob);
-            LOGGER.info("Job {} is scheduled and started now.", cronJob.getJobName());
+            LOGGER.info("Job {} is triggered for immediate execution.", jobKey);
             return cronJob;
         } catch (SchedulerException e) {
             throw new ScheduleJobException(String.format("Failed to start job %s", cronJob.getJobName()), e);
