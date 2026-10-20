@@ -14,7 +14,7 @@ public final class FootballDataDtos {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record SeasonDto(Long id, LocalDate startDate, LocalDate endDate,
-                            Integer currentMatchday, String winner) {}
+                            Integer currentMatchday) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record CompetitionDto(Long id, String name, String code, String type,
@@ -23,12 +23,10 @@ public final class FootballDataDtos {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record CompetitionListDto(Integer count, List<CompetitionDto> competitions) {}
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public record VenueDto(String name, Integer capacity) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record TeamDto(Long id, String name, String shortName, String tla, String crest,
-                          Integer founded, VenueDto venue) {}
+                          Integer founded, String venue) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record TeamListDto(Integer count, List<TeamDto> teams) {}
