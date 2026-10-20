@@ -148,10 +148,10 @@ public class AppProperties {
     @Getter
     @Setter
     public static class Providers {
-        private Provider league = Provider.API_FOOTBALL;
-        private Provider team = Provider.API_FOOTBALL;
-        private Provider fixture = Provider.API_FOOTBALL;
-        private Provider standings = Provider.API_FOOTBALL;
+        private Provider league = Provider.FOOTBALL_DATA;
+        private Provider team = Provider.FOOTBALL_DATA;
+        private Provider fixture = Provider.FOOTBALL_DATA;
+        private Provider standings = Provider.FOOTBALL_DATA;
         private Provider odds = Provider.API_FOOTBALL;
     }
 
@@ -159,20 +159,18 @@ public class AppProperties {
     @Setter
     public static class ApiFootball {
         private boolean enabled = true;
-        private String baseUrl = "https://v3.football.api-sports.io";
-        private String apiKey = "mock";
+        private String baseUrl;
+        private String apiKey;
         /** API-Football league IDs to sync. Required for a bounded initial import; empty disables league ingestion. */
         private List<Long> leagueIds = new ArrayList<>();
-        /** Season start years supported by API-Football. Empty means the current calendar year only. */
-        private List<Integer> seasons = new ArrayList<>();
     }
 
     @Getter
     @Setter
     public static class FootballData {
         private boolean enabled = false;
-        private String baseUrl = "https://api.football-data.org/v4";
-        private String apiKey = "mock";
+        private String baseUrl;
+        private String apiKey;
         /** Numeric football-data.org competition IDs, e.g. 2021 (Premier League) or 2001 (UEFA Champions League). */
         private List<Long> competitionIds = new ArrayList<>();
     }

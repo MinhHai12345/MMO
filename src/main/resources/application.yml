@@ -77,16 +77,16 @@ app:
         secret: ${STRIPE_WEBHOOK_SECRET:mock}
 
   sofa-score:
-    api: ${SOFASCORE_API_URL:https://api.sofascore.com/api/v1/}
-    url: ${SOFASCORE_WEB_URL:https://www.sofascore.com}
+    api: https://api.sofascore.com/api/v1/
+    url: https://www.sofascore.com
 
   ingestion:
     providers:
       # Values must match com.mmo.module.fb.domain.enums.Provider.
-      league: ${INGESTION_LEAGUE_PROVIDER:API_FOOTBALL}
-      team: ${INGESTION_TEAM_PROVIDER:API_FOOTBALL}
-      fixture: ${INGESTION_FIXTURE_PROVIDER:API_FOOTBALL}
-      standings: ${INGESTION_STANDINGS_PROVIDER:API_FOOTBALL}
+      league: ${INGESTION_LEAGUE_PROVIDER:FOOTBALL_DATA}
+      team: ${INGESTION_TEAM_PROVIDER:FOOTBALL_DATA}
+      fixture: ${INGESTION_FIXTURE_PROVIDER:FOOTBALL_DATA}
+      standings: ${INGESTION_STANDINGS_PROVIDER:FOOTBALL_DATA}
       odds: ${INGESTION_ODDS_PROVIDER:API_FOOTBALL}
 
   api-football:
@@ -96,12 +96,10 @@ app:
     # Required for the initial data bootstrap. Use comma-separated API-Football league IDs.
     # Keep the list focused to control API quota; an empty list intentionally prevents league ingestion.
     league-ids: ${API_FOOTBALL_LEAGUE_IDS:}
-    # Comma-separated season start years; empty uses current year.
-    seasons: ${API_FOOTBALL_SEASONS:}
 
   football-data:
-    enabled: ${FOOTBALL_DATA_ENABLED:false}
-    base-url: ${FOOTBALL_DATA_BASE_URL:https://api.football-data.org/v4}
+    enabled: true
+    base-url: https://api.football-data.org/v4
     api-key: ${FOOTBALL_DATA_API_KEY:mock}
     # Numeric competition IDs, comma-separated; for example 2021 (Premier League), 2001 (Champions League).
     competition-ids: ${FOOTBALL_DATA_COMPETITION_IDS:}
