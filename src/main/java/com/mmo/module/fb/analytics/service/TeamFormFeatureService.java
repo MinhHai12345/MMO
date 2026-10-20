@@ -24,6 +24,8 @@ public interface TeamFormFeatureService {
             double averageGoalsFor,
             double averageGoalsAgainst,
             double averagePoints,
+            double venueAverageGoalsFor,
+            double venueAverageGoalsAgainst,
             double winRate,
             double cleanSheetRate,
             double scoredRate,
