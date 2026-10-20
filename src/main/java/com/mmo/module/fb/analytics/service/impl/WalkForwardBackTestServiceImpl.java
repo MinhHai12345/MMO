@@ -437,17 +437,27 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
     private record RhoEstimate(double rho, int trainingSamples, boolean leagueSpecific) {
     }
 
-    private record GroupMetrics(Metrics baseline, Metrics raw, Metrics calibrated, Metrics dixonColes,
-                                Metrics globalRhoDixonColes, Metrics matchedBaseline, Metrics matchedRaw,
-                                Metrics matchedCalibrated) {
+    private static final class GroupMetrics {
+        private final Metrics baseline = new Metrics();
+        private final Metrics raw = new Metrics();
+        private final Metrics calibrated = new Metrics();
+        private final Metrics dixonColes = new Metrics();
+        private final Metrics globalRhoDixonColes = new Metrics();
+        private final Metrics matchedBaseline = new Metrics();
+        private final Metrics matchedRaw = new Metrics();
+        private final Metrics matchedCalibrated = new Metrics();
         private double lastEstimatedDixonColesRho;
         private int dixonColesRhoTrainingSamples;
         private boolean leagueSpecificRho;
 
-        private GroupMetrics() {
-            this(new Metrics(), new Metrics(), new Metrics(), new Metrics(), new Metrics(),
-                    new Metrics(), new Metrics(), new Metrics());
-        }
+        private Metrics baseline() { return baseline; }
+        private Metrics raw() { return raw; }
+        private Metrics calibrated() { return calibrated; }
+        private Metrics dixonColes() { return dixonColes; }
+        private Metrics globalRhoDixonColes() { return globalRhoDixonColes; }
+        private Metrics matchedBaseline() { return matchedBaseline; }
+        private Metrics matchedRaw() { return matchedRaw; }
+        private Metrics matchedCalibrated() { return matchedCalibrated; }
     }
 
     private static final class Metrics {
