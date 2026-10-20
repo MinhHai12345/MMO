@@ -115,6 +115,8 @@ public class TeamFormFeatureServiceImpl implements TeamFormFeatureService {
                 count == 0 ? 0 : goalsFor / count,
                 count == 0 ? 0 : goalsAgainst / count,
                 count == 0 ? 0 : points / count,
+                venueCount == 0 ? 0 : venueGoalsFor / venueCount,
+                venueCount == 0 ? 0 : venueGoalsAgainst / venueCount,
                 count == 0 ? 0 : (double) wins / count,
                 count == 0 ? 0 : (double) cleanSheets / count,
                 count == 0 ? 0 : (double) scored / count,
