@@ -116,11 +116,11 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
     private static MatchStatus toMatchStatus(String status) {
         if (status == null || status.isBlank()) return null;
         return switch (status.toUpperCase()) {
-            case "NS", "TBD", "SCHEDULED" -> MatchStatus.SCHEDULED;
-            case "1H", "HT", "2H", "ET", "P", "LIVE", "BT" -> MatchStatus.LIVE;
-            case "FT", "AET", "PEN" -> MatchStatus.FINISHED;
-            case "PST", "SUSP", "INT" -> MatchStatus.POSTPONED;
-            case "CANC", "ABD", "WO" -> MatchStatus.CANCELLED;
+            case "NS", "TBD", "SCHEDULED", "TIMED" -> MatchStatus.SCHEDULED;
+            case "1H", "HT", "2H", "ET", "P", "LIVE", "BT", "IN_PLAY", "PAUSED" -> MatchStatus.LIVE;
+            case "FT", "AET", "PEN", "FINISHED" -> MatchStatus.FINISHED;
+            case "PST", "SUSP", "INT", "POSTPONED", "SUSPENDED" -> MatchStatus.POSTPONED;
+            case "CANC", "ABD", "WO", "CANCELLED" -> MatchStatus.CANCELLED;
             default -> null;
         };
     }
