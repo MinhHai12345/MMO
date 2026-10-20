@@ -82,6 +82,9 @@ class WalkForwardBacktestServiceTest {
         assertTrue(Double.isFinite(report.breakdown().get(0).matchedBaseline().brierScore()));
         assertTrue(Double.isFinite(report.breakdown().get(0).matchedRaw().logLoss()));
         assertTrue(Double.isFinite(report.breakdown().get(0).matchedCalibrated().brierScore()));
+        assertEquals(100, report.breakdown().get(0).dixonColesRhoTrainingSamples());
+        assertTrue(report.breakdown().get(0).leagueSpecificRho());
+        assertTrue(Double.isFinite(report.breakdown().get(0).lastEstimatedDixonColesRho()));
         assertTrue(Double.isFinite(report.calibrated().brierScore()));
         assertTrue(Double.isFinite(report.raw().logLoss()));
         assertTrue(Double.isFinite(report.calibrated().logLoss()));
