@@ -48,9 +48,9 @@ public class MatchHistoryAnalyticsServiceImpl implements MatchHistoryAnalyticsSe
         }
 
         Long leagueId = match.getSeason().getLeague().getId();
-        TeamHistory home = loadTeamHistory(match.getHomeTeam(), leagueId);
-        TeamHistory away = loadTeamHistory(match.getAwayTeam(), leagueId);
-        List<Match> leagueMatches = loadLeagueHistory(leagueId);
+        TeamHistory home = loadTeamHistory(match.getHomeTeam(), leagueId, match.getMatchTime());
+        TeamHistory away = loadTeamHistory(match.getAwayTeam(), leagueId, match.getMatchTime());
+        List<Match> leagueMatches = loadLeagueHistory(leagueId, match.getMatchTime());
 
         Metric attackMetric = useExpectedGoals ? Metric.XG_FOR : Metric.GOALS_FOR;
         Metric defenceMetric = useExpectedGoals ? Metric.XG_AGAINST : Metric.GOALS_AGAINST;
@@ -84,15 +84,15 @@ public class MatchHistoryAnalyticsServiceImpl implements MatchHistoryAnalyticsSe
                 Math.min(Math.min(awayAttack.samples(), homeDefence.samples()), leagueAwayBaseline.samples())));
     }
 
-    private TeamHistory loadTeamHistory(Team team, Long leagueId) {
-        List<Match> matches = matchRepository.findRecentFinishedMatchesForTeamInLeague(
-                team.getId(), leagueId, MatchStatus.FINISHED, PageRequest.of(0, TEAM_HISTORY_SIZE));
+    private TeamHistory loadTeamHistory(Team team, Long leagueId, java.time.Instant before) {
+        List<Match> matches = matchRepository.findRecentFinishedMatchesForTeamInLeagueBefore(
+                team.getId(), leagueId, MatchStatus.FINISHED, before, PageRequest.of(0, TEAM_HISTORY_SIZE));
         return new TeamHistory(team, matches == null ? List.of() : matches);
     }
 
-    private List<Match> loadLeagueHistory(Long leagueId) {
-        List<Match> matches = matchRepository.findRecentFinishedMatchesInLeague(
-                leagueId, MatchStatus.FINISHED, PageRequest.of(0, LEAGUE_BASELINE_SIZE));
+    private List<Match> loadLeagueHistory(Long leagueId, java.time.Instant before) {
+        List<Match> matches = matchRepository.findRecentFinishedMatchesInLeagueBefore(
+                leagueId, MatchStatus.FINISHED, before, PageRequest.of(0, LEAGUE_BASELINE_SIZE));
         return matches == null ? List.of() : matches;
     }
 
