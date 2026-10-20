@@ -17,6 +17,7 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class FootballDataClient {
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(25);
+    private static final int MAX_IN_MEMORY_SIZE_BYTES = 10 * 1024 * 1024;
     private static final String PLACEHOLDER_API_KEY = "mock";
     private static final long DEFAULT_RATE_LIMIT_WAIT_SECONDS = 60;
     private static final Pattern WAIT_SECONDS_PATTERN =
@@ -49,9 +50,12 @@ public class FootballDataClient {
 
         for (int attempt = 0; attempt < 2; attempt++) {
             try {
-                String json = webClientBuilder.baseUrl(properties.getBaseUrl())
+                String json = webClientBuilder.clone()
+                        .baseUrl(properties.getBaseUrl())
                         .defaultHeader("X-Auth-Token", properties.getApiKey())
                         .defaultHeader(HttpHeaders.ACCEPT, "application/json")
+                        // Fixture lists can exceed WebClient's default 256 KiB codec buffer.
+                        .codecs(codecs -> codecs.defaultCodecs().maxInMemorySize(MAX_IN_MEMORY_SIZE_BYTES))
                         .build().get().uri(path, uriVariables)
                         .retrieve().bodyToMono(String.class).block(REQUEST_TIMEOUT);
                 if (!StringUtils.hasText(json)) {
