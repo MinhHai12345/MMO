@@ -71,8 +71,8 @@ class WalkForwardBacktestServiceTest {
         assertTrue(Double.isFinite(report.baseline().logLoss()));
         assertTrue(Double.isFinite(report.raw().brierScore()));
         assertEquals(1, report.dixonColesMatches());
-        assertEquals(report.dixonColesMatches(), report.matchedBaseline().brierScore() == report.matchedBaseline().brierScore()
-                ? report.dixonColesMatches() : 0);
+        assertEquals(report.raw().brierScore(), report.matchedRaw().brierScore(), 1.0e-12,
+                "single eligible test match must produce identical raw and matched-cohort metrics");
         assertTrue(Double.isFinite(report.dixonColes().brierScore()));
         assertTrue(Double.isFinite(report.matchedBaseline().logLoss()));
         assertTrue(Double.isFinite(report.matchedRaw().brierScore()));
