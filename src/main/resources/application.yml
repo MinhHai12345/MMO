@@ -93,7 +93,8 @@ app:
     enabled: ${API_FOOTBALL_ENABLED:true}
     base-url: ${API_FOOTBALL_BASE_URL:https://v3.football.api-sports.io}
     api-key: ${API_FOOTBALL_API_KEY:mock}
-    # Comma-separated league IDs; empty means no explicit league filter.
+    # Required for the initial data bootstrap. Use comma-separated API-Football league IDs.
+    # Keep the list focused to control API quota; an empty list intentionally prevents league ingestion.
     league-ids: ${API_FOOTBALL_LEAGUE_IDS:}
     # Comma-separated season start years; empty uses current year.
     seasons: ${API_FOOTBALL_SEASONS:}

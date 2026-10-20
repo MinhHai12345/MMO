@@ -34,6 +34,7 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
     private final TeamExternalIdRepository teamExternalIdRepository;
     private final FixturePersistenceService fixturePersistenceService;
 
+    @Override
     public void syncCurrentSeasonFixtures(LocalDate from, LocalDate to) {
         syncFixturesForProvider(appProperties.getIngestion().getProviders().getFixture(), from, to);
     }
@@ -42,16 +43,21 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
      * Coordinates upstream calls only. Each fixture is persisted in its own short transaction,
      * so slow provider requests do not hold a database transaction/connection open.
      */
+    @Override
     public void syncFixturesForProvider(Provider selectedProvider, LocalDate from, LocalDate to) {
         if (selectedProvider == Provider.API_FOOTBALL
-            && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
+                && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
+            log.info("Skipping fixture ingestion because API-Football is disabled");
             return;
         }
         if (from != null && to != null && from.isAfter(to)) {
             throw new IllegalArgumentException("'from' must be before or equal to 'to'");
         }
 
-        teamIngestionService.syncTeamsForProvider(selectedProvider);
+        // Recover from a cold start, but do not re-fetch every team's roster on each fixture poll.
+        if (teamExternalIdRepository.findAllByProvider(selectedProvider).isEmpty()) {
+            teamIngestionService.syncTeamsForProvider(selectedProvider);
+        }
 
         List<Season> seasons = seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
         Map<Long, String> leagueExternalIdsByLeagueId = new HashMap<>();
@@ -63,13 +69,19 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
 
         int saved = 0;
         int skipped = 0;
+        int fetched = 0;
         for (Season season : seasons) {
             Long externalLeagueId = parseLong(leagueExternalIdsByLeagueId.get(season.getLeague().getId()));
-            if (externalLeagueId == null) continue;
+            if (externalLeagueId == null) {
+                log.warn("Skipping season {} for league {} because provider {} has no league ID mapping",
+                        season.getYear(), season.getLeague().getId(), selectedProvider);
+                continue;
+            }
 
             // Provider I/O deliberately occurs outside any persistence transaction.
             List<ProviderFixture> fixtures = providerRegistry.fixture(selectedProvider).fetchFixtures(
                     new FixtureQuery(externalLeagueId, season.getYear(), from, to));
+            fetched += fixtures.size();
             log.info("Fetched {} fixtures for league {} season {} from {}",
                     fixtures.size(), externalLeagueId, season.getYear(), selectedProvider);
 
@@ -102,8 +114,8 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
             }
         }
 
-        log.info("Fixture ingestion via {} completed. {} saved/updated, {} skipped; date range {} to {}",
-                selectedProvider, saved, skipped, from, to);
+        log.info("Fixture ingestion via {} completed. fetched={}, saved/updated={}, skipped={}; date range {} to {}",
+                selectedProvider, fetched, saved, skipped, from, to);
     }
 
     private static Long parseLong(String value) {

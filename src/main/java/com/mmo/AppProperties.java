@@ -160,7 +160,7 @@ public class AppProperties {
         private boolean enabled = true;
         private String baseUrl = "https://v3.football.api-sports.io";
         private String apiKey = "mock";
-        /** API-Football league IDs to sync. Empty means no explicit league filter. */
+        /** API-Football league IDs to sync. Required for a bounded initial import; empty disables league ingestion. */
         private List<Long> leagueIds = new ArrayList<>();
         /** Season start years supported by API-Football. Empty means the current calendar year only. */
         private List<Integer> seasons = new ArrayList<>();

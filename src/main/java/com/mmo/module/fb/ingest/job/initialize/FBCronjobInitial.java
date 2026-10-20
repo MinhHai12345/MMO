@@ -46,10 +46,10 @@ public class FBCronjobInitial implements DataInitializer {
         createJobIfNotExist(TeamSyncJob.class.getSimpleName(), TeamSyncJob.class,
                 "0 0 3 1,15 * ?", "Sync Team metadata (UTC 03:00 / VN 10:00 AM - 1st & 15th of month)");
         createJobIfNotExist(MatchSeasonFixtureSyncJob.class.getSimpleName(), MatchSeasonFixtureSyncJob.class,
-                "0 0 1 1 * ?", "Sync full season fixtures frame (UTC 01:00 / VN 08:00 AM - 1st of month)");
+                "0 0 1 1 * ?", "Bootstrap current-season leagues, teams, fixtures, scores and standings (UTC 01:00 / VN 08:00 AM - 1st of month)");
 
         createJobIfNotExist(MatchResultSyncJob.class.getSimpleName(), MatchResultSyncJob.class,
-                "0 0 4 * * ?", "Fetch yesterday's match results and actual xG (UTC 04:00 / VN 11:00 AM)");
+                "0 0 4 * * ?", "Refresh match statuses and scores from the previous 7 days through today (UTC 04:00 / VN 11:00 AM)");
         createJobIfNotExist(MatchStatisticsSyncJob.class.getSimpleName(), MatchStatisticsSyncJob.class,
                 "0 0 */4 * * ?", "Fetch real SofaScore statistics for finished matches (every 4 hours UTC)");
         createJobIfNotExist(PredictionEvaluationJob.class.getSimpleName(), PredictionEvaluationJob.class,
@@ -59,7 +59,7 @@ public class FBCronjobInitial implements DataInitializer {
         createJobIfNotExist(MatchDailyRecapJob.class.getSimpleName(), MatchDailyRecapJob.class,
                 "0 0 5 * * ?", "Calculate yesterday's prediction accuracy & ROI (UTC 05:00 / VN 12:00 PM)");
         createJobIfNotExist(MatchFixtureSyncJob.class.getSimpleName(), MatchFixtureSyncJob.class,
-                "0 30 5 * * ?", "Fetch today & tomorrow fixtures update (UTC 05:30 / VN 12:30 PM)");
+                "0 30 5 * * ?", "Refresh fixtures from today through the next 14 days (UTC 05:30 / VN 12:30 PM)");
         createJobIfNotExist(MatchInsightJob.class.getSimpleName(), MatchInsightJob.class,
                 "0 0/30 6-9 * * ?", "Fetch H2H, Form, Rest Days & Injuries (Every 30m UTC 06:00-09:00 / VN 13:00-16:00)");
         createJobIfNotExist(MatchProcessPredictionJob.class.getSimpleName(), MatchProcessPredictionJob.class,
