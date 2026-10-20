@@ -197,4 +197,38 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
         Long getFinishedWithExpectedGoals();
         Long getUpcomingMatches();
     }
+
+    /**
+     * Historical matches strictly before the prediction target kickoff.
+     * The cutoff is required to prevent target/future outcomes leaking into features.
+     */
+    @Query("""
+            SELECT m FROM Match m
+            WHERE (m.homeTeam.id = :teamId OR m.awayTeam.id = :teamId)
+              AND m.season.league.id = :leagueId
+              AND m.status = :status
+              AND m.matchTime < :before
+              AND m.homeScore IS NOT NULL
+              AND m.awayScore IS NOT NULL
+            ORDER BY m.matchTime DESC, m.id DESC
+            """)
+    List<Match> findRecentFinishedMatchesForTeamInLeagueBefore(@Param("teamId") Long teamId,
+                                                               @Param("leagueId") Long leagueId,
+                                                               @Param("status") MatchStatus status,
+                                                               @Param("before") Instant before,
+                                                               Pageable pageable);
+
+    @Query("""
+            SELECT m FROM Match m
+            WHERE m.season.league.id = :leagueId
+              AND m.status = :status
+              AND m.matchTime < :before
+              AND m.homeScore IS NOT NULL
+              AND m.awayScore IS NOT NULL
+            ORDER BY m.matchTime DESC, m.id DESC
+            """)
+    List<Match> findRecentFinishedMatchesInLeagueBefore(@Param("leagueId") Long leagueId,
+                                                        @Param("status") MatchStatus status,
+                                                        @Param("before") Instant before,
+                                                        Pageable pageable);
 }
