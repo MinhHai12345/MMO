@@ -18,7 +18,10 @@ public interface WalkForwardBackTestService {
             MetricSnapshot raw,
             MetricSnapshot calibrated,
             int dixonColesMatches,
-            MetricSnapshot dixonColes) {
+            MetricSnapshot dixonColes,
+            MetricSnapshot matchedBaseline,
+            MetricSnapshot matchedRaw,
+            MetricSnapshot matchedCalibrated) {
     }
 
     record BackTestReport(
@@ -32,6 +35,9 @@ public interface WalkForwardBackTestService {
             MetricSnapshot calibrated,
             int dixonColesMatches,
             MetricSnapshot dixonColes,
+            MetricSnapshot matchedBaseline,
+            MetricSnapshot matchedRaw,
+            MetricSnapshot matchedCalibrated,
             double lastEstimatedDixonColesRho,
             int dixonColesRhoTrainingSamples,
             List<GroupMetricSnapshot> breakdown,
