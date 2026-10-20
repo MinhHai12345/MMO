@@ -28,10 +28,15 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
     public void syncLeaguesForProvider(Provider selectedProvider) {
         if (selectedProvider == Provider.API_FOOTBALL
                 && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
+        if (selectedProvider == Provider.FOOTBALL_DATA
+                && (appProperties.getFootballData() == null || !appProperties.getFootballData().isEnabled())) return;
         List<Long> configuredIds = selectedProvider == Provider.API_FOOTBALL
-                ? appProperties.getApiFootball().getLeagueIds() : List.of();
-        if (selectedProvider == Provider.API_FOOTBALL && (configuredIds == null || configuredIds.isEmpty())) {
-            log.warn("No API-Football league IDs configured; set API_FOOTBALL_LEAGUE_IDS.");
+                ? appProperties.getApiFootball().getLeagueIds()
+                : selectedProvider == Provider.FOOTBALL_DATA
+                    ? appProperties.getFootballData().getCompetitionIds() : List.of();
+        if ((selectedProvider == Provider.API_FOOTBALL || selectedProvider == Provider.FOOTBALL_DATA)
+                && (configuredIds == null || configuredIds.isEmpty())) {
+            log.warn("No competition IDs configured for provider {}; configure its league/competition ID list.", selectedProvider);
             return;
         }
         List<ProviderLeague> leagues = providerRegistry.league(selectedProvider).fetchLeagues(configuredIds);
