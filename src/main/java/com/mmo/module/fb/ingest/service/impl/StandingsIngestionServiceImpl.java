@@ -70,7 +70,8 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
 
         int saved = 0;
         int skipped = 0;
-        List<Season> seasons = seasonRepository.findAll();
+        // Routine sync is limited to current seasons; historical backfill is a separate operation.
+        List<Season> seasons = seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
         for (Season season : seasons) {
             if (season.getLeague() == null || season.getYear() == null) continue;
             Long externalLeagueId = parseLong(leagueExternalIdsByLeagueId.get(season.getLeague().getId()));
