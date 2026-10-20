@@ -1,6 +1,6 @@
 package com.mmo.module.fb.analytics.engine;
 
-final class PoissonProbabilityCalculator {
+public final class PoissonProbabilityCalculator {
 
     private static final double TAIL_TOLERANCE = 1.0e-12;
     private static final int MAX_GOALS_SUPPORTED = 512;
@@ -9,7 +9,7 @@ final class PoissonProbabilityCalculator {
     private PoissonProbabilityCalculator() {
     }
 
-    static Result calculate(double homeExpectedGoals, double awayExpectedGoals) {
+    public static Result calculate(double homeExpectedGoals, double awayExpectedGoals) {
         if (!validExpectedGoals(homeExpectedGoals) || !validExpectedGoals(awayExpectedGoals)) {
             throw new IllegalArgumentException(
                     "Expected goals must be finite and between 0 and " + MAX_EXPECTED_GOALS);
@@ -72,6 +72,6 @@ final class PoissonProbabilityCalculator {
         return Double.isFinite(value) && value >= 0.0 && value <= MAX_EXPECTED_GOALS;
     }
 
-    record Result(double homeWin, double draw, double awayWin) {
+    public record Result(double homeWin, double draw, double awayWin) {
     }
 }

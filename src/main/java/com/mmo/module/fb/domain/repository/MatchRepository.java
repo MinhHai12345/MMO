@@ -231,4 +231,27 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
                                                         @Param("status") MatchStatus status,
                                                         @Param("before") Instant before,
                                                         Pageable pageable);
+
+    /**
+     * Bounded, chronological cohort for read-only team-form model evaluation.
+     * Associations needed by feature extraction are fetched with each match.
+     */
+    @Query("""
+            SELECT m FROM Match m
+            JOIN FETCH m.season season
+            JOIN FETCH season.league
+            JOIN FETCH m.homeTeam
+            JOIN FETCH m.awayTeam
+            WHERE m.matchTime >= :fromInclusive
+              AND m.matchTime < :toExclusive
+              AND m.status = :status
+              AND m.homeScore IS NOT NULL
+              AND m.awayScore IS NOT NULL
+            ORDER BY m.matchTime ASC, m.id ASC
+            """)
+    List<Match> findTeamFormBacktestCandidates(@Param("fromInclusive") Instant fromInclusive,
+                                               @Param("toExclusive") Instant toExclusive,
+                                               @Param("status") MatchStatus status,
+                                               Pageable pageable);
+
 }
