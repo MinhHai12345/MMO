@@ -73,6 +73,9 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
         Metrics rawMetrics = new Metrics();
         Metrics calibratedMetrics = new Metrics();
         Metrics dixonColesMetrics = new Metrics();
+        Metrics matchedBaselineMetrics = new Metrics();
+        Metrics matchedRawMetrics = new Metrics();
+        Metrics matchedCalibratedMetrics = new Metrics();
         Map<GroupKey, GroupMetrics> groupedMetrics = new TreeMap<>(
                 Comparator.comparing(GroupKey::league).thenComparing(GroupKey::season));
         int tested = 0;
@@ -124,11 +127,13 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
                     baselineMetrics.add(baselineProbabilities, sample.actualClass());
                     rawMetrics.add(sample.probabilities(), sample.actualClass());
                     calibratedMetrics.add(calibrated, sample.actualClass());
-                    if (sample.hasExpectedGoals()) {
-                        double[] dixonColes = dixonColesProbabilities(sample, dixonColesRho);
-                        if (dixonColes != null) {
-                            dixonColesMetrics.add(dixonColes, sample.actualClass());
-                        }
+                    double[] dixonColes = sample.hasExpectedGoals()
+                            ? dixonColesProbabilities(sample, dixonColesRho) : null;
+                    if (dixonColes != null) {
+                        dixonColesMetrics.add(dixonColes, sample.actualClass());
+                        matchedBaselineMetrics.add(baselineProbabilities(prior), sample.actualClass());
+                        matchedRawMetrics.add(sample.probabilities(), sample.actualClass());
+                        matchedCalibratedMetrics.add(calibrated, sample.actualClass());
                     }
 
                     GroupMetrics group = groupedMetrics.computeIfAbsent(
@@ -139,11 +144,11 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
                     group.baseline().add(leagueBaseline, sample.actualClass());
                     group.raw().add(sample.probabilities(), sample.actualClass());
                     group.calibrated().add(calibrated, sample.actualClass());
-                    if (sample.hasExpectedGoals()) {
-                        double[] dixonColes = dixonColesProbabilities(sample, dixonColesRho);
-                        if (dixonColes != null) {
-                            group.dixonColes().add(dixonColes, sample.actualClass());
-                        }
+                    if (dixonColes != null) {
+                        group.dixonColes().add(dixonColes, sample.actualClass());
+                        group.matchedBaseline().add(leagueBaseline, sample.actualClass());
+                        group.matchedRaw().add(sample.probabilities(), sample.actualClass());
+                        group.matchedCalibrated().add(calibrated, sample.actualClass());
                     }
                     tested++;
                 }
@@ -161,13 +166,18 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
                         entry.getValue().raw().snapshot(),
                         entry.getValue().calibrated().snapshot(),
                         entry.getValue().dixonColes().count(),
-                        entry.getValue().dixonColes().snapshot()))
+                        entry.getValue().dixonColes().snapshot(),
+                        entry.getValue().matchedBaseline().snapshot(),
+                        entry.getValue().matchedRaw().snapshot(),
+                        entry.getValue().matchedCalibrated().snapshot()))
                 .toList();
 
         BackTestReport report = new BackTestReport(
                 fromInclusive, toExclusive, tested, calibratedCount, prior.size(),
                 baselineMetrics.snapshot(), rawMetrics.snapshot(), calibratedMetrics.snapshot(),
                 dixonColesMetrics.count(), dixonColesMetrics.snapshot(),
+                matchedBaselineMetrics.snapshot(), matchedRawMetrics.snapshot(),
+                matchedCalibratedMetrics.snapshot(),
                 dixonColesRho, dixonColesRhoTrainingSamples,
                 breakdown,
                 tested < MIN_CALIBRATION_SAMPLES
@@ -176,22 +186,27 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
 
         log.info("Walk-forward backtest: from={}, to={}, matches={}, calibrated={}, calibrationHistory={}, " +
                         "baselineBrier={}, rawBrier={}, calibratedBrier={}, dixonColesMatches={}, " +
-                        "dixonColesBrier={}, dixonColesLogLoss={}, dixonColesRho={}, " +
+                        "dixonColesBrier={}, matchedRawBrier={}, matchedCalibratedBrier={}, " +
+                        "dixonColesLogLoss={}, dixonColesRho={}, " +
                         "dixonColesRhoTrainingSamples={}, groups={}, status={}",
                 fromInclusive, toExclusive, tested, calibratedCount, prior.size(),
                 report.baseline().brierScore(), report.raw().brierScore(),
                 report.calibrated().brierScore(), report.dixonColesMatches(),
-                report.dixonColes().brierScore(), report.dixonColes().logLoss(),
+                report.dixonColes().brierScore(), report.matchedRaw().brierScore(),
+                report.matchedCalibrated().brierScore(), report.dixonColes().logLoss(),
                 report.lastEstimatedDixonColesRho(), report.dixonColesRhoTrainingSamples(),
                 report.breakdown().size(), report.status());
         report.breakdown().forEach(group -> log.info(
                 "Walk-forward group: league={}, season={}, matches={}, baselineBrier={}, rawBrier={}, " +
                         "calibratedBrier={}, dixonColesMatches={}, dixonColesBrier={}, rawLogLoss={}, " +
-                        "calibratedLogLoss={}, rawAccuracy={}, rawEce={}",
+                        "calibratedLogLoss={}, matchedRawBrier={}, matchedCalibratedBrier={}, " +
+                        "matchedBaselineBrier={}, rawAccuracy={}, rawEce={}",
                 group.league(), group.season(), group.testedMatches(),
                 group.baseline().brierScore(), group.raw().brierScore(), group.calibrated().brierScore(),
                 group.dixonColesMatches(), group.dixonColes().brierScore(),
                 group.raw().logLoss(), group.calibrated().logLoss(),
+                group.matchedRaw().brierScore(), group.matchedCalibrated().brierScore(),
+                group.matchedBaseline().brierScore(),
                 group.raw().accuracy(), group.raw().expectedCalibrationError()));
         return report;
     }
@@ -366,9 +381,11 @@ public class WalkForwardBackTestServiceImpl implements WalkForwardBackTestServic
     private record GroupKey(String league, String season) {
     }
 
-    private record GroupMetrics(Metrics baseline, Metrics raw, Metrics calibrated, Metrics dixonColes) {
+    private record GroupMetrics(Metrics baseline, Metrics raw, Metrics calibrated, Metrics dixonColes,
+                                Metrics matchedBaseline, Metrics matchedRaw, Metrics matchedCalibrated) {
         private GroupMetrics() {
-            this(new Metrics(), new Metrics(), new Metrics(), new Metrics());
+            this(new Metrics(), new Metrics(), new Metrics(), new Metrics(),
+                    new Metrics(), new Metrics(), new Metrics());
         }
     }
 
