@@ -33,8 +33,7 @@ public class FootballDataMapper {
                 team.id().toString(), team.name(),
                 team.tla() != null ? team.tla() : team.shortName(),
                 team.crest(), team.founded(),
-                team.venue() == null ? null : team.venue().name(),
-                team.venue() == null ? null : team.venue().capacity());
+                team.venue(), null);
     }
 
     public ProviderFixture toFixture(MatchDto match) {
