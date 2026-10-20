@@ -55,7 +55,9 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
 
         int saved = 0;
         int skipped = 0;
-        for (Season season : seasonRepository.findAll()) {
+        // The first production pass is intentionally bounded to current seasons. Historical
+        // backfill should be an explicit, quota-aware operation rather than part of every sync.
+        for (Season season : seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull()) {
             if (season.getLeague() == null || season.getYear() == null) continue;
             Long leagueExternalId;
             try {
