@@ -71,8 +71,7 @@ class WalkForwardBacktestServiceTest {
         assertTrue(Double.isFinite(report.baseline().logLoss()));
         assertTrue(Double.isFinite(report.raw().brierScore()));
         assertEquals(1, report.dixonColesMatches());
-        assertEquals(report.dixonColesMatches(), report.globalRhoDixonColes().accuracy() == report.globalRhoDixonColes().accuracy()
-                ? report.dixonColesMatches() : -1, "global-rho metrics should be finite for the same eligible cohort");
+        assertTrue(Double.isFinite(report.globalRhoDixonColes().accuracy()));
         assertTrue(Double.isFinite(report.globalRhoDixonColes().brierScore()));
         assertTrue(Double.isFinite(report.globalRhoDixonColes().logLoss()));
         assertEquals(report.raw().brierScore(), report.matchedRaw().brierScore(), 1.0e-12,
