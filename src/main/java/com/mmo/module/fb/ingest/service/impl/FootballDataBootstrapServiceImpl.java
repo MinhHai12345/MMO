@@ -13,16 +13,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 /**
- * Runs the minimum useful data pipeline in dependency order:
- * leagues/seasons -> teams -> fixtures/results -> standings.
- *
- * Network calls and persistence transactions remain inside their respective services.
+ * Runs the core-data pipeline in dependency order using the provider configured for each resource.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapService {
-
     private final AppProperties appProperties;
     private final LeagueIngestionService leagueIngestionService;
     private final TeamIngestionService teamIngestionService;
@@ -31,34 +27,52 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
 
     @Override
     public void syncCoreData() {
-        validateApiFootballConfiguration();
+        AppProperties.Providers providers = appProperties.getIngestion().getProviders();
+        validateProvider(providers.getLeague(), true);
+        validateProvider(providers.getTeam(), false);
+        validateProvider(providers.getFixture(), false);
+        validateProvider(providers.getStandings(), false);
 
-        log.info("Starting API-Football core-data bootstrap");
+        log.info("Starting core-data bootstrap: league={}, team={}, fixture={}, standings={}",
+                providers.getLeague(), providers.getTeam(), providers.getFixture(), providers.getStandings());
 
-        leagueIngestionService.syncLeaguesForProvider(Provider.API_FOOTBALL);
-        teamIngestionService.syncTeamsForProvider(Provider.API_FOOTBALL);
+        leagueIngestionService.syncLeagues();
+        teamIngestionService.syncTeams();
         // Null date bounds intentionally import all fixtures returned for each current season.
         // Subsequent scheduled fixture/result jobs use narrower windows.
-        fixtureIngestionService.syncFixturesForProvider(Provider.API_FOOTBALL, null, null);
-        standingsIngestionService.syncStandingsForProvider(Provider.API_FOOTBALL);
+        fixtureIngestionService.syncCurrentSeasonFixtures(null, null);
+        standingsIngestionService.syncStandings();
 
-        log.info("API-Football core-data bootstrap completed");
+        log.info("Core-data bootstrap completed");
     }
 
-    private void validateApiFootballConfiguration() {
-        AppProperties.ApiFootball properties = appProperties.getApiFootball();
-        if (properties == null || !properties.isEnabled()) {
-            throw new IllegalStateException(
-                    "API-Football ingestion is disabled. Set app.api-football.enabled=true.");
+    private void validateProvider(Provider provider, boolean leagueResource) {
+        if (provider == null) throw new IllegalStateException("An ingestion provider is not configured.");
+
+        if (provider == Provider.API_FOOTBALL) {
+            AppProperties.ApiFootball config = appProperties.getApiFootball();
+            if (config == null || !config.isEnabled()) {
+                throw new IllegalStateException("API-Football ingestion is disabled. Set app.api-football.enabled=true.");
+            }
+            requireToken(config.getApiKey(), "API_FOOTBALL_API_KEY");
+            if (leagueResource && (config.getLeagueIds() == null || config.getLeagueIds().isEmpty())) {
+                throw new IllegalStateException("Set API_FOOTBALL_LEAGUE_IDS to a comma-separated list of API-Football league IDs.");
+            }
+        } else if (provider == Provider.FOOTBALL_DATA) {
+            AppProperties.FootballData config = appProperties.getFootballData();
+            if (config == null || !config.isEnabled()) {
+                throw new IllegalStateException("football-data.org ingestion is disabled. Set FOOTBALL_DATA_ENABLED=true.");
+            }
+            requireToken(config.getApiKey(), "FOOTBALL_DATA_API_KEY");
+            if (leagueResource && (config.getCompetitionIds() == null || config.getCompetitionIds().isEmpty())) {
+                throw new IllegalStateException("Set FOOTBALL_DATA_COMPETITION_IDS to numeric football-data.org competition IDs.");
+            }
         }
-        if (!StringUtils.hasText(properties.getApiKey())
-                || "mock".equalsIgnoreCase(properties.getApiKey().trim())) {
-            throw new IllegalStateException(
-                    "API-Football API key is not configured. Set API_FOOTBALL_API_KEY.");
-        }
-        if (properties.getLeagueIds() == null || properties.getLeagueIds().isEmpty()) {
-            throw new IllegalStateException(
-                    "No leagues configured. Set API_FOOTBALL_LEAGUE_IDS to comma-separated API-Football league IDs.");
+    }
+
+    private void requireToken(String token, String variableName) {
+        if (!StringUtils.hasText(token) || "mock".equalsIgnoreCase(token.trim())) {
+            throw new IllegalStateException("Provider API token is not configured. Set " + variableName + ".");
         }
     }
 }

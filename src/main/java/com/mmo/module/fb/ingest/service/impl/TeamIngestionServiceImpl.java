@@ -38,6 +38,11 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
 
     @Override
     public void syncTeamsForProvider(Provider selectedProvider) {
+        if (selectedProvider == Provider.FOOTBALL_DATA
+                && (appProperties.getFootballData() == null || !appProperties.getFootballData().isEnabled())) {
+            log.info("Skipping team ingestion because football-data.org is disabled");
+            return;
+        }
         if (selectedProvider == Provider.API_FOOTBALL
                 && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
             log.info("Skipping team ingestion because API-Football is disabled");
