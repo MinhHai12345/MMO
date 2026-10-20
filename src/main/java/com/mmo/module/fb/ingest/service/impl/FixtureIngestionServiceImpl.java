@@ -6,6 +6,7 @@ import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.repository.SeasonRepository;
 import com.mmo.module.fb.domain.repository.TeamExternalIdRepository;
+import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballPlanRestrictionException;
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
@@ -79,8 +80,16 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
             }
 
             // Provider I/O deliberately occurs outside any persistence transaction.
-            List<ProviderFixture> fixtures = providerRegistry.fixture(selectedProvider).fetchFixtures(
-                    new FixtureQuery(externalLeagueId, season.getYear(), from, to));
+            List<ProviderFixture> fixtures;
+            try {
+                fixtures = providerRegistry.fixture(selectedProvider).fetchFixtures(
+                        new FixtureQuery(externalLeagueId, season.getYear(), from, to));
+            } catch (ApiFootballPlanRestrictionException ex) {
+                skipped++;
+                log.warn("Skipping fixtures for league {} season {} because the API-Football plan does not include it: {}",
+                        externalLeagueId, season.getYear(), ex.getMessage());
+                continue;
+            }
             fetched += fixtures.size();
             log.info("Fetched {} fixtures for league {} season {} from {}",
                     fixtures.size(), externalLeagueId, season.getYear(), selectedProvider);
