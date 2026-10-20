@@ -46,6 +46,11 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
      */
     @Override
     public void syncFixturesForProvider(Provider selectedProvider, LocalDate from, LocalDate to) {
+        if (selectedProvider == Provider.FOOTBALL_DATA
+                && (appProperties.getFootballData() == null || !appProperties.getFootballData().isEnabled())) {
+            log.info("Skipping fixture ingestion because football-data.org is disabled");
+            return;
+        }
         if (selectedProvider == Provider.API_FOOTBALL
                 && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
             log.info("Skipping fixture ingestion because API-Football is disabled");
