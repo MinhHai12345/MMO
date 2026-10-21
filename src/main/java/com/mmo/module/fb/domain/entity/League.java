@@ -21,10 +21,10 @@ import java.util.List;
 @NoArgsConstructor
 public class League extends AbstractEntity {
 
-    @Column(nullable = false, length = 160)
+    @Column(nullable = false, length = 255)
     private String name;
 
-    @Column(nullable = false, unique = true, length = 180)
+    @Column(nullable = false, unique = true, length = 320)
     private String slug;
 
     @Column(nullable = false)
