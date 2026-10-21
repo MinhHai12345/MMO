@@ -8,7 +8,6 @@ public record ProviderFixture(
         String homeTeamExternalId,
         String awayTeamExternalId,
         Instant kickoff,
-        Long startTimestamp,
         String round,
         String venue,
         String referee,
