@@ -12,7 +12,8 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "fb_h2h_records",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"home_team_id", "away_team_id"}))
+        uniqueConstraints = @UniqueConstraint(name = "uk_fb_h2h_home_away", columnNames = {"home_team_id", "away_team_id"}),
+        indexes = @Index(name = "idx_fb_h2h_away_home", columnList = "away_team_id, home_team_id"))
 @Getter
 @Setter
 @Builder
