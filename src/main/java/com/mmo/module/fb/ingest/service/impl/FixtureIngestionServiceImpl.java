@@ -65,7 +65,7 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
             teamIngestionService.syncTeamsForProvider(selectedProvider);
         }
 
-        List<Season> seasons = seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
+        List<Season> seasons = seasonsToSync(selectedProvider);
         Map<Long, String> leagueExternalIdsByLeagueId = new HashMap<>();
         leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
                 leagueExternalIdsByLeagueId.put(mapping.getLeague().getId(), mapping.getExternalId()));
@@ -130,6 +130,20 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
 
         log.info("Fixture ingestion via {} completed. fetched={}, saved/updated={}, skipped={}; date range {} to {}",
                 selectedProvider, fetched, saved, skipped, from, to);
+    }
+
+    private List<Season> seasonsToSync(Provider selectedProvider) {
+        if (selectedProvider == Provider.FOOTBALL_DATA && appProperties.getFootballData().getSeasons() != null
+                && !appProperties.getFootballData().getSeasons().isEmpty()) {
+            List<String> years = appProperties.getFootballData().getSeasons().stream()
+                    .filter(year -> year != null && !year.isBlank())
+                    .map(String::trim).distinct().toList();
+            return seasonRepository.findAll().stream()
+                    .filter(season -> season.getLeague() != null && season.getYear() != null
+                            && years.contains(season.getYear()))
+                    .toList();
+        }
+        return seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
     }
 
     private static Long parseLong(String value) {
