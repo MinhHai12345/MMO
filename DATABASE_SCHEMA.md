@@ -34,8 +34,8 @@ Provider identity is always the pair `(provider, external_id)`. The supported pr
 | `fb_h2h_records` | Directional head-to-head aggregates | Unique `home_team_id + away_team_id` |
 | `fb_match_odds` | Current bookmaker market snapshot | Unique `match_id + bookmaker_id + market_name` |
 | `fb_odds_history` | Historical odds observations | Indexed by `match_odds_id + recorded_at` |
-| `fb_match_predictions` | Current prediction per match | Currently uses shared match identity through `@MapsId` |
-| `fb_prediction_performance` | Evaluation of a prediction | Unique `prediction_id` |
+| `fb_match_predictions` | Current prediction per match | Currently uses shared match identity through `@MapsId`; actual result is recorded only in prediction performance |
+| `fb_prediction_performance` | Evaluation of a prediction | One-to-one with `fb_match_predictions`; stores actual result and scores once |
 | `fb_match_insights` | Match insight snapshot | Shared match identity through `@MapsId` |
 | `fb_match_narratives` | Match narrative snapshot | Shared match identity through `@MapsId` |
 
