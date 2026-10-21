@@ -40,9 +40,6 @@ public class Match extends AbstractEntity {
     @JoinColumn(name = "away_team_id", nullable = false)
     private Team awayTeam;
 
-    @Column(name = "start_timestamp")
-    private Long startTimestamp;
-
     @Column(name = "match_time", nullable = false)
     private Instant matchTime;
 
@@ -51,8 +48,6 @@ public class Match extends AbstractEntity {
 
     @Column(name = "statistics_last_attempt_at")
     private Instant statisticsLastAttemptAt;
-
-    private Integer round;
 
     @Column(name = "round_info", length = 160)
     private String roundInfo;

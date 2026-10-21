@@ -10,8 +10,6 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "fb_match_predictions",
@@ -27,8 +25,8 @@ import java.util.List;
 public class MatchPrediction extends AbstractEntity {
 
     @MapsId
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "match_id")
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "match_id", nullable = false)
     private Match match;
 
     @Column(name = "predicted_home_xg", precision = 6, scale = 3)
@@ -40,10 +38,10 @@ public class MatchPrediction extends AbstractEntity {
     @Column(name = "win_home_prob", precision = 9, scale = 6)
     private BigDecimal winHomeProb;
 
-    @Column(name = "draw_prob", precision = 7, scale = 6)
+    @Column(name = "draw_prob", precision = 9, scale = 6)
     private BigDecimal drawProb;
 
-    @Column(name = "win_away_prob", precision = 7, scale = 6)
+    @Column(name = "win_away_prob", precision = 9, scale = 6)
     private BigDecimal winAwayProb;
 
     @Column
@@ -55,9 +53,6 @@ public class MatchPrediction extends AbstractEntity {
     @Column(name = "prediction_status", nullable = false, length = 32)
     @Builder.Default
     private String predictionStatus = "PENDING";
-
-    @Column
-    private String result;
 
     @Column(name = "is_premium")
     @Builder.Default
@@ -88,8 +83,7 @@ public class MatchPrediction extends AbstractEntity {
     @Column
     private String imageUrl;
 
-    @OneToMany(mappedBy = "prediction", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<PredictionPerformance> performance = new ArrayList<>();
+    @OneToOne(mappedBy = "prediction", cascade = CascadeType.ALL, orphanRemoval = true)
+    private PredictionPerformance performance;
 
 }

@@ -34,8 +34,8 @@ Provider identity is always the pair `(provider, external_id)`. The supported pr
 | `fb_h2h_records` | Directional head-to-head aggregates | Unique `home_team_id + away_team_id` |
 | `fb_match_odds` | Current bookmaker market snapshot | Unique `match_id + bookmaker_id + market_name` |
 | `fb_odds_history` | Historical odds observations | Indexed by `match_odds_id + recorded_at` |
-| `fb_match_predictions` | Current prediction per match | Currently uses shared match identity through `@MapsId` |
-| `fb_prediction_performance` | Evaluation of a prediction | Unique `prediction_id` |
+| `fb_match_predictions` | Current prediction per match | Currently uses shared match identity through `@MapsId`; actual result is recorded only in prediction performance |
+| `fb_prediction_performance` | Evaluation of a prediction | One-to-one with `fb_match_predictions`; stores actual result and scores once |
 | `fb_match_insights` | Match insight snapshot | Shared match identity through `@MapsId` |
 | `fb_match_narratives` | Match narrative snapshot | Shared match identity through `@MapsId` |
 
@@ -60,7 +60,7 @@ Odds markets with different lines/handicaps must have distinct market identities
 | `fb_crawler_health` | Crawler health snapshots |
 | `fb_data_quality_metrics` | Data-quality measurements |
 
-## Shared audit columns
+## Duplicate-field cleanup\n\n- League activation is represented only by `isActive`; the duplicate `active` flag was removed.\n- Match kickoff is represented only by `matchTime`; epoch timestamp duplication was removed from the canonical fixture model and Match entity.\n- Match round is represented only by `roundInfo`; the unused integer `round` field was removed.\n- LeagueStanding derives league through its required Season relationship; a second `league_id` is not stored.\n\n## Shared audit columns
 
 Entities extending `AbstractEntity` inherit an identity primary key plus `created_by`, `created_date`, `last_modified_by`, and `last_modified_date`. The ID primary key already guarantees uniqueness; no additional unique constraint is required on the ID column.
 

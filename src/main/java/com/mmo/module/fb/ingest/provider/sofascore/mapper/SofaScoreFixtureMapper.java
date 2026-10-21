@@ -14,12 +14,12 @@ public class SofaScoreFixtureMapper {
         if (event == null || event.getId() == null || event.getHomeTeam() == null
                 || event.getAwayTeam() == null || event.getHomeTeam().getId() == null
                 || event.getAwayTeam().getId() == null) return null;
-        Long timestamp = event.getStartTimestamp();
-        Instant kickoff = timestamp == null ? null : Instant.ofEpochSecond(timestamp);
+        Instant kickoff = event.getStartTimestamp() == null
+                ? null : Instant.ofEpochSecond(event.getStartTimestamp());
         String status = event.getStatus() == null ? null : mapStatus(event.getStatus().getType());
         return new ProviderFixture(event.getId().toString(),
                 event.getHomeTeam().getId().toString(), event.getAwayTeam().getId().toString(),
-                kickoff, timestamp,
+                kickoff,
                 event.getRoundInfo() == null || event.getRoundInfo().getRound() == null
                         ? null : event.getRoundInfo().getRound().toString(),
                 null, null, status,

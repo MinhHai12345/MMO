@@ -22,15 +22,11 @@ public class ApiFootballFixtureMapper {
         }
 
         Instant kickoff = parseInstant(item.fixture().date());
-        Long timestamp = item.fixture().timestamp();
-        if (timestamp == null && kickoff != null) timestamp = kickoff.getEpochSecond();
-
         return new ProviderFixture(
                 item.fixture().id().toString(),
                 item.teams().home().id().toString(),
                 item.teams().away().id().toString(),
                 kickoff,
-                timestamp,
                 item.league() == null ? null : item.league().round(),
                 item.fixture().venue() == null ? null : item.fixture().venue().name(),
                 item.fixture().referee(),

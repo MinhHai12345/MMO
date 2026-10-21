@@ -40,7 +40,7 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
     @Transactional
     public void persistLeagues(Provider selectedProvider, List<ProviderLeague> sources) {
         int synced = 0;
-        List<League> knownActiveLeagues = new ArrayList<>(leagueRepository.findByIsActive(true));
+        List<League> knownActiveLeagues = new ArrayList<>(leagueRepository.findByIsActiveTrue());
         for (ProviderLeague source : sources) {
             if (source == null || source.externalId() == null || source.externalId().isBlank()
                     || source.name() == null || source.name().isBlank()) {
@@ -87,7 +87,6 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
             }
             if (source.country() != null && !source.country().isBlank()) league.setCountry(source.country());
             if (source.logoUrl() != null && !source.logoUrl().isBlank()) league.setLogoUrl(source.logoUrl());
-            league.setActive(true);
             league.setIsActive(true);
             league = leagueRepository.save(league);
             League savedLeague = league;
