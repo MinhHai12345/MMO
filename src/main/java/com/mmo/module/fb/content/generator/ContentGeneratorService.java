@@ -67,7 +67,8 @@ public class ContentGeneratorService {
         context.put("matches", completedMatches);
         
         long winCount = completedMatches.stream()
-                .filter(m -> "WIN".equals(m.getResult()))
+                .filter(m -> m.getPerformance() != null
+                        && Boolean.TRUE.equals(m.getPerformance().getIsCorrect()))
                 .count();
         
         context.put("winCount", winCount);
