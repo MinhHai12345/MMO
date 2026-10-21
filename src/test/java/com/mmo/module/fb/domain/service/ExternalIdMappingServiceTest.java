@@ -89,6 +89,26 @@ class ExternalIdMappingServiceTest {
         verify(teamExternalIds, never()).save(any(TeamExternalId.class));
     }
 
+
+    @Test
+    void rejectsChangingExternalIdForAnEntityWithoutExplicitRemapping() {
+        Team team = new Team();
+        team.setId(7L);
+        TeamExternalId existingMapping = TeamExternalId.builder()
+                .team(team)
+                .provider(Provider.API_FOOTBALL)
+                .externalId("old-id")
+                .build();
+        when(teamExternalIds.findByTeamIdAndProvider(7L, Provider.API_FOOTBALL))
+                .thenReturn(Optional.of(existingMapping));
+        when(teamExternalIds.findByProviderAndExternalId(Provider.API_FOOTBALL, "new-id"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(IllegalStateException.class,
+                () -> service.registerTeam(team, Provider.API_FOOTBALL, "new-id"));
+        verify(teamExternalIds, never()).save(any(TeamExternalId.class));
+    }
+
     @Test
     void requiresPersistedEntityBeforeRegisteringMapping() {
         Team unsavedTeam = new Team();
