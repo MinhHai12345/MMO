@@ -9,11 +9,14 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import jakarta.persistence.Lob;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "fb_subscription_plans")
+@Table(name = "fb_subscription_plans",
+        uniqueConstraints = @UniqueConstraint(name = "uk_fb_subscription_plan_name", columnNames = "name"),
+        indexes = @Index(name = "idx_fb_subscription_plan_active", columnList = "is_active"))
 @Getter
 @Setter
 @Builder
@@ -36,7 +39,7 @@ public class SubscriptionPlan extends AbstractEntity {
     @Column(name = "billing_cycle", nullable = false)
     private String billingCycle;
 
-    @Column(name = "stripe_price_id")
+    @Column(name = "stripe_price_id", length = 255)
     private String stripePriceId;
 
     @Column(columnDefinition = "JSON")
