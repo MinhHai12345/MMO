@@ -11,7 +11,12 @@ import lombok.Setter;
 import java.time.Instant;
 
 @Entity
-@Table(name = "fb_tip_transactions")
+@Table(name = "fb_tip_transactions",
+        indexes = {
+                @Index(name = "idx_fb_tip_subscriber", columnList = "subscriber_id"),
+                @Index(name = "idx_fb_tip_prediction", columnList = "match_prediction_id"),
+                @Index(name = "idx_fb_tip_delivery_status", columnList = "delivery_status")
+        })
 @Getter
 @Setter
 @Builder
