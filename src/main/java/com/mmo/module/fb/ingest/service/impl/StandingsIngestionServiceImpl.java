@@ -3,6 +3,7 @@ package com.mmo.module.fb.ingest.service.impl;
 import com.mmo.AppProperties;
 import com.mmo.module.fb.domain.entity.Season;
 import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRateLimitException;
+import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
 import com.mmo.module.fb.domain.entity.TeamExternalId;
 import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
@@ -93,6 +94,12 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
             List<ProviderStanding> rows;
             try {
                 rows = provider.fetchStandings(new StandingsQuery(externalLeagueId, season.getYear()));
+            } catch (FootballDataRestrictedResourceException ex) {
+                if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
+                skipped++;
+                log.warn("Skipping standings for league {} season {} because football-data.org restricts this resource: {}",
+                        externalLeagueId, season.getYear(), ex.getMessage());
+                continue;
             } catch (FootballDataRateLimitException ex) {
                 if (selectedProvider != Provider.FOOTBALL_DATA) {
                     throw ex;
@@ -102,6 +109,12 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
                         + "Already persisted {} rows; remaining standings will be retried by a later sync. {}",
                         selectedProvider, saved, ex.getMessage());
                 break;
+            }
+            if (rows == null || rows.isEmpty()) {
+                skipped++;
+                log.warn("Provider {} returned no standings for league {} season {}; existing standings are preserved",
+                        selectedProvider, externalLeagueId, season.getYear());
+                continue;
             }
             for (ProviderStanding row : rows) {
                 Long teamId = teamIdsByExternalId.get(row.teamExternalId());

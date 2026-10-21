@@ -36,14 +36,30 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         log.info("Starting core-data bootstrap: league={}, team={}, fixture={}, standings={}",
                 providers.getLeague(), providers.getTeam(), providers.getFixture(), providers.getStandings());
 
-        leagueIngestionService.syncLeagues();
-        teamIngestionService.syncTeams();
+        runStage("leagues", leagueIngestionService::syncLeagues);
+        runStage("teams", teamIngestionService::syncTeams);
         // Null date bounds intentionally import all fixtures returned for each current season.
         // Subsequent scheduled fixture/result jobs use narrower windows.
-        fixtureIngestionService.syncCurrentSeasonFixtures(null, null);
-        standingsIngestionService.syncStandings();
+        runStage("fixtures", () -> fixtureIngestionService.syncCurrentSeasonFixtures(null, null));
+        runStage("standings", standingsIngestionService::syncStandings);
 
-        log.info("Core-data bootstrap completed");
+        log.info("Core-data bootstrap completed. Stage status: leagues=COMPLETED, teams=COMPLETED, "
+                + "fixtures=COMPLETED, standings=COMPLETED. See per-stage counters for skipped/failed records.");
+    }
+
+    private void runStage(String resource, Runnable operation) {
+        long startedAt = System.nanoTime();
+        log.info("Ingestion stage {} status=STARTED", resource);
+        try {
+            operation.run();
+            long durationMs = (System.nanoTime() - startedAt) / 1_000_000;
+            log.info("Ingestion stage {} status=COMPLETED durationMs={}", resource, durationMs);
+        } catch (RuntimeException ex) {
+            long durationMs = (System.nanoTime() - startedAt) / 1_000_000;
+            log.error("Ingestion stage {} status=FAILED durationMs={} errorType={} message={}",
+                    resource, durationMs, ex.getClass().getSimpleName(), ex.getMessage(), ex);
+            throw ex;
+        }
     }
 
     private void validateProvider(Provider provider, boolean leagueResource) {
