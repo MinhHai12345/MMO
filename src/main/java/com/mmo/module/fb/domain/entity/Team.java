@@ -25,13 +25,13 @@ import java.util.List;
 @NoArgsConstructor
 public class Team extends AbstractEntity {
 
-    @Column(nullable = false, length = 160)
+    @Column(nullable = false, length = 255)
     private String name;
 
     @Column(name = "short_name", length = 80)
     private String shortName;
 
-    @Column(length = 180)
+    @Column(length = 320)
     private String slug;
 
     @Column(name = "logo_url", length = 2048)
