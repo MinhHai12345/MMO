@@ -42,7 +42,8 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
         int synced = 0;
         List<League> knownActiveLeagues = new ArrayList<>(leagueRepository.findByIsActive(true));
         for (ProviderLeague source : sources) {
-            if (source == null || source.externalId() == null || source.externalId().isBlank()) {
+            if (source == null || source.externalId() == null || source.externalId().isBlank()
+                    || source.name() == null || source.name().isBlank()) {
                 log.warn("Skipping league with empty external ID from {}", selectedProvider);
                 continue;
             }
@@ -99,7 +100,7 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
             }
             externalIdMappingService.registerLeague(savedLeague, selectedProvider, source.externalId());
 
-            for (ProviderSeason sourceSeason : source.seasons()) {
+            for (ProviderSeason sourceSeason : source.seasons() == null ? List.<ProviderSeason>of() : source.seasons()) {
                 if (sourceSeason == null || sourceSeason.externalId() == null || sourceSeason.externalId().isBlank()
                         || sourceSeason.year() == null || sourceSeason.year().isBlank()) {
                     log.warn("Skipping season without provider ID/year for league {} from {}",
