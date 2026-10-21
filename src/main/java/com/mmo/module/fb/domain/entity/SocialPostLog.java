@@ -16,7 +16,11 @@ import lombok.Setter;
 import java.time.Instant;
 
 @Entity
-@Table(name = "fb_social_post_logs")
+@Table(name = "fb_social_post_logs",
+        indexes = {
+                @Index(name = "idx_fb_social_log_match_posted", columnList = "match_id, posted_at"),
+                @Index(name = "idx_fb_social_log_external_post", columnList = "external_post_id")
+        })
 @Getter
 @Setter
 @NoArgsConstructor
