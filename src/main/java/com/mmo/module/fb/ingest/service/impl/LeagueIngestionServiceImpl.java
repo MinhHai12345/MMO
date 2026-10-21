@@ -47,13 +47,14 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
             leagues = providerRegistry.league(selectedProvider).fetchLeagues(configuredIds);
         } catch (FootballDataRestrictedResourceException ex) {
             if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
-            if (leagueExternalIdRepository.findAllByProvider(selectedProvider).isEmpty()) {
+            var existingMappings = leagueExternalIdRepository.findAllByProvider(selectedProvider);
+            if (existingMappings.isEmpty()) {
                 throw new IllegalStateException(
                         "Cannot bootstrap FB: football-data.org restricts competitions and no local league mappings exist.",
                         ex);
             }
             log.warn("football-data.org restricts competitions for this subscription. Preserving {} existing local league mappings.",
-                    leagueExternalIdRepository.findAllByProvider(selectedProvider).size());
+                    existingMappings.size());
             return;
         }
         if (leagues == null || leagues.isEmpty()) {
