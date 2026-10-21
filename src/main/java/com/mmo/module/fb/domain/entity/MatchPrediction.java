@@ -25,8 +25,8 @@ import java.time.Instant;
 public class MatchPrediction extends AbstractEntity {
 
     @MapsId
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "match_id")
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "match_id", nullable = false)
     private Match match;
 
     @Column(name = "predicted_home_xg", precision = 6, scale = 3)
