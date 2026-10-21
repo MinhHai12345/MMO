@@ -85,7 +85,7 @@ public class AdminController {
         try {
             List<League> leagues;
             if (isActive != null) {
-                leagues = leagueRepository.findByIsActive(isActive);
+                leagues = isActive ? leagueRepository.findByIsActiveTrue() : leagueRepository.findByIsActiveFalse();
             } else {
                 leagues = leagueRepository.findAll();
             }
