@@ -21,37 +21,33 @@ import java.util.List;
 @NoArgsConstructor
 public class League extends AbstractEntity {
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 160)
     private String name;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 180)
     private String slug;
 
     @Column(nullable = false)
     private boolean active;
 
-    @Column
-    private String externalId;
-
-    @Column
+    @Column(length = 100)
     private String country;
 
-    @Column
+    @Column(name = "logo_url", length = 2048)
     private String logoUrl;
 
-    @Column(name = "popularity_score")
+    @Column(name = "popularity_score", precision = 8, scale = 3, nullable = false)
     @Builder.Default
     private BigDecimal popularityScore = BigDecimal.ZERO;
 
-    @Column(name = "betting_market")
+    @Column(name = "betting_market", length = 100)
     private String bettingMarket;
 
-    @Column(name = "is_active")
+    @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
 
     @OneToMany(mappedBy = "league", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<LeagueExternalId> externalIds = new ArrayList<>();
-
 }
