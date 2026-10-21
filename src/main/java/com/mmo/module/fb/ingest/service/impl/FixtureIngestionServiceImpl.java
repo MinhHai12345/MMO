@@ -7,6 +7,7 @@ import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.repository.SeasonRepository;
 import com.mmo.module.fb.domain.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballPlanRestrictionException;
+import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
@@ -75,6 +76,7 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
 
         int saved = 0;
         int skipped = 0;
+        int failed = 0;
         int fetched = 0;
         for (Season season : seasons) {
             Long externalLeagueId = parseLong(leagueExternalIdsByLeagueId.get(season.getLeague().getId()));
@@ -89,6 +91,12 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
             try {
                 fixtures = providerRegistry.fixture(selectedProvider).fetchFixtures(
                         new FixtureQuery(externalLeagueId, season.getYear(), from, to));
+            } catch (FootballDataRestrictedResourceException ex) {
+                if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
+                skipped++;
+                log.warn("Skipping fixtures for league {} season {} because football-data.org restricts this resource: {}",
+                        externalLeagueId, season.getYear(), ex.getMessage());
+                continue;
             } catch (ApiFootballPlanRestrictionException ex) {
                 skipped++;
                 log.warn("Skipping fixtures for league {} season {} because the API-Football plan does not include it: {}",
@@ -121,15 +129,19 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
                         skipped++;
                     }
                 } catch (Exception ex) {
-                    skipped++;
-                    log.warn("Failed to persist provider {} fixture {}: {}",
-                            selectedProvider, fixture.externalId(), ex.getMessage());
+                    failed++;
+                    log.error("Failed to persist provider {} fixture {}; continuing with remaining fixtures",
+                            selectedProvider, fixture.externalId(), ex);
                 }
             }
         }
 
-        log.info("Fixture ingestion via {} completed. fetched={}, saved/updated={}, skipped={}; date range {} to {}",
-                selectedProvider, fetched, saved, skipped, from, to);
+        log.info("Fixture ingestion via {} finished. fetched={}, saved/updated={}, skipped={}, failed={}; date range {} to {}",
+                selectedProvider, fetched, saved, skipped, failed, from, to);
+        if (failed > 0) {
+            throw new IllegalStateException("Fixture ingestion via " + selectedProvider
+                    + " completed with " + failed + " persistence failure(s); inspect the preceding errors.");
+        }
     }
 
     private List<Season> seasonsToSync(Provider selectedProvider) {
