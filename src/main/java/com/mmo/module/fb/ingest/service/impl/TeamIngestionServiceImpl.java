@@ -6,6 +6,7 @@ import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.repository.SeasonRepository;
 import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballPlanRestrictionException;
+import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.provider.model.TeamQuery;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
@@ -68,8 +69,15 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
             }
 
             try {
+                Long parsedLeagueId = parseLong(externalLeagueId);
+                if (parsedLeagueId == null) {
+                    failed++;
+                    log.error("Invalid provider league ID '{}' for provider {} season {}",
+                            externalLeagueId, selectedProvider, season.getYear());
+                    continue;
+                }
                 List<ProviderTeam> teams = providerRegistry.team(selectedProvider)
-                        .fetchTeams(new TeamQuery(parseLong(externalLeagueId), season.getYear()));
+                        .fetchTeams(new TeamQuery(parsedLeagueId, season.getYear()));
                 if (teams == null || teams.isEmpty()) {
                     log.warn("Provider {} returned no teams for league {} season {}",
                             selectedProvider, externalLeagueId, season.getYear());
@@ -77,14 +85,15 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
                 }
                 teamPersistenceService.persistTeamsForSeason(selectedProvider, season, teams);
                 fetched += teams.size();
+            } catch (FootballDataRestrictedResourceException ex) {
+                if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
+                failed++;
+                log.warn("Skipping teams for league {} season {} because football-data.org restricts this resource: {}",
+                        externalLeagueId, season.getYear(), ex.getMessage());
             } catch (ApiFootballPlanRestrictionException ex) {
                 failed++;
                 log.warn("Skipping teams for league {} season {} because the API-Football plan does not include it: {}",
                         externalLeagueId, season.getYear(), ex.getMessage());
-            } catch (Exception ex) {
-                failed++;
-                log.warn("Failed to sync teams for provider {} league {} season {}: {}",
-                        selectedProvider, externalLeagueId, season.getYear(), ex.getMessage());
             }
         }
         log.info("Team ingestion via {} completed. fetched={}, failed/skipped={}",
