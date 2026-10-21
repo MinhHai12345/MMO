@@ -81,8 +81,9 @@ public class Match extends AbstractEntity {
     private Double awayXG;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 24)
-    private MatchStatus status;
+    @Column(nullable = false, length = 24)
+    @Builder.Default
+    private MatchStatus status = MatchStatus.SCHEDULED;
 
     @OneToMany(mappedBy = "match", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
