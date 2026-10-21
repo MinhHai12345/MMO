@@ -81,7 +81,7 @@ public class ExternalIdMappingService {
                 leagueExternalIds.findByProviderAndExternalId(provider, externalId.trim()),
                 () -> LeagueExternalId.builder().league(league).provider(provider)
                         .externalId(externalId.trim()).build(),
-                LeagueExternalId::getLeague, league, "league", provider, externalId);
+                LeagueExternalId::getLeague, LeagueExternalId::getExternalId, league, "league", provider, externalId);
     }
 
     public SeasonExternalId registerSeason(Season season, Provider provider, String externalId) {
@@ -93,7 +93,7 @@ public class ExternalIdMappingService {
                 seasonExternalIds.findByProviderAndExternalId(provider, externalId.trim()),
                 () -> SeasonExternalId.builder().season(season).provider(provider)
                         .externalId(externalId.trim()).build(),
-                SeasonExternalId::getSeason, season, "season", provider, externalId);
+                SeasonExternalId::getSeason, SeasonExternalId::getExternalId, season, "season", provider, externalId);
     }
 
     public TeamExternalId registerTeam(Team team, Provider provider, String externalId) {
@@ -105,7 +105,7 @@ public class ExternalIdMappingService {
                 teamExternalIds.findByProviderAndExternalId(provider, externalId.trim()),
                 () -> TeamExternalId.builder().team(team).provider(provider)
                         .externalId(externalId.trim()).build(),
-                TeamExternalId::getTeam, team, "team", provider, externalId);
+                TeamExternalId::getTeam, TeamExternalId::getExternalId, team, "team", provider, externalId);
     }
 
     public MatchExternalId registerMatch(Match match, Provider provider, String externalId) {
@@ -117,12 +117,13 @@ public class ExternalIdMappingService {
                 matchExternalIds.findByProviderAndExternalId(provider, externalId.trim()),
                 () -> MatchExternalId.builder().match(match).provider(provider)
                         .externalId(externalId.trim()).build(),
-                MatchExternalId::getMatch, match, "match", provider, externalId);
+                MatchExternalId::getMatch, MatchExternalId::getExternalId, match, "match", provider, externalId);
     }
 
     private <E, X> X register(Optional<X> byEntity, Optional<X> byExternalId,
                               java.util.function.Supplier<X> factory,
                               java.util.function.Function<X, E> entityOf,
+                              java.util.function.Function<X, String> externalIdOf,
                               E requestedEntity, String entityType, Provider provider, String externalId) {
         if (byEntity.isPresent()) {
             X existing = byEntity.get();
@@ -130,12 +131,14 @@ public class ExternalIdMappingService {
                 throw conflict(entityType, provider, externalId,
                         "this entity already has a different ID for the provider");
             }
+            if (!externalIdOf.apply(existing).equals(externalId.trim())) {
+                throw conflict(entityType, provider, externalId,
+                        "this entity already has a different ID for the provider");
+            }
             if (byExternalId.isPresent() && !sameEntity(entityOf.apply(byExternalId.get()), requestedEntity)) {
                 throw conflict(entityType, provider, externalId,
                         "the provider ID is already assigned to another entity");
             }
-            // Never silently change an existing provider ID. A dedicated remapping
-            // operation should be designed if providers legitimately change IDs.
             return existing;
         }
 
