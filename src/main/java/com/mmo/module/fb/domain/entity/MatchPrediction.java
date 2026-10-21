@@ -10,8 +10,6 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "fb_match_predictions",
@@ -56,9 +54,6 @@ public class MatchPrediction extends AbstractEntity {
     @Builder.Default
     private String predictionStatus = "PENDING";
 
-    @Column
-    private String result;
-
     @Column(name = "is_premium")
     @Builder.Default
     private Boolean isPremium = false;
@@ -88,8 +83,7 @@ public class MatchPrediction extends AbstractEntity {
     @Column
     private String imageUrl;
 
-    @OneToMany(mappedBy = "prediction", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<PredictionPerformance> performance = new ArrayList<>();
+    @OneToOne(mappedBy = "prediction", cascade = CascadeType.ALL, orphanRemoval = true)
+    private PredictionPerformance performance;
 
 }
