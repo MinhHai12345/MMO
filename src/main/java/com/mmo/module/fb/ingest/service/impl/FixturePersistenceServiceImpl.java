@@ -1,7 +1,6 @@
 package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.module.fb.domain.entity.Match;
-import com.mmo.module.fb.domain.entity.MatchExternalId;
 import com.mmo.module.fb.domain.entity.Season;
 import com.mmo.module.fb.domain.entity.Team;
 import com.mmo.module.fb.domain.enums.MatchStatus;
@@ -10,6 +9,7 @@ import com.mmo.module.fb.domain.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.domain.repository.MatchRepository;
 import com.mmo.module.fb.domain.repository.SeasonRepository;
 import com.mmo.module.fb.domain.repository.TeamRepository;
+import com.mmo.module.fb.domain.service.ExternalIdMappingService;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import com.mmo.module.fb.ingest.service.FixturePersistenceService;
 import lombok.RequiredArgsConstructor;
@@ -30,11 +30,13 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
     private final TeamRepository teamRepository;
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
+    private final ExternalIdMappingService externalIdMappingService;
 
+    @Override
     @Transactional
     public boolean persistFixture(Long seasonId, Long homeTeamId, Long awayTeamId,
                                   Provider provider, ProviderFixture fixture) {
-        if (fixture.externalId() == null || fixture.externalId().isBlank()) return false;
+        if (fixture == null || fixture.externalId() == null || fixture.externalId().isBlank()) return false;
 
         Season season = seasonRepository.findById(seasonId).orElse(null);
         Team home = teamRepository.findById(homeTeamId).orElse(null);
@@ -42,7 +44,7 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
         if (season == null || home == null || away == null) return false;
 
         Match match = matchExternalIdRepository.findByProviderAndExternalId(provider, fixture.externalId())
-                .map(MatchExternalId::getMatch)
+                .map(com.mmo.module.fb.domain.entity.MatchExternalId::getMatch)
                 .orElse(null);
 
         if (match != null && (match.getSeason() == null
@@ -100,16 +102,7 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
         if (fixture.awayScore() != null) match.setAwayScore(fixture.awayScore());
         match = matchRepository.save(match);
 
-        Match savedMatch = match;
-        MatchExternalId externalId = matchExternalIdRepository
-                .findByMatchIdAndProvider(savedMatch.getId(), provider)
-                .orElseGet(() -> MatchExternalId.builder()
-                        .match(savedMatch)
-                        .provider(provider)
-                        .externalId(fixture.externalId())
-                        .build());
-        externalId.setExternalId(fixture.externalId());
-        matchExternalIdRepository.save(externalId);
+        externalIdMappingService.registerMatch(match, provider, fixture.externalId());
         return true;
     }
 
