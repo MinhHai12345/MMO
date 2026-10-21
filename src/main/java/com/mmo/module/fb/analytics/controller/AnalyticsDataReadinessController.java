@@ -4,6 +4,8 @@ import com.mmo.module.fb.analytics.service.AnalyticsDataReadinessService;
 import com.mmo.module.fb.analytics.service.AnalyticsDataReadinessService.DataReadinessReport;
 import com.mmo.module.fb.analytics.service.TeamFormBackTestService;
 import com.mmo.module.fb.analytics.service.TeamFormBackTestService.TeamFormBackTestReport;
+import com.mmo.module.fb.analytics.service.WalkForwardBackTestService;
+import com.mmo.module.fb.analytics.service.WalkForwardBackTestService.BackTestReport;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +24,7 @@ public class AnalyticsDataReadinessController {
 
     private final AnalyticsDataReadinessService analyticsDataReadinessService;
     private final TeamFormBackTestService teamFormBackTestService;
+    private final WalkForwardBackTestService walkForwardBackTestService;
 
     @GetMapping("/data-readiness")
     public DataReadinessReport getDataReadiness() {
@@ -35,5 +38,15 @@ public class AnalyticsDataReadinessController {
     public TeamFormBackTestReport runTeamFormBackTest(@RequestParam Instant from,
                                                        @RequestParam Instant to) {
         return teamFormBackTestService.run(from, to);
+    }
+
+    /**
+     * Runs a walk-forward evaluation without changing live predictions.
+     * Dates must be ISO-8601 instants; the start is inclusive and the end is exclusive.
+     */
+    @GetMapping("/walk-forward-backtest")
+    public BackTestReport runWalkForwardBackTest(@RequestParam Instant from,
+                                                  @RequestParam Instant to) {
+        return walkForwardBackTestService.run(from, to);
     }
 }
