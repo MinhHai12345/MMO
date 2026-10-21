@@ -51,9 +51,9 @@ class FixturePersistenceServiceImplTest {
         away = new Team();
         away.setId(30L);
 
-        when(seasonRepository.findById(10L)).thenReturn(Optional.of(season));
-        when(teamRepository.findById(20L)).thenReturn(Optional.of(home));
-        when(teamRepository.findById(30L)).thenReturn(Optional.of(away));
+        lenient().when(seasonRepository.findById(10L)).thenReturn(Optional.of(season));
+        lenient().when(teamRepository.findById(20L)).thenReturn(Optional.of(home));
+        lenient().when(teamRepository.findById(30L)).thenReturn(Optional.of(away));
     }
 
     @Test
