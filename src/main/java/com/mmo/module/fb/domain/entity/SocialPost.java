@@ -14,7 +14,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "fb_social_posts")
+@Table(name = "fb_social_posts",
+        uniqueConstraints = @UniqueConstraint(name = "uk_fb_social_post_platform_post", columnNames = {"platform", "post_id"}),
+        indexes = {
+                @Index(name = "idx_fb_social_post_match_status", columnList = "match_id, post_status"),
+                @Index(name = "idx_fb_social_post_scheduled", columnList = "scheduled_at")
+        })
 @Getter
 @Setter
 @Builder
@@ -26,10 +31,10 @@ public class SocialPost extends AbstractEntity {
     @JoinColumn(name = "match_id")
     private Match match;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 32)
     private String platform;
 
-    @Column(name = "post_id")
+    @Column(name = "post_id", length = 255)
     private String postId;
 
     @Lob
