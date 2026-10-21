@@ -90,7 +90,8 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
                     .findByTeamIdAndProvider(savedTeam.getId(), selectedProvider).orElseThrow();
             teamsByExternalId.put(source.externalId(), savedTeam);
             mappingByTeamId.put(savedTeam.getId(), mapping);
-            if (knownTeams.stream().noneMatch(existing -> existing.getId().equals(savedTeam.getId()))) {
+            if (knownTeams.stream().noneMatch(existing -> existing.getId() != null
+                    && existing.getId().equals(savedTeam.getId()))) {
                 knownTeams.add(savedTeam);
             }
             synced++;
