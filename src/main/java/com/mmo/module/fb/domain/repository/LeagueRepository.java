@@ -22,8 +22,6 @@ public interface LeagueRepository extends JpaRepository<League, Long> {
 
     @NotNull
     @EntityGraph(attributePaths = {"currentSeason"})
-    List<League> findByActiveIsTrue();
-
-    List<League> findByIsActive(Boolean isActive);
+    List<League> findByIsActiveTrue();
 
 }
