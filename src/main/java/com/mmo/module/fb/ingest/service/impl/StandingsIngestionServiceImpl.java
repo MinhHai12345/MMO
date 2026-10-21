@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.domain.entity.Season;
+import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRateLimitException;
 import com.mmo.module.fb.domain.entity.TeamExternalId;
 import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
@@ -75,6 +76,7 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
 
         int saved = 0;
         int skipped = 0;
+        boolean rateLimitInterrupted = false;
         // Routine sync is limited to current seasons; historical backfill is a separate operation.
         List<Season> seasons = seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
         for (Season season : seasons) {
@@ -85,9 +87,22 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
                 continue;
             }
 
-            // This network call happens without a transaction.
-            List<ProviderStanding> rows = provider.fetchStandings(
-                    new StandingsQuery(externalLeagueId, season.getYear()));
+            // This network call happens without a transaction. If football-data.org keeps
+            // returning 429 after its retry/cooldown, stop this resource's sync but preserve
+            // already persisted core data and allow the bootstrap job to finish.
+            List<ProviderStanding> rows;
+            try {
+                rows = provider.fetchStandings(new StandingsQuery(externalLeagueId, season.getYear()));
+            } catch (FootballDataRateLimitException ex) {
+                if (selectedProvider != Provider.FOOTBALL_DATA) {
+                    throw ex;
+                }
+                rateLimitInterrupted = true;
+                log.warn("Stopping standings ingestion via {} after repeated rate limiting. "
+                        + "Already persisted {} rows; remaining standings will be retried by a later sync. {}",
+                        selectedProvider, saved, ex.getMessage());
+                break;
+            }
             for (ProviderStanding row : rows) {
                 Long teamId = teamIdsByExternalId.get(row.teamExternalId());
                 if (teamId == null) {
@@ -98,8 +113,13 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
                 saved++;
             }
         }
-        log.info("Standings ingestion via {} completed. {} rows upserted, {} rows skipped.",
-                selectedProvider, saved, skipped);
+        if (rateLimitInterrupted) {
+            log.warn("Standings ingestion via {} partially completed. {} rows upserted, {} rows skipped.",
+                    selectedProvider, saved, skipped);
+        } else {
+            log.info("Standings ingestion via {} completed. {} rows upserted, {} rows skipped.",
+                    selectedProvider, saved, skipped);
+        }
     }
 
     private static Long parseLong(String value) {

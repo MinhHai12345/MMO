@@ -73,7 +73,7 @@ public class FootballDataClient {
                         // If it still fails, propagate a clear error instead of retrying indefinitely.
                         continue;
                     }
-                    throw new IllegalStateException("football-data.org rate limit (HTTP 429) for "
+                    throw new FootballDataRateLimitException("football-data.org rate limit (HTTP 429) for "
                             + path + ". Retry after approximately " + waitSeconds
                             + " seconds. Response: " + ex.getResponseBodyAsString(), ex);
                 }
