@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -92,7 +92,8 @@ class FixtureIngestionServiceImplTest {
                 providerRegistry, properties, teamIngestionService, seasonRepository,
                 leagueExternalIdRepository, teamExternalIdRepository, fixturePersistenceService);
 
-        assertDoesNotThrow(() -> service.syncFixturesForProvider(Provider.FOOTBALL_DATA, null, null));
+        assertThrows(IllegalStateException.class,
+                () -> service.syncFixturesForProvider(Provider.FOOTBALL_DATA, null, null));
         verify(fixturePersistenceService, times(1))
                 .persistFixture(20L, 30L, 40L, Provider.FOOTBALL_DATA, failedFixture);
         verify(fixturePersistenceService, times(1))
