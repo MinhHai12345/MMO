@@ -28,6 +28,28 @@ class ModernFootballAnalyticsServiceImplTest {
     }
 
     @Test
+    void labelsScoreAsLiveInsteadOfFinalWhenMatchIsInProgress() {
+        Match match = mock(Match.class);
+        when(matches.findById(13L)).thenReturn(Optional.of(match));
+        when(match.getId()).thenReturn(13L);
+        when(match.getSeason()).thenReturn(null);
+        when(match.getHomeTeam()).thenReturn(null);
+        when(match.getAwayTeam()).thenReturn(null);
+        when(match.getHomeScore()).thenReturn(1);
+        when(match.getAwayScore()).thenReturn(0);
+        when(match.getHomeXG()).thenReturn(null);
+        when(match.getAwayXG()).thenReturn(null);
+        when(match.getStatus()).thenReturn(com.mmo.module.fb.domain.enums.MatchStatus.LIVE);
+        when(advancedStats.findAllByMatchId(13L)).thenReturn(List.of());
+        when(playerStats.findAllByMatchId(13L)).thenReturn(List.of());
+
+        var report = service.analyze(13L);
+
+        assertEquals("Live score: Home team 1 - 0 Away team", report.postMatchReview().resultSummary());
+        assertTrue(report.contentBrief().matchNarrative().startsWith("Pre-match or in-progress"));
+    }
+
+    @Test
     void returnsExplicitLimitationsWhenAdvancedDataIsMissing() {
         Match match = mock(Match.class);
         when(matches.findById(12L)).thenReturn(Optional.of(match));
