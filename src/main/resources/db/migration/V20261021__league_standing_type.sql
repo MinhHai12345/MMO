@@ -1,8 +1,7 @@
--- Apply after the application has added fb_league_standings.standing_type.
--- Existing rows are the overall table and are therefore backfilled as TOTAL.
-UPDATE fb_league_standings
-SET standing_type = 'TOTAL'
-WHERE standing_type IS NULL OR standing_type = '';
+-- Manual MySQL migration: run once before deploying the standing-type code.
+-- Existing rows represent the overall table, so default them to TOTAL.
+ALTER TABLE fb_league_standings
+    ADD COLUMN standing_type VARCHAR(16) NOT NULL DEFAULT 'TOTAL';
 
 -- Replace the old uniqueness rule (season + team) so each team can have
 -- distinct TOTAL, HOME and AWAY rows within a season.
