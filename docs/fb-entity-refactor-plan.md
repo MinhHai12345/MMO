@@ -23,7 +23,7 @@ The FB module is in active implementation. The database schema will be dropped a
 - `MatchAdvancedStats` and `PlayerMatchStats`: uniqueness reflects one record per match/team or match/player respectively.
 - `MatchOdds`: a current odds snapshot is unique by match, bookmaker and market. Market identity must include the line/handicap where the provider distinguishes multiple lines.
 - `OddsHistory`: retains historical observations with a recorded timestamp and indexes for chronological lookup.
-- `MatchPrediction`: currently uses a shared match identity. Before implementing prediction versioning/backtesting, migrate it to an independently identified prediction run with model version and calculation timestamp, and update all consumers together.
+- `MatchPrediction`: currently uses a shared match identity. Actual match result is stored only in `PredictionPerformance`, which is one-to-one with a prediction. Before implementing prediction versioning/backtesting, migrate it to an independently identified prediction run with model version and calculation timestamp, and update all consumers together.
 
 ## Entity integrity rules
 
