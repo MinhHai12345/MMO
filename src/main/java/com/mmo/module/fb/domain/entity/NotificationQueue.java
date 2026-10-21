@@ -5,6 +5,7 @@ import com.mmo.module.fb.domain.enums.PublishStatus;
 import com.mmo.module.fb.domain.enums.TargetChannel;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
@@ -29,26 +30,27 @@ import java.time.Instant;
 @Builder
 public class NotificationQueue extends AbstractEntity {
 
-    @Column
     @Enumerated(EnumType.STRING)
+    @Column(length = 32)
     private TargetChannel channel;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
-    @Column
     @Enumerated(EnumType.STRING)
+    @Column(length = 32)
     private PublishStatus status;
 
-    @Column
-    private Integer retryCount;
+    @Column(name = "retry_count")
+    @Builder.Default
+    private Integer retryCount = 0;
 
-    @Column
+    @Column(columnDefinition = "TEXT")
     private String errorMessage;
 
-    @Column
+    @Column(name = "scheduled_time")
     private Instant scheduledTime;
 
-    @Column
+    @Column(name = "sent_at")
     private Instant sentAt;
 }
