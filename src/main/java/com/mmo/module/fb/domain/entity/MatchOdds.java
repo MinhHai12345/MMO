@@ -32,7 +32,7 @@ public class MatchOdds extends AbstractEntity {
     @JoinColumn(name = "bookmaker_id", nullable = false)
     private Bookmaker bookmaker;
 
-    @Column(name = "market_name", nullable = false)
+    @Column(name = "market_name", nullable = false, length = 80)
     private String marketName;
 
     @Column(precision = 8, scale = 3)
