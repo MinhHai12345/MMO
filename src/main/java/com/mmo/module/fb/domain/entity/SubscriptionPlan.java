@@ -24,19 +24,20 @@ import java.util.List;
 @NoArgsConstructor
 public class SubscriptionPlan extends AbstractEntity {
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 120)
     private String name;
 
     @Lob
     private String description;
 
-    @Column(nullable = false)
-    private String price;
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal price;
 
+    @Column(nullable = false, length = 3)
     @Builder.Default
     private String currency = "USD";
 
-    @Column(name = "billing_cycle", nullable = false)
+    @Column(name = "billing_cycle", nullable = false, length = 32)
     private String billingCycle;
 
     @Column(name = "stripe_price_id", length = 255)
