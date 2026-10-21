@@ -3,6 +3,7 @@ package com.mmo.module.fb.ingest.service.impl;
 import com.mmo.module.fb.domain.entity.LeagueStanding;
 import com.mmo.module.fb.domain.entity.Season;
 import com.mmo.module.fb.domain.entity.Team;
+import com.mmo.module.fb.domain.enums.StandingType;
 import com.mmo.module.fb.domain.repository.LeagueStandingRepository;
 import com.mmo.module.fb.domain.repository.SeasonRepository;
 import com.mmo.module.fb.domain.repository.TeamRepository;
@@ -29,11 +30,14 @@ public class StandingsPersistenceServiceImpl implements StandingsPersistenceServ
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new IllegalArgumentException("Team not found: " + teamId));
 
-        LeagueStanding standing = standingRepository.findBySeasonIdAndTeamId(seasonId, teamId)
+        StandingType type = row.standingType() == null ? StandingType.TOTAL : row.standingType();
+        LeagueStanding standing = standingRepository
+                .findBySeasonIdAndTeamIdAndStandingType(seasonId, teamId, type)
                 .orElseGet(() -> LeagueStanding.builder()
                         .league(season.getLeague())
                         .season(season)
                         .team(team)
+                        .standingType(type)
                         .build());
 
         standing.setPosition(row.position());

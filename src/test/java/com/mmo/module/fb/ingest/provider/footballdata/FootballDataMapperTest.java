@@ -1,5 +1,6 @@
 package com.mmo.module.fb.ingest.provider.footballdata;
 
+import com.mmo.module.fb.domain.enums.StandingType;
 import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.*;
 import com.mmo.module.fb.ingest.provider.footballdata.mapper.FootballDataMapper;
 import org.junit.jupiter.api.Test;
@@ -55,20 +56,42 @@ class FootballDataMapperTest {
     }
 
     @Test
-    void mapsStandingRowsAndGroupName() {
+    void mapsEachStandingTableTypeWithoutLosingScope() {
+        TeamDto team = new TeamDto(65L, "Manchester City", "Man City", "MCI",
+                null, 1880, "Etihad Stadium");
+        StandingRowDto total = new StandingRowDto(
+                1, team, 10, 8, 1, 1, 25, 30, 10, 20, "WWDWW", null);
+        StandingRowDto home = new StandingRowDto(
+                1, team, 5, 5, 0, 0, 15, 16, 2, 14, "WWWWW", null);
+        StandingRowDto away = new StandingRowDto(
+                2, team, 5, 3, 1, 1, 10, 14, 8, 6, "WWDLW", null);
+        StandingsDto source = new StandingsDto(null, null, List.of(
+                new StandingTableDto("REGULAR_SEASON", "TOTAL", "League A", List.of(total)),
+                new StandingTableDto("REGULAR_SEASON", "HOME", "League A", List.of(home)),
+                new StandingTableDto("REGULAR_SEASON", "AWAY", "League A", List.of(away))));
+
+        var result = mapper.toStandings(source);
+
+        assertEquals(3, result.size());
+        assertEquals(List.of(StandingType.TOTAL, StandingType.HOME, StandingType.AWAY),
+                result.stream().map(row -> row.standingType()).toList());
+        assertEquals(25, result.get(0).points());
+        assertEquals(15, result.get(1).points());
+        assertEquals(10, result.get(2).points());
+        assertEquals("League A", result.get(0).groupName());
+        assertEquals(20, result.get(0).goalDifference());
+    }
+
+    @Test
+    void defaultsUnknownStandingTableTypeToTotal() {
         TeamDto team = new TeamDto(65L, "Manchester City", "Man City", "MCI",
                 null, 1880, "Etihad Stadium");
         StandingRowDto row = new StandingRowDto(
                 1, team, 10, 8, 1, 1, 25, 30, 10, 20, "WWDWW", null);
-        StandingsDto source = new StandingsDto(null, null,
-                List.of(new StandingTableDto("REGULAR_SEASON", "TOTAL", "League A", List.of(row))));
 
-        var result = mapper.toStandings(source);
+        var result = mapper.toStandings(new StandingsDto(null, null,
+                List.of(new StandingTableDto("REGULAR_SEASON", "UNKNOWN", null, List.of(row)))));
 
-        assertEquals(1, result.size());
-        assertEquals("65", result.get(0).teamExternalId());
-        assertEquals(25, result.get(0).points());
-        assertEquals("League A", result.get(0).groupName());
-        assertEquals(20, result.get(0).goalDifference());
+        assertEquals(StandingType.TOTAL, result.get(0).standingType());
     }
 }
