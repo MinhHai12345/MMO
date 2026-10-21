@@ -133,17 +133,24 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
     }
 
     private List<Season> seasonsToSync(Provider selectedProvider) {
-        if (selectedProvider == Provider.FOOTBALL_DATA && appProperties.getFootballData().getSeasons() != null
-                && !appProperties.getFootballData().getSeasons().isEmpty()) {
-            List<String> years = appProperties.getFootballData().getSeasons().stream()
-                    .filter(year -> year != null && !year.isBlank())
-                    .map(String::trim).distinct().toList();
+        List<String> years = configuredSeasonYears(selectedProvider);
+        if (!years.isEmpty()) {
             return seasonRepository.findAll().stream()
                     .filter(season -> season.getLeague() != null && season.getYear() != null
                             && years.contains(season.getYear()))
                     .toList();
         }
         return seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
+    }
+
+    private List<String> configuredSeasonYears(Provider selectedProvider) {
+        if (selectedProvider != Provider.FOOTBALL_DATA || appProperties.getFootballData() == null
+                || appProperties.getFootballData().getSeasons() == null) {
+            return List.of();
+        }
+        return appProperties.getFootballData().getSeasons().stream()
+                .filter(year -> year != null && !year.isBlank())
+                .map(String::trim).distinct().toList();
     }
 
     private static Long parseLong(String value) {
