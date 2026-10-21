@@ -36,7 +36,10 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
     @Transactional
     public boolean persistFixture(Long seasonId, Long homeTeamId, Long awayTeamId,
                                   Provider provider, ProviderFixture fixture) {
-        if (fixture == null || fixture.externalId() == null || fixture.externalId().isBlank()) return false;
+        if (provider == null || fixture == null || fixture.externalId() == null
+                || fixture.externalId().isBlank() || seasonId == null || homeTeamId == null || awayTeamId == null) {
+            return false;
+        }
 
         Season season = seasonRepository.findById(seasonId).orElse(null);
         Team home = teamRepository.findById(homeTeamId).orElse(null);
