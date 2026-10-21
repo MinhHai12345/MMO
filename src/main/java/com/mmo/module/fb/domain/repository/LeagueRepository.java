@@ -18,7 +18,9 @@ public interface LeagueRepository extends JpaRepository<League, Long> {
     Optional<League> findById(@NotNull Long id);
 
     @NotNull
-
     List<League> findByIsActiveTrue();
+
+    @NotNull
+    List<League> findByIsActiveFalse();
 
 }
