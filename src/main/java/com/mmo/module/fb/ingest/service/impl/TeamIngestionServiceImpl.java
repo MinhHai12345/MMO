@@ -31,6 +31,74 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final TeamPersistenceService teamPersistenceService;
 
+    @Override
+    public void syncTeams() {
+        syncTeamsForProvider(appProperties.getIngestion().getProviders().getTeam());
+    }
+
+    @Override
+    public void syncTeamsForProvider(Provider selectedProvider) {
+        if (selectedProvider == Provider.FOOTBALL_DATA
+                && (appProperties.getFootballData() == null || !appProperties.getFootballData().isEnabled())) {
+            log.info("Skipping team ingestion because football-data.org is disabled");
+            return;
+        }
+        if (selectedProvider == Provider.API_FOOTBALL
+                && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
+            log.info("Skipping team ingestion because API-Football is disabled");
+            return;
+        }
+
+        leagueIngestionService.syncLeaguesForProvider(selectedProvider);
+        ensureConfiguredFootballDataSeasons(selectedProvider);
+
+        Map<Long, String> externalLeagueIdsByLeagueId = new HashMap<>();
+        leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
+                externalLeagueIdsByLeagueId.put(mapping.getLeague().getId(), mapping.getExternalId()));
+
+        int fetched = 0;
+        int failed = 0;
+        for (Season season : seasonsToSync(selectedProvider)) {
+            String externalLeagueId = externalLeagueIdsByLeagueId.get(season.getLeague().getId());
+            if (externalLeagueId == null || externalLeagueId.isBlank()) {
+                log.warn("Skipping teams for season {} and league {} because provider {} has no league ID mapping",
+                        season.getYear(), season.getLeague().getId(), selectedProvider);
+                failed++;
+                continue;
+            }
+
+            try {
+                List<ProviderTeam> teams = providerRegistry.team(selectedProvider)
+                        .fetchTeams(new TeamQuery(parseLong(externalLeagueId), season.getYear()));
+                if (teams == null || teams.isEmpty()) {
+                    log.warn("Provider {} returned no teams for league {} season {}",
+                            selectedProvider, externalLeagueId, season.getYear());
+                    continue;
+                }
+                teamPersistenceService.persistTeamsForSeason(selectedProvider, season, teams);
+                fetched += teams.size();
+            } catch (ApiFootballPlanRestrictionException ex) {
+                failed++;
+                log.warn("Skipping teams for league {} season {} because the API-Football plan does not include it: {}",
+                        externalLeagueId, season.getYear(), ex.getMessage());
+            } catch (Exception ex) {
+                failed++;
+                log.warn("Failed to sync teams for provider {} league {} season {}: {}",
+                        selectedProvider, externalLeagueId, season.getYear(), ex.getMessage());
+            }
+        }
+        log.info("Team ingestion via {} completed. fetched={}, failed/skipped={}",
+                selectedProvider, fetched, failed);
+    }
+
+    private static Long parseLong(String value) {
+        try {
+            return Long.valueOf(value);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
     private void ensureConfiguredFootballDataSeasons(Provider selectedProvider) {
         List<String> years = configuredSeasonYears(selectedProvider);
         if (years.isEmpty()) return;
