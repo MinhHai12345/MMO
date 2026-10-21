@@ -13,7 +13,6 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "fb_prediction_performance",
-        uniqueConstraints = @UniqueConstraint(name = "uk_fb_prediction_performance_prediction", columnNames = "prediction_id"),
         indexes = @Index(name = "idx_fb_prediction_performance_correct", columnList = "is_correct"))
 @Getter
 @Setter
@@ -22,8 +21,8 @@ import java.time.Instant;
 @NoArgsConstructor
 public class PredictionPerformance extends AbstractEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "prediction_id", nullable = false)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "prediction_id", nullable = false, unique = true)
     private MatchPrediction prediction;
 
     @Column(name = "actual_home_score")
