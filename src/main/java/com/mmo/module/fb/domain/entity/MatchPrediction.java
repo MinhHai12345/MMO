@@ -40,10 +40,10 @@ public class MatchPrediction extends AbstractEntity {
     @Column(name = "win_home_prob", precision = 9, scale = 6)
     private BigDecimal winHomeProb;
 
-    @Column(name = "draw_prob", precision = 7, scale = 6)
+    @Column(name = "draw_prob", precision = 9, scale = 6)
     private BigDecimal drawProb;
 
-    @Column(name = "win_away_prob", precision = 7, scale = 6)
+    @Column(name = "win_away_prob", precision = 9, scale = 6)
     private BigDecimal winAwayProb;
 
     @Column
