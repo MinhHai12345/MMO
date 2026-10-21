@@ -31,6 +31,41 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final TeamPersistenceService teamPersistenceService;
 
+    private void ensureConfiguredFootballDataSeasons(Provider selectedProvider) {
+        if (selectedProvider != Provider.FOOTBALL_DATA || appProperties.getFootballData().getSeasons() == null
+                || appProperties.getFootballData().getSeasons().isEmpty()) {
+            return;
+        }
+
+        leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping -> {
+            for (String year : appProperties.getFootballData().getSeasons()) {
+                if (year == null || year.isBlank()) continue;
+                seasonRepository.findByLeague_IdAndYear(mapping.getLeague().getId(), year.trim())
+                        .orElseGet(() -> {
+                            Season season = new Season();
+                            season.setLeague(mapping.getLeague());
+                            season.setYear(year.trim());
+                            season.setCurrent(false);
+                            return seasonRepository.save(season);
+                        });
+            }
+        });
+    }
+
+    private List<Season> seasonsToSync(Provider selectedProvider) {
+        if (selectedProvider == Provider.FOOTBALL_DATA && appProperties.getFootballData().getSeasons() != null
+                && !appProperties.getFootballData().getSeasons().isEmpty()) {
+            List<String> years = appProperties.getFootballData().getSeasons().stream()
+                    .filter(year -> year != null && !year.isBlank())
+                    .map(String::trim).distinct().toList();
+            return seasonRepository.findAll().stream()
+                    .filter(season -> season.getLeague() != null && season.getYear() != null
+                            && years.contains(season.getYear()))
+                    .toList();
+        }
+        return seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
+    }
+
     @Override
     public void syncTeams() {
         syncTeamsForProvider(appProperties.getIngestion().getProviders().getTeam());
@@ -55,15 +90,16 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
             leagueIngestionService.syncLeaguesForProvider(selectedProvider);
         }
 
+        ensureConfiguredFootballDataSeasons(selectedProvider);
+
         Map<Long, String> leagueExternalIdsByLeagueId = new HashMap<>();
         leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
                 leagueExternalIdsByLeagueId.put(mapping.getLeague().getId(), mapping.getExternalId()));
 
         int saved = 0;
         int skipped = 0;
-        // The first production pass is intentionally bounded to current seasons. Historical
-        // backfill should be an explicit, quota-aware operation rather than part of every sync.
-        for (Season season : seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull()) {
+        // Historical seasons are opt-in for football-data.org to keep the Free API quota bounded.
+        for (Season season : seasonsToSync(selectedProvider)) {
             if (season.getLeague() == null || season.getYear() == null) continue;
             Long leagueExternalId;
             try {
