@@ -7,6 +7,7 @@ import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.repository.SeasonRepository;
 import com.mmo.module.fb.domain.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballPlanRestrictionException;
+import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
@@ -89,6 +90,11 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
             try {
                 fixtures = providerRegistry.fixture(selectedProvider).fetchFixtures(
                         new FixtureQuery(externalLeagueId, season.getYear(), from, to));
+            } catch (FootballDataRestrictedResourceException ex) {
+                skipped++;
+                log.warn("Skipping fixtures for league {} season {} because football-data.org restricts this resource for the configured subscription: {}",
+                        externalLeagueId, season.getYear(), ex.getMessage());
+                continue;
             } catch (ApiFootballPlanRestrictionException ex) {
                 skipped++;
                 log.warn("Skipping fixtures for league {} season {} because the API-Football plan does not include it: {}",
