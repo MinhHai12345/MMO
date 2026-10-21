@@ -68,4 +68,5 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
         return appProperties.getFootballData().getSeasons().stream()
                 .filter(year -> year != null && !year.isBlank())
                 .map(String::trim).distinct().toList();
-    }}
+    }
+}
