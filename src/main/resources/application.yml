@@ -103,6 +103,8 @@ app:
     api-key: ${FOOTBALL_DATA_API_KEY:mock}
     # Numeric competition IDs, comma-separated; for example 2021 (Premier League), 2001 (Champions League).
     competition-ids: ${FOOTBALL_DATA_COMPETITION_IDS:}
+    # Optional season start years to backfill; empty means current season only.
+    seasons: ${FOOTBALL_DATA_SEASONS:}
 
   understats:
     base-url: https://understat.com
