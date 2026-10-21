@@ -103,7 +103,7 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
     }
 
     public void storeSeasons() {
-        List<League> activeLeagues = leagueRepository.findByActiveIsTrue();
+        List<League> activeLeagues = leagueRepository.findByIsActiveTrue();
         Set<String> existingSofaSeasonIds = seasonExternalIdRepository.findAll().stream()
                 .filter(eid -> Provider.SOFA_SCORE.name().equals(eid.getProvider().name()))
                 .map(SeasonExternalId::getExternalId)
