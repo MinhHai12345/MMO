@@ -33,6 +33,7 @@ public class FootballDataClient {
     private final ObjectMapper objectMapper;
     private final AppProperties appProperties;
     private final FootballDataRetryPolicy retryPolicy = new FootballDataRetryPolicy();
+    private final FootballDataHttpErrorClassifier errorClassifier = new FootballDataHttpErrorClassifier();
 
     public synchronized <T> T get(String path, Class<T> responseType, Object... uriVariables) {
         AppProperties.FootballData properties = appProperties.getFootballData();
@@ -66,12 +67,8 @@ public class FootballDataClient {
                 String message = "football-data.org HTTP " + status + " for " + path
                         + ": " + ex.getResponseBodyAsString();
 
-                if (status == 401) {
-                    throw new FootballDataAuthenticationException(
-                            message + ". Check FOOTBALL_DATA_API_KEY.", ex);
-                }
-                if (status == 403) {
-                    throw new FootballDataRestrictedResourceException(message, ex);
+                if (status == 401 || status == 403) {
+                    throw errorClassifier.classify(status, message, ex);
                 }
                 if (status == 429) {
                     long waitSeconds = determineRetryDelaySeconds(ex);
@@ -80,14 +77,14 @@ public class FootballDataClient {
                     if (retryPolicy.shouldRetryStatus(status, attempt)) {
                         continue;
                     }
-                    throw new FootballDataRateLimitException(message
+                    throw errorClassifier.classify(status, message
                             + ". Retry after approximately " + waitSeconds + " seconds.", ex);
                 }
                 if (retryPolicy.shouldRetryStatus(status, attempt)) {
                     sleepBeforeRetry(retryPolicy.backoffMillis(attempt), path);
                     continue;
                 }
-                throw new FootballDataRequestException(status, message, ex);
+                throw errorClassifier.classify(status, message, ex);
             } catch (WebClientRequestException ex) {
                 if (retryPolicy.shouldRetryTransportFailure(attempt)) {
                     sleepBeforeRetry(retryPolicy.backoffMillis(attempt), path);
