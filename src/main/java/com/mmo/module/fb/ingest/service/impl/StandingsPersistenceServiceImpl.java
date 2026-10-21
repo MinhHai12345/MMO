@@ -34,7 +34,6 @@ public class StandingsPersistenceServiceImpl implements StandingsPersistenceServ
         LeagueStanding standing = standingRepository
                 .findBySeasonIdAndTeamIdAndStandingType(seasonId, teamId, type)
                 .orElseGet(() -> LeagueStanding.builder()
-                        .league(season.getLeague())
                         .season(season)
                         .team(team)
                         .standingType(type)
