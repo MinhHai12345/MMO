@@ -75,7 +75,6 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
                         + "-" + source.externalId());
             }
             team.setLogoUrl(source.logoUrl());
-            if (team.getExternalId() == null || team.getExternalId().isBlank()) team.setExternalId(source.externalId());
             team.setFoundedYear(source.foundedYear());
             team.setIsActive(true);
             if (source.stadiumName() != null || source.stadiumCapacity() != null) {
