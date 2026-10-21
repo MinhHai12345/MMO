@@ -58,7 +58,7 @@ public class LeagueStanding extends AbstractEntity {
     @Column(length = 32)
     private String form;
 
-    @Column(name = "group_name")
+    @Column(name = "group_name", length = 100)
     private String groupName;
 
     @Column(name = "last_synced_at")
