@@ -9,6 +9,7 @@ import com.mmo.module.fb.analytics.service.ModernFootballAnalyticsService.PostMa
 import com.mmo.module.fb.analytics.service.ModernFootballAnalyticsService.TeamMetrics;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchAdvancedStats;
+import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.entity.PlayerMatchStats;
 import com.mmo.module.fb.domain.entity.Team;
 import com.mmo.module.fb.domain.repository.MatchAdvancedStatsRepository;
@@ -144,10 +145,21 @@ public class ModernFootballAnalyticsServiceImpl implements ModernFootballAnalyti
         BigDecimal awayXg = match.getAwayXG() == null ? null : decimal(match.getAwayXG());
         BigDecimal homeGoals = match.getHomeScore() == null ? null : BigDecimal.valueOf(match.getHomeScore());
         BigDecimal awayGoals = match.getAwayScore() == null ? null : BigDecimal.valueOf(match.getAwayScore());
-        String result = match.getHomeScore() == null || match.getAwayScore() == null
-                ? "Final score is unavailable."
-                : match.getHomeTeam().getName() + " " + match.getHomeScore() + " - "
-                    + match.getAwayScore() + " " + match.getAwayTeam().getName();
+        boolean hasScore = match.getHomeScore() != null && match.getAwayScore() != null;
+        String homeName = match.getHomeTeam() == null ? "Home team" : match.getHomeTeam().getName();
+        String awayName = match.getAwayTeam() == null ? "Away team" : match.getAwayTeam().getName();
+        String result;
+        if (!hasScore) {
+            result = "Score is unavailable.";
+        } else if (match.getStatus() == MatchStatus.FINISHED) {
+            result = homeName + " " + match.getHomeScore() + " - " + match.getAwayScore() + " " + awayName;
+        } else if (match.getStatus() == MatchStatus.LIVE) {
+            result = "Live score: " + homeName + " " + match.getHomeScore() + " - "
+                    + match.getAwayScore() + " " + awayName;
+        } else {
+            result = "Recorded score (match not marked finished): " + homeName + " "
+                    + match.getHomeScore() + " - " + match.getAwayScore() + " " + awayName;
+        }
         return new PostMatchReview(match.getHomeScore(), match.getAwayScore(), homeXg, awayXg,
                 homeGoals == null || homeXg == null ? null : homeGoals.subtract(homeXg).setScale(3, RoundingMode.HALF_UP),
                 awayGoals == null || awayXg == null ? null : awayGoals.subtract(awayXg).setScale(3, RoundingMode.HALF_UP),
