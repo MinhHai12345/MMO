@@ -36,6 +36,7 @@ public class DataQualityMetrics extends AbstractEntity {
     @Column(precision = 16, scale = 4)
     private BigDecimal threshold;
 
+    @Column(nullable = false, length = 32)
     @Builder.Default
     private String status = "OK";
 
