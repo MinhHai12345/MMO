@@ -135,7 +135,6 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                 season.setCurrent(sourceSeason.current());
                 season.setStartDate(sourceSeason.startDate());
                 season.setEndDate(sourceSeason.endDate());
-                season.setExternalId(sourceSeason.year());
                 season = seasonRepository.save(season);
                 externalIdMappingService.registerSeason(season, selectedProvider, sourceSeason.externalId());
             }
