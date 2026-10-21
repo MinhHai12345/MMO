@@ -86,7 +86,6 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
         match.setHomeTeam(home);
         match.setAwayTeam(away);
         if (fixture.kickoff() != null) match.setMatchTime(fixture.kickoff());
-        if (fixture.startTimestamp() != null) match.setStartTimestamp(fixture.startTimestamp());
         if (fixture.round() != null && !fixture.round().isBlank()) match.setRoundInfo(fixture.round());
         if (fixture.venue() != null && !fixture.venue().isBlank()) match.setVenue(fixture.venue());
         if (fixture.referee() != null && !fixture.referee().isBlank()) match.setReferee(fixture.referee());
