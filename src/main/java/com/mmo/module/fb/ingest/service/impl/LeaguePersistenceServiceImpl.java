@@ -87,9 +87,6 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
             }
             if (source.country() != null && !source.country().isBlank()) league.setCountry(source.country());
             if (source.logoUrl() != null && !source.logoUrl().isBlank()) league.setLogoUrl(source.logoUrl());
-            if (league.getExternalId() == null || league.getExternalId().isBlank()) {
-                league.setExternalId(source.externalId());
-            }
             league.setActive(true);
             league.setIsActive(true);
             league = leagueRepository.save(league);
