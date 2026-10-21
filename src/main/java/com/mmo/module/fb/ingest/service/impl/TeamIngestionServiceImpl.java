@@ -6,6 +6,7 @@ import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.repository.SeasonRepository;
 import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballPlanRestrictionException;
+import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.provider.model.TeamQuery;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
@@ -77,6 +78,10 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
                 }
                 teamPersistenceService.persistTeamsForSeason(selectedProvider, season, teams);
                 fetched += teams.size();
+            } catch (FootballDataRestrictedResourceException ex) {
+                failed++;
+                log.warn("Skipping teams for league {} season {} because football-data.org restricts this resource for the configured subscription: {}",
+                        externalLeagueId, season.getYear(), ex.getMessage());
             } catch (ApiFootballPlanRestrictionException ex) {
                 failed++;
                 log.warn("Skipping teams for league {} season {} because the API-Football plan does not include it: {}",
