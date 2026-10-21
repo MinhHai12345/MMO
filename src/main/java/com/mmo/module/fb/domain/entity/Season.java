@@ -13,7 +13,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "fb_seasons")
+@Table(name = "fb_seasons",
+        uniqueConstraints = @UniqueConstraint(name = "uk_fb_season_league_year",
+                columnNames = {"league_id", "year"}),
+        indexes = @Index(name = "idx_fb_season_current", columnList = "is_current"))
 @Getter
 @Setter
 @Builder
@@ -21,18 +24,16 @@ import java.util.List;
 @NoArgsConstructor
 public class Season extends AbstractEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "league_id", nullable = false)
     private League league;
 
-    @Column(name = "external_id")
-    private String externalId;
-
-    @Column(nullable = false)
+    @Column(nullable = false, length = 32)
     private String year;
 
-    @Column
-    private boolean isCurrent;
+    @Column(name = "is_current", nullable = false)
+    @Builder.Default
+    private boolean isCurrent = false;
 
     @Column(name = "start_date")
     private LocalDate startDate;
@@ -43,5 +44,4 @@ public class Season extends AbstractEntity {
     @OneToMany(mappedBy = "season", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<SeasonExternalId> externalIds = new ArrayList<>();
-
 }
