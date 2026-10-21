@@ -60,7 +60,7 @@ Odds markets with different lines/handicaps must have distinct market identities
 | `fb_crawler_health` | Crawler health snapshots |
 | `fb_data_quality_metrics` | Data-quality measurements |
 
-## Shared audit columns
+## Duplicate-field cleanup\n\n- League activation is represented only by `isActive`; the duplicate `active` flag was removed.\n- Match kickoff is represented only by `matchTime`; epoch timestamp duplication was removed from the canonical fixture model and Match entity.\n- Match round is represented only by `roundInfo`; the unused integer `round` field was removed.\n- LeagueStanding derives league through its required Season relationship; a second `league_id` is not stored.\n\n## Shared audit columns
 
 Entities extending `AbstractEntity` inherit an identity primary key plus `created_by`, `created_date`, `last_modified_by`, and `last_modified_date`. The ID primary key already guarantees uniqueness; no additional unique constraint is required on the ID column.
 
