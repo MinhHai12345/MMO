@@ -14,7 +14,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "fb_match_predictions")
+@Table(name = "fb_match_predictions",
+        indexes = {
+                @Index(name = "idx_fb_prediction_status_calculated", columnList = "prediction_status, calculated_at"),
+                @Index(name = "idx_fb_prediction_premium", columnList = "is_premium")
+        })
 @Getter
 @Setter
 @NoArgsConstructor
