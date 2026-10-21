@@ -40,7 +40,8 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
         });
 
         for (ProviderTeam source : teams) {
-            if (source == null || source.externalId() == null || source.externalId().isBlank()) {
+            if (source == null || source.externalId() == null || source.externalId().isBlank()
+                    || source.name() == null || source.name().isBlank()) {
                 log.warn("Skipping team with empty external ID from {}", selectedProvider);
                 continue;
             }
