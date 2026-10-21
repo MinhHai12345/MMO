@@ -10,7 +10,7 @@ import lombok.Setter;
 public abstract class AbstractEntity extends AbstractAuditingEntity {
 
     @Id
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false)
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
