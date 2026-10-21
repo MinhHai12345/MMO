@@ -6,4 +6,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface PlayerMatchStatsRepository extends JpaRepository<PlayerMatchStats, Long> {
+
+    java.util.List<PlayerMatchStats> findAllByMatchId(Long matchId);
 }
