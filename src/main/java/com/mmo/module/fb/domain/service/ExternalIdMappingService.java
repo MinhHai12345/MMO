@@ -4,6 +4,8 @@ import com.mmo.module.fb.domain.entity.League;
 import com.mmo.module.fb.domain.entity.LeagueExternalId;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchExternalId;
+import com.mmo.module.fb.domain.entity.Player;
+import com.mmo.module.fb.domain.entity.PlayerExternalId;
 import com.mmo.module.fb.domain.entity.Season;
 import com.mmo.module.fb.domain.entity.SeasonExternalId;
 import com.mmo.module.fb.domain.entity.Team;
@@ -11,6 +13,7 @@ import com.mmo.module.fb.domain.entity.TeamExternalId;
 import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.repository.MatchExternalIdRepository;
+import com.mmo.module.fb.domain.repository.PlayerExternalIdRepository;
 import com.mmo.module.fb.domain.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.domain.repository.TeamExternalIdRepository;
 import org.springframework.stereotype.Service;
@@ -33,15 +36,18 @@ public class ExternalIdMappingService {
     private final SeasonExternalIdRepository seasonExternalIds;
     private final TeamExternalIdRepository teamExternalIds;
     private final MatchExternalIdRepository matchExternalIds;
+    private final PlayerExternalIdRepository playerExternalIds;
 
     public ExternalIdMappingService(LeagueExternalIdRepository leagueExternalIds,
                                     SeasonExternalIdRepository seasonExternalIds,
                                     TeamExternalIdRepository teamExternalIds,
-                                    MatchExternalIdRepository matchExternalIds) {
+                                    MatchExternalIdRepository matchExternalIds,
+                                    PlayerExternalIdRepository playerExternalIds) {
         this.leagueExternalIds = leagueExternalIds;
         this.seasonExternalIds = seasonExternalIds;
         this.teamExternalIds = teamExternalIds;
         this.matchExternalIds = matchExternalIds;
+        this.playerExternalIds = playerExternalIds;
     }
 
     @Transactional(readOnly = true)
@@ -70,6 +76,13 @@ public class ExternalIdMappingService {
         requireIdentity(provider, externalId);
         return matchExternalIds.findByProviderAndExternalId(provider, externalId.trim())
                 .map(MatchExternalId::getMatch);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Player> findPlayer(Provider provider, String externalId) {
+        requireIdentity(provider, externalId);
+        return playerExternalIds.findByProviderAndExternalId(provider, externalId.trim())
+                .map(PlayerExternalId::getPlayer);
     }
 
     public LeagueExternalId registerLeague(League league, Provider provider, String externalId) {
@@ -120,6 +133,18 @@ public class ExternalIdMappingService {
                 MatchExternalId::getMatch, MatchExternalId::getExternalId, match, "match", provider, externalId);
     }
 
+    public PlayerExternalId registerPlayer(Player player, Provider provider, String externalId) {
+        if (player == null || player.getId() == null) {
+            throw new IllegalArgumentException("Player must be persisted before registering an external ID");
+        }
+        requireIdentity(provider, externalId);
+        return register(playerExternalIds.findByPlayerIdAndProvider(player.getId(), provider),
+                playerExternalIds.findByProviderAndExternalId(provider, externalId.trim()),
+                () -> PlayerExternalId.builder().player(player).provider(provider)
+                        .externalId(externalId.trim()).build(),
+                PlayerExternalId::getPlayer, PlayerExternalId::getExternalId, player, "player", provider, externalId);
+    }
+
     private <E, X> X register(Optional<X> byEntity, Optional<X> byExternalId,
                               java.util.function.Supplier<X> factory,
                               java.util.function.Function<X, E> entityOf,
@@ -159,6 +184,7 @@ public class ExternalIdMappingService {
         if (mapping instanceof SeasonExternalId value) return (X) seasonExternalIds.save(value);
         if (mapping instanceof TeamExternalId value) return (X) teamExternalIds.save(value);
         if (mapping instanceof MatchExternalId value) return (X) matchExternalIds.save(value);
+        if (mapping instanceof PlayerExternalId value) return (X) playerExternalIds.save(value);
         throw new IllegalArgumentException("Unsupported external ID mapping type: " + mapping.getClass());
     }
 
