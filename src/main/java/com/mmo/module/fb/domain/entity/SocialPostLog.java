@@ -4,6 +4,7 @@ import com.mmo.core.entity.AbstractEntity;
 import com.mmo.module.fb.domain.enums.TargetChannel;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
@@ -31,22 +32,22 @@ public class SocialPostLog extends AbstractEntity {
     @Column
     private Long matchId;
 
-    @Column
     @Enumerated(EnumType.STRING)
+    @Column(length = 32)
     private TargetChannel channel;
 
     @Column
     private String externalPostId;
 
-    @Column
+    @Column(name = "views_count")
     private Integer viewsCount;
 
-    @Column
+    @Column(name = "likes_count")
     private Integer likesCount;
 
-    @Column
+    @Column(name = "shares_count")
     private Integer sharesCount;
 
-    @Column
+    @Column(name = "posted_at")
     private Instant postedAt;
 }
