@@ -95,7 +95,8 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
             league = leagueRepository.save(league);
             League savedLeague = league;
             Long savedLeagueId = savedLeague.getId();
-            if (knownActiveLeagues.stream().noneMatch(existing -> existing.getId().equals(savedLeagueId))) {
+            if (knownActiveLeagues.stream().noneMatch(existing -> existing.getId() != null
+                    && existing.getId().equals(savedLeagueId))) {
                 knownActiveLeagues.add(savedLeague);
             }
             externalIdMappingService.registerLeague(savedLeague, selectedProvider, source.externalId());
