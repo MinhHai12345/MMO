@@ -136,8 +136,12 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
             }
         }
 
-        log.info("Fixture ingestion via {} completed. fetched={}, saved/updated={}, skipped={}, failed={}; date range {} to {}",
+        log.info("Fixture ingestion via {} finished. fetched={}, saved/updated={}, skipped={}, failed={}; date range {} to {}",
                 selectedProvider, fetched, saved, skipped, failed, from, to);
+        if (failed > 0) {
+            throw new IllegalStateException("Fixture ingestion via " + selectedProvider
+                    + " completed with " + failed + " persistence failure(s); inspect the preceding errors.");
+        }
     }
 
     private List<Season> seasonsToSync(Provider selectedProvider) {
