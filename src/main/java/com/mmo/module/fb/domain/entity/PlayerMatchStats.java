@@ -12,7 +12,8 @@ import java.math.BigDecimal;
 
 @Entity
 @Table(name = "fb_player_match_stats",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"player_id", "match_id"}))
+        uniqueConstraints = @UniqueConstraint(name = "uk_fb_player_match_stats_player_match", columnNames = {"player_id", "match_id"}),
+        indexes = @Index(name = "idx_fb_player_match_stats_match", columnList = "match_id"))
 @Getter
 @Setter
 @Builder
