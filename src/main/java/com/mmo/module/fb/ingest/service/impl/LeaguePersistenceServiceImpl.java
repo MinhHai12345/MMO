@@ -9,6 +9,7 @@ import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.repository.LeagueRepository;
 import com.mmo.module.fb.domain.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.domain.repository.SeasonRepository;
+import com.mmo.module.fb.domain.service.ExternalIdMappingService;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
 import com.mmo.module.fb.ingest.service.LeaguePersistenceService;
@@ -29,17 +30,20 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
     private final SeasonRepository seasonRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final SeasonExternalIdRepository seasonExternalIdRepository;
+    private final ExternalIdMappingService externalIdMappingService;
 
     /**
      * Ensures league and season external IDs exist for a provider, even when another provider
      * is configured for the league ingestion schedule. Downstream resources depend on these IDs.
      */
+    @Override
     @Transactional
     public void persistLeagues(Provider selectedProvider, List<ProviderLeague> sources) {
         int synced = 0;
         List<League> knownActiveLeagues = new ArrayList<>(leagueRepository.findByIsActive(true));
         for (ProviderLeague source : sources) {
-            if (source.externalId() == null || source.externalId().isBlank()) {
+            if (source == null || source.externalId() == null || source.externalId().isBlank()
+                    || source.name() == null || source.name().isBlank()) {
                 log.warn("Skipping league with empty external ID from {}", selectedProvider);
                 continue;
             }
@@ -56,11 +60,9 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                 if (candidates.size() > 1 && source.country() != null && !source.country().isBlank()) {
                     List<League> countryMatches = candidates.stream()
                             .filter(existing -> existing.getCountry() != null
-                                                && normalizeName(existing.getCountry()).equals(normalizeName(source.country())))
+                                    && normalizeName(existing.getCountry()).equals(normalizeName(source.country())))
                             .toList();
-                    if (!countryMatches.isEmpty()) {
-                        candidates = countryMatches;
-                    }
+                    if (!countryMatches.isEmpty()) candidates = countryMatches;
                 }
                 if (candidates.size() > 1) {
                     log.warn("Ambiguous league mapping for provider {} external ID {} name '{}'; skipping",
@@ -78,43 +80,27 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                 continue;
             }
 
-            if (league.getName() == null || league.getName().isBlank()) {
-                league.setName(source.name());
-            }
+            if (league.getName() == null || league.getName().isBlank()) league.setName(source.name());
             if (league.getSlug() == null || league.getSlug().isBlank()) {
                 league.setSlug(slug(source.name()) + "-" + selectedProvider.name().toLowerCase()
-                               + "-" + source.externalId());
+                        + "-" + source.externalId());
             }
-            if (source.country() != null && !source.country().isBlank()) {
-                league.setCountry(source.country());
-            }
-            if (source.logoUrl() != null && !source.logoUrl().isBlank()) {
-                league.setLogoUrl(source.logoUrl());
-            }
-            if (league.getExternalId() == null || league.getExternalId().isBlank()) {
-                league.setExternalId(source.externalId());
-            }
+            if (source.country() != null && !source.country().isBlank()) league.setCountry(source.country());
+            if (source.logoUrl() != null && !source.logoUrl().isBlank()) league.setLogoUrl(source.logoUrl());
             league.setActive(true);
             league.setIsActive(true);
             league = leagueRepository.save(league);
             League savedLeague = league;
             Long savedLeagueId = savedLeague.getId();
-            if (knownActiveLeagues.stream().noneMatch(existing -> existing.getId().equals(savedLeagueId))) {
+            if (knownActiveLeagues.stream().noneMatch(existing -> existing.getId() != null
+                    && existing.getId().equals(savedLeagueId))) {
                 knownActiveLeagues.add(savedLeague);
             }
+            externalIdMappingService.registerLeague(savedLeague, selectedProvider, source.externalId());
 
-
-            LeagueExternalId external = leagueExternalIdRepository
-                    .findByLeagueIdAndProvider(savedLeague.getId(), selectedProvider)
-                    .orElseGet(() -> LeagueExternalId.builder()
-                            .league(savedLeague).provider(selectedProvider)
-                            .externalId(source.externalId()).build());
-            external.setExternalId(source.externalId());
-            leagueExternalIdRepository.save(external);
-
-            for (ProviderSeason sourceSeason : source.seasons()) {
-                if (sourceSeason.externalId() == null || sourceSeason.externalId().isBlank()
-                    || sourceSeason.year() == null || sourceSeason.year().isBlank()) {
+            for (ProviderSeason sourceSeason : source.seasons() == null ? List.<ProviderSeason>of() : source.seasons()) {
+                if (sourceSeason == null || sourceSeason.externalId() == null || sourceSeason.externalId().isBlank()
+                        || sourceSeason.year() == null || sourceSeason.year().isBlank()) {
                     log.warn("Skipping season without provider ID/year for league {} from {}",
                             source.name(), selectedProvider);
                     continue;
@@ -124,16 +110,16 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                         .findByProviderAndExternalId(selectedProvider, sourceSeason.externalId())
                         .map(SeasonExternalId::getSeason)
                         .orElse(null);
-                if (season != null && (!season.getLeague().getId().equals(savedLeague.getId())
-                                       || !season.getYear().equals(sourceSeason.year()))) {
+                if (season != null && (season.getLeague() == null || season.getLeague().getId() == null
+                        || !season.getLeague().getId().equals(savedLeague.getId())
+                        || !sourceSeason.year().equals(season.getYear()))) {
                     log.warn("Provider {} season ID {} is already mapped to a different canonical season; skipping",
                             selectedProvider, sourceSeason.externalId());
                     continue;
                 }
                 if (season == null) {
                     season = seasonRepository.findByLeague_IdAndYear(savedLeague.getId(), sourceSeason.year())
-                            .orElseGet(() -> Season.builder()
-                                    .league(savedLeague).year(sourceSeason.year()).build());
+                            .orElseGet(() -> Season.builder().league(savedLeague).year(sourceSeason.year()).build());
                 }
                 SeasonExternalId existingSeasonMapping = season.getId() == null ? null
                         : seasonExternalIdRepository.findBySeasonIdAndProvider(season.getId(), selectedProvider).orElse(null);
@@ -147,17 +133,8 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                 season.setCurrent(sourceSeason.current());
                 season.setStartDate(sourceSeason.startDate());
                 season.setEndDate(sourceSeason.endDate());
-                season.setExternalId(sourceSeason.year());
                 season = seasonRepository.save(season);
-
-                Season savedSeason = season;
-                SeasonExternalId seasonExternal = seasonExternalIdRepository
-                        .findBySeasonIdAndProvider(savedSeason.getId(), selectedProvider)
-                        .orElseGet(() -> SeasonExternalId.builder()
-                                .season(savedSeason).provider(selectedProvider)
-                                .externalId(sourceSeason.externalId()).build());
-                seasonExternal.setExternalId(sourceSeason.externalId());
-                seasonExternalIdRepository.save(seasonExternal);
+                externalIdMappingService.registerSeason(season, selectedProvider, sourceSeason.externalId());
             }
             synced++;
         }

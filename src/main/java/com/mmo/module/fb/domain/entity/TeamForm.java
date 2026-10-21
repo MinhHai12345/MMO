@@ -12,7 +12,8 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "fb_team_form",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"team_id", "season_id", "form_type"}))
+        uniqueConstraints = @UniqueConstraint(name = "uk_fb_team_form_team_season_type", columnNames = {"team_id", "season_id", "form_type"}),
+        indexes = @Index(name = "idx_fb_team_form_season", columnList = "season_id"))
 @Getter
 @Setter
 @Builder
@@ -28,10 +29,10 @@ public class TeamForm extends AbstractEntity {
     @JoinColumn(name = "season_id", nullable = false)
     private Season season;
 
-    @Column(name = "form_type", nullable = false)
+    @Column(name = "form_type", nullable = false, length = 32)
     private String formType;
 
-    @Column(name = "form_data")
+    @Column(name = "form_data", length = 255)
     private String formData;
 
     @Column(name = "calculated_at")

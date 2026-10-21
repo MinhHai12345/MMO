@@ -13,7 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "fb_subscribers", uniqueConstraints = @UniqueConstraint(columnNames = {"user_id"}))
+@Table(name = "fb_subscribers",
+        uniqueConstraints = @UniqueConstraint(name = "uk_fb_subscriber_user", columnNames = "user_id"))
 @Getter
 @Setter
 @Builder
@@ -21,7 +22,7 @@ import java.util.List;
 @NoArgsConstructor
 public class Subscriber extends AbstractEntity {
 
-    @Column(nullable = false)
+    @Column(name = "user_id", nullable = false, length = 128)
     private String userId;
 
     @ManyToOne(fetch = FetchType.LAZY)

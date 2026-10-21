@@ -12,7 +12,9 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
-@Table(name = "fb_prediction_performance", uniqueConstraints = @UniqueConstraint(columnNames = {"prediction_id"}))
+@Table(name = "fb_prediction_performance",
+        uniqueConstraints = @UniqueConstraint(name = "uk_fb_prediction_performance_prediction", columnNames = "prediction_id"),
+        indexes = @Index(name = "idx_fb_prediction_performance_correct", columnList = "is_correct"))
 @Getter
 @Setter
 @Builder
@@ -30,13 +32,13 @@ public class PredictionPerformance extends AbstractEntity {
     @Column(name = "actual_away_score")
     private Integer actualAwayScore;
 
-    @Column(name = "actual_result")
+    @Column(name = "actual_result", length = 16)
     private String actualResult;
 
     @Column(name = "is_correct")
     private Boolean isCorrect;
 
-    @Column(name = "accuracy_score")
+    @Column(name = "accuracy_score", precision = 7, scale = 6)
     private BigDecimal accuracyScore;
 
     @Column(name = "evaluated_at")

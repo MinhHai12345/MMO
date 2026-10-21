@@ -12,7 +12,11 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
-@Table(name = "fb_odds_history")
+@Table(name = "fb_odds_history",
+        indexes = {
+                @Index(name = "idx_fb_odds_history_snapshot", columnList = "match_odds_id, recorded_at"),
+                @Index(name = "idx_fb_odds_history_recorded_at", columnList = "recorded_at")
+        })
 @Getter
 @Setter
 @Builder

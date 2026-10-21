@@ -9,7 +9,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "fb_bookmakers")
+@Table(name = "fb_bookmakers",
+        uniqueConstraints = @UniqueConstraint(name = "uk_fb_bookmaker_name", columnNames = "name"))
 @Getter
 @Setter
 @Builder

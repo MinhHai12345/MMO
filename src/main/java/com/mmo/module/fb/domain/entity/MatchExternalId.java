@@ -11,10 +11,11 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "fb_match_external_ids",
-       uniqueConstraints = {
-               @UniqueConstraint(name = "uk_fb_match_provider_entity", columnNames = {"match_id", "provider"}),
-               @UniqueConstraint(name = "uk_fb_match_provider_external", columnNames = {"provider", "external_id"})
-       })
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_fb_match_provider_entity", columnNames = {"match_id", "provider"}),
+                @UniqueConstraint(name = "uk_fb_match_provider_external", columnNames = {"provider", "external_id"})
+        },
+        indexes = @Index(name = "idx_match_external_ids_provider", columnList = "provider"))
 @Getter
 @Setter
 @Builder
@@ -27,9 +28,9 @@ public class MatchExternalId extends AbstractEntity {
     private Match match;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "provider", nullable = false, length = 32)
     private Provider provider;
 
-    @Column(name = "external_id", nullable = false)
+    @Column(name = "external_id", nullable = false, length = 128)
     private String externalId;
 }

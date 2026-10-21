@@ -12,7 +12,8 @@ import jakarta.persistence.Lob;
 import java.time.Instant;
 
 @Entity
-@Table(name = "fb_crawler_health")
+@Table(name = "fb_crawler_health",
+        uniqueConstraints = @UniqueConstraint(name = "uk_fb_crawler_health_name", columnNames = "crawler_name"))
 @Getter
 @Setter
 @Builder

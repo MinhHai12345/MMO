@@ -11,7 +11,8 @@ import lombok.Setter;
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "fb_affiliate_tracking", uniqueConstraints = @UniqueConstraint(columnNames = {"affiliate_code"}))
+@Table(name = "fb_affiliate_tracking",
+        uniqueConstraints = @UniqueConstraint(name = "uk_fb_affiliate_code", columnNames = "affiliate_code"))
 @Getter
 @Setter
 @Builder
@@ -19,7 +20,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 public class AffiliateTracking extends AbstractEntity {
 
-    @Column(name = "affiliate_code", nullable = false, unique = true)
+    @Column(name = "affiliate_code", nullable = false, length = 100)
     private String affiliateCode;
 
     @ManyToOne(fetch = FetchType.LAZY)

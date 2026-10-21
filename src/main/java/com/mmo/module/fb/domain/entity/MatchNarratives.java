@@ -24,8 +24,8 @@ import lombok.Setter;
 public class MatchNarratives extends AbstractEntity {
 
     @MapsId
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "match_id")
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "match_id", nullable = false)
     private Match match;
 
     @Column(columnDefinition = "TEXT")

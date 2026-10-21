@@ -14,7 +14,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "fb_match_predictions")
+@Table(name = "fb_match_predictions",
+        indexes = {
+                @Index(name = "idx_fb_prediction_status_calculated", columnList = "prediction_status, calculated_at"),
+                @Index(name = "idx_fb_prediction_premium", columnList = "is_premium")
+        })
 @Getter
 @Setter
 @NoArgsConstructor
@@ -27,28 +31,28 @@ public class MatchPrediction extends AbstractEntity {
     @JoinColumn(name = "match_id")
     private Match match;
 
-    @Column(precision = 5, scale = 2)
+    @Column(name = "predicted_home_xg", precision = 6, scale = 3)
     private BigDecimal predictedHomeXg;
 
-    @Column(precision = 5, scale = 2)
+    @Column(name = "predicted_away_xg", precision = 6, scale = 3)
     private BigDecimal predictedAwayXg;
 
-    @Column(precision = 5, scale = 2)
+    @Column(name = "win_home_prob", precision = 9, scale = 6)
     private BigDecimal winHomeProb;
 
-    @Column(precision = 5, scale = 2)
+    @Column(name = "draw_prob", precision = 7, scale = 6)
     private BigDecimal drawProb;
 
-    @Column(precision = 5, scale = 2)
+    @Column(name = "win_away_prob", precision = 7, scale = 6)
     private BigDecimal winAwayProb;
 
     @Column
     private String recommendedPick;
 
-    @Column(name = "predicted_result")
+    @Column(name = "predicted_result", length = 16)
     private String predictedResult;
 
-    @Column(name = "prediction_status")
+    @Column(name = "prediction_status", nullable = false, length = 32)
     @Builder.Default
     private String predictionStatus = "PENDING";
 
@@ -59,14 +63,15 @@ public class MatchPrediction extends AbstractEntity {
     @Builder.Default
     private Boolean isPremium = false;
 
-    @Column(name = "value_bet_type")
+    @Column(name = "value_bet_type", length = 32)
     private String valueBetType;
 
-    @Column(precision = 5, scale = 2)
+    @Column(name = "confidence_score", precision = 5, scale = 2)
     private BigDecimal confidenceScore;
 
-    @Column
-    private Instant calculatedAt;
+    @Column(name = "calculated_at", nullable = false)
+    @Builder.Default
+    private Instant calculatedAt = Instant.now();
 
     @Column(columnDefinition = "TEXT")
     private String predictionReasoning;

@@ -11,7 +11,11 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "fb_player_external_ids",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"player_id", "provider"}))
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_fb_player_provider_entity", columnNames = {"player_id", "provider"}),
+                @UniqueConstraint(name = "uk_fb_player_provider_external", columnNames = {"provider", "external_id"})
+        },
+        indexes = @Index(name = "idx_player_external_provider", columnList = "provider"))
 @Getter
 @Setter
 @Builder
@@ -24,9 +28,9 @@ public class PlayerExternalId extends AbstractEntity {
     private Player player;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "provider", nullable = false, length = 32)
     private Provider provider;
 
-    @Column(name = "external_id", nullable = false)
+    @Column(name = "external_id", nullable = false, length = 128)
     private String externalId;
 }

@@ -13,7 +13,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "fb_players")
+@Table(name = "fb_players",
+        indexes = {
+                @Index(name = "idx_fb_player_team", columnList = "team_id"),
+                @Index(name = "idx_fb_player_name", columnList = "name"),
+                @Index(name = "idx_fb_player_active", columnList = "is_active")
+        })
 @Getter
 @Setter
 @Builder
@@ -25,20 +30,22 @@ public class Player extends AbstractEntity {
     @JoinColumn(name = "team_id")
     private Team team;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 160)
     private String name;
 
+    @Column(length = 40)
     private String position;
 
     private Integer age;
 
+    @Column(length = 100)
     private String nationality;
 
     private Integer height;
 
     private Integer weight;
 
-    @Column(name = "market_value")
+    @Column(name = "market_value", precision = 16, scale = 2)
     private BigDecimal marketValue;
 
     @Column(name = "is_active")

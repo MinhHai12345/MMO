@@ -148,9 +148,6 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
                                                        @Param("retryBefore") Instant retryBefore,
                                                        Pageable pageable);
     
-    @Query("SELECT DISTINCT m.externalId FROM Match m WHERE m.season.league = :league")
-    List<String> findDistinctExternalIdsByLeague(@Param("league") com.mmo.module.fb.domain.entity.League league);
-    
     @Query("SELECT m FROM Match m WHERE m.status = 'FINISHED' AND (m.homeXG IS NULL OR m.awayXG IS NULL)")
     List<Match> findByStatusAndHomeXGIsNullAndAwayXGIsNull();
     

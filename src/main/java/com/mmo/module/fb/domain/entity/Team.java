@@ -13,7 +13,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "fb_teams")
+@Table(name = "fb_teams",
+        indexes = {
+                @Index(name = "idx_fb_team_name", columnList = "name"),
+                @Index(name = "idx_fb_team_slug", columnList = "slug")
+        })
 @Getter
 @Setter
 @Builder
@@ -21,42 +25,37 @@ import java.util.List;
 @NoArgsConstructor
 public class Team extends AbstractEntity {
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
     private String name;
 
-    @Column
+    @Column(name = "short_name", length = 80)
     private String shortName;
 
-    @Column
+    @Column(length = 320)
     private String slug;
 
-    @Column
+    @Column(name = "logo_url", length = 2048)
     private String logoUrl;
 
-    @Column
     private Integer ranking;
-
-    @Column
-    private String externalId;
 
     @Column(name = "founded_year")
     private Integer foundedYear;
 
-    @Column(name = "stadium_name")
+    @Column(name = "stadium_name", length = 180)
     private String stadiumName;
 
     @Column(name = "stadium_capacity")
     private Integer stadiumCapacity;
 
-    @Column(name = "market_value")
+    @Column(name = "market_value", precision = 16, scale = 2)
     private BigDecimal marketValue;
 
-    @Column(name = "is_active")
+    @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
 
     @OneToMany(mappedBy = "team", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<TeamExternalId> externalIds = new ArrayList<>();
-
 }

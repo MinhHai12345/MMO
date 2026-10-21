@@ -12,7 +12,8 @@ import java.math.BigDecimal;
 
 @Entity
 @Table(name = "fb_player_match_stats",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"player_id", "match_id"}))
+        uniqueConstraints = @UniqueConstraint(name = "uk_fb_player_match_stats_player_match", columnNames = {"player_id", "match_id"}),
+        indexes = @Index(name = "idx_fb_player_match_stats_match", columnList = "match_id"))
 @Getter
 @Setter
 @Builder
@@ -44,16 +45,18 @@ public class PlayerMatchStats extends AbstractEntity {
     @Builder.Default
     private Integer shotsOnTarget = 0;
 
+    @Column(precision = 7, scale = 3)
     @Builder.Default
     private BigDecimal xg = BigDecimal.ZERO;
 
+    @Column(precision = 7, scale = 3)
     @Builder.Default
     private BigDecimal xa = BigDecimal.ZERO;
 
     @Builder.Default
     private Integer passes = 0;
 
-    @Column(name = "pass_accuracy")
+    @Column(name = "pass_accuracy", precision = 5, scale = 2)
     private BigDecimal passAccuracy;
 
     @Column(name = "key_passes")

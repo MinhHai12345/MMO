@@ -26,32 +26,32 @@ import java.time.Instant;
 public class MatchInsight extends AbstractEntity {
 
     @MapsId
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "match_id")
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "match_id", nullable = false)
     private Match match;
 
-    @Column
+    @Column(name = "home_avg_xg")
     private Double homeAvgXg;
 
-    @Column
+    @Column(name = "home_avg_xg_conceded")
     private Double homeAvgXgConceded;
 
-    @Column
+    @Column(name = "away_avg_xg")
     private Double awayAvgXg;
 
-    @Column
+    @Column(name = "away_avg_xg_conceded")
     private Double awayAvgXgConceded;
 
-    @Column
+    @Column(name = "home_form", length = 32)
     private String homeForm;
 
-    @Column
+    @Column(name = "away_form", length = 32)
     private String awayForm;
 
-    @Column
+    @Column(name = "home_rest_days")
     private Integer homeRestDays;
 
-    @Column
+    @Column(name = "away_rest_days")
     private Integer awayRestDays;
 
     @Column(columnDefinition = "TEXT")
@@ -60,6 +60,6 @@ public class MatchInsight extends AbstractEntity {
     @Column(columnDefinition = "TEXT")
     private String lineupJson;
 
-    @Column
+    @Column(name = "fetched_at")
     private Instant fetchedAt;
 }

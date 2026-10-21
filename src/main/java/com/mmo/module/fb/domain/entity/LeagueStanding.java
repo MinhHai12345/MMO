@@ -14,7 +14,11 @@ import java.time.Instant;
 @Entity
 @Table(name = "fb_league_standings",
         uniqueConstraints = @UniqueConstraint(name = "uk_standing_season_team_type",
-                columnNames = {"season_id", "team_id", "standing_type"}))
+                columnNames = {"season_id", "team_id", "standing_type"}),
+        indexes = {
+                @Index(name = "idx_fb_standing_season_type", columnList = "season_id, standing_type"),
+                @Index(name = "idx_fb_standing_league", columnList = "league_id")
+        })
 @Getter
 @Setter
 @Builder
@@ -54,7 +58,7 @@ public class LeagueStanding extends AbstractEntity {
     @Column(length = 32)
     private String form;
 
-    @Column(name = "group_name")
+    @Column(name = "group_name", length = 100)
     private String groupName;
 
     @Column(name = "last_synced_at")
