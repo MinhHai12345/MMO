@@ -80,8 +80,6 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
         }
         if (match == null) {
             match = new Match();
-            // Keep the legacy key unique across providers; canonical provider IDs live in MatchExternalId.
-            match.setExternalId(provider.name() + ":" + fixture.externalId());
         }
 
         match.setSeason(season);
