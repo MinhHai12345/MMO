@@ -173,6 +173,8 @@ public class AppProperties {
         private String apiKey;
         /** Numeric football-data.org competition IDs, e.g. 2021 (Premier League) or 2001 (UEFA Champions League). */
         private List<Long> competitionIds = new ArrayList<>();
+        /** Season start years to backfill, e.g. [2021, 2022, 2023, 2024, 2025, 2026]. Empty means current seasons only. */
+        private List<String> seasons = new ArrayList<>();
     }
 
     @Getter
