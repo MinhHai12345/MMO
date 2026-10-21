@@ -51,9 +51,9 @@ public class TeamFormPredictionEngine implements PredictionEngine {
         }
 
         double expectedHomeGoals = estimateExpectedGoals(
-                home, away, true);
+                home, away);
         double expectedAwayGoals = estimateExpectedGoals(
-                away, home, false);
+                away, home);
 
         if (!Double.isFinite(expectedHomeGoals) || !Double.isFinite(expectedAwayGoals)) {
             return null;
@@ -83,19 +83,11 @@ public class TeamFormPredictionEngine implements PredictionEngine {
                 .build();
     }
 
-    private double estimateExpectedGoals(TeamFeatures attackingTeam,
-                                         TeamFeatures defendingTeam,
-                                         boolean homeSide) {
+    private double estimateExpectedGoals(TeamFeatures attackingTeam, TeamFeatures defendingTeam) {
         double goalsFor = attackingTeam.averageGoalsFor();
         double opponentGoalsAgainst = defendingTeam.averageGoalsAgainst();
 
-        if (homeSide
-                && attackingTeam.venueMatchesUsed() >= MIN_VENUE_MATCHES
-                && defendingTeam.venueMatchesUsed() >= MIN_VENUE_MATCHES) {
-            goalsFor = attackingTeam.venueAverageGoalsFor();
-            opponentGoalsAgainst = defendingTeam.venueAverageGoalsAgainst();
-        } else if (!homeSide
-                && attackingTeam.venueMatchesUsed() >= MIN_VENUE_MATCHES
+        if (attackingTeam.venueMatchesUsed() >= MIN_VENUE_MATCHES
                 && defendingTeam.venueMatchesUsed() >= MIN_VENUE_MATCHES) {
             goalsFor = attackingTeam.venueAverageGoalsFor();
             opponentGoalsAgainst = defendingTeam.venueAverageGoalsAgainst();
