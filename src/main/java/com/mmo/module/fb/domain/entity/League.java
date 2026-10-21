@@ -27,9 +27,6 @@ public class League extends AbstractEntity {
     @Column(nullable = false, unique = true, length = 320)
     private String slug;
 
-    @Column(nullable = false)
-    private boolean active;
-
     @Column(length = 100)
     private String country;
 
