@@ -37,7 +37,7 @@ public class MatchPrediction extends AbstractEntity {
     @Column(name = "predicted_away_xg", precision = 6, scale = 3)
     private BigDecimal predictedAwayXg;
 
-    @Column(name = "win_home_prob", precision = 7, scale = 6)
+    @Column(name = "win_home_prob", precision = 9, scale = 6)
     private BigDecimal winHomeProb;
 
     @Column(name = "draw_prob", precision = 7, scale = 6)
@@ -70,7 +70,8 @@ public class MatchPrediction extends AbstractEntity {
     private BigDecimal confidenceScore;
 
     @Column(name = "calculated_at", nullable = false)
-    private Instant calculatedAt;
+    @Builder.Default
+    private Instant calculatedAt = Instant.now();
 
     @Column(columnDefinition = "TEXT")
     private String predictionReasoning;
