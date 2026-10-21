@@ -16,8 +16,7 @@ import java.time.Instant;
         uniqueConstraints = @UniqueConstraint(name = "uk_standing_season_team_type",
                 columnNames = {"season_id", "team_id", "standing_type"}),
         indexes = {
-                @Index(name = "idx_fb_standing_season_type", columnList = "season_id, standing_type"),
-                @Index(name = "idx_fb_standing_league", columnList = "league_id")
+                @Index(name = "idx_fb_standing_season_type", columnList = "season_id, standing_type")
         })
 @Getter
 @Setter
@@ -25,10 +24,6 @@ import java.time.Instant;
 @AllArgsConstructor
 @NoArgsConstructor
 public class LeagueStanding extends AbstractEntity {
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "league_id", nullable = false)
-    private League league;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "season_id", nullable = false)
