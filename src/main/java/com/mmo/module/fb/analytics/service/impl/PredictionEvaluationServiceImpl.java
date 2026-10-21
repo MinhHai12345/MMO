@@ -83,6 +83,7 @@ public class PredictionEvaluationServiceImpl implements PredictionEvaluationServ
                     .evaluatedAt(Instant.now())
                     .build();
 
+            prediction.setPerformance(performance);
             predictionPerformanceRepository.save(performance);
             prediction.setPredictionStatus("EVALUATED");
             // The prediction is managed by this transaction; dirty checking persists its updates.
