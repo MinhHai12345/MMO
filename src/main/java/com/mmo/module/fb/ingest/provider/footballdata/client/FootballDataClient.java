@@ -78,8 +78,12 @@ public class FootballDataClient {
                             + " seconds. Response: " + ex.getResponseBodyAsString(), ex);
                 }
 
-                throw new IllegalStateException("football-data.org HTTP " + ex.getStatusCode().value()
-                        + " for " + path + ": " + ex.getResponseBodyAsString(), ex);
+                String message = "football-data.org HTTP " + ex.getStatusCode().value()
+                        + " for " + path + ": " + ex.getResponseBodyAsString();
+                if (ex.getStatusCode().value() == 403) {
+                    throw new FootballDataRestrictedResourceException(message, ex);
+                }
+                throw new IllegalStateException(message, ex);
             } catch (Exception ex) {
                 if (ex instanceof IllegalStateException stateException) throw stateException;
                 throw new IllegalStateException("Failed to call football-data.org endpoint " + path, ex);
