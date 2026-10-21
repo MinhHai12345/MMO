@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.domain.enums.Provider;
+import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
@@ -20,6 +21,7 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
     private final ProviderRegistry providerRegistry;
     private final AppProperties appProperties;
     private final LeaguePersistenceService leaguePersistenceService;
+    private final LeagueExternalIdRepository leagueExternalIdRepository;
 
     @Override
     public void syncLeagues() {
@@ -32,14 +34,15 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
                 && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) return;
         if (selectedProvider == Provider.FOOTBALL_DATA
                 && (appProperties.getFootballData() == null || !appProperties.getFootballData().isEnabled())) return;
+
         List<Long> configuredIds = selectedProvider == Provider.API_FOOTBALL
                 ? appProperties.getApiFootball().getLeagueIds()
                 : selectedProvider == Provider.FOOTBALL_DATA
                     ? appProperties.getFootballData().getCompetitionIds() : List.of();
         if ((selectedProvider == Provider.API_FOOTBALL || selectedProvider == Provider.FOOTBALL_DATA)
                 && (configuredIds == null || configuredIds.isEmpty())) {
-            log.warn("No competition IDs configured for provider {}; configure its league/competition ID list.", selectedProvider);
-            return;
+            throw new IllegalStateException("No competition IDs configured for provider " + selectedProvider
+                    + "; configure its league/competition ID list before ingestion.");
         }
 
         List<ProviderLeague> leagues;
@@ -47,9 +50,27 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
             leagues = providerRegistry.league(selectedProvider).fetchLeagues(configuredIds);
         } catch (FootballDataRestrictedResourceException ex) {
             if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
-            log.warn("Skipping league ingestion because football-data.org restricts the competitions resource "
-                    + "for the configured subscription. Existing local data is preserved. {}", ex.getMessage());
+
+            boolean hasExistingMappings = !leagueExternalIdRepository
+                    .findAllByProvider(Provider.FOOTBALL_DATA).isEmpty();
+            if (!hasExistingMappings) {
+                throw new IllegalStateException(
+                        "Cannot bootstrap core football data: football-data.org restricts the competitions "
+                                + "resource and no existing football-data.org league mappings are available. "
+                                + "Use an accessible subscription/resource or configure another provider.",
+                        ex);
+            }
+
+            log.warn("football-data.org restricts the competitions resource for this subscription. "
+                    + "Keeping {} existing league mappings and continuing with local data. {}",
+                    leagueExternalIdRepository.findAllByProvider(Provider.FOOTBALL_DATA).size(),
+                    ex.getMessage());
             return;
+        }
+
+        if (leagues == null || leagues.isEmpty()) {
+            throw new IllegalStateException("Provider " + selectedProvider
+                    + " returned no leagues; refusing to mark league ingestion as successful.");
         }
         leaguePersistenceService.persistLeagues(selectedProvider, leagues);
     }
