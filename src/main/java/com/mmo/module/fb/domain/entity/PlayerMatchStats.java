@@ -45,16 +45,18 @@ public class PlayerMatchStats extends AbstractEntity {
     @Builder.Default
     private Integer shotsOnTarget = 0;
 
+    @Column(precision = 7, scale = 3)
     @Builder.Default
     private BigDecimal xg = BigDecimal.ZERO;
 
+    @Column(precision = 7, scale = 3)
     @Builder.Default
     private BigDecimal xa = BigDecimal.ZERO;
 
     @Builder.Default
     private Integer passes = 0;
 
-    @Column(name = "pass_accuracy")
+    @Column(name = "pass_accuracy", precision = 5, scale = 2)
     private BigDecimal passAccuracy;
 
     @Column(name = "key_passes")
