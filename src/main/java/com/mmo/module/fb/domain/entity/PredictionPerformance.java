@@ -32,13 +32,13 @@ public class PredictionPerformance extends AbstractEntity {
     @Column(name = "actual_away_score")
     private Integer actualAwayScore;
 
-    @Column(name = "actual_result")
+    @Column(name = "actual_result", length = 16)
     private String actualResult;
 
     @Column(name = "is_correct")
     private Boolean isCorrect;
 
-    @Column(name = "accuracy_score")
+    @Column(name = "accuracy_score", precision = 7, scale = 6)
     private BigDecimal accuracyScore;
 
     @Column(name = "evaluated_at")
