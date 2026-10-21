@@ -51,9 +51,9 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
         } catch (FootballDataRestrictedResourceException ex) {
             if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
 
-            boolean hasExistingMappings = !leagueExternalIdRepository
-                    .findAllByProvider(Provider.FOOTBALL_DATA).isEmpty();
-            if (!hasExistingMappings) {
+            int existingMappingCount = leagueExternalIdRepository
+                    .findAllByProvider(Provider.FOOTBALL_DATA).size();
+            if (existingMappingCount == 0) {
                 throw new IllegalStateException(
                         "Cannot bootstrap core football data: football-data.org restricts the competitions "
                                 + "resource and no existing football-data.org league mappings are available. "
@@ -63,8 +63,7 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
 
             log.warn("football-data.org restricts the competitions resource for this subscription. "
                     + "Keeping {} existing league mappings and continuing with local data. {}",
-                    leagueExternalIdRepository.findAllByProvider(Provider.FOOTBALL_DATA).size(),
-                    ex.getMessage());
+                    existingMappingCount, ex.getMessage());
             return;
         }
 
