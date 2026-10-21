@@ -6,6 +6,9 @@ import com.microsoft.playwright.TimeoutError;
 import com.mmo.AppProperties;
 import com.mmo.core.utils.DateTimeUtils;
 import com.mmo.module.fb.domain.entity.Team;
+import com.mmo.module.fb.domain.entity.TeamExternalId;
+import com.mmo.module.fb.domain.enums.Provider;
+import com.mmo.module.fb.domain.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.model.DynamicFetchResult;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaDailyMatchWrapper;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchData;
@@ -32,6 +35,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements SofaCrawlerService {
     private final AppProperties appProperties;
+    private final TeamExternalIdRepository teamExternalIdRepository;
 
     private static final String FETCH_ALL_UNIQUE_TOURNAMENTS_URI = "config/default-unique-tournaments/VN/football";
     private static final String FETCH_SEASON_BY_TOURNAMENT_URI = "%sunique-tournament/%d/seasons";
@@ -134,9 +138,20 @@ public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements So
 
     @Override
     public List<SofaMatchesData.SofaEventDTO> fetchHistoriesMatchesByTeamIdAndIndex(Team team, int index, Page page) {
+        if (team == null || team.getId() == null) {
+            return Collections.emptyList();
+        }
+        TeamExternalId teamExternalId = teamExternalIdRepository
+                .findByTeamIdAndProvider(team.getId(), Provider.SOFA_SCORE)
+                .orElse(null);
+        if (teamExternalId == null) {
+            log.warn("Skipping SofaScore team history: no provider ID mapping for teamId={}", team.getId());
+            return Collections.emptyList();
+        }
+        String sofaTeamId = teamExternalId.getExternalId();
         String loadPageUrl = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_PAGE, appProperties.getSofaScore().getUrl(),
-                team.getSlug(), team.getExternalId());
-        String historiesEndpoint = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_URI, team.getExternalId(), index);
+                team.getSlug(), sofaTeamId);
+        String historiesEndpoint = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_URI, sofaTeamId, index);
         Map<String, Class<?>> configMap = Map.of(historiesEndpoint, SofaMatchesData.class);
 
         DynamicFetchResult result = safeFetch(loadPageUrl, configMap, page, null);
