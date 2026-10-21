@@ -15,11 +15,11 @@ The FB module is in active implementation. The database schema will be dropped a
 
 ## Core football entities
 
-- `League`: internal identity, stable slug, display metadata, activation and popularity attributes.
+- `League`: internal identity, stable slug, display metadata, one canonical `isActive` activation flag, and popularity attributes.
 - `Season`: belongs to a league; unique by `league_id + year`; carries current/start/end metadata and provider mappings.
 - `Team`: internal team identity and descriptive metadata; provider IDs are separate mappings.
-- `Match`: belongs to a season and home/away teams; kickoff/status/score fields are canonical; provider IDs are separate mappings.
-- `LeagueStanding`: preserves `TOTAL`, `HOME`, and `AWAY` as separate rows. Unknown provider standing types must not overwrite `TOTAL`.
+- `Match`: belongs to a season and home/away teams; `matchTime` is the sole kickoff field, `roundInfo` is the sole round field, status/score fields are canonical, and provider IDs are separate mappings.
+- `LeagueStanding`: derives league identity through `Season` rather than duplicating `league_id`, and preserves `TOTAL`, `HOME`, and `AWAY` as separate rows. Unknown provider standing types must not overwrite `TOTAL`.
 - `MatchAdvancedStats` and `PlayerMatchStats`: uniqueness reflects one record per match/team or match/player respectively.
 - `MatchOdds`: a current odds snapshot is unique by match, bookmaker and market. Market identity must include the line/handicap where the provider distinguishes multiple lines.
 - `OddsHistory`: retains historical observations with a recorded timestamp and indexes for chronological lookup.
