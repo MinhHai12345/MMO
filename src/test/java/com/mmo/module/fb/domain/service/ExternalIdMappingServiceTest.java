@@ -2,12 +2,15 @@ package com.mmo.module.fb.domain.service;
 
 import com.mmo.module.fb.domain.entity.LeagueExternalId;
 import com.mmo.module.fb.domain.entity.MatchExternalId;
+import com.mmo.module.fb.domain.entity.Player;
+import com.mmo.module.fb.domain.entity.PlayerExternalId;
 import com.mmo.module.fb.domain.entity.SeasonExternalId;
 import com.mmo.module.fb.domain.entity.Team;
 import com.mmo.module.fb.domain.entity.TeamExternalId;
 import com.mmo.module.fb.domain.enums.Provider;
 import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.repository.MatchExternalIdRepository;
+import com.mmo.module.fb.domain.repository.PlayerExternalIdRepository;
 import com.mmo.module.fb.domain.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.domain.repository.TeamExternalIdRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,13 +35,39 @@ class ExternalIdMappingServiceTest {
     private TeamExternalIdRepository teamExternalIds;
     @Mock
     private MatchExternalIdRepository matchExternalIds;
+    @Mock
+    private PlayerExternalIdRepository playerExternalIds;
 
     private ExternalIdMappingService service;
 
     @BeforeEach
     void setUp() {
         service = new ExternalIdMappingService(
-                leagueExternalIds, seasonExternalIds, teamExternalIds, matchExternalIds);
+                leagueExternalIds, seasonExternalIds, teamExternalIds, matchExternalIds, playerExternalIds);
+    }
+
+
+    @Test
+    void findPlayerTrimsExternalIdAndUsesProviderScopedMapping() {
+        Player player = new Player();
+        PlayerExternalId mapping = PlayerExternalId.builder()
+                .player(player)
+                .provider(Provider.API_FOOTBALL)
+                .externalId("99")
+                .build();
+        when(playerExternalIds.findByProviderAndExternalId(Provider.API_FOOTBALL, "99"))
+                .thenReturn(Optional.of(mapping));
+
+        assertEquals(Optional.of(player), service.findPlayer(Provider.API_FOOTBALL, " 99 "));
+    }
+
+    @Test
+    void requiresPersistedPlayerBeforeRegisteringMapping() {
+        Player unsavedPlayer = new Player();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.registerPlayer(unsavedPlayer, Provider.API_FOOTBALL, "99"));
+        verifyNoInteractions(playerExternalIds);
     }
 
     @Test
