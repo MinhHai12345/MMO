@@ -2,6 +2,8 @@ package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.domain.enums.Provider;
+import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
+import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import com.mmo.module.fb.ingest.service.LeagueIngestionService;
@@ -18,6 +20,7 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
     private final ProviderRegistry providerRegistry;
     private final AppProperties appProperties;
     private final LeaguePersistenceService leaguePersistenceService;
+    private final LeagueExternalIdRepository leagueExternalIdRepository;
 
     @Override
     public void syncLeagues() {
@@ -39,7 +42,24 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
             log.warn("No competition IDs configured for provider {}; configure its league/competition ID list.", selectedProvider);
             return;
         }
-        List<ProviderLeague> leagues = providerRegistry.league(selectedProvider).fetchLeagues(configuredIds);
+        List<ProviderLeague> leagues;
+        try {
+            leagues = providerRegistry.league(selectedProvider).fetchLeagues(configuredIds);
+        } catch (FootballDataRestrictedResourceException ex) {
+            if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
+            if (leagueExternalIdRepository.findAllByProvider(selectedProvider).isEmpty()) {
+                throw new IllegalStateException(
+                        "Cannot bootstrap FB: football-data.org restricts competitions and no local league mappings exist.",
+                        ex);
+            }
+            log.warn("football-data.org restricts competitions for this subscription. Preserving {} existing local league mappings.",
+                    leagueExternalIdRepository.findAllByProvider(selectedProvider).size());
+            return;
+        }
+        if (leagues == null || leagues.isEmpty()) {
+            throw new IllegalStateException("Provider " + selectedProvider
+                    + " returned no leagues; refusing to treat league ingestion as successful.");
+        }
         leaguePersistenceService.persistLeagues(selectedProvider, leagues);
     }
 }
