@@ -1,8 +1,10 @@
 package com.mmo.module.fb.ingest.provider.footballdata.mapper;
 
+import com.mmo.AppProperties;
 import com.mmo.module.fb.domain.enums.StandingType;
 import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.*;
 import com.mmo.module.fb.ingest.provider.model.*;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -10,16 +12,48 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Component
+@RequiredArgsConstructor
 public class FootballDataMapper {
+
+    private final AppProperties appProperties;
+
     public ProviderLeague toLeague(CompetitionDto competition) {
         if (competition == null || competition.id() == null) return null;
+
+        SeasonDto currentSeason = competition.currentSeason();
+        String currentYear = currentSeason == null || currentSeason.startDate() == null
+                ? null : Integer.toString(currentSeason.startDate().getYear());
+
+        List<String> configuredYears = appProperties.getFootballData() == null
+                || appProperties.getFootballData().getSeasons() == null
+                ? List.of()
+                : appProperties.getFootballData().getSeasons().stream()
+                    .filter(year -> year != null && !year.isBlank())
+                    .map(String::trim)
+                    .distinct()
+                    .toList();
+
         List<ProviderSeason> seasons = new ArrayList<>();
-        SeasonDto season = competition.currentSeason();
-        if (season != null && season.startDate() != null) {
-            String year = Integer.toString(season.startDate().getYear());
+        if (!configuredYears.isEmpty()) {
+            for (String year : configuredYears) {
+                boolean isCurrent = year.equals(currentYear);
+                boolean hasCurrentMetadata = isCurrent && currentSeason != null;
+                seasons.add(new ProviderSeason(
+                        competition.id() + ":" + year,
+                        year,
+                        isCurrent,
+                        hasCurrentMetadata ? currentSeason.startDate() : null,
+                        hasCurrentMetadata ? currentSeason.endDate() : null));
+            }
+        } else if (currentYear != null) {
             seasons.add(new ProviderSeason(
-                    competition.id() + ":" + year, year, true, season.startDate(), season.endDate()));
+                    competition.id() + ":" + currentYear,
+                    currentYear,
+                    true,
+                    currentSeason.startDate(),
+                    currentSeason.endDate()));
         }
+
         return new ProviderLeague(
                 competition.id().toString(), competition.name(),
                 competition.area() == null ? null : competition.area().name(),
