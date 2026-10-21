@@ -1,6 +1,7 @@
 package com.mmo.module.fb.domain.entity;
 
 import com.mmo.core.entity.AbstractEntity;
+import com.mmo.module.fb.domain.enums.StandingType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,7 +13,8 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "fb_league_standings",
-        uniqueConstraints = @UniqueConstraint(name = "uk_standing_season_team", columnNames = {"season_id", "team_id"}))
+        uniqueConstraints = @UniqueConstraint(name = "uk_standing_season_team_type",
+                columnNames = {"season_id", "team_id", "standing_type"}))
 @Getter
 @Setter
 @Builder
@@ -31,6 +33,11 @@ public class LeagueStanding extends AbstractEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "team_id", nullable = false)
     private Team team;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "standing_type", nullable = false, length = 16, columnDefinition = "varchar(16) default 'TOTAL'")
+    @Builder.Default
+    private StandingType standingType = StandingType.TOTAL;
 
     @Column(name = "position_rank")
     private Integer position;
