@@ -29,10 +29,10 @@ public class TeamForm extends AbstractEntity {
     @JoinColumn(name = "season_id", nullable = false)
     private Season season;
 
-    @Column(name = "form_type", nullable = false)
+    @Column(name = "form_type", nullable = false, length = 32)
     private String formType;
 
-    @Column(name = "form_data")
+    @Column(name = "form_data", length = 255)
     private String formData;
 
     @Column(name = "calculated_at")
