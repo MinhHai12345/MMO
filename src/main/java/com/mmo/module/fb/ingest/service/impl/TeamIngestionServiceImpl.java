@@ -68,9 +68,17 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
                 continue;
             }
 
+            Long parsedLeagueId = parseLong(externalLeagueId);
+            if (parsedLeagueId == null) {
+                failed++;
+                log.warn("Skipping teams for season {} because provider {} league ID '{}' is not numeric",
+                        season.getYear(), selectedProvider, externalLeagueId);
+                continue;
+            }
+
             try {
                 List<ProviderTeam> teams = providerRegistry.team(selectedProvider)
-                        .fetchTeams(new TeamQuery(parseLong(externalLeagueId), season.getYear()));
+                        .fetchTeams(new TeamQuery(parsedLeagueId, season.getYear()));
                 if (teams == null || teams.isEmpty()) {
                     log.warn("Provider {} returned no teams for league {} season {}",
                             selectedProvider, externalLeagueId, season.getYear());
@@ -86,10 +94,6 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
                 failed++;
                 log.warn("Skipping teams for league {} season {} because the API-Football plan does not include it: {}",
                         externalLeagueId, season.getYear(), ex.getMessage());
-            } catch (Exception ex) {
-                failed++;
-                log.warn("Failed to sync teams for provider {} league {} season {}: {}",
-                        selectedProvider, externalLeagueId, season.getYear(), ex.getMessage());
             }
         }
         log.info("Team ingestion via {} completed. fetched={}, failed/skipped={}",
