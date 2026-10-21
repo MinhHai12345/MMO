@@ -42,7 +42,6 @@ public class FootballDataMapper {
                 : (match.score().fullTime() != null ? match.score().fullTime() : match.score().regularTime());
         return new ProviderFixture(match.id().toString(), match.homeTeam().id().toString(),
                 match.awayTeam().id().toString(), kickoff,
-                kickoff == null ? null : kickoff.getEpochSecond(),
                 match.matchday() == null ? match.stage() : "Matchday " + match.matchday(),
                 match.venue(), null, match.status(),
                 score == null ? null : score.home(), score == null ? null : score.away());
