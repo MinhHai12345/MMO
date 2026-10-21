@@ -12,7 +12,9 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
-@Table(name = "fb_prediction_performance", uniqueConstraints = @UniqueConstraint(columnNames = {"prediction_id"}))
+@Table(name = "fb_prediction_performance",
+        uniqueConstraints = @UniqueConstraint(name = "uk_fb_prediction_performance_prediction", columnNames = "prediction_id"),
+        indexes = @Index(name = "idx_fb_prediction_performance_correct", columnList = "is_correct"))
 @Getter
 @Setter
 @Builder
