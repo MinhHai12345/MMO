@@ -17,7 +17,11 @@ import lombok.Setter;
 import java.time.Instant;
 
 @Entity
-@Table(name = "fb_notification_queue")
+@Table(name = "fb_notification_queue",
+        indexes = {
+                @Index(name = "idx_fb_notification_status_schedule", columnList = "status, scheduled_time"),
+                @Index(name = "idx_fb_notification_channel", columnList = "channel")
+        })
 @Getter
 @Setter
 @NoArgsConstructor
