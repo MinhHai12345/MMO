@@ -12,4 +12,6 @@ public interface MatchAdvancedStatsRepository extends JpaRepository<MatchAdvance
     Optional<MatchAdvancedStats> findByMatchIdAndTeamId(Long matchId, Long teamId);
 
     long countByMatchId(Long matchId);
+
+    java.util.List<MatchAdvancedStats> findAllByMatchId(Long matchId);
 }
