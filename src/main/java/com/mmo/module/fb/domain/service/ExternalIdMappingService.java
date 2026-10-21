@@ -24,9 +24,9 @@ import java.util.Optional;
 /**
  * Provider-aware identity lookup and registration for football domain entities.
  *
- * <p>Legacy entity-level externalId fields are intentionally not used here:
- * they do not identify which provider issued the ID. Existing mappings are
- * never silently reassigned to another entity.</p>
+ * <p>Provider IDs for leagues, seasons, teams, matches, and players are stored
+ * only in mapping tables. Legacy entity-level IDs cannot identify their source
+ * provider. Existing mappings are never silently reassigned to another entity.</p>
  */
 @Service
 @Transactional
