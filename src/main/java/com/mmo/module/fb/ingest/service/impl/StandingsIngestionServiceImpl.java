@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -78,8 +79,29 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
         int saved = 0;
         int skipped = 0;
         boolean rateLimitInterrupted = false;
-        // Routine sync is limited to current seasons; historical backfill is a separate operation.
-        List<Season> seasons = seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
+        // For football-data.org, an explicit app.football-data.seasons list controls
+        // both current and historical standings. Other providers retain current-season behavior.
+        List<String> configuredSeasons = selectedProvider == Provider.FOOTBALL_DATA
+                && appProperties.getFootballData() != null
+                && appProperties.getFootballData().getSeasons() != null
+                ? appProperties.getFootballData().getSeasons().stream()
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .filter(year -> !year.isEmpty())
+                    .distinct()
+                    .toList()
+                : List.of();
+
+        List<Season> seasons;
+        if (!configuredSeasons.isEmpty()) {
+            seasons = seasonRepository.findByYearInAndLeagueIsNotNullAndYearIsNotNull(configuredSeasons);
+            log.info("Fetching standings for configured seasons {} ({} season records found)",
+                    configuredSeasons, seasons.size());
+        } else {
+            seasons = seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
+            log.info("No historical seasons configured for provider {}; fetching current seasons only ({} season records found)",
+                    selectedProvider, seasons.size());
+        }
         for (Season season : seasons) {
             if (season.getLeague() == null || season.getYear() == null) continue;
             Long externalLeagueId = parseLong(leagueExternalIdsByLeagueId.get(season.getLeague().getId()));
