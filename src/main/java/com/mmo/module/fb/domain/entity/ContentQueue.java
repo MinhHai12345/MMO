@@ -12,7 +12,11 @@ import jakarta.persistence.Lob;
 import java.time.Instant;
 
 @Entity
-@Table(name = "fb_content_queue")
+@Table(name = "fb_content_queue",
+        indexes = {
+                @Index(name = "idx_fb_content_queue_status_priority", columnList = "queue_status, priority"),
+                @Index(name = "idx_fb_content_queue_processed", columnList = "processed_at")
+        })
 @Getter
 @Setter
 @Builder
