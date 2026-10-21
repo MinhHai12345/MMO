@@ -19,7 +19,7 @@ public class SofaScoreFixtureMapper {
         String status = event.getStatus() == null ? null : mapStatus(event.getStatus().getType());
         return new ProviderFixture(event.getId().toString(),
                 event.getHomeTeam().getId().toString(), event.getAwayTeam().getId().toString(),
-                kickoff, timestamp,
+                kickoff,
                 event.getRoundInfo() == null || event.getRoundInfo().getRound() == null
                         ? null : event.getRoundInfo().getRound().toString(),
                 null, null, status,
