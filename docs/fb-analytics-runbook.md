@@ -31,3 +31,9 @@ The `from` instant is inclusive and `to` is exclusive. Run a fixed window when c
 ## Ingestion operations
 
 Check finished scores after result sync, standings by season and `StandingType`, and odds history over time. Respect provider quotas and back off on HTTP 429 responses; avoid tight retry loops.
+
+## Team-form prediction engine
+
+The ensemble includes a separate `TEAM_FORM` Poisson model. It uses up to ten completed matches strictly before the target kickoff, prefers venue-specific goals-for/goals-against rates when both teams have at least three relevant venue matches, and requires at least five overall history matches per team. Otherwise, the engine abstains and the ensemble uses the remaining eligible models. Goals-based expectations are not stored in the provider xG columns.
+
+The current ensemble weight is a conservative initial setting, not a claim of measured superiority. Do not treat it as validated or tune it based on intuition alone. Monitor prediction coverage, probability validity and model contribution in production; keep the feature snapshot read-only.
