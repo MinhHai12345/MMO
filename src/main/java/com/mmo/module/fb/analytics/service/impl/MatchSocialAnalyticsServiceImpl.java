@@ -64,14 +64,14 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
         int boundedLimit = Math.max(1, Math.min(limit, 50));
         List<Match> matches = matchRepository.findSocialInsightCandidates(
                 effectiveFrom, effectiveTo, com.mmo.module.fb.domain.enums.MatchStatus.SCHEDULED,
-                leagueId, PageRequest.of(0, boundedLimit));
+                leagueId, PageRequest.of(0, 100));
         List<ContentCandidate> candidates = new ArrayList<>();
         for (Match match : matches) {
             candidates.add(toContentCandidate(match));
         }
         candidates.sort(Comparator.comparingInt(ContentCandidate::readinessScore).reversed()
                 .thenComparing(ContentCandidate::kickoff));
-        return List.copyOf(candidates);
+        return candidates.stream().limit(boundedLimit).toList();
     }
 
     private ContentCandidate toContentCandidate(Match match) {
