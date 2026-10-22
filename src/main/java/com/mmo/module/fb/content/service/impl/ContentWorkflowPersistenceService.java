@@ -20,7 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -61,15 +63,46 @@ public class ContentWorkflowPersistenceService {
         run.setFilterTo(command.to());
         run.setLeagueId(command.leagueId());
         run.setRequestedLimit(normalizeLimit(command.limit()));
-        run.setCandidatesDiscovered(report.candidatesDiscovered());
-        run.setDraftsGenerated(report.draftsGenerated());
-        run.setDraftsNeedingReview(report.draftsNeedingReview());
-        run.setDraftsBlocked(report.draftsBlocked());
-        run.setFailures(report.failures());
+        List<ContentWorkflowItemEntity> checkpoints = itemRepository.findByWorkflowRunIdOrderByIdAsc(run.getId());
+        List<ContentDraftRecordEntity> drafts = draftRepository.findByWorkflowRunIdOrderByIdAsc(run.getId());
+        long failures = checkpoints.stream().filter(item -> "FAILED".equals(item.getStatus())).count();
+        long blocked = drafts.stream().filter(draft -> "BLOCKED".equals(draft.getGenerationStatus())).count();
+        long review = drafts.stream().filter(draft -> "NEEDS_EDITOR_REVIEW".equals(draft.getGenerationStatus())).count();
+        run.setCandidatesDiscovered(checkpoints.size());
+        run.setDraftsGenerated(drafts.size());
+        run.setDraftsNeedingReview((int) review);
+        run.setDraftsBlocked((int) blocked);
+        run.setFailures((int) failures);
+        String finalStatus = checkpoints.isEmpty() ? "NO_CANDIDATES"
+                : failures == checkpoints.size() ? "FAILED"
+                : failures > 0 ? "COMPLETED_WITH_ERRORS"
+                : blocked > 0 || review > 0 ? "COMPLETED_WITH_REVIEW" : "COMPLETED";
+        run.setStatus(finalStatus);
         run.setWarningsJson(writeJson(report.warnings()));
         runRepository.save(run);
 
         return run;
+    }
+
+    @Transactional
+    public ContentWorkflowRunEntity claimForResume(Long runId) {
+        ContentWorkflowRunEntity run = runRepository.findByIdForUpdate(runId)
+                .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
+        boolean staleRunning = "RUNNING".equals(run.getStatus())
+                && run.getStartedAt() != null
+                && run.getStartedAt().isBefore(Instant.now().minus(Duration.ofMinutes(10)));
+        if ("RUNNING".equals(run.getStatus()) && !staleRunning) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT, "Workflow is still running");
+        }
+        if (!staleRunning && !Set.of("FAILED", "COMPLETED_WITH_ERRORS").contains(run.getStatus())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT, "Only failed or partially failed workflows can be resumed");
+        }
+        run.setStatus("RUNNING");
+        run.setStartedAt(Instant.now());
+        run.setCompletedAt(null);
+        return runRepository.save(run);
     }
 
     @Transactional
@@ -104,7 +137,6 @@ public class ContentWorkflowPersistenceService {
             return;
         }
         ContentDraft draft = item.draft();
-        ContentDraft existing = null;
         ContentDraftRecordEntity record = draftRepository.findByWorkflowRunIdAndMatchId(runId, item.matchId()).orElse(null);
         if (record == null) {
             QualityReview review = draft.qualityReview();
