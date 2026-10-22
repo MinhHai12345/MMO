@@ -215,7 +215,7 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
         return ids.size();
     }
 
-    private boolean shouldAuditRepeatedPairings(String leagueName, long storedMatches, long teamCount) {
+    boolean shouldAuditRepeatedPairings(String leagueName, long storedMatches, long teamCount) {
         if (!isDoubleRoundRobinLeague(leagueName) || teamCount < 2) return false;
         long regularSeasonMatches = teamCount * (teamCount - 1);
         // Playoff fixtures are included in Championship season totals and may repeat pairings.
