@@ -29,7 +29,7 @@ For domestic double round-robin leagues, the regular-season expectation is `team
 
 The Championship totals of 557 matches in seasons starting 2023, 2024, and 2025 are **not by themselves evidence of duplicate fixtures**. The standard format has 552 league fixtures plus four semi-final legs and one final (5 playoff matches). The EFL has announced a change for 2026/27 to a seven-match playoff format; for a 24-team Championship season starting in 2026, the expected full competition total is 559. See the [EFL's 2026 playoff format announcement](https://www.efl.com/news/2026/march/05/efl-statement--sky-bet-championship-play-off-format/).
 
-The audit therefore uses a season-aware expected count for the Championship and does **not** apply round-robin expectations to Champions League or other knockout/cup formats. A historical season below expected count is reported as `INCOMPLETE_FIXTURES`; above expected is `EXCESS_FIXTURES`. Repeated home/away pairs are a separate diagnostic, but a repeat is not automatically a duplicate because knockout ties and replay formats may legitimately repeat opponents.
+The audit therefore uses a season-aware expected count for the Championship and does **not** apply round-robin expectations to Champions League or other knockout/cup formats. A historical season below expected count is reported as `INCOMPLETE_FIXTURES`; above expected is `EXCESS_FIXTURES`. Repeated home/away pairings are checked only for domestic double round-robin competitions. The Champions League is excluded because group and knockout rounds can legitimately repeat opponents; Championship pair checks are skipped when playoff fixtures are included in the season total. A repeat is not automatically a duplicate.
 
 ### How to investigate the Championship records
 
@@ -40,7 +40,7 @@ For the 557-match seasons, first confirm the 5 playoff fixtures and their stages
 - Top-level `status`: `CRITICAL` if a critical finding exists, otherwise `WARNING` if a warning exists, otherwise `OK`. Informational findings do not change status.
 - `totals.finishedMissingScores` must be zero before finished results are reliable training labels.
 - `providers.mappingCoverage` is mapping completeness for currently configured providers. A missing mapping can be legitimate if a provider does not cover that entity; investigate before changing data.
-- `seasons[].issues` contains season-specific warnings, including fixture-count anomalies.
+- `seasons[].issues` contains season-specific warnings, including fixture-count anomalies. Non-current seasons with fixtures not marked `FINISHED` receive `HISTORICAL_SEASON_HAS_UNFINISHED_FIXTURES`; inspect the match status and provider data before changing records.
 - Missing xG is informational because a goals-only baseline can run without xG.
 
 ## Important caveats

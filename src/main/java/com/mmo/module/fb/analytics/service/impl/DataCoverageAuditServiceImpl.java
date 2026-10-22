@@ -112,6 +112,14 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
                 findings.add(new AuditFinding("WARNING", "SEASON_WITHOUT_FIXTURES", "Season has no stored fixtures.", 1, league + " " + year + " (seasonId=" + id + ")"));
             }
             if (seasonFinished > seasonScored) issues.add("FINISHED_MATCHES_MISSING_SCORES");
+            if (!current && total > seasonFinished) {
+                long unfinishedHistoricalFixtures = total - seasonFinished;
+                issues.add("HISTORICAL_SEASON_HAS_UNFINISHED_FIXTURES");
+                findings.add(new AuditFinding("WARNING", "HISTORICAL_SEASON_HAS_UNFINISHED_FIXTURES",
+                        "A non-current season contains fixtures that are not marked FINISHED; inspect status and source data.",
+                        unfinishedHistoricalFixtures, league + " " + year + " (stored=" + total
+                        + ", finished=" + seasonFinished + ", seasonId=" + id + ")"));
+            }
             if (seasonStandingRows == 0) {
                 issues.add("NO_STANDINGS");
                 findings.add(new AuditFinding("WARNING", "SEASON_WITHOUT_STANDINGS",
@@ -130,12 +138,20 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
             long teamsInSeason = teamsInStandings > 0 ? teamsInStandings : countDistinctSeasonTeams(id);
             if (teamsInSeason < 2) teamsInSeason = expectedTeamCountForLeague(league);
             Long expectedMatches = expectedMatchesForSeason(league, teamsInSeason, year);
-            List<Long> repeatedPairGroups = entityManager.createQuery("""
-                    select count(m) from Match m
-                    where m.season.id = :seasonId
-                    group by m.homeTeam.id, m.awayTeam.id
-                    having count(m) > 1
-                    """, Long.class).setParameter("seasonId", id).getResultList();
+            // Repeated home/away pairings are only anomalous in a competition with a
+            // single round-robin fixture per ordered pair. Cup/knockout competitions (for
+            // example the Champions League) legitimately meet again in later rounds.
+            // Championship season totals include playoffs, where league opponents can repeat;
+            // skip pair-level warnings when the stored count exceeds the regular-season total.
+            boolean auditRepeatedPairings = shouldAuditRepeatedPairings(league, total, teamsInSeason);
+            List<Long> repeatedPairGroups = auditRepeatedPairings
+                    ? entityManager.createQuery("""
+                            select count(m) from Match m
+                            where m.season.id = :seasonId
+                            group by m.homeTeam.id, m.awayTeam.id
+                            having count(m) > 1
+                            """, Long.class).setParameter("seasonId", id).getResultList()
+                    : List.of();
             long repeatedPairs = repeatedPairGroups.size();
             long matchCountDifference = expectedMatches == null ? 0 : total - expectedMatches;
             String integrityStatus = "NOT_APPLICABLE";
@@ -197,6 +213,17 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
         Set<Long> ids = new HashSet<>(homeTeams);
         ids.addAll(awayTeams);
         return ids.size();
+    }
+
+    boolean shouldAuditRepeatedPairings(String leagueName, long storedMatches, long teamCount) {
+        if (!isDoubleRoundRobinLeague(leagueName) || teamCount < 2) return false;
+        long regularSeasonMatches = teamCount * (teamCount - 1);
+        // Playoff fixtures are included in Championship season totals and may repeat pairings.
+        return !isChampionship(leagueName) || storedMatches <= regularSeasonMatches;
+    }
+
+    private boolean isChampionship(String leagueName) {
+        return leagueName != null && leagueName.toLowerCase(Locale.ROOT).contains("championship");
     }
 
     private Long expectedMatchesForSeason(String leagueName, long teamCount, String seasonYear) {
