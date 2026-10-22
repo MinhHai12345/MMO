@@ -7,7 +7,6 @@ import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.ContentCa
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.PredictionInsight;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.TeamInsight;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.ContentPlan;
-import com.mmo.module.fb.analytics.service.PlayerAnalyticsService;
 import com.mmo.module.fb.analytics.service.PostMatchAnalysisService;
 import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.analytics.service.TeamFormFeatureService;
@@ -51,7 +50,6 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
     private final TeamFormFeatureService teamFormFeatureService;
     private final LeagueStandingRepository leagueStandingRepository;
     private final MatchOddsRepository matchOddsRepository;
-    private final PlayerAnalyticsService playerAnalyticsService;
     private final PostMatchAnalysisService postMatchAnalysisService;
 
 
