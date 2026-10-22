@@ -11,6 +11,7 @@ import java.util.List;
 public interface ContentLifecycleService {
     ContentWorkflowRunEntity generate(WorkflowCommand command);
     ContentWorkflowRunEntity generate(WorkflowCommand command, String idempotencyKey);
+    ContentWorkflowRunEntity resume(Long runId);
     List<ContentWorkflowRunEntity> listRuns(int limit);
     List<ContentDraftRecordEntity> listDrafts(String editorialStatus, int limit);
     ContentDraftRecordEntity getDraft(Long draftId);
