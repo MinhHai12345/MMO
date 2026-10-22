@@ -35,6 +35,19 @@ The audit therefore uses a season-aware expected count for the Championship and 
 
 For the 557-match seasons, first confirm the 5 playoff fixtures and their stages/round metadata. Only treat the remaining count or pairings as anomalous after separating regular-season fixtures from playoffs. Inspect provider external IDs and source match IDs before changing any records. Never delete rows automatically.
 
+## One-call analytics workflow
+
+Use `GET /api/fb/analytics/workflow?from=<ISO-8601>&to=<ISO-8601>` to run the read-only operational workflow for a half-open test window `[from, to)`.
+
+The workflow runs in this order:
+
+1. Coverage audit of stored fixtures, scores, duplicates and provider mappings.
+2. Data-readiness report, including goals and xG coverage.
+3. Point-in-time team-form benchmark across all eligible finished fixtures.
+4. Walk-forward evaluation of persisted pre-kickoff predictions.
+
+If critical coverage findings remain, the workflow returns `BLOCKED_DATA_QUALITY` and skips both backtests. Warnings and missing xG do not block a goals-only benchmark; the response reports `COMPLETED_WITH_LIMITATIONS` when coverage warnings exist or either backtest has insufficient data. This endpoint does not mutate fixtures, predictions or analytics records.
+
 ## Point-in-time team-form backtest
 
 Use `GET /api/fb/analytics/team-form-backtest?from=<ISO-8601>&to=<ISO-8601>` to evaluate the team-form baseline on finished fixtures in the half-open interval `[from, to)`.
