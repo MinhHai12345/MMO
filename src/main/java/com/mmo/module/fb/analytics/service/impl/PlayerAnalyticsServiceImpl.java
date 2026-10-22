@@ -88,7 +88,8 @@ public class PlayerAnalyticsServiceImpl implements PlayerAnalyticsService {
         return new PlayerPerformance(
                 stats.getPlayer() == null ? null : stats.getPlayer().getId(),
                 stats.getPlayer() == null ? null : stats.getPlayer().getName(),
-                stats.getPlayer() == null || stats.getPlayer().getTeam() == null
+                stats.getTeam() != null ? stats.getTeam().getName()
+                        : stats.getPlayer() == null || stats.getPlayer().getTeam() == null
                         ? null : stats.getPlayer().getTeam().getName(),
                 stats.getMinutesPlayed(), goals, assists, xg, xa, value(stats.getShots()),
                 value(stats.getShotsOnTarget()), value(stats.getKeyPasses()), value(stats.getTackles()),
