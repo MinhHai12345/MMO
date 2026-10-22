@@ -287,7 +287,8 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
         } else if ("LIVE".equals(phase)) {
             shorts.add("Live update: " + match.getHomeTeam().getName() + " vs " + match.getAwayTeam().getName()
                     + ". Verify the live score and event feed before publishing.");
-        } = new ArrayList<>(warnings);
+        }
+        List<String> caveats = new ArrayList<>(warnings);
         if ("PRE_MATCH".equals(phase)) caveats.add("This is a pre-match content plan; final score and post-match statistics are not yet available.");
         if ("POST_MATCH_INCOMPLETE".equals(phase)) caveats.add("The fixture is marked finished, but one or both final scores are missing.");
         if (finished && (match.getHomeXG() == null || match.getAwayXG() == null)) {
