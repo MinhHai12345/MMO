@@ -14,6 +14,7 @@ import com.mmo.module.fb.domain.entity.MatchOdds;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
 import com.mmo.module.fb.domain.entity.Team;
 import com.mmo.module.fb.domain.enums.StandingType;
+import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.repository.LeagueStandingRepository;
 import com.mmo.module.fb.domain.repository.MatchOddsRepository;
 import com.mmo.module.fb.domain.repository.MatchPredictionRepository;
@@ -30,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -58,8 +60,8 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
         List<String> angles = new ArrayList<>();
 
         Optional<MatchFeatures> features = teamFormFeatureService.buildFeatures(match);
-        TeamInsight home = teamInsight(match.getHomeTeam(), match, features.map(MatchFeatures::home).orElse(null));
-        TeamInsight away = teamInsight(match.getAwayTeam(), match, features.map(MatchFeatures::away).orElse(null));
+        TeamInsight home = teamInsight(match.getHomeTeam(), match, features.map(MatchFeatures::home).orElse(null), warnings);
+        TeamInsight away = teamInsight(match.getAwayTeam(), match, features.map(MatchFeatures::away).orElse(null), warnings);
 
         if (features.isEmpty()) {
             warnings.add("Insufficient valid historical data to calculate recent-form features.");
@@ -95,7 +97,9 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
                         ? match.getSeason().getLeague().getName() : null,
                 match.getSeason() != null ? match.getSeason().getYear() : null,
                 match.getRoundInfo(),
-                match.getVenue(),
+                match.getVenue() != null && !match.getVenue().isBlank()
+                        ? match.getVenue()
+                        : match.getHomeTeam() == null ? null : match.getHomeTeam().getStadiumName(),
                 match.getStatus() != null ? match.getStatus().name() : null,
                 home,
                 away,
@@ -106,11 +110,24 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
                 warnings);
     }
 
-    private TeamInsight teamInsight(Team team, Match match, TeamFeatures features) {
-        LeagueStanding standing = match.getSeason() == null || team == null
-                ? null
-                : leagueStandingRepository.findBySeasonIdAndTeamIdAndStandingType(
-                        match.getSeason().getId(), team.getId(), StandingType.TOTAL).orElse(null);
+    private TeamInsight teamInsight(Team team, Match match, TeamFeatures features, List<String> warnings) {
+        LeagueStanding standing = null;
+        boolean upcomingScheduledMatch = match.getStatus() == MatchStatus.SCHEDULED
+                && match.getMatchTime() != null
+                && match.getMatchTime().isAfter(Instant.now());
+
+        if (upcomingScheduledMatch && match.getSeason() != null && team != null) {
+            standing = leagueStandingRepository.findBySeasonIdAndTeamIdAndStandingType(
+                    match.getSeason().getId(), team.getId(), StandingType.TOTAL).orElse(null);
+            if (standing != null && !isInternallyConsistent(standing)) {
+                warnings.add("Standings row for " + team.getName()
+                        + " is internally inconsistent; position, points and standings form are omitted.");
+                standing = null;
+            }
+        } else {
+            warnings.add("Current standings are omitted for " + (team == null ? "a team" : team.getName())
+                    + " because they are not a point-in-time snapshot for this match kickoff.");
+        }
 
         return new TeamInsight(
                 team == null ? null : team.getId(),
@@ -132,6 +149,22 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
                 decimal(features == null ? null : features.averageXgAgainst()),
                 decimal(features == null ? null : features.venueAverageGoalsFor()),
                 decimal(features == null ? null : features.venueAverageGoalsAgainst()));
+    }
+
+    private boolean isInternallyConsistent(LeagueStanding standing) {
+        if (standing.getWon() != null && standing.getDrawn() != null
+                && standing.getPoints() != null
+                && standing.getPoints() != standing.getWon() * 3 + standing.getDrawn()) {
+            return false;
+        }
+        if (standing.getPlayed() != null && standing.getWon() != null
+                && standing.getDrawn() != null && standing.getLost() != null
+                && standing.getPlayed() != standing.getWon() + standing.getDrawn() + standing.getLost()) {
+            return false;
+        }
+        return standing.getGoalsFor() == null || standing.getGoalsAgainst() == null
+                || standing.getGoalDifference() == null
+                || standing.getGoalDifference().equals(standing.getGoalsFor() - standing.getGoalsAgainst());
     }
 
     private PredictionInsight predictionInsight(MatchPrediction prediction) {
