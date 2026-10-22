@@ -10,6 +10,17 @@ public interface MatchSocialAnalyticsService {
 
     List<ContentCandidate> discover(Instant from, Instant to, Long leagueId, int limit);
 
+    record ContentCandidate(
+            Long matchId, Instant kickoff, String competition, String season, String round, String status,
+            Long homeTeamId, String homeTeam, Long awayTeamId, String awayTeam,
+            int readinessScore, String readinessLevel, int historicalMatchesHome, int historicalMatchesAway,
+            boolean predictionAvailable, boolean marketAvailable, boolean historicalXgAvailable,
+            List<String> readinessFactors, List<String> missingData) {
+        public ContentCandidate {
+            readinessFactors = readinessFactors == null ? List.of() : List.copyOf(readinessFactors);
+            missingData = missingData == null ? List.of() : List.copyOf(missingData);
+        }
+    }
     record MatchSocialInsight(
             Long matchId,
             Instant kickoff,
