@@ -6,6 +6,7 @@ import com.mmo.module.fb.content.persistence.ContentDraftVersionEntity;
 import com.mmo.module.fb.content.persistence.ContentDraftVersionRepository;
 import com.mmo.module.fb.content.persistence.ContentWorkflowRunEntity;
 import com.mmo.module.fb.content.persistence.ContentWorkflowRunRepository;
+import com.mmo.module.fb.content.persistence.ContentWorkflowItemRepository;
 import com.mmo.module.fb.content.service.ContentLifecycleService;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowCommand;
@@ -38,6 +39,7 @@ public class ContentLifecycleServiceImpl implements ContentLifecycleService {
     private final ContentWorkflowOrchestrator orchestrator;
     private final ContentWorkflowPersistenceService persistenceService;
     private final ContentWorkflowRunRepository runRepository;
+    private final ContentWorkflowItemRepository itemRepository;
     private final ContentDraftRecordRepository draftRepository;
     private final ContentDraftVersionRepository versionRepository;
 
@@ -69,7 +71,9 @@ public class ContentLifecycleServiceImpl implements ContentLifecycleService {
         }
 
         try {
-            WorkflowReport report = orchestrator.generate(command);
+            WorkflowReport report = orchestrator.generate(command, Set.of(),
+                    matchId -> persistenceService.startItem(run.getId(), matchId),
+                    item -> persistenceService.persistItem(run.getId(), item));
             return persistenceService.persist(run, command, report);
         } catch (RuntimeException failure) {
             persistenceService.markFailed(run.getId(), failure);
