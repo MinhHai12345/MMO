@@ -23,10 +23,12 @@ import java.time.Instant;
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class ContentWorkflowPersistenceService {
+    private static final Duration WORKFLOW_LEASE = Duration.ofMinutes(30);
     private final ContentWorkflowRunRepository runRepository;
     private final ContentWorkflowItemRepository itemRepository;
     private final ContentDraftRecordRepository draftRepository;
@@ -38,6 +40,7 @@ public class ContentWorkflowPersistenceService {
         ContentWorkflowRunEntity run = new ContentWorkflowRunEntity();
         run.setIdempotencyKey(idempotencyKey);
         run.setStatus("RUNNING");
+        acquireLease(run);
         run.setFormat(command.format() == null ? com.mmo.module.fb.analytics.service.ContentDraftService.DraftFormat.PRE_MATCH : command.format());
         run.setStartedAt(Instant.now());
         run.setFilterFrom(command.from());
@@ -54,7 +57,8 @@ public class ContentWorkflowPersistenceService {
     }
 
     @Transactional
-    public ContentWorkflowRunEntity persist(ContentWorkflowRunEntity run, WorkflowCommand command, WorkflowReport report) {
+    public ContentWorkflowRunEntity persist(ContentWorkflowRunEntity run, String executionToken, WorkflowCommand command, WorkflowReport report) {
+        assertLease(run, executionToken);
         run.setStatus(report.status());
         run.setFormat(report.format());
         run.setStartedAt(report.startedAt());
@@ -78,6 +82,7 @@ public class ContentWorkflowPersistenceService {
                 : failures > 0 ? "COMPLETED_WITH_ERRORS"
                 : blocked > 0 || review > 0 ? "COMPLETED_WITH_REVIEW" : "COMPLETED";
         run.setStatus(finalStatus);
+        clearLease(run);
         run.setWarningsJson(writeJson(report.warnings()));
         runRepository.save(run);
 
@@ -88,9 +93,13 @@ public class ContentWorkflowPersistenceService {
     public ContentWorkflowRunEntity claimForResume(Long runId) {
         ContentWorkflowRunEntity run = runRepository.findByIdForUpdate(runId)
                 .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
+        Instant now = Instant.now();
         boolean staleRunning = "RUNNING".equals(run.getStatus())
-                && run.getStartedAt() != null
-                && run.getStartedAt().isBefore(Instant.now().minus(Duration.ofMinutes(10)));
+                && (run.getLeaseUntil() != null
+                    ? !run.getLeaseUntil().isAfter(now)
+                    : run.getHeartbeatAt() != null
+                        ? run.getHeartbeatAt().isBefore(now.minus(Duration.ofMinutes(10)))
+                        : run.getStartedAt() != null && run.getStartedAt().isBefore(now.minus(Duration.ofMinutes(10))));
         if ("RUNNING".equals(run.getStatus()) && !staleRunning) {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.CONFLICT, "Workflow is still running");
@@ -110,13 +119,15 @@ public class ContentWorkflowPersistenceService {
         run.setStatus("RUNNING");
         run.setStartedAt(Instant.now());
         run.setCompletedAt(null);
+        acquireLease(run);
         return runRepository.save(run);
     }
 
     @Transactional
-    public void startItem(Long runId, Long matchId) {
+    public void startItem(Long runId, String executionToken, Long matchId) {
         ContentWorkflowRunEntity run = runRepository.findById(runId)
                 .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
+        renewLease(run, executionToken);
         ContentWorkflowItemEntity item = itemRepository.findByWorkflowRunIdAndMatchId(runId, matchId)
                 .orElseGet(ContentWorkflowItemEntity::new);
         item.setWorkflowRun(run);
@@ -130,9 +141,10 @@ public class ContentWorkflowPersistenceService {
     }
 
     @Transactional
-    public void persistItem(Long runId, WorkflowItem item) {
+    public void persistItem(Long runId, String executionToken, WorkflowItem item) {
         ContentWorkflowRunEntity run = runRepository.findById(runId)
                 .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
+        renewLease(run, executionToken);
         ContentWorkflowItemEntity checkpoint = itemRepository.findByWorkflowRunIdAndMatchId(runId, item.matchId())
                 .orElseGet(ContentWorkflowItemEntity::new);
         checkpoint.setWorkflowRun(run);
@@ -182,14 +194,48 @@ public class ContentWorkflowPersistenceService {
     }
 
     @Transactional
-    public void markFailed(Long runId, RuntimeException failure) {
+    public void markFailed(Long runId, String executionToken, RuntimeException failure) {
         runRepository.findById(runId).ifPresent(run -> {
+            if (!java.util.Objects.equals(run.getExecutionToken(), executionToken)) return;
             run.setStatus("FAILED");
+            clearLease(run);
             run.setCompletedAt(Instant.now());
             String reason = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
             run.setWarningsJson(writeJson(List.of("Workflow execution failed: " + reason)));
             runRepository.save(run);
         });
+    }
+
+    private static void acquireLease(ContentWorkflowRunEntity run) {
+        Instant now = Instant.now();
+        run.setExecutionToken(UUID.randomUUID().toString());
+        run.setHeartbeatAt(now);
+        run.setLeaseUntil(now.plus(WORKFLOW_LEASE));
+    }
+
+    private static void renewLease(ContentWorkflowRunEntity run, String executionToken) {
+        assertLease(run, executionToken);
+        Instant now = Instant.now();
+        run.setHeartbeatAt(now);
+        run.setLeaseUntil(now.plus(WORKFLOW_LEASE));
+    }
+
+    private static void assertLease(ContentWorkflowRunEntity run, String executionToken) {
+        if (!"RUNNING".equals(run.getStatus())
+                || executionToken == null
+                || !executionToken.equals(run.getExecutionToken())
+                || run.getLeaseUntil() == null
+                || !run.getLeaseUntil().isAfter(Instant.now())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT,
+                    "Workflow execution lease is no longer owned by this worker");
+        }
+    }
+
+    private static void clearLease(ContentWorkflowRunEntity run) {
+        run.setLeaseUntil(null);
+        run.setExecutionToken(null);
+        run.setHeartbeatAt(Instant.now());
     }
 
     private static int normalizeLimit(int limit) {
