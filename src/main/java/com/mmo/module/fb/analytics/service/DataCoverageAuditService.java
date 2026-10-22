@@ -32,7 +32,8 @@ public interface DataCoverageAuditService {
                           long matches, long finishedMatches, long finishedWithScores,
                           long finishedMissingScores, long finishedWithXg, long standingsRows,
                           long totalStandingRows, long homeStandingRows, long awayStandingRows,
-                          long teamsInStandings, List<String> issues) {
+                          long teamsInStandings, Long expectedMatches, long matchCountDifference,
+                          long repeatedHomeAwayPairGroups, String fixtureIntegrityStatus, List<String> issues) {
         public SeasonCoverage {
             issues = issues == null ? List.of() : List.copyOf(issues);
         }
