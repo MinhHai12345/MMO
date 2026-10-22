@@ -20,6 +20,7 @@ public interface MatchSocialAnalyticsService {
             TeamInsight away,
             PredictionInsight prediction,
             MarketInsight market,
+            MatchupInsight matchup,
             List<String> editorialAngles,
             List<String> dataWarnings) {
         public MatchSocialInsight {
@@ -45,7 +46,25 @@ public interface MatchSocialAnalyticsService {
             BigDecimal cleanSheetRate,
             BigDecimal scoredRate,
             BigDecimal averageXgFor,
-            BigDecimal averageXgAgainst) {
+            BigDecimal averageXgAgainst,
+            BigDecimal venueAverageGoalsFor,
+            BigDecimal venueAverageGoalsAgainst) {
+    }
+
+    record MatchupInsight(
+            String summary,
+            boolean xgAvailable,
+            List<MatchupSignal> signals) {
+        public MatchupInsight {
+            signals = signals == null ? List.of() : List.copyOf(signals);
+        }
+    }
+
+    record MatchupSignal(
+            String dimension,
+            String edge,
+            String evidence,
+            String confidence) {
     }
 
     record PredictionInsight(
