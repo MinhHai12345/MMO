@@ -1,0 +1,21 @@
+package com.mmo.module.fb.analytics.service;
+
+import com.mmo.module.fb.analytics.persistence.ContentDraftRecordEntity;
+import com.mmo.module.fb.analytics.persistence.ContentDraftVersionEntity;
+import com.mmo.module.fb.analytics.persistence.ContentWorkflowRunEntity;
+import com.mmo.module.fb.analytics.service.ContentDraftService.DraftFormat;
+import com.mmo.module.fb.analytics.service.ContentWorkflowOrchestrator.WorkflowCommand;
+import com.mmo.module.fb.analytics.service.ContentWorkflowOrchestrator.WorkflowReport;
+
+import java.util.List;
+
+public interface ContentLifecycleService {
+    ContentWorkflowRunEntity generate(WorkflowCommand command);
+    List<ContentWorkflowRunEntity> listRuns(int limit);
+    List<ContentDraftRecordEntity> listDrafts(String editorialStatus, int limit);
+    ContentDraftRecordEntity getDraft(Long draftId);
+    List<ContentDraftVersionEntity> listVersions(Long draftId);
+    ContentDraftRecordEntity review(Long draftId, ReviewCommand command);
+
+    record ReviewCommand(String status, String notes, String changedBy) {}
+}
