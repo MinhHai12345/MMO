@@ -108,6 +108,7 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
             // These domestic leagues use a double round-robin format: every team hosts every other team once.
             // Do not apply this assumption to cup/knockout competitions such as the Champions League.
             long teamsInSeason = teamsInStandings > 0 ? teamsInStandings : countDistinctSeasonTeams(id);
+            if (teamsInSeason < 2) teamsInSeason = expectedTeamCountForLeague(league);
             Long expectedMatches = isDoubleRoundRobinLeague(league) && teamsInSeason > 1
                     ? teamsInSeason * (teamsInSeason - 1) : null;
             List<Long> repeatedPairGroups = entityManager.createQuery("""
@@ -177,6 +178,17 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
         Set<Long> ids = new HashSet<>(homeTeams);
         ids.addAll(awayTeams);
         return ids.size();
+    }
+
+    private long expectedTeamCountForLeague(String leagueName) {
+        if (leagueName == null) return 0;
+        String normalized = leagueName.toLowerCase(Locale.ROOT);
+        if (normalized.contains("championship")) return 24;
+        if (normalized.contains("bundesliga")) return 18;
+        if (normalized.contains("premier league")
+                || normalized.contains("primera division")
+                || normalized.contains("serie a")) return 20;
+        return 0;
     }
 
     private boolean isDoubleRoundRobinLeague(String leagueName) {
