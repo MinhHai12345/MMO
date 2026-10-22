@@ -6,6 +6,9 @@ import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.MarketIns
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.ContentCandidate;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.PredictionInsight;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.TeamInsight;
+import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.ContentPlan;
+import com.mmo.module.fb.analytics.service.PostMatchAnalysisService;
+import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.analytics.service.TeamFormFeatureService;
 import com.mmo.module.fb.analytics.service.TeamFormFeatureService.MatchFeatures;
 import com.mmo.module.fb.analytics.service.TeamFormFeatureService.TeamFeatures;
@@ -15,7 +18,6 @@ import com.mmo.module.fb.domain.entity.MatchOdds;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
 import com.mmo.module.fb.domain.entity.Team;
 import com.mmo.module.fb.domain.enums.StandingType;
-import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.repository.LeagueStandingRepository;
 import com.mmo.module.fb.domain.repository.MatchOddsRepository;
 import com.mmo.module.fb.domain.repository.MatchPredictionRepository;
@@ -35,7 +37,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -49,6 +50,7 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
     private final TeamFormFeatureService teamFormFeatureService;
     private final LeagueStandingRepository leagueStandingRepository;
     private final MatchOddsRepository matchOddsRepository;
+    private final PostMatchAnalysisService postMatchAnalysisService;
 
 
     @Override
@@ -200,6 +202,15 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
             warnings.add("Venue is unavailable from both the fixture and the home-team stadium metadata.");
         }
 
+        PostMatchAnalysisService.PostMatchInsight postMatch =
+                match.getStatus() == MatchStatus.FINISHED ? postMatchAnalysisService.analyze(matchId) : null;
+        PlayerAnalyticsService.PlayerMatchInsight playerAnalytics =
+                postMatch == null ? null : postMatch.playerAnalytics();
+        if (playerAnalytics != null) warnings.addAll(playerAnalytics.dataWarnings());
+        if (postMatch != null) warnings.addAll(postMatch.dataWarnings());
+        warnings = new ArrayList<>(warnings.stream().distinct().toList());
+        ContentPlan contentPlan = buildContentPlan(match, angles, warnings, postMatch);
+
         return new MatchSocialInsight(
                 match.getId(),
                 match.getMatchTime(),
@@ -216,8 +227,78 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
                 prediction,
                 market,
                 matchupInsight(home, away, angles, warnings),
+                playerAnalytics,
+                postMatch,
+                contentPlan,
                 angles,
                 warnings);
+    }
+
+
+    private ContentPlan buildContentPlan(Match match, List<String> preMatchAngles,
+                                         List<String> warnings,
+                                         PostMatchAnalysisService.PostMatchInsight postMatch) {
+        boolean completedStatus = match.getStatus() == MatchStatus.FINISHED;
+        boolean finished = completedStatus && match.getHomeScore() != null && match.getAwayScore() != null;
+        String phase = finished ? "POST_MATCH"
+                : completedStatus ? "POST_MATCH_INCOMPLETE"
+                : match.getStatus() == MatchStatus.LIVE ? "LIVE"
+                : match.getStatus() == MatchStatus.SCHEDULED ? "PRE_MATCH"
+                : match.getStatus() == null ? "UNKNOWN" : match.getStatus().name();
+        List<String> postAngles = postMatch == null ? List.of() : postMatch.editorialAngles();
+        List<String> longAngles = new ArrayList<>();
+        if ("PRE_MATCH".equals(phase)) {
+            longAngles.addAll(preMatchAngles.stream().limit(4).toList());
+            longAngles.add("Compare both teams' recent form and venue-specific samples, clearly stating sample sizes.");
+            longAngles.add("Separate model probabilities from facts and avoid presenting any outcome as certain.");
+        } else if (finished) {
+            longAngles.addAll(postMatch == null ? List.of() : postMatch.evidenceBasedFindings());
+            longAngles.addAll(postAngles.stream().limit(4).toList());
+            if (postMatch != null && postMatch.playerAnalytics() != null) {
+                postMatch.playerAnalytics().standoutPlayers().stream().limit(2).forEach(player ->
+                        longAngles.add("Player segment: " + player.playerName() + " — " + String.join(", ", player.evidence())));
+            }
+        }
+        List<String> shorts = new ArrayList<>();
+        if (finished) {
+            shorts.add(match.getHomeTeam().getName() + " " + match.getHomeScore() + "–"
+                    + match.getAwayScore() + " " + match.getAwayTeam().getName() + ": the key takeaway.");
+            if (match.getHomeXG() != null && match.getAwayXG() != null) {
+                shorts.add("The score was " + match.getHomeScore() + "–" + match.getAwayScore()
+                        + ", while xG was " + decimal(match.getHomeXG()) + "–" + decimal(match.getAwayXG())
+                        + ". What does that tell us?");
+            }
+            if (postMatch != null && postMatch.playerAnalytics() != null
+                    && !postMatch.playerAnalytics().standoutPlayers().isEmpty()) {
+                PlayerAnalyticsService.PlayerPerformance leader = postMatch.playerAnalytics().standoutPlayers().get(0);
+                if (leader.playerName() != null) {
+                    shorts.add("Player spotlight: " + leader.playerName() + " — "
+                            + String.join(", ", leader.evidence()) + ".");
+                }
+            }
+        } else if ("PRE_MATCH".equals(phase)) {
+            shorts.addAll(preMatchAngles.stream().limit(2).map(a -> "Pre-match question: " + a).toList());
+            if (shorts.isEmpty()) {
+                shorts.add("Three questions before " + match.getHomeTeam().getName() + " vs "
+                        + match.getAwayTeam().getName() + ": recent form, venue trends, and what the available data cannot tell us.");
+            }
+            longAngles.add("Opening: what is known about " + match.getHomeTeam().getName() + " vs "
+                    + match.getAwayTeam().getName() + " before kickoff?");
+        } else if ("LIVE".equals(phase)) {
+            shorts.add("Live update: " + match.getHomeTeam().getName() + " vs " + match.getAwayTeam().getName()
+                    + ". Verify the live score and event feed before publishing.");
+        }
+        List<String> caveats = new ArrayList<>(warnings);
+        if ("PRE_MATCH".equals(phase)) caveats.add("This is a pre-match content plan; final score and post-match statistics are not yet available.");
+        if ("POST_MATCH_INCOMPLETE".equals(phase)) caveats.add("The fixture is marked finished, but one or both final scores are missing.");
+        if (finished && (match.getHomeXG() == null || match.getAwayXG() == null)) {
+            caveats.add("Do not use xG comparison in the video until both teams' match xG values are available.");
+        }
+        return new ContentPlan(phase,
+                "PRE_MATCH".equals(phase) ? preMatchAngles : List.of(),
+                postAngles, longAngles.stream().distinct().limit(8).toList(),
+                shorts.stream().filter(s -> s != null && !s.isBlank()).distinct().limit(3).toList(),
+                caveats.stream().distinct().toList());
     }
 
     private TeamInsight teamInsight(Team team, Match match, TeamFeatures features, List<String> warnings) {

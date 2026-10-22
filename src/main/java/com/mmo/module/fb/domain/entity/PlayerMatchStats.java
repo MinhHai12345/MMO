@@ -29,6 +29,11 @@ public class PlayerMatchStats extends AbstractEntity {
     @JoinColumn(name = "match_id", nullable = false)
     private Match match;
 
+    /** Team represented by this player in this fixture; distinct from the player's current team. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id")
+    private Team team;
+
     @Column(name = "minutes_played")
     private Integer minutesPlayed;
 
@@ -45,13 +50,13 @@ public class PlayerMatchStats extends AbstractEntity {
     @Builder.Default
     private Integer shotsOnTarget = 0;
 
+    /** Null means the provider did not supply xG; zero is a valid observed value. */
     @Column(precision = 7, scale = 3)
-    @Builder.Default
-    private BigDecimal xg = BigDecimal.ZERO;
+    private BigDecimal xg;
 
+    /** Null means the provider did not supply xA; zero is a valid observed value. */
     @Column(precision = 7, scale = 3)
-    @Builder.Default
-    private BigDecimal xa = BigDecimal.ZERO;
+    private BigDecimal xa;
 
     @Builder.Default
     private Integer passes = 0;

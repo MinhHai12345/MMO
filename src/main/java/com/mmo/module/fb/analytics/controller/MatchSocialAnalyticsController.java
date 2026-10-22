@@ -3,6 +3,8 @@ package com.mmo.module.fb.analytics.controller;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.MatchSocialInsight;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.ContentCandidate;
+import com.mmo.module.fb.analytics.service.PlayerAnalyticsService;
+import com.mmo.module.fb.analytics.service.PostMatchAnalysisService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.RequestParam;
 import java.time.Instant;
@@ -22,6 +24,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class MatchSocialAnalyticsController {
 
     private final MatchSocialAnalyticsService matchSocialAnalyticsService;
+    private final PlayerAnalyticsService playerAnalyticsService;
+    private final PostMatchAnalysisService postMatchAnalysisService;
 
 
     @GetMapping("/social-insights")
@@ -31,6 +35,16 @@ public class MatchSocialAnalyticsController {
             @RequestParam(required = false) Long leagueId,
             @RequestParam(defaultValue = "20") int limit) {
         return matchSocialAnalyticsService.discover(from, to, leagueId, limit);
+    }
+
+    @GetMapping("/{matchId}/player-analytics")
+    public PlayerAnalyticsService.PlayerMatchInsight getPlayerAnalytics(@PathVariable Long matchId) {
+        return playerAnalyticsService.analyzeMatch(matchId);
+    }
+
+    @GetMapping("/{matchId}/post-match-analysis")
+    public PostMatchAnalysisService.PostMatchInsight getPostMatchAnalysis(@PathVariable Long matchId) {
+        return postMatchAnalysisService.analyze(matchId);
     }
 
     @GetMapping("/{matchId}/social-insight")
