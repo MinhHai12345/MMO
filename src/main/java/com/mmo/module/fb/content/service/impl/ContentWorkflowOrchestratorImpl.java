@@ -12,15 +12,16 @@ import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowRep
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
 
-@Service @RequiredArgsConstructor @Transactional(readOnly = true)
+@Service @RequiredArgsConstructor
 public class ContentWorkflowOrchestratorImpl implements ContentWorkflowOrchestrator {
     private static final int DEFAULT_LIMIT = 20;
     private static final int MAX_LIMIT = 50;
@@ -29,6 +30,12 @@ public class ContentWorkflowOrchestratorImpl implements ContentWorkflowOrchestra
     private final ContentDraftQualityGate qualityGate;
 
     @Override public WorkflowReport generate(WorkflowCommand command) {
+        return generate(command, Set.of(), ignored -> {}, ignored -> {});
+    }
+
+    @Override
+    public WorkflowReport generate(WorkflowCommand command, Set<Long> skipMatchIds,
+                                   Consumer<Long> onStart, Consumer<WorkflowItem> onItem) {
         if (command == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Workflow command is required");
         if (command.from() != null && command.to() != null && command.from().isAfter(command.to()))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "'from' must not be after 'to'");
@@ -41,7 +48,11 @@ public class ContentWorkflowOrchestratorImpl implements ContentWorkflowOrchestra
         List<ContentCandidate> candidates = List.copyOf(unique.values());
         List<WorkflowItem> items = new ArrayList<>(candidates.size());
         List<String> warnings = new ArrayList<>();
+        Set<Long> skipped = skipMatchIds == null ? Set.of() : skipMatchIds;
         for (ContentCandidate candidate : candidates) {
+            if (skipped.contains(candidate.matchId())) continue;
+            if (onStart != null) onStart.accept(candidate.matchId());
+            WorkflowItem item;
             try {
                 ContentDraft draft = qualityGate.evaluate(contentDraftService.generate(candidate.matchId(), format));
                 String status = switch (draft.status()) {
@@ -50,13 +61,15 @@ public class ContentWorkflowOrchestratorImpl implements ContentWorkflowOrchestra
                     case "READY_FOR_EDITOR_REVIEW" -> "READY_FOR_EDITOR_REVIEW";
                     default -> "GENERATED";
                 };
-                items.add(new WorkflowItem(candidate.matchId(), candidate.kickoff(), candidate.competition(), candidate.homeTeam(), candidate.awayTeam(), candidate.readinessScore(), candidate.readinessLevel(), status, draft, null));
+                item = new WorkflowItem(candidate.matchId(), candidate.kickoff(), candidate.competition(), candidate.homeTeam(), candidate.awayTeam(), candidate.readinessScore(), candidate.readinessLevel(), status, draft, null);
                 if (draft.qualityReview() != null) warnings.addAll(draft.qualityReview().warnings());
             } catch (RuntimeException ex) {
                 String reason = ex instanceof ResponseStatusException rse && rse.getReason() != null ? rse.getReason() : "Draft generation failed (" + ex.getClass().getSimpleName() + ").";
-                items.add(new WorkflowItem(candidate.matchId(), candidate.kickoff(), candidate.competition(), candidate.homeTeam(), candidate.awayTeam(), candidate.readinessScore(), candidate.readinessLevel(), "FAILED", null, reason));
+                item = new WorkflowItem(candidate.matchId(), candidate.kickoff(), candidate.competition(), candidate.homeTeam(), candidate.awayTeam(), candidate.readinessScore(), candidate.readinessLevel(), "FAILED", null, reason);
                 warnings.add("Match " + candidate.matchId() + ": " + reason);
             }
+            items.add(item);
+            if (onItem != null) onItem.accept(item);
         }
         int generated = (int) items.stream().filter(item -> item.draft() != null).count();
         int review = (int) items.stream().filter(item -> "NEEDS_EDITOR_REVIEW".equals(item.itemStatus())).count();

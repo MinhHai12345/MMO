@@ -6,11 +6,13 @@ import com.mmo.module.fb.content.persistence.ContentDraftVersionEntity;
 import com.mmo.module.fb.content.persistence.ContentDraftVersionRepository;
 import com.mmo.module.fb.content.persistence.ContentWorkflowRunEntity;
 import com.mmo.module.fb.content.persistence.ContentWorkflowRunRepository;
+import com.mmo.module.fb.content.persistence.ContentWorkflowItemRepository;
 import com.mmo.module.fb.content.service.ContentLifecycleService;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowCommand;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowReport;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -37,6 +39,7 @@ public class ContentLifecycleServiceImpl implements ContentLifecycleService {
     private final ContentWorkflowOrchestrator orchestrator;
     private final ContentWorkflowPersistenceService persistenceService;
     private final ContentWorkflowRunRepository runRepository;
+    private final ContentWorkflowItemRepository itemRepository;
     private final ContentDraftRecordRepository draftRepository;
     private final ContentDraftVersionRepository versionRepository;
 
@@ -55,8 +58,67 @@ public class ContentLifecycleServiceImpl implements ContentLifecycleService {
                 return existing;
             }
         }
-        WorkflowReport report = orchestrator.generate(command);
-        return persistenceService.persist(command, report, key);
+
+        ContentWorkflowRunEntity run;
+        try {
+            run = persistenceService.reserve(command, key);
+        } catch (DataIntegrityViolationException duplicateKeyRace) {
+            if (key == null) throw duplicateKeyRace;
+            ContentWorkflowRunEntity existing = runRepository.findByIdempotencyKey(key).orElseThrow(() -> duplicateKeyRace);
+            if (!sameRequest(existing, command)) throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Idempotency-Key was already used with different workflow parameters");
+            return existing;
+        }
+
+        try {
+            WorkflowReport report = orchestrator.generate(command, Set.of(),
+                    matchId -> persistenceService.startItem(run.getId(), matchId),
+                    item -> persistenceService.persistItem(run.getId(), item));
+            return persistenceService.persist(run, command, report);
+        } catch (RuntimeException failure) {
+            persistenceService.markFailed(run.getId(), failure);
+            throw failure;
+        }
+    }
+
+    @Override
+    public ContentWorkflowRunEntity resume(Long runId) {
+        if (runId == null || runId <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A positive workflow run ID is required");
+        }
+        ContentWorkflowRunEntity run;
+        try {
+            run = persistenceService.claimForResume(runId);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Workflow run not found");
+        }
+        WorkflowCommand command = new WorkflowCommand(run.getFilterFrom(), run.getFilterTo(), run.getLeagueId(),
+                run.getRequestedLimit(), run.getFormat());
+        Set<Long> completedMatchIds = itemRepository.findByWorkflowRunIdOrderByIdAsc(runId).stream()
+                .filter(item -> "COMPLETED".equals(item.getStatus()) || item.getAttemptCount() >= 3)
+                .map(item -> item.getMatchId())
+                .collect(java.util.stream.Collectors.toSet());
+        try {
+            WorkflowReport report = orchestrator.generate(command, completedMatchIds,
+                    matchId -> persistenceService.startItem(runId, matchId),
+                    item -> persistenceService.persistItem(runId, item));
+            return persistenceService.persist(run, command, report);
+        } catch (RuntimeException failure) {
+            persistenceService.markFailed(runId, failure);
+            throw failure;
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<com.mmo.module.fb.content.persistence.ContentWorkflowItemEntity> listWorkflowItems(Long runId) {
+        if (runId == null || runId <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A positive workflow run ID is required");
+        }
+        if (!runRepository.existsById(runId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Workflow run not found");
+        }
+        return itemRepository.findByWorkflowRunIdOrderByIdAsc(runId);
     }
 
     private static String normalizeIdempotencyKey(String key) {
