@@ -27,6 +27,7 @@ public class ContentWorkflowOrchestratorImpl implements ContentWorkflowOrchestra
     private static final int MAX_LIMIT = 50;
     private final MatchSocialAnalyticsService socialAnalyticsService;
     private final ContentDraftService contentDraftService;
+    private final ContentDraftQualityGate qualityGate;
 
     @Override
     public WorkflowReport generate(WorkflowCommand command) {
@@ -41,7 +42,7 @@ public class ContentWorkflowOrchestratorImpl implements ContentWorkflowOrchestra
         List<String> warnings = new ArrayList<>();
         for (ContentCandidate candidate : candidates) {
             try {
-                ContentDraft draft = contentDraftService.generate(candidate.matchId(), format);
+                ContentDraft draft = qualityGate.evaluate(contentDraftService.generate(candidate.matchId(), format));
                 String status = switch (draft.status()) {
                     case "BLOCKED" -> "BLOCKED";
                     case "NEEDS_EDITOR_REVIEW" -> "NEEDS_EDITOR_REVIEW";
