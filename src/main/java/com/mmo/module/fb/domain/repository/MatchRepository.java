@@ -251,4 +251,23 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
                                                @Param("status") MatchStatus status,
                                                Pageable pageable);
 
+    /** Bounded upcoming fixture discovery for social-content planning. */
+    @Query("""
+            SELECT m FROM Match m
+            JOIN FETCH m.season season
+            JOIN FETCH season.league league
+            JOIN FETCH m.homeTeam
+            JOIN FETCH m.awayTeam
+            WHERE m.status = :status
+              AND m.matchTime >= :fromInclusive
+              AND m.matchTime < :toExclusive
+              AND (:leagueId IS NULL OR league.id = :leagueId)
+            ORDER BY m.matchTime ASC, m.id ASC
+            """)
+    List<Match> findSocialInsightCandidates(@Param("fromInclusive") Instant fromInclusive,
+                                            @Param("toExclusive") Instant toExclusive,
+                                            @Param("status") MatchStatus status,
+                                            @Param("leagueId") Long leagueId,
+                                            Pageable pageable);
+
 }
