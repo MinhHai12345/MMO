@@ -19,7 +19,6 @@ import com.mmo.module.fb.domain.entity.MatchOdds;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
 import com.mmo.module.fb.domain.entity.Team;
 import com.mmo.module.fb.domain.enums.StandingType;
-import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.repository.LeagueStandingRepository;
 import com.mmo.module.fb.domain.repository.MatchOddsRepository;
 import com.mmo.module.fb.domain.repository.MatchPredictionRepository;
@@ -39,7 +38,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -206,10 +204,13 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
             warnings.add("Venue is unavailable from both the fixture and the home-team stadium metadata.");
         }
 
-        PlayerAnalyticsService.PlayerMatchInsight playerAnalytics =
-                match.getStatus() == MatchStatus.FINISHED ? playerAnalyticsService.analyzeMatch(matchId) : null;
         PostMatchAnalysisService.PostMatchInsight postMatch =
                 match.getStatus() == MatchStatus.FINISHED ? postMatchAnalysisService.analyze(matchId) : null;
+        PlayerAnalyticsService.PlayerMatchInsight playerAnalytics =
+                postMatch == null ? null : postMatch.playerAnalytics();
+        if (playerAnalytics != null) warnings.addAll(playerAnalytics.dataWarnings());
+        if (postMatch != null) warnings.addAll(postMatch.dataWarnings());
+        warnings = new ArrayList<>(warnings.stream().distinct().toList());
         ContentPlan contentPlan = buildContentPlan(match, angles, warnings, postMatch);
 
         return new MatchSocialInsight(
