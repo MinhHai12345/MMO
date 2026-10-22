@@ -104,8 +104,49 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
             }
             if (totalRows > 0 && teamsInStandings > totalRows) issues.add("TOTAL_STANDINGS_MAY_BE_INCOMPLETE");
             if (seasonFinished > 0 && seasonScored == 0) issues.add("NO_FINISHED_MATCHES_WITH_SCORES");
+
+            // These domestic leagues use a double round-robin format: every team hosts every other team once.
+            // Do not apply this assumption to cup/knockout competitions such as the Champions League.
+            long teamsInSeason = teamsInStandings > 0 ? teamsInStandings : countDistinctSeasonTeams(id);
+            if (teamsInSeason < 2) teamsInSeason = expectedTeamCountForLeague(league);
+            Long expectedMatches = expectedMatchesForSeason(league, teamsInSeason, year);
+            List<Long> repeatedPairGroups = entityManager.createQuery("""
+                    select count(m) from Match m
+                    where m.season.id = :seasonId
+                    group by m.homeTeam.id, m.awayTeam.id
+                    having count(m) > 1
+                    """, Long.class).setParameter("seasonId", id).getResultList();
+            long repeatedPairs = repeatedPairGroups.size();
+            long matchCountDifference = expectedMatches == null ? 0 : total - expectedMatches;
+            String integrityStatus = "NOT_APPLICABLE";
+            if (expectedMatches != null) {
+                integrityStatus = "OK";
+                if (total > expectedMatches) {
+                    integrityStatus = "EXCESS_FIXTURES";
+                    issues.add("MATCH_COUNT_EXCEEDS_EXPECTED");
+                    findings.add(new AuditFinding("WARNING", "SEASON_HAS_EXCESS_FIXTURES",
+                            "Stored fixture count exceeds the double round-robin expectation.",
+                            total - expectedMatches, league + " " + year + " (stored=" + total
+                            + ", expected=" + expectedMatches + ", seasonId=" + id + ")"));
+                } else if (!current && total < expectedMatches) {
+                    integrityStatus = "INCOMPLETE_FIXTURES";
+                    issues.add("FIXTURE_COVERAGE_BELOW_EXPECTED");
+                    findings.add(new AuditFinding("WARNING", "SEASON_FIXTURE_COVERAGE_BELOW_EXPECTED",
+                            "Historical season has fewer fixtures than the double round-robin expectation.",
+                            expectedMatches - total, league + " " + year + " (stored=" + total
+                            + ", expected=" + expectedMatches + ", seasonId=" + id + ")"));
+                }
+            }
+            if (repeatedPairs > 0) {
+                issues.add("REPEATED_HOME_AWAY_PAIRINGS");
+                findings.add(new AuditFinding("WARNING", "REPEATED_HOME_AWAY_PAIRINGS",
+                        "The same home/away team pairing occurs more than once in a season.",
+                        repeatedPairs, league + " " + year + " (seasonId=" + id + ")"));
+                if ("OK".equals(integrityStatus)) integrityStatus = "REPEATED_PAIRINGS";
+            }
             seasonCoverage.add(new SeasonCoverage(id, league, year, current, total, seasonFinished, seasonScored,
-                    seasonFinished - seasonScored, seasonXg, seasonStandingRows, totalRows, homeRows, awayRows, teamsInStandings, issues));
+                    seasonFinished - seasonScored, seasonXg, seasonStandingRows, totalRows, homeRows, awayRows,
+                    teamsInStandings, expectedMatches, matchCountDifference, repeatedPairs, integrityStatus, issues));
         }
 
         addFinding(findings, leaguesWithoutSeasons, "WARNING", "LEAGUES_WITHOUT_SEASONS", "Leagues have no stored seasons.", "Review configured competitions and league ingestion.");
@@ -124,6 +165,57 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
                 standingCounts.getOrDefault("AWAY", 0L), duplicateGroups.size(), duplicateExcess);
         return new DataCoverageAuditReport(Instant.now(), status, totals,
                 new ProviderCoverage(lp.name(), tp.name(), fp.name(), sp.name(), mapping), seasonCoverage, findings);
+    }
+
+    private long countDistinctSeasonTeams(Long seasonId) {
+        List<Long> homeTeams = entityManager.createQuery(
+                "select distinct m.homeTeam.id from Match m where m.season.id = :seasonId", Long.class)
+                .setParameter("seasonId", seasonId).getResultList();
+        List<Long> awayTeams = entityManager.createQuery(
+                "select distinct m.awayTeam.id from Match m where m.season.id = :seasonId", Long.class)
+                .setParameter("seasonId", seasonId).getResultList();
+        Set<Long> ids = new HashSet<>(homeTeams);
+        ids.addAll(awayTeams);
+        return ids.size();
+    }
+
+    private Long expectedMatchesForSeason(String leagueName, long teamCount, String seasonYear) {
+        if (!isDoubleRoundRobinLeague(leagueName) || teamCount < 2) return null;
+        long expected = teamCount * (teamCount - 1);
+        if (leagueName != null && leagueName.toLowerCase(Locale.ROOT).contains("championship")) {
+            // Championship counts include playoffs in the provider's competition fixture list.
+            // Seasons through 2025/26 had 4-team, two-legged semi-finals + final (5 games).
+            // From 2026/27, the EFL-approved format has 2 eliminators + two-legged semis + final (7 games).
+            int startYear;
+            try {
+                startYear = Integer.parseInt(seasonYear);
+            } catch (RuntimeException ignored) {
+                return null;
+            }
+            expected += startYear >= 2026 ? 7 : 5;
+        }
+        return expected;
+    }
+
+    private long expectedTeamCountForLeague(String leagueName) {
+        if (leagueName == null) return 0;
+        String normalized = leagueName.toLowerCase(Locale.ROOT);
+        if (normalized.contains("championship")) return 24;
+        if (normalized.contains("bundesliga")) return 18;
+        if (normalized.contains("premier league")
+                || normalized.contains("primera division")
+                || normalized.contains("serie a")) return 20;
+        return 0;
+    }
+
+    private boolean isDoubleRoundRobinLeague(String leagueName) {
+        if (leagueName == null) return false;
+        String normalized = leagueName.toLowerCase(Locale.ROOT);
+        return normalized.contains("premier league")
+                || normalized.contains("championship")
+                || normalized.contains("bundesliga")
+                || normalized.contains("primera division")
+                || normalized.contains("serie a");
     }
 
     private void addMapping(Map<String, MappingCoverage> result, String key, String entity,

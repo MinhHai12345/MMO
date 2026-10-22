@@ -33,13 +33,23 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         validateProvider(providers.getFixture(), false);
         validateProvider(providers.getStandings(), false);
 
+        AppProperties.FootballData footballData = appProperties.getFootballData();
+        if (providers.getFixture() == Provider.FOOTBALL_DATA && footballData != null
+                && footballData.getSeasons() != null && !footballData.getSeasons().isEmpty()) {
+            log.info("Historical fixture backfill enabled for football-data.org seasons={}. "
+                            + "Requests are paced by FootballDataClient; seasons unavailable to the subscription "
+                            + "will be reported as restricted/skipped and must not be treated as successfully backfilled.",
+                    footballData.getSeasons());
+        } else {
+            log.info("No explicit historical fixture backfill configured; fixture sync uses current seasons.");
+        }
         log.info("Starting core-data bootstrap: league={}, team={}, fixture={}, standings={}",
                 providers.getLeague(), providers.getTeam(), providers.getFixture(), providers.getStandings());
 
         runStage("leagues", leagueIngestionService::syncLeagues);
         runStage("teams", teamIngestionService::syncTeams);
-        // Null date bounds intentionally import all fixtures returned for each current season.
-        // Subsequent scheduled fixture/result jobs use narrower windows.
+        // Null date bounds import all fixtures for current seasons, or every configured season
+        // when app.football-data.seasons is set. Persistence is idempotent via provider fixture IDs.
         runStage("fixtures", () -> fixtureIngestionService.syncCurrentSeasonFixtures(null, null));
         runStage("standings", standingsIngestionService::syncStandings);
 
