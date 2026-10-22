@@ -59,11 +59,15 @@ public class TeamFormBackTestServiceImpl implements TeamFormBackTestService {
         // Load the historical pool once and build rolling, point-in-time team histories in memory.
         // This avoids two database queries per test fixture and excludes matches whose results
         // may not yet have been available at the target kickoff (four-hour conservative proxy).
-        List<Match> historyPool = matchRepository.findByMatchTimeBetweenAndStatus(
-                Instant.EPOCH, toExclusive, MatchStatus.FINISHED).stream()
-                .filter(m -> m.getMatchTime() != null && m.getHomeScore() != null && m.getAwayScore() != null)
-                .sorted(Comparator.comparing(Match::getMatchTime).thenComparing(Match::getId))
-                .toList();
+        List<Match> historyPool = new ArrayList<>();
+        int historyPage = 0;
+        List<Match> historyBatch;
+        do {
+            historyBatch = matchRepository.findTeamFormBacktestCandidates(
+                    Instant.EPOCH, toExclusive, MatchStatus.FINISHED, PageRequest.of(historyPage++, PAGE_SIZE));
+            historyPool.addAll(historyBatch);
+        } while (historyBatch.size() == PAGE_SIZE);
+        historyPool.sort(Comparator.comparing(Match::getMatchTime).thenComparing(Match::getId));
         Map<TeamLeagueKey, Deque<Match>> rollingHistory = new HashMap<>();
         int historyIndex = 0;
 
