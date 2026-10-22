@@ -1,6 +1,5 @@
 package com.mmo.module.fb.content.service.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mmo.module.fb.content.persistence.ContentDraftRecordRepository;
 import com.mmo.module.fb.content.persistence.ContentDraftVersionRepository;
 import com.mmo.module.fb.content.persistence.ContentWorkflowItemRepository;
@@ -22,6 +21,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class ContentWorkflowLeaseTest {
@@ -40,9 +40,9 @@ class ContentWorkflowLeaseTest {
 
     @BeforeEach
     void setUp() {
-        when(runRepository.save(any(ContentWorkflowRunEntity.class)))
+        lenient().when(runRepository.save(any(ContentWorkflowRunEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
-        when(itemRepository.findByWorkflowRunIdOrderByIdAsc(any()))
+        lenient().when(itemRepository.findByWorkflowRunIdOrderByIdAsc(any()))
                 .thenReturn(List.of());
     }
 
