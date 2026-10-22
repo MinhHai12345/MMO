@@ -72,20 +72,14 @@ public class SocialContentPackageServiceImpl implements SocialContentPackageServ
                 ? probabilities(insight.prediction())
                 : List.of();
 
+        Stream<String> postMatchFindings = insight.postMatchAnalysis() == null
+                ? Stream.empty()
+                : insight.postMatchAnalysis().evidenceBasedFindings().stream();
+
         List<String> analysisPoints = Stream.concat(
-                        draft.outline().stream(),
-                        insight.editorialAngles().stream()
+                        Stream.concat(draft.outline().stream(), insight.editorialAngles().stream()),
+                        postMatchFindings
                 )
-                .filter(value -> value != null && !value.isBlank())
-                .collect(Collectors.collectingAndThen(
-                        Collectors.toList(),
-                        values -> Stream.concat(
-                                values.stream(),
-                                insight.postMatchAnalysis() == null
-                                        ? Stream.empty()
-                                        : insight.postMatchAnalysis().evidenceBasedFindings().stream()
-                        )
-                ))
                 .filter(value -> value != null && !value.isBlank())
                 .distinct()
                 .limit(8)
