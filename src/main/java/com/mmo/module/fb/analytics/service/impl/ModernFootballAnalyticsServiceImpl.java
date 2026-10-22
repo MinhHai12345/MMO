@@ -60,7 +60,7 @@ public class ModernFootballAnalyticsServiceImpl implements ModernFootballAnalyti
             limitations.add("Match xG is incomplete; xG overperformance cannot be compared reliably.");
         }
 
-        List<PlayerMatchStats> playerRows = playerMatchStatsRepository.findAllByMatchId(matchId);
+        List<PlayerMatchStats> playerRows = playerMatchStatsRepository.findAllByMatchIdOrderByIdAsc(matchId);
         List<PlayerImpact> playerImpacts = playerRows.stream()
                 .map(this::playerImpact)
                 .filter(Objects::nonNull)
