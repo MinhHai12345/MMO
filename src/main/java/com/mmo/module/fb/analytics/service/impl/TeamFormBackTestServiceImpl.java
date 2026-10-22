@@ -14,9 +14,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -24,8 +30,8 @@ import java.util.List;
 public class TeamFormBackTestServiceImpl implements TeamFormBackTestService {
 
     private static final int PAGE_SIZE = 100;
-    private static final int MAX_CANDIDATES = 500;
     private static final int MIN_TEAM_HISTORY = 3;
+    private static final Duration RESULT_AVAILABILITY_LAG = Duration.ofHours(4);
     private static final double EPSILON = 1.0e-12;
     private static final double MIN_EXPECTED_GOALS = 0.05;
     private static final double MAX_EXPECTED_GOALS = 5.0;
@@ -44,21 +50,44 @@ public class TeamFormBackTestServiceImpl implements TeamFormBackTestService {
         int page = 0;
         List<Match> batch;
         do {
-            int remaining = MAX_CANDIDATES - candidates.size();
-            if (remaining <= 0) {
-                break;
-            }
             batch = matchRepository.findTeamFormBacktestCandidates(
-                    fromInclusive, toExclusive, MatchStatus.FINISHED,
-                    PageRequest.of(page++, Math.min(PAGE_SIZE, remaining)));
+                    fromInclusive, toExclusive, MatchStatus.FINISHED, PageRequest.of(page++, PAGE_SIZE));
             candidates.addAll(batch);
-        } while (batch.size() == PAGE_SIZE && candidates.size() < MAX_CANDIDATES);
+        } while (batch.size() == PAGE_SIZE);
+        candidates.sort(Comparator.comparing(Match::getMatchTime).thenComparing(Match::getId));
+
+        // Load the historical pool once and build rolling, point-in-time team histories in memory.
+        // This avoids two database queries per test fixture and excludes matches whose results
+        // may not yet have been available at the target kickoff (four-hour conservative proxy).
+        List<Match> historyPool = matchRepository.findByMatchTimeBetweenAndStatus(
+                Instant.EPOCH, toExclusive, MatchStatus.FINISHED).stream()
+                .filter(m -> m.getMatchTime() != null && m.getHomeScore() != null && m.getAwayScore() != null)
+                .sorted(Comparator.comparing(Match::getMatchTime).thenComparing(Match::getId))
+                .toList();
+        Map<TeamLeagueKey, Deque<Match>> rollingHistory = new HashMap<>();
+        int historyIndex = 0;
 
         Metrics baseline = new Metrics();
         Metrics teamForm = new Metrics();
         int skipped = 0;
         for (Match match : candidates) {
-            MatchFeatures features = teamFormFeatureService.buildFeatures(match).orElse(null);
+            Instant cutoff = match.getMatchTime().minus(RESULT_AVAILABILITY_LAG);
+            while (historyIndex < historyPool.size()
+                    && historyPool.get(historyIndex).getMatchTime().isBefore(cutoff)) {
+                addToRollingHistory(rollingHistory, historyPool.get(historyIndex++));
+            }
+            Long leagueId = match.getSeason() == null || match.getSeason().getLeague() == null
+                    ? null : match.getSeason().getLeague().getId();
+            if (leagueId == null || match.getHomeTeam() == null || match.getAwayTeam() == null) {
+                skipped++;
+                continue;
+            }
+            List<Match> homeHistory = recentHistory(rollingHistory,
+                    new TeamLeagueKey(leagueId, match.getHomeTeam().getId()));
+            List<Match> awayHistory = recentHistory(rollingHistory,
+                    new TeamLeagueKey(leagueId, match.getAwayTeam().getId()));
+            MatchFeatures features = teamFormFeatureService.buildFeatures(match, homeHistory, awayHistory)
+                    .orElse(null);
             if (features == null
                     || features.home().matchesUsed() < MIN_TEAM_HISTORY
                     || features.away().matchesUsed() < MIN_TEAM_HISTORY) {
@@ -83,9 +112,7 @@ public class TeamFormBackTestServiceImpl implements TeamFormBackTestService {
         }
 
         String status = candidates.isEmpty() ? "NO_CANDIDATES"
-                : teamForm.count == 0 ? "INSUFFICIENT_HISTORY"
-                : candidates.size() == MAX_CANDIDATES ? "CANDIDATE_LIMIT_REACHED"
-                : "OK";
+                : teamForm.count == 0 ? "INSUFFICIENT_HISTORY" : "OK";
         TeamFormBackTestReport report = new TeamFormBackTestReport(
                 fromInclusive, toExclusive, candidates.size(), teamForm.count, skipped,
                 baseline.snapshot(), teamForm.snapshot(), status);
@@ -95,6 +122,35 @@ public class TeamFormBackTestServiceImpl implements TeamFormBackTestService {
                 report.skippedInsufficientHistory(), report.uniformBaseline().brierScore(),
                 report.teamFormModel().brierScore(), report.status());
         return report;
+    }
+
+    private void addToRollingHistory(Map<TeamLeagueKey, Deque<Match>> histories, Match match) {
+        Long leagueId = match.getSeason() == null || match.getSeason().getLeague() == null
+                ? null : match.getSeason().getLeague().getId();
+        if (leagueId == null || match.getHomeTeam() == null || match.getAwayTeam() == null
+                || match.getHomeTeam().getId() == null || match.getAwayTeam().getId() == null) {
+            return;
+        }
+        addTeamHistory(histories, new TeamLeagueKey(leagueId, match.getHomeTeam().getId()), match);
+        if (!match.getHomeTeam().getId().equals(match.getAwayTeam().getId())) {
+            addTeamHistory(histories, new TeamLeagueKey(leagueId, match.getAwayTeam().getId()), match);
+        }
+    }
+
+    private void addTeamHistory(Map<TeamLeagueKey, Deque<Match>> histories, TeamLeagueKey key, Match match) {
+        Deque<Match> history = histories.computeIfAbsent(key, ignored -> new ArrayDeque<>());
+        history.addFirst(match);
+        while (history.size() > 10) {
+            history.removeLast();
+        }
+    }
+
+    private List<Match> recentHistory(Map<TeamLeagueKey, Deque<Match>> histories, TeamLeagueKey key) {
+        Deque<Match> history = histories.get(key);
+        return history == null ? List.of() : new ArrayList<>(history);
+    }
+
+    private record TeamLeagueKey(Long leagueId, Long teamId) {
     }
 
     /*
