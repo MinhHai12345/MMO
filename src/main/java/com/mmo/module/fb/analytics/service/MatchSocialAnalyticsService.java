@@ -8,6 +8,8 @@ public interface MatchSocialAnalyticsService {
 
     MatchSocialInsight analyze(Long matchId);
 
+    List<ContentCandidate> discover(Instant from, Instant to, Long leagueId, int limit);
+
     record MatchSocialInsight(
             Long matchId,
             Instant kickoff,
