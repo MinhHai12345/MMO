@@ -4,6 +4,8 @@ import com.mmo.module.fb.analytics.service.ContentDraftService.DraftFormat;
 import com.mmo.module.fb.content.persistence.ContentDraftRecordEntity;
 import com.mmo.module.fb.content.persistence.ContentDraftVersionEntity;
 import com.mmo.module.fb.content.persistence.ContentWorkflowRunEntity;
+import com.mmo.module.fb.content.production.ContentProductionPlanService;
+import com.mmo.module.fb.content.production.ContentProductionPlanService.ProductionPlan;
 import com.mmo.module.fb.content.service.ContentLifecycleService;
 import com.mmo.module.fb.content.service.ContentLifecycleService.ReviewCommand;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowCommand;
@@ -23,6 +25,7 @@ public class ContentWorkflowController {
 
     private final ContentLifecycleService lifecycleService;
     private final SocialContentPackageService socialContentPackageService;
+    private final ContentProductionPlanService contentProductionPlanService;
 
     @GetMapping("/matches/{matchId}/social-package")
     public SocialContentPackage socialPackage(
@@ -30,6 +33,14 @@ public class ContentWorkflowController {
             @RequestParam(defaultValue = "PRE_MATCH") DraftFormat format
     ) {
         return socialContentPackageService.generate(matchId, format);
+    }
+
+    @GetMapping("/matches/{matchId}/production-plan")
+    public ProductionPlan productionPlan(
+            @PathVariable Long matchId,
+            @RequestParam(defaultValue = "PRE_MATCH") DraftFormat format
+    ) {
+        return contentProductionPlanService.create(matchId, format);
     }
 
     @PostMapping("/generate")
