@@ -27,6 +27,9 @@ public class ContentProductionPlanServiceImpl implements ContentProductionPlanSe
 
     @Override
     public ProductionPlan create(Long matchId, DraftFormat format) {
+        if (matchId == null || matchId <= 0 || format == null) {
+            throw new IllegalArgumentException("A positive matchId and format are required");
+        }
         SocialContentPackage content = packageService.generate(matchId, format);
         List<ContentClaimProvenance> claims = new ArrayList<>();
         List<QualityIssue> issues = new ArrayList<>();
