@@ -1,0 +1,136 @@
+package com.mmo.module.fb.analytics.service.impl;
+
+import com.mmo.AppProperties;
+import com.mmo.module.fb.analytics.service.DataCoverageAuditService;
+import com.mmo.module.fb.analytics.service.DataCoverageAuditService.*;
+import com.mmo.module.fb.domain.enums.MatchStatus;
+import com.mmo.module.fb.domain.enums.Provider;
+import jakarta.persistence.EntityManager;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.*;
+
+@Service
+@RequiredArgsConstructor
+public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
+    private final EntityManager entityManager;
+    private final AppProperties properties;
+
+    @Override
+    @Transactional(readOnly = true)
+    public DataCoverageAuditReport runAudit() {
+        List<AuditFinding> findings = new ArrayList<>();
+        long leagues = count("select count(e) from League e");
+        long activeLeagues = count("select count(e) from League e where e.isActive = true");
+        long leaguesWithoutSeasons = count("select count(l) from League l where not exists (select s.id from Season s where s.league = l)");
+        long seasons = count("select count(e) from Season e");
+        long currentSeasons = count("select count(e) from Season e where e.isCurrent = true");
+        long teams = count("select count(e) from Team e");
+        long teamsWithoutMatches = count("select count(t) from Team t where not exists (select m.id from Match m where m.homeTeam = t or m.awayTeam = t)");
+        long matches = count("select count(e) from Match e");
+        long finished = count("select count(e) from Match e where e.status = :finished", MatchStatus.FINISHED);
+        long scored = count("select count(e) from Match e where e.status = :finished and e.homeScore is not null and e.awayScore is not null", MatchStatus.FINISHED);
+        long withXg = count("select count(e) from Match e where e.status = :finished and e.homeXG is not null and e.awayXG is not null", MatchStatus.FINISHED);
+
+        Map<String, Long> standingCounts = new HashMap<>();
+        for (Object[] row : entityManager.createQuery("select st.standingType, count(st) from LeagueStanding st group by st.standingType", Object[].class).getResultList()) {
+            standingCounts.put(row[0] == null ? "UNKNOWN" : row[0].toString(), number(row[1]));
+        }
+        long standingRows = standingCounts.values().stream().mapToLong(Long::longValue).sum();
+
+        List<Long> duplicateGroups = entityManager.createQuery("""
+                select count(m) from Match m
+                group by m.season.id, m.homeTeam.id, m.awayTeam.id, m.matchTime
+                having count(m) > 1
+                """, Long.class).getResultList();
+        long duplicateExcess = duplicateGroups.stream().mapToLong(n -> n - 1).sum();
+
+        Provider lp = properties.getIngestion().getProviders().getLeague();
+        Provider tp = properties.getIngestion().getProviders().getTeam();
+        Provider fp = properties.getIngestion().getProviders().getFixture();
+        Provider sp = properties.getIngestion().getProviders().getStandings();
+        Map<String, MappingCoverage> mapping = new LinkedHashMap<>();
+        addMapping(mapping, "league", "League", "LeagueExternalId", "league", lp);
+        addMapping(mapping, "team", "Team", "TeamExternalId", "team", tp);
+        addMapping(mapping, "season", "Season", "SeasonExternalId", "season", fp);
+        addMapping(mapping, "match", "Match", "MatchExternalId", "match", fp);
+
+        List<SeasonCoverage> seasonCoverage = new ArrayList<>();
+        for (Object[] s : entityManager.createQuery("select s.id, l.name, s.year, s.isCurrent from Season s join s.league l order by l.name asc, s.year desc", Object[].class).getResultList()) {
+            Long id = ((Number) s[0]).longValue();
+            String league = (String) s[1];
+            String year = (String) s[2];
+            boolean current = Boolean.TRUE.equals(s[3]);
+            Object[] m = entityManager.createQuery("""
+                    select count(m),
+                           sum(case when m.status = :finished then 1 else 0 end),
+                           sum(case when m.status = :finished and m.homeScore is not null and m.awayScore is not null then 1 else 0 end),
+                           sum(case when m.status = :finished and m.homeXG is not null and m.awayXG is not null then 1 else 0 end)
+                    from Match m where m.season.id = :seasonId
+                    """, Object[].class).setParameter("finished", MatchStatus.FINISHED)
+                    .setParameter("seasonId", id).getSingleResult();
+            long total = number(m[0]), seasonFinished = number(m[1]), seasonScored = number(m[2]), seasonXg = number(m[3]);
+            Map<String, Long> byType = new HashMap<>();
+            for (Object[] st : entityManager.createQuery("""
+                    select st.standingType, count(st) from LeagueStanding st
+                    where st.season.id = :seasonId group by st.standingType
+                    """, Object[].class).setParameter("seasonId", id).getResultList()) {
+                byType.put(st[0] == null ? "UNKNOWN" : st[0].toString(), number(st[1]));
+            }
+            long seasonStandingRows = byType.values().stream().mapToLong(Long::longValue).sum();
+            long teamsInStandings = entityManager.createQuery("select count(distinct st.team.id) from LeagueStanding st where st.season.id = :seasonId", Long.class)
+                    .setParameter("seasonId", id).getSingleResult();
+            long totalRows = byType.getOrDefault("TOTAL", 0L);
+            long homeRows = byType.getOrDefault("HOME", 0L);
+            long awayRows = byType.getOrDefault("AWAY", 0L);
+            List<String> issues = new ArrayList<>();
+            if (total == 0) {
+                issues.add("NO_FIXTURES");
+                findings.add(new AuditFinding("WARNING", "SEASON_WITHOUT_FIXTURES", "Season has no stored fixtures.", 1, league + " " + year + " (seasonId=" + id + ")"));
+            }
+            if (seasonFinished > seasonScored) issues.add("FINISHED_MATCHES_MISSING_SCORES");
+            if (seasonStandingRows == 0) issues.add("NO_STANDINGS");
+            if (seasonStandingRows > 0 && totalRows == 0) issues.add("MISSING_TOTAL_STANDINGS");
+            if (totalRows > 0 && teamsInStandings > totalRows) issues.add("TOTAL_STANDINGS_MAY_BE_INCOMPLETE");
+            if (seasonFinished > 0 && seasonScored == 0) issues.add("NO_FINISHED_MATCHES_WITH_SCORES");
+            seasonCoverage.add(new SeasonCoverage(id, league, year, current, total, seasonFinished, seasonScored,
+                    seasonFinished - seasonScored, seasonXg, seasonStandingRows, totalRows, homeRows, awayRows, teamsInStandings, issues));
+        }
+
+        addFinding(findings, leaguesWithoutSeasons, "WARNING", "LEAGUES_WITHOUT_SEASONS", "Leagues have no stored seasons.", "Review configured competitions and league ingestion.");
+        addFinding(findings, teamsWithoutMatches, "WARNING", "TEAMS_WITHOUT_MATCHES", "Teams are not referenced by any fixture.", "Check team/fixture mapping and provider coverage.");
+        addFinding(findings, finished - scored, "CRITICAL", "FINISHED_MATCHES_WITHOUT_SCORES", "FINISHED matches do not have both home and away scores.", "Correct status/score mapping before analytics or training.");
+        addFinding(findings, finished - withXg, "INFO", "FINISHED_MATCHES_WITHOUT_XG", "Finished matches are missing xG for one or both teams.", "xG is optional for the baseline goals model.");
+        addFinding(findings, duplicateGroups.size(), "CRITICAL", "DUPLICATE_FIXTURE_GROUPS", "Fixture signatures (season, home team, away team, kickoff) occur more than once.", "Inspect provider mappings and idempotent persistence before deleting records.");
+        addFinding(findings, mapping.values().stream().mapToLong(MappingCoverage::missingMappings).sum(), "WARNING", "MISSING_PROVIDER_MAPPINGS", "Entities lack an external ID for the provider selected by their ingestion resource.", "Review per-entity mapping coverage; provider capabilities may differ.");
+        addFinding(findings, standingRows == 0 && seasons > 0 ? seasons : 0, "WARNING", "NO_STANDINGS", "No standings are stored although seasons exist.", "Check provider support, season selection, and sync job results.");
+
+        String status = findings.stream().anyMatch(f -> "CRITICAL".equals(f.severity())) ? "CRITICAL"
+                : findings.stream().anyMatch(f -> "WARNING".equals(f.severity())) ? "WARNING" : "OK";
+        Totals totals = new Totals(leagues, activeLeagues, leaguesWithoutSeasons, seasons, currentSeasons, teams,
+                teamsWithoutMatches, matches, finished, scored, finished - scored, withXg, finished - withXg,
+                standingRows, standingCounts.getOrDefault("TOTAL", 0L), standingCounts.getOrDefault("HOME", 0L),
+                standingCounts.getOrDefault("AWAY", 0L), duplicateGroups.size(), duplicateExcess);
+        return new DataCoverageAuditReport(Instant.now(), status, totals,
+                new ProviderCoverage(lp.name(), tp.name(), fp.name(), sp.name(), mapping), seasonCoverage, findings);
+    }
+
+    private void addMapping(Map<String, MappingCoverage> result, String key, String entity,
+                            String mappingEntity, String association, Provider provider) {
+        long total = count("select count(e) from " + entity + " e");
+        long mapped = count("select count(distinct m." + association + ".id) from " + mappingEntity + " m where m.provider = :provider", provider);
+        long missing = count("select count(e) from " + entity + " e where not exists (select m.id from " + mappingEntity + " m where m." + association + " = e and m.provider = :provider)", provider);
+        result.put(key, new MappingCoverage(total, mapped, missing));
+    }
+
+    private void addFinding(List<AuditFinding> out, long amount, String severity, String code, String message, String context) {
+        if (amount > 0) out.add(new AuditFinding(severity, code, message, amount, context));
+    }
+    private long count(String jpql) { return entityManager.createQuery(jpql, Long.class).getSingleResult(); }
+    private long count(String jpql, MatchStatus status) { return entityManager.createQuery(jpql, Long.class).setParameter("finished", status).getSingleResult(); }
+    private long count(String jpql, Provider provider) { return entityManager.createQuery(jpql, Long.class).setParameter("provider", provider).getSingleResult(); }
+    private long number(Object value) { return value instanceof Number n ? n.longValue() : 0L; }
+}
