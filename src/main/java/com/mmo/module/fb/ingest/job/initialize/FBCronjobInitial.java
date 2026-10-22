@@ -41,8 +41,8 @@ public class FBCronjobInitial implements DataInitializer {
     public void initialize() {
         log.info("Initializing Football Analytics CronJobs (UTC Timezone)...");
         createJobIfNotExist(FootballDataBootstrapJob.class.getSimpleName(), FootballDataBootstrapJob.class,
-                "0 0 1 1 * ?", "Bootstrap current-season leagues, teams, fixtures, " +
-                               "scores and standings (UTC 01:00 / VN 08:00 AM - 1st of month)");
+                "0 0 1 1 * ?", "Bootstrap leagues, teams, fixtures, scores and standings for configured seasons; " +
+                               "FOOTBALL_DATA_SEASONS enables historical backfill (UTC 01:00 / VN 08:00 AM - 1st of month)");
 
         //
         createJobIfNotExist(LeagueSyncJob.class.getSimpleName(), LeagueSyncJob.class,
