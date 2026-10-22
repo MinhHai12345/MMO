@@ -69,6 +69,34 @@ class ContentDraftQualityGateTest {
     }
 
     @Test
+    void blocksInvalidMatchIdentityAndMissingFormat() {
+        ContentDraft input = new ContentDraft(null, null, "READY_FOR_EDITOR_REVIEW",
+                "Match preview", "Opening", List.of("Recent form"), List.of(),
+                List.of("match:10:recent-form"), List.of("Small sample"), null);
+
+        ContentDraft result = gate.evaluate(input);
+
+        assertEquals("BLOCKED", result.status());
+        assertTrue(result.qualityReview().blockers().stream()
+                .anyMatch(reason -> reason.contains("match identifier")));
+        assertTrue(result.qualityReview().blockers().stream()
+                .anyMatch(reason -> reason.contains("format is missing")));
+    }
+
+    @Test
+    void blocksBettingLanguageInEvidenceAndCaveatsToo() {
+        ContentDraft input = new ContentDraft(10L, DraftFormat.PRE_MATCH, "READY_FOR_EDITOR_REVIEW",
+                "Match preview", "Opening", List.of("Recent form"), List.of(),
+                List.of("This is a value bet"), List.of("No guarantees"), null);
+
+        ContentDraft result = gate.evaluate(input);
+
+        assertEquals("BLOCKED", result.status());
+        assertTrue(result.qualityReview().blockers().stream()
+                .anyMatch(reason -> reason.contains("betting or guaranteed-outcome")));
+    }
+
+    @Test
     void preservesExistingBlockersAndWarnings() {
         ContentDraft input = new ContentDraft(10L, DraftFormat.PRE_MATCH, "BLOCKED",
                 "Match preview", "Opening", List.of("Recent form"), List.of(),

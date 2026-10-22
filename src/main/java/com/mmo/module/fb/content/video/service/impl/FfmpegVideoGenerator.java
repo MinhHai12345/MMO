@@ -3,52 +3,46 @@ package com.mmo.module.fb.content.video.service.impl;
 import com.mmo.module.fb.content.video.model.VideoContent;
 import com.mmo.module.fb.content.video.service.VideoGenerator;
 import com.mmo.module.fb.publish.model.PredictionData;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
-import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.Objects;
 
 @Service
-@RequiredArgsConstructor
 public class FfmpegVideoGenerator implements VideoGenerator {
-    private static final List<String> HOOKS = List.of(
-            "AI found a strong value bet today.",
-            "One match stands out on today's card.",
-            "Here's today's AI football pick.",
-            "Our model found an interesting opportunity."
-    );
 
     @Override
     public File generateVideo(PredictionData prediction) {
-
-//        String script = generateScript(prediction);
-
-//        File voiceFile = voiceService.generateVoice(script);
-
-//        return createVideo(prediction, voiceFile);
-        return new File("script");
+        Objects.requireNonNull(prediction, "Prediction data is required");
+        throw new UnsupportedOperationException(
+                "Video rendering is not configured. Configure the FFmpeg render pipeline before generating a video."
+        );
     }
 
     @Override
     public String generateScript(VideoContent content) {
-        String hook = HOOKS.get(ThreadLocalRandom.current().nextInt(HOOKS.size()));
+        Objects.requireNonNull(content, "Video content is required");
+
+        String title = textOrFallback(content.getTitle(), "Football match analysis");
+        String hook = textOrFallback(content.getHook(), "Here is one detail worth watching.");
+        String analysis = textOrFallback(content.getPrediction(),
+                "The available data does not support a stronger conclusion yet.");
+        String scoreContext = content.getScore() == null || content.getScore().isBlank()
+                ? ""
+                : "\n\nScore context: " + content.getScore().strip() + ".";
+
         return """
                 %s
-                
-                %s.
-                
-                Our model predicts %s to win.
-                
-                Most likely scorelines are %s.
-                
-                Follow for more AI football predictions.
-                """
-                .formatted(hook,
-                        content.getTitle(),
-                        content.getPrediction(),
-                        content.getScore()
-                );
+
+                %s
+
+                %s%s
+
+                Model estimates are uncertain and are not guarantees. Verify the underlying data before publication.
+                """.formatted(hook, title, analysis, scoreContext).strip();
+    }
+
+    private static String textOrFallback(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value.strip();
     }
 }

@@ -1,11 +1,10 @@
 package com.mmo.module.fb.content.service;
 
+import com.mmo.module.fb.analytics.service.ContentDraftService.DraftFormat;
 import com.mmo.module.fb.content.persistence.ContentDraftRecordEntity;
 import com.mmo.module.fb.content.persistence.ContentDraftVersionEntity;
 import com.mmo.module.fb.content.persistence.ContentWorkflowRunEntity;
-import com.mmo.module.fb.analytics.service.ContentDraftService.DraftFormat;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowCommand;
-import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowReport;
 
 import java.util.List;
 
