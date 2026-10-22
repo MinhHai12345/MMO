@@ -10,12 +10,12 @@ The entities are managed by the project's existing Hibernate schema update confi
 
 ## API
 
-- `POST /api/fb/analytics/content-workflows/generate?limit=20&format=PRE_MATCH`
-- `GET /api/fb/analytics/content-workflows/runs?limit=20`
-- `GET /api/fb/analytics/content-workflows/drafts?editorialStatus=PENDING_REVIEW&limit=20`
-- `GET /api/fb/analytics/content-workflows/drafts/{draftId}`
-- `GET /api/fb/analytics/content-workflows/drafts/{draftId}/versions`
-- `PATCH /api/fb/analytics/content-workflows/drafts/{draftId}/review`
+- `POST /api/fb/content/workflows/generate?limit=20&format=PRE_MATCH`
+- `GET /api/fb/content/workflows/runs?limit=20`
+- `GET /api/fb/content/workflows/drafts?editorialStatus=PENDING_REVIEW&limit=20`
+- `GET /api/fb/content/workflows/drafts/{draftId}`
+- `GET /api/fb/content/workflows/drafts/{draftId}/versions`
+- `PATCH /api/fb/content/workflows/drafts/{draftId}/review`
 
 Review request example:
 
