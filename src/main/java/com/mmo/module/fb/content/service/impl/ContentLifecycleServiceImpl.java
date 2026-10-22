@@ -109,6 +109,18 @@ public class ContentLifecycleServiceImpl implements ContentLifecycleService {
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<com.mmo.module.fb.content.persistence.ContentWorkflowItemEntity> listWorkflowItems(Long runId) {
+        if (runId == null || runId <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A positive workflow run ID is required");
+        }
+        if (!runRepository.existsById(runId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Workflow run not found");
+        }
+        return itemRepository.findByWorkflowRunIdOrderByIdAsc(runId);
+    }
+
     private static String normalizeIdempotencyKey(String key) {
         if (key == null || key.isBlank()) return null;
         String normalized = key.strip();
