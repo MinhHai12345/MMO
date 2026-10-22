@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -41,7 +43,11 @@ class ContentProductionPlanServiceImplTest {
     @Test
     void rejectsMissingMatchIdOrFormat() {
         var service = new ContentProductionPlanServiceImpl(mock(SocialContentPackageService.class));
-        assertThrows(IllegalArgumentException.class, () -> service.create(null, DraftFormat.PRE_MATCH));
-        assertThrows(IllegalArgumentException.class, () -> service.create(1L, null));
+        ResponseStatusException missingMatch = assertThrows(ResponseStatusException.class,
+                () -> service.create(null, DraftFormat.PRE_MATCH));
+        ResponseStatusException missingFormat = assertThrows(ResponseStatusException.class,
+                () -> service.create(1L, null));
+        assertEquals(HttpStatus.BAD_REQUEST, missingMatch.getStatusCode());
+        assertEquals(HttpStatus.BAD_REQUEST, missingFormat.getStatusCode());
     }
 }
