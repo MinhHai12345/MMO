@@ -11,14 +11,16 @@ The existing response now includes two additional analysis areas:
 
 ## Matchup payload
 
-- `summary`: concise direction from available statistical indicators, not a match-result prediction.
+- `summary`: summarizes the count of higher attack rates, higher opponent concession rates, and similar comparisons. It does not claim a home/away result advantage.
 - `xgAvailable`: true only when both teams have complete xG-for and xG-against feature values.
-- `signals`: each comparable dimension includes an edge label, human-readable evidence, and a sample-size-based confidence band.
+- `signals`: each comparable dimension includes an explicit rate-comparison label, human-readable evidence, and a sample-size-based confidence band.
 
-Signal edge labels:
-- `ATTACKING_SIDE`: attack rate is at least 0.15 per match above the opponent concession rate.
-- `OPPONENT_DEFENCE`: attack rate is at least 0.15 per match below the opponent concession rate.
-- `BALANCED`: absolute difference is below the threshold.
+Signal edge labels (threshold: 0.15 per match):
+- `ATTACK_RATE_HIGHER`: the attack rate is more than 0.15 above the opponent's concession rate.
+- `OPPONENT_CONCESSION_RATE_HIGHER`: the opponent's concession rate is more than 0.15 above the attack rate.
+- `SIMILAR_RATES`: the absolute difference is at most 0.15.
+
+These labels describe the two rates being compared. They do not mean that a team is predicted to win, and a high opponent-concession rate should not be described as a strong defence. The summary is generated from all available signals so it cannot claim the matchup is balanced when all comparisons point in the same rate direction.
 
 Confidence bands are descriptive sample-size hints, not statistically calibrated confidence intervals.
 
