@@ -3,6 +3,8 @@ package com.mmo.module.fb.analytics.service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import com.mmo.module.fb.analytics.service.PlayerAnalyticsService.PlayerMatchInsight;
+import com.mmo.module.fb.analytics.service.PostMatchAnalysisService.PostMatchInsight;
 
 public interface MatchSocialAnalyticsService {
 
@@ -35,11 +37,31 @@ public interface MatchSocialAnalyticsService {
             PredictionInsight prediction,
             MarketInsight market,
             MatchupInsight matchup,
+            PlayerMatchInsight playerAnalytics,
+            PostMatchInsight postMatchAnalysis,
+            ContentPlan contentPlan,
             List<String> editorialAngles,
             List<String> dataWarnings) {
         public MatchSocialInsight {
             editorialAngles = editorialAngles == null ? List.of() : List.copyOf(editorialAngles);
             dataWarnings = dataWarnings == null ? List.of() : List.copyOf(dataWarnings);
+        }
+    }
+
+
+    record ContentPlan(
+            String phase,
+            List<String> preMatchAngles,
+            List<String> postMatchAngles,
+            List<String> longVideoAngles,
+            List<String> shortsHooks,
+            List<String> factualCaveats) {
+        public ContentPlan {
+            preMatchAngles = preMatchAngles == null ? List.of() : List.copyOf(preMatchAngles);
+            postMatchAngles = postMatchAngles == null ? List.of() : List.copyOf(postMatchAngles);
+            longVideoAngles = longVideoAngles == null ? List.of() : List.copyOf(longVideoAngles);
+            shortsHooks = shortsHooks == null ? List.of() : List.copyOf(shortsHooks);
+            factualCaveats = factualCaveats == null ? List.of() : List.copyOf(factualCaveats);
         }
     }
 
