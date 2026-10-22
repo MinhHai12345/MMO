@@ -39,6 +39,15 @@ public class ContentWorkflowRunEntity extends AbstractEntity {
     @Column(name = "completed_at")
     private Instant completedAt;
 
+    @Column(name = "heartbeat_at")
+    private Instant heartbeatAt;
+
+    @Column(name = "lease_until")
+    private Instant leaseUntil;
+
+    @Column(name = "execution_token", length = 36)
+    private String executionToken;
+
     @Column(name = "filter_from")
     private Instant filterFrom;
 
