@@ -8,32 +8,32 @@ After the application starts against the populated database, call:
 GET http://localhost:8188/api/fb/analytics/data-coverage-audit
 ```
 
-The endpoint is read-only. It audits league/season/team/match counts, finished score and xG coverage, standings by `TOTAL`/`HOME`/`AWAY`, provider-specific external-ID mappings, seasons without fixtures, and duplicate fixture signatures.
+The endpoint is read-only. It audits league/season/team/match counts, finished score and xG coverage, standings by `TOTAL`/`HOME`/`AWAY`, provider-specific external-ID mappings, seasons without fixtures, exact duplicate signatures, and repeated home/away pairings.
 
 ## Historical backfill workflow
 
-1. Configure the desired start years in `FOOTBALL_DATA_SEASONS`, for example `2021,2022,2023,2024,2025,2026`. This is a list of season start years, not calendar-year coverage.
+1. Configure the desired start years in `FOOTBALL_DATA_SEASONS`, for example `2021,2022,2023,2024,2025,2026`. These are season start years, not calendar-year coverage.
 2. Confirm `FOOTBALL_DATA_COMPETITION_IDS` contains the intended competition IDs and `FOOTBALL_DATA_API_KEY` is valid.
 3. Trigger the existing `FootballDataBootstrapJob` through the application's CronJob controls (or run the same `FootballDataBootstrapService.syncCoreData()` operation). It syncs leagues/seasons, teams, all fixtures returned for configured seasons, and standings. Fixture persistence upserts by provider external ID, so rerunning is intended to be idempotent.
 4. Review application logs for per-competition/season fixture counts, `403` restricted resources, rate-limit interruptions, skipped unmapped teams, and failed persistence.
 5. Re-run the audit and compare each season's `matches`, `expectedMatches`, `matchCountDifference`, `repeatedHomeAwayPairGroups`, and `fixtureIntegrityStatus`.
 
-The Free API quota is paced conservatively by the shared client, so historical backfill can take several minutes. Do not assume a zero-fixture response means a genuinely empty season: it can also mean the provider response was restricted or unavailable. The sync log is required to distinguish those cases.
+The client paces football-data.org requests conservatively, so historical backfill can take several minutes. Do not assume a zero-fixture response means a genuinely empty season: it can also mean the provider response was restricted or unavailable. The sync log is required to distinguish those cases.
 
 ## Fixture completeness and format assumptions
 
-For the supported domestic double round-robin leagues, expected fixtures are calculated as `teamCount * (teamCount - 1)`:
-- Premier League, Primera Division and Serie A: 20 teams, 380 matches.
-- Bundesliga: 18 teams, 306 matches.
-- Championship: 24 teams, 552 matches.
+For domestic double round-robin leagues, the regular-season expectation is `teamCount * (teamCount - 1)`:
+- Premier League, Primera Division and Serie A: 20 teams, 380 regular-season matches.
+- Bundesliga: 18 teams, 306 regular-season matches.
+- Championship: 24 teams, 552 regular-season matches **plus playoffs**.
 
-The audit deliberately does **not** apply this formula to Champions League or other knockout/cup formats. For a historical season, fewer than expected fixtures is reported as `INCOMPLETE_FIXTURES`; more than expected is reported as `EXCESS_FIXTURES`. Repeated home/away pairings are separately reported. These are diagnostic signals; do not delete rows automatically.
+The Championship totals of 557 matches in seasons starting 2023, 2024, and 2025 are **not by themselves evidence of duplicate fixtures**. The standard format has 552 league fixtures plus four semi-final legs and one final (5 playoff matches). The EFL has announced a change for 2026/27 to a seven-match playoff format; for a 24-team Championship season starting in 2026, the expected full competition total is 559. See the [EFL's 2026 playoff format announcement](https://www.efl.com/news/2026/march/05/efl-statement--sky-bet-championship-play-off-format/).
 
-### Championship anomaly from the current audit
+The audit therefore uses a season-aware expected count for the Championship and does **not** apply round-robin expectations to Champions League or other knockout/cup formats. A historical season below expected count is reported as `INCOMPLETE_FIXTURES`; above expected is `EXCESS_FIXTURES`. Repeated home/away pairs are a separate diagnostic, but a repeat is not automatically a duplicate because knockout ties and replay formats may legitimately repeat opponents.
 
-The reported 2023/2024/2025 Championship seasons each contain 557 matches, five above the 552-match double round-robin expectation. The new audit compares fixture count to the expected count and flags repeated home/away pairs regardless of kickoff time, which the old exact-kickoff duplicate signature could miss.
+### How to investigate the Championship records
 
-Investigate those five excess records by grouping on season, home team, and away team; then inspect provider external IDs and source match IDs. A legitimate rescheduled match should update the same provider fixture mapping rather than create another canonical match. Do not delete anything until the external IDs and source records confirm the duplicate.
+For the 557-match seasons, first confirm the 5 playoff fixtures and their stages/round metadata. Only treat the remaining count or pairings as anomalous after separating regular-season fixtures from playoffs. Inspect provider external IDs and source match IDs before changing any records. Never delete rows automatically.
 
 ## How to interpret the response
 
@@ -45,6 +45,6 @@ Investigate those five excess records by grouping on season, home team, and away
 
 ## Important caveats
 
-- Expected fixture counts rely on known domestic league formats and configured league names; this check is not a universal rule for cups, split leagues, playoffs, or competitions whose format changed.
+- Expected counts rely on known competition formats and configured league names; they are not universal for cups, split leagues, playoffs, or formats that change.
 - The audit describes persisted database coverage. It cannot prove that a provider offers a given historical season or that a failed request was caused by subscription restrictions.
-- Save audit JSON before and after each backfill to compare data coverage and confirm that no unexpected records were introduced.
+- Save audit JSON before and after each backfill to compare coverage and confirm no unexpected records were introduced.
