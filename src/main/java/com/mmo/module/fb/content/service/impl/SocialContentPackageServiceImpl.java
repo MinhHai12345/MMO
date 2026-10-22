@@ -56,7 +56,7 @@ public class SocialContentPackageServiceImpl implements SocialContentPackageServ
         String kickoff = insight.kickoff() == null ? null : KICKOFF_FORMAT.format(insight.kickoff());
         String result = insight.postMatchAnalysis() == null ? null : insight.postMatchAnalysis().resultSummary();
 
-        List<Probability> probabilities = probabilities(insight.prediction());
+        List<Probability> probabilities = "PRE_MATCH".equals(phase) || "LIVE".equals(phase)\n                ? probabilities(insight.prediction()) : List.of();
         List<String> points = Stream.concat(
                 insight.editorialAngles().stream(),
                 insight.postMatchAnalysis() == null ? Stream.empty()
@@ -99,7 +99,7 @@ public class SocialContentPackageServiceImpl implements SocialContentPackageServ
         }
 
         return new SocialContentPackage(matchId, phase, context, insight.kickoff(), home, away, result,
-                format, status, title, opening, points, probabilities, DISCLAIMER, draft.evidence(), caveats,
+                effectiveFormat, status, title, opening, points, probabilities, DISCLAIMER, draft.evidence(), caveats,
                 base + "\n\n" + hashtags, base + "\n\n" + hashtags,
                 truncate(opening + " " + String.join(" ", points) + probabilitySection + " " + hashtags, 275),
                 base + "\n\n" + hashtags, shortScript, hashtagList(home, away, insight.competition()));
