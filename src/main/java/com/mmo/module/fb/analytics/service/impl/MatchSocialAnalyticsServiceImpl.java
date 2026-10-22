@@ -3,6 +3,7 @@ package com.mmo.module.fb.analytics.service.impl;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.MatchSocialInsight;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.MarketInsight;
+import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.ContentCandidate;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.PredictionInsight;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.TeamInsight;
 import com.mmo.module.fb.analytics.service.TeamFormFeatureService;
@@ -14,6 +15,7 @@ import com.mmo.module.fb.domain.entity.MatchOdds;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
 import com.mmo.module.fb.domain.entity.Team;
 import com.mmo.module.fb.domain.enums.StandingType;
+import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.repository.LeagueStandingRepository;
 import com.mmo.module.fb.domain.repository.MatchOddsRepository;
 import com.mmo.module.fb.domain.repository.MatchPredictionRepository;
@@ -30,6 +32,9 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.PageRequest;
+import java.time.Duration;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +48,112 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
     private final TeamFormFeatureService teamFormFeatureService;
     private final LeagueStandingRepository leagueStandingRepository;
     private final MatchOddsRepository matchOddsRepository;
+
+
+    @Override
+    public List<ContentCandidate> discover(Instant from, Instant to, Long leagueId, int limit) {
+        Instant now = Instant.now();
+        Instant effectiveFrom = from == null ? now : from;
+        Instant effectiveTo = to == null ? effectiveFrom.plus(Duration.ofDays(7)) : to;
+        if (!effectiveTo.isAfter(effectiveFrom)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "`to` must be after `from`");
+        }
+        if (Duration.between(effectiveFrom, effectiveTo).compareTo(Duration.ofDays(60)) > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Date range must not exceed 60 days");
+        }
+        int boundedLimit = Math.max(1, Math.min(limit, 50));
+        List<Match> matches = matchRepository.findSocialInsightCandidates(
+                effectiveFrom, effectiveTo, com.mmo.module.fb.domain.enums.MatchStatus.SCHEDULED,
+                leagueId, PageRequest.of(0, boundedLimit));
+        List<ContentCandidate> candidates = new ArrayList<>();
+        for (Match match : matches) {
+            candidates.add(toContentCandidate(match));
+        }
+        candidates.sort(Comparator.comparingInt(ContentCandidate::readinessScore).reversed()
+                .thenComparing(ContentCandidate::kickoff));
+        return List.copyOf(candidates);
+    }
+
+    private ContentCandidate toContentCandidate(Match match) {
+        List<String> factors = new ArrayList<>();
+        List<String> missing = new ArrayList<>();
+        int score = 0;
+
+        if (match.getSeason() != null && match.getSeason().getLeague() != null
+                && match.getHomeTeam() != null && match.getAwayTeam() != null) {
+            score += 10;
+            factors.add("Competition and both teams are linked (+10)");
+        } else {
+            missing.add("Competition or team metadata is incomplete");
+        }
+
+        Optional<MatchFeatures> featureResult = teamFormFeatureService.buildFeatures(match);
+        TeamFeatures home = featureResult.map(MatchFeatures::home).orElse(null);
+        TeamFeatures away = featureResult.map(MatchFeatures::away).orElse(null);
+        int homeMatches = home == null ? 0 : home.matchesUsed();
+        int awayMatches = away == null ? 0 : away.matchesUsed();
+        int formScore = Math.min(15, homeMatches * 3) + Math.min(15, awayMatches * 3);
+        score += formScore;
+        if (homeMatches >= 5 && awayMatches >= 5) {
+            factors.add("Both teams have at least five usable historical matches (+" + formScore + ")");
+        } else {
+            missing.add("Historical form sample is limited (home=" + homeMatches + ", away=" + awayMatches + ")");
+        }
+
+        int homeVenueMatches = home == null ? 0 : home.venueMatchesUsed();
+        int awayVenueMatches = away == null ? 0 : away.venueMatchesUsed();
+        int venueScore = Math.min(5, homeVenueMatches) + Math.min(5, awayVenueMatches);
+        score += venueScore;
+        if (homeVenueMatches >= 3 && awayVenueMatches >= 3) {
+            factors.add("Both venue-specific samples contain at least three matches (+" + venueScore + ")");
+        } else {
+            missing.add("Home/away venue samples are limited (home=" + homeVenueMatches + ", away=" + awayVenueMatches + ")");
+        }
+
+        MatchPrediction predictionEntity = matchPredictionRepository.findByMatchId(match.getId()).orElse(null);
+        boolean predictionAvailable = predictionEntity != null
+                && predictionEntity.getWinHomeProb() != null
+                && predictionEntity.getDrawProb() != null
+                && predictionEntity.getWinAwayProb() != null;
+        if (predictionAvailable) {
+            score += 20;
+            factors.add("Complete persisted 1X2 model probabilities are available (+20)");
+        } else {
+            missing.add("Complete model probabilities are unavailable");
+        }
+
+        List<MatchOdds> odds = matchOddsRepository.findAllByMatchId(match.getId());
+        boolean marketAvailable = marketInsight(odds) != null;
+        if (marketAvailable) {
+            score += 10;
+            factors.add("A complete 1X2 market row is available (+10)");
+        } else {
+            missing.add("Complete 1X2 market data is unavailable");
+        }
+
+        boolean xgAvailable = home != null && home.averageXgFor() != null && home.averageXgAgainst() != null
+                && away != null && away.averageXgFor() != null && away.averageXgAgainst() != null;
+        if (xgAvailable) {
+            score += 20;
+            factors.add("Historical xG-for and xG-against are available for both teams (+20)");
+        } else {
+            missing.add("Historical team xG is incomplete; use score-derived indicators only");
+        }
+
+        String level = score >= 75 ? "READY" : score >= 45 ? "PARTIAL" : "LIMITED";
+        return new ContentCandidate(
+                match.getId(), match.getMatchTime(),
+                match.getSeason() != null && match.getSeason().getLeague() != null
+                        ? match.getSeason().getLeague().getName() : null,
+                match.getSeason() == null ? null : match.getSeason().getYear(),
+                match.getRoundInfo(), match.getStatus() == null ? null : match.getStatus().name(),
+                match.getHomeTeam() == null ? null : match.getHomeTeam().getId(),
+                match.getHomeTeam() == null ? null : match.getHomeTeam().getName(),
+                match.getAwayTeam() == null ? null : match.getAwayTeam().getId(),
+                match.getAwayTeam() == null ? null : match.getAwayTeam().getName(),
+                score, level, homeMatches, awayMatches, predictionAvailable, marketAvailable,
+                xgAvailable, factors, missing);
+    }
 
     @Override
     public MatchSocialInsight analyze(Long matchId) {
