@@ -29,6 +29,11 @@ public class PlayerMatchStats extends AbstractEntity {
     @JoinColumn(name = "match_id", nullable = false)
     private Match match;
 
+    /** Team represented by this player in this fixture; distinct from the player's current team. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id")
+    private Team team;
+
     @Column(name = "minutes_played")
     private Integer minutesPlayed;
 
