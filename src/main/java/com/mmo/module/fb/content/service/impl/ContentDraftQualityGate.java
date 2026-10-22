@@ -49,6 +49,9 @@ public class ContentDraftQualityGate {
         if (draft.evidence().isEmpty()) {
             blockers.add("No evidence/source references were attached to the draft.");
         }
+        if (draft.evidence().stream().anyMatch(ContentDraftQualityGate::isPlaceholderEvidence)) {
+            blockers.add("Evidence contains a placeholder rather than traceable match data.");
+        }
         if (draft.evidence().stream().anyMatch(ContentDraftQualityGate::isBlank)) {
             blockers.add("Evidence contains a blank source reference.");
         }
@@ -81,6 +84,14 @@ public class ContentDraftQualityGate {
 
     private static boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private static boolean isPlaceholderEvidence(String value) {
+        if (value == null) return false;
+        String normalized = value.toLowerCase(Locale.ROOT);
+        return normalized.contains("no additional evidence was available")
+                || normalized.contains("evidence unavailable")
+                || normalized.contains("no data available");
     }
 
     private static String safe(String value) {
