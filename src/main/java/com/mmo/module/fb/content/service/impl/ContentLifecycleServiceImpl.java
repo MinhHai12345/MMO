@@ -95,7 +95,7 @@ public class ContentLifecycleServiceImpl implements ContentLifecycleService {
         WorkflowCommand command = new WorkflowCommand(run.getFilterFrom(), run.getFilterTo(), run.getLeagueId(),
                 run.getRequestedLimit(), run.getFormat());
         Set<Long> completedMatchIds = itemRepository.findByWorkflowRunIdOrderByIdAsc(runId).stream()
-                .filter(item -> "COMPLETED".equals(item.getStatus()))
+                .filter(item -> "COMPLETED".equals(item.getStatus()) || item.getAttemptCount() >= 3)
                 .map(item -> item.getMatchId())
                 .collect(java.util.stream.Collectors.toSet());
         try {
