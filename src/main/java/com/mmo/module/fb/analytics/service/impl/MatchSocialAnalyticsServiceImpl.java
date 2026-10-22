@@ -89,6 +89,11 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
         if (match.getHomeXG() == null || match.getAwayXG() == null) {
             warnings.add("Match-level xG is incomplete; do not publish xG-based claims as facts.");
         }
+        if ((match.getVenue() == null || match.getVenue().isBlank())
+                && (match.getHomeTeam() == null || match.getHomeTeam().getStadiumName() == null
+                || match.getHomeTeam().getStadiumName().isBlank())) {
+            warnings.add("Venue is unavailable from both the fixture and the home-team stadium metadata.");
+        }
 
         return new MatchSocialInsight(
                 match.getId(),
