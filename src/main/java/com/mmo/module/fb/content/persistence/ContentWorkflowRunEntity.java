@@ -7,6 +7,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -14,11 +15,16 @@ import lombok.Setter;
 import java.time.Instant;
 
 @Entity
-@Table(name = "fb_content_workflow_runs")
+@Table(name = "fb_content_workflow_runs",
+        uniqueConstraints = @UniqueConstraint(name = "uk_fb_content_workflow_idempotency_key",
+                columnNames = "idempotency_key"))
 @Getter
 @Setter
 @NoArgsConstructor
 public class ContentWorkflowRunEntity extends AbstractEntity {
+
+    @Column(name = "idempotency_key", length = 128)
+    private String idempotencyKey;
 
     @Column(name = "workflow_status", nullable = false, length = 40)
     private String status;

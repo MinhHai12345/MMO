@@ -29,8 +29,9 @@ public class ContentWorkflowPersistenceService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public ContentWorkflowRunEntity persist(WorkflowCommand command, WorkflowReport report) {
+    public ContentWorkflowRunEntity persist(WorkflowCommand command, WorkflowReport report, String idempotencyKey) {
         ContentWorkflowRunEntity run = new ContentWorkflowRunEntity();
+        run.setIdempotencyKey(idempotencyKey);
         run.setStatus(report.status());
         run.setFormat(report.format());
         run.setStartedAt(report.startedAt());
@@ -38,7 +39,7 @@ public class ContentWorkflowPersistenceService {
         run.setFilterFrom(command.from());
         run.setFilterTo(command.to());
         run.setLeagueId(command.leagueId());
-        run.setRequestedLimit(command.limit() <= 0 ? 20 : Math.min(command.limit(), 50));
+        run.setRequestedLimit(normalizeLimit(command.limit()));
         run.setCandidatesDiscovered(report.candidatesDiscovered());
         run.setDraftsGenerated(report.draftsGenerated());
         run.setDraftsNeedingReview(report.draftsNeedingReview());
@@ -80,6 +81,10 @@ public class ContentWorkflowPersistenceService {
             versionRepository.save(version);
         }
         return run;
+    }
+
+    private static int normalizeLimit(int limit) {
+        return limit <= 0 ? 20 : Math.min(limit, 50);
     }
 
     public String snapshot(ContentDraftRecordEntity draft) {
