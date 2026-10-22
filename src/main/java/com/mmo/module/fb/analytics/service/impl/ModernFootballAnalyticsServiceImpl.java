@@ -1,17 +1,11 @@
 package com.mmo.module.fb.analytics.service.impl;
 
 import com.mmo.module.fb.analytics.service.ModernFootballAnalyticsService;
-import com.mmo.module.fb.analytics.service.ModernFootballAnalyticsService.ContentBrief;
-import com.mmo.module.fb.analytics.service.ModernFootballAnalyticsService.MatchComparison;
-import com.mmo.module.fb.analytics.service.ModernFootballAnalyticsService.ModernMatchReport;
-import com.mmo.module.fb.analytics.service.ModernFootballAnalyticsService.PlayerImpact;
-import com.mmo.module.fb.analytics.service.ModernFootballAnalyticsService.PostMatchReview;
-import com.mmo.module.fb.analytics.service.ModernFootballAnalyticsService.TeamMetrics;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchAdvancedStats;
-import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.entity.PlayerMatchStats;
 import com.mmo.module.fb.domain.entity.Team;
+import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.repository.MatchAdvancedStatsRepository;
 import com.mmo.module.fb.domain.repository.MatchRepository;
 import com.mmo.module.fb.domain.repository.PlayerMatchStatsRepository;
@@ -128,9 +122,9 @@ public class ModernFootballAnalyticsServiceImpl implements ModernFootballAnalyti
         BigDecimal xa = row.getXa();
         // Transparent editorial ranking heuristic, not a provider-defined rating.
         BigDecimal score = BigDecimal.valueOf(n(row.getGoals()) * 4.0 + n(row.getAssists()) * 3.0
-                + n(row.getShotsOnTarget()) * 0.5 + n(row.getKeyPasses()) * 0.4
-                + n(row.getTackles()) * 0.2 + n(row.getInterceptions()) * 0.2
-                + n(row.getDuelsWon()) * 0.1)
+                                              + n(row.getShotsOnTarget()) * 0.5 + n(row.getKeyPasses()) * 0.4
+                                              + n(row.getTackles()) * 0.2 + n(row.getInterceptions()) * 0.2
+                                              + n(row.getDuelsWon()) * 0.1)
                 .add(xg == null ? ZERO : xg.multiply(new BigDecimal("2")))
                 .add(xa == null ? ZERO : xa.multiply(new BigDecimal("1.5")))
                 .setScale(3, RoundingMode.HALF_UP);
@@ -155,10 +149,10 @@ public class ModernFootballAnalyticsServiceImpl implements ModernFootballAnalyti
             result = homeName + " " + match.getHomeScore() + " - " + match.getAwayScore() + " " + awayName;
         } else if (match.getStatus() == MatchStatus.LIVE) {
             result = "Live score: " + homeName + " " + match.getHomeScore() + " - "
-                    + match.getAwayScore() + " " + awayName;
+                     + match.getAwayScore() + " " + awayName;
         } else {
             result = "Recorded score (match not marked finished): " + homeName + " "
-                    + match.getHomeScore() + " - " + match.getAwayScore() + " " + awayName;
+                     + match.getHomeScore() + " - " + match.getAwayScore() + " " + awayName;
         }
         return new PostMatchReview(match.getHomeScore(), match.getAwayScore(), homeXg, awayXg,
                 homeGoals == null || homeXg == null ? null : homeGoals.subtract(homeXg).setScale(3, RoundingMode.HALF_UP),
@@ -172,12 +166,12 @@ public class ModernFootballAnalyticsServiceImpl implements ModernFootballAnalyti
         if (review.homeScore() != null && review.awayScore() != null) hooks.add(review.resultSummary());
         if (review.homeXgOverperformance() != null && review.awayXgOverperformance() != null) {
             hooks.add("Goals minus xG: home " + review.homeXgOverperformance() + ", away " + review.awayXgOverperformance()
-                    + " (descriptive only; not proof of luck or finishing skill).");
+                      + " (descriptive only; not proof of luck or finishing skill).");
         }
         if (!players.isEmpty()) {
             PlayerImpact top = players.get(0);
             hooks.add("Highest editorial contribution score: " + top.playerName() + " (" + top.contributionScore()
-                    + "); this is a transparent heuristic, not an official player rating.");
+                      + "); this is a transparent heuristic, not an official player rating.");
         }
         String headline = !evidence.isEmpty() ? "Tactical numbers behind the match"
                 : review.homeScore() != null ? "What the scoreline does and does not tell us"
@@ -214,5 +208,7 @@ public class ModernFootballAnalyticsServiceImpl implements ModernFootballAnalyti
         return BigDecimal.valueOf(value).setScale(3, RoundingMode.HALF_UP);
     }
 
-    private int n(Integer value) { return value == null ? 0 : value; }
+    private int n(Integer value) {
+        return value == null ? 0 : value;
+    }
 }

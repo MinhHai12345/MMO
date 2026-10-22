@@ -1,14 +1,8 @@
 package com.mmo.module.fb.analytics.service.impl;
 
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService;
-import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.MatchSocialInsight;
-import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.MarketInsight;
-import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.ContentCandidate;
-import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.PredictionInsight;
-import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.TeamInsight;
-import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.ContentPlan;
+import com.mmo.module.fb.analytics.service.PlayerAnalyticsService;
 import com.mmo.module.fb.analytics.service.PostMatchAnalysisService;
-import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.analytics.service.TeamFormFeatureService;
 import com.mmo.module.fb.analytics.service.TeamFormFeatureService.MatchFeatures;
 import com.mmo.module.fb.analytics.service.TeamFormFeatureService.TeamFeatures;
@@ -17,14 +11,15 @@ import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchOdds;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
 import com.mmo.module.fb.domain.entity.Team;
+import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.enums.StandingType;
 import com.mmo.module.fb.domain.repository.LeagueStandingRepository;
 import com.mmo.module.fb.domain.repository.MatchOddsRepository;
 import com.mmo.module.fb.domain.repository.MatchPredictionRepository;
 import com.mmo.module.fb.domain.repository.MatchRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -81,7 +76,7 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
         int score = 0;
 
         if (match.getSeason() != null && match.getSeason().getLeague() != null
-                && match.getHomeTeam() != null && match.getAwayTeam() != null) {
+            && match.getHomeTeam() != null && match.getAwayTeam() != null) {
             score += 10;
             factors.add("Competition and both teams are linked (+10)");
         } else {
@@ -113,7 +108,7 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
 
         MatchPrediction prediction = matchPredictionRepository.findByMatchId(match.getId()).orElse(null);
         boolean predictionAvailable = prediction != null && prediction.getWinHomeProb() != null
-                && prediction.getDrawProb() != null && prediction.getWinAwayProb() != null;
+                                      && prediction.getDrawProb() != null && prediction.getWinAwayProb() != null;
         if (predictionAvailable) {
             score += 20;
             factors.add("Complete persisted 1X2 model probabilities are available (+20)");
@@ -130,7 +125,7 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
         }
 
         boolean xgAvailable = home != null && home.averageXgFor() != null && home.averageXgAgainst() != null
-                && away != null && away.averageXgFor() != null && away.averageXgAgainst() != null;
+                              && away != null && away.averageXgFor() != null && away.averageXgAgainst() != null;
         if (xgAvailable) {
             score += 20;
             factors.add("Historical xG-for and xG-against are available for both teams (+20)");
@@ -179,7 +174,7 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
         PredictionInsight prediction = matchPredictionRepository.findByMatchId(matchId)
                 .map(this::predictionInsight).orElse(null);
         if (prediction == null || prediction.homeWinProbability() == null
-                || prediction.drawProbability() == null || prediction.awayWinProbability() == null) {
+            || prediction.drawProbability() == null || prediction.awayWinProbability() == null) {
             warnings.add("No complete 1X2 model probabilities are available for this match.");
         } else {
             addPredictionAngle(prediction, home, away, angles);
@@ -189,7 +184,7 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
         if (market == null) {
             warnings.add("No valid 1X2 odds market is available; market comparison is omitted.");
         } else if (prediction != null && prediction.homeWinProbability() != null
-                && prediction.drawProbability() != null && prediction.awayWinProbability() != null) {
+                   && prediction.drawProbability() != null && prediction.awayWinProbability() != null) {
             addModelMarketAngle(prediction, market, angles);
         }
 
@@ -197,7 +192,7 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
             warnings.add("Match-level xG is incomplete; do not publish xG-based claims as facts.");
         }
         if ((match.getVenue() == null || match.getVenue().isBlank())
-                && (match.getHomeTeam() == null || match.getHomeTeam().getStadiumName() == null
+            && (match.getHomeTeam() == null || match.getHomeTeam().getStadiumName() == null
                 || match.getHomeTeam().getStadiumName().isBlank())) {
             warnings.add("Venue is unavailable from both the fixture and the home-team stadium metadata.");
         }
@@ -262,35 +257,37 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
         List<String> shorts = new ArrayList<>();
         if (finished) {
             shorts.add(match.getHomeTeam().getName() + " " + match.getHomeScore() + "–"
-                    + match.getAwayScore() + " " + match.getAwayTeam().getName() + ": the key takeaway.");
+                       + match.getAwayScore() + " " + match.getAwayTeam().getName() + ": the key takeaway.");
             if (match.getHomeXG() != null && match.getAwayXG() != null) {
                 shorts.add("The score was " + match.getHomeScore() + "–" + match.getAwayScore()
-                        + ", while xG was " + decimal(match.getHomeXG()) + "–" + decimal(match.getAwayXG())
-                        + ". What does that tell us?");
+                           + ", while xG was " + decimal(match.getHomeXG()) + "–" + decimal(match.getAwayXG())
+                           + ". What does that tell us?");
             }
             if (postMatch != null && postMatch.playerAnalytics() != null
-                    && !postMatch.playerAnalytics().standoutPlayers().isEmpty()) {
+                && !postMatch.playerAnalytics().standoutPlayers().isEmpty()) {
                 PlayerAnalyticsService.PlayerPerformance leader = postMatch.playerAnalytics().standoutPlayers().get(0);
                 if (leader.playerName() != null) {
                     shorts.add("Player spotlight: " + leader.playerName() + " — "
-                            + String.join(", ", leader.evidence()) + ".");
+                               + String.join(", ", leader.evidence()) + ".");
                 }
             }
         } else if ("PRE_MATCH".equals(phase)) {
             shorts.addAll(preMatchAngles.stream().limit(2).map(a -> "Pre-match question: " + a).toList());
             if (shorts.isEmpty()) {
                 shorts.add("Three questions before " + match.getHomeTeam().getName() + " vs "
-                        + match.getAwayTeam().getName() + ": recent form, venue trends, and what the available data cannot tell us.");
+                           + match.getAwayTeam().getName() + ": recent form, venue trends, and what the available data cannot tell us.");
             }
             longAngles.add("Opening: what is known about " + match.getHomeTeam().getName() + " vs "
-                    + match.getAwayTeam().getName() + " before kickoff?");
+                           + match.getAwayTeam().getName() + " before kickoff?");
         } else if ("LIVE".equals(phase)) {
             shorts.add("Live update: " + match.getHomeTeam().getName() + " vs " + match.getAwayTeam().getName()
-                    + ". Verify the live score and event feed before publishing.");
+                       + ". Verify the live score and event feed before publishing.");
         }
         List<String> caveats = new ArrayList<>(warnings);
-        if ("PRE_MATCH".equals(phase)) caveats.add("This is a pre-match content plan; final score and post-match statistics are not yet available.");
-        if ("POST_MATCH_INCOMPLETE".equals(phase)) caveats.add("The fixture is marked finished, but one or both final scores are missing.");
+        if ("PRE_MATCH".equals(phase))
+            caveats.add("This is a pre-match content plan; final score and post-match statistics are not yet available.");
+        if ("POST_MATCH_INCOMPLETE".equals(phase))
+            caveats.add("The fixture is marked finished, but one or both final scores are missing.");
         if (finished && (match.getHomeXG() == null || match.getAwayXG() == null)) {
             caveats.add("Do not use xG comparison in the video until both teams' match xG values are available.");
         }
@@ -304,20 +301,20 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
     private TeamInsight teamInsight(Team team, Match match, TeamFeatures features, List<String> warnings) {
         LeagueStanding standing = null;
         boolean upcomingScheduledMatch = match.getStatus() == MatchStatus.SCHEDULED
-                && match.getMatchTime() != null
-                && match.getMatchTime().isAfter(Instant.now());
+                                         && match.getMatchTime() != null
+                                         && match.getMatchTime().isAfter(Instant.now());
 
         if (upcomingScheduledMatch && match.getSeason() != null && team != null) {
             standing = leagueStandingRepository.findBySeasonIdAndTeamIdAndStandingType(
                     match.getSeason().getId(), team.getId(), StandingType.TOTAL).orElse(null);
             if (standing != null && !isInternallyConsistent(standing)) {
                 warnings.add("Standings row for " + team.getName()
-                        + " is internally inconsistent; position, points and standings form are omitted.");
+                             + " is internally inconsistent; position, points and standings form are omitted.");
                 standing = null;
             }
         } else {
             warnings.add("Current standings are omitted for " + (team == null ? "a team" : team.getName())
-                    + " because they are not a point-in-time snapshot for this match kickoff.");
+                         + " because they are not a point-in-time snapshot for this match kickoff.");
         }
 
         return new TeamInsight(
@@ -344,18 +341,18 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
 
     private boolean isInternallyConsistent(LeagueStanding standing) {
         if (standing.getWon() != null && standing.getDrawn() != null
-                && standing.getPoints() != null
-                && standing.getPoints() != standing.getWon() * 3 + standing.getDrawn()) {
+            && standing.getPoints() != null
+            && standing.getPoints() != standing.getWon() * 3 + standing.getDrawn()) {
             return false;
         }
         if (standing.getPlayed() != null && standing.getWon() != null
-                && standing.getDrawn() != null && standing.getLost() != null
-                && standing.getPlayed() != standing.getWon() + standing.getDrawn() + standing.getLost()) {
+            && standing.getDrawn() != null && standing.getLost() != null
+            && standing.getPlayed() != standing.getWon() + standing.getDrawn() + standing.getLost()) {
             return false;
         }
         return standing.getGoalsFor() == null || standing.getGoalsAgainst() == null
-                || standing.getGoalDifference() == null
-                || standing.getGoalDifference().equals(standing.getGoalsFor() - standing.getGoalsAgainst());
+               || standing.getGoalDifference() == null
+               || standing.getGoalDifference().equals(standing.getGoalsFor() - standing.getGoalsAgainst());
     }
 
     private PredictionInsight predictionInsight(MatchPrediction prediction) {
@@ -426,7 +423,7 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
         }
 
         boolean xgAvailable = home.averageXgFor() != null && home.averageXgAgainst() != null
-                && away.averageXgFor() != null && away.averageXgAgainst() != null;
+                              && away.averageXgFor() != null && away.averageXgAgainst() != null;
         if (xgAvailable) {
             addMatchupSignal(signals, "HOME_XG_ATTACK_VS_AWAY_XG_DEFENCE",
                     home.averageXgFor(), away.averageXgAgainst(),
@@ -461,9 +458,9 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
             summary = "Attack rates and opponent concession averages are similar across the available comparisons; these indicators do not establish a match-result advantage.";
         } else {
             summary = "Available comparisons are mixed: " + attackRateHigher
-                    + " attack-rate comparison(s) are higher, " + concessionRateHigher
-                    + " opponent-concession comparison(s) are higher, and " + similarRates
-                    + " are similar. These are historical rate comparisons, not a match-result prediction.";
+                      + " attack-rate comparison(s) are higher, " + concessionRateHigher
+                      + " opponent-concession comparison(s) are higher, and " + similarRates
+                      + " are similar. These are historical rate comparisons, not a match-result prediction.";
         }
         angles.add("Statistical matchup compares historical attack and concession rates; formation, pressing and player-level tactical data are not available in this analysis.");
         return new MatchupInsight(summary, xgAvailable, signals);
@@ -484,7 +481,7 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
                 : attackSamples >= 4 && defenceSamples >= 4 ? "LOW" : "VERY_LOW";
         signals.add(new MatchupSignal(dimension, edge,
                 evidence + ": " + attackRate.toPlainString() + " vs " + opponentConcessionRate.toPlainString()
-                        + " per match; samples=" + attackSamples + "/" + defenceSamples,
+                + " per match; samples=" + attackSamples + "/" + defenceSamples,
                 confidence));
     }
 
@@ -496,15 +493,15 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
             angles.add("Away recent form: " + away.recentForm());
         }
         if (home.averageGoalsFor() != null && away.averageGoalsAgainst() != null
-                && home.averageGoalsFor().compareTo(away.averageGoalsAgainst()) > 0) {
+            && home.averageGoalsFor().compareTo(away.averageGoalsAgainst()) > 0) {
             angles.add("Home scoring output is above away defensive concession rate in the available sample.");
         }
         if (away.averageGoalsFor() != null && home.averageGoalsAgainst() != null
-                && away.averageGoalsFor().compareTo(home.averageGoalsAgainst()) > 0) {
+            && away.averageGoalsFor().compareTo(home.averageGoalsAgainst()) > 0) {
             angles.add("Away scoring output is above home defensive concession rate in the available sample.");
         }
         if (home.winRate() != null && away.winRate() != null
-                && home.winRate().subtract(away.winRate()).abs().compareTo(new BigDecimal("0.200")) >= 0) {
+            && home.winRate().subtract(away.winRate()).abs().compareTo(new BigDecimal("0.200")) >= 0) {
             angles.add("Recent win-rate gap is at least 20 percentage points; verify sample sizes before publishing.");
         }
     }

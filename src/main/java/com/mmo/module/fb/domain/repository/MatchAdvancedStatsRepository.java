@@ -4,6 +4,7 @@ import com.mmo.module.fb.domain.entity.MatchAdvancedStats;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -13,5 +14,5 @@ public interface MatchAdvancedStatsRepository extends JpaRepository<MatchAdvance
 
     long countByMatchId(Long matchId);
 
-    java.util.List<MatchAdvancedStats> findAllByMatchId(Long matchId);
+    List<MatchAdvancedStats> findAllByMatchId(Long matchId);
 }

@@ -1,12 +1,10 @@
 package com.mmo.module.fb.analytics.service.impl;
 
 import com.mmo.module.fb.analytics.service.PlayerAnalyticsService;
-import com.mmo.module.fb.analytics.service.PlayerAnalyticsService.PlayerMatchInsight;
-import com.mmo.module.fb.analytics.service.PlayerAnalyticsService.PlayerPerformance;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.PlayerMatchStats;
-import com.mmo.module.fb.domain.repository.PlayerMatchStatsRepository;
 import com.mmo.module.fb.domain.repository.MatchRepository;
+import com.mmo.module.fb.domain.repository.PlayerMatchStatsRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -71,9 +69,9 @@ public class PlayerAnalyticsServiceImpl implements PlayerAnalyticsService {
 
         // Transparent editorial impact heuristic, not a provider rating or a scientific player score.
         BigDecimal score = BigDecimal.valueOf(goals * 4.0 + assists * 3.0
-                + value(stats.getShotsOnTarget()) * 0.6 + value(stats.getKeyPasses()) * 0.35
-                + value(stats.getTackles()) * 0.25 + value(stats.getInterceptions()) * 0.2
-                + value(stats.getDuelsWon()) * 0.1);
+                                              + value(stats.getShotsOnTarget()) * 0.6 + value(stats.getKeyPasses()) * 0.35
+                                              + value(stats.getTackles()) * 0.25 + value(stats.getInterceptions()) * 0.2
+                                              + value(stats.getDuelsWon()) * 0.1);
         if (xg != null) score = score.add(xg.multiply(new BigDecimal("0.5")));
         if (xa != null) score = score.add(xa.multiply(new BigDecimal("0.5")));
         List<String> evidence = new ArrayList<>();
