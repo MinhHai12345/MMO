@@ -11,6 +11,7 @@ import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowCommand;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowReport;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -55,8 +56,25 @@ public class ContentLifecycleServiceImpl implements ContentLifecycleService {
                 return existing;
             }
         }
-        WorkflowReport report = orchestrator.generate(command);
-        return persistenceService.persist(command, report, key);
+
+        ContentWorkflowRunEntity run;
+        try {
+            run = persistenceService.reserve(command, key);
+        } catch (DataIntegrityViolationException duplicateKeyRace) {
+            if (key == null) throw duplicateKeyRace;
+            ContentWorkflowRunEntity existing = runRepository.findByIdempotencyKey(key).orElseThrow(() -> duplicateKeyRace);
+            if (!sameRequest(existing, command)) throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Idempotency-Key was already used with different workflow parameters");
+            return existing;
+        }
+
+        try {
+            WorkflowReport report = orchestrator.generate(command);
+            return persistenceService.persist(run, command, report);
+        } catch (RuntimeException failure) {
+            persistenceService.markFailed(run.getId(), failure);
+            throw failure;
+        }
     }
 
     private static String normalizeIdempotencyKey(String key) {
