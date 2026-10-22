@@ -17,7 +17,7 @@ class ContentPerformanceMetricsTest {
 
         assertEquals(new BigDecimal("8.00"), metrics.clickThroughRatePercent());
         assertEquals(new BigDecimal("5.50"), metrics.engagementRatePercent());
-        assertEquals(new BigDecimal("100.00"), metrics.averageWatchCompletionPercent());
+        assertEquals(0, new BigDecimal("100.00").compareTo(metrics.averageWatchCompletionPercent()));
     }
 
     @Test
