@@ -81,6 +81,34 @@ public class ContentLifecycleServiceImpl implements ContentLifecycleService {
         }
     }
 
+    @Override
+    public ContentWorkflowRunEntity resume(Long runId) {
+        if (runId == null || runId <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A positive workflow run ID is required");
+        }
+        ContentWorkflowRunEntity run;
+        try {
+            run = persistenceService.claimForResume(runId);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Workflow run not found");
+        }
+        WorkflowCommand command = new WorkflowCommand(run.getFilterFrom(), run.getFilterTo(), run.getLeagueId(),
+                run.getRequestedLimit(), run.getFormat());
+        Set<Long> completedMatchIds = itemRepository.findByWorkflowRunIdOrderByIdAsc(runId).stream()
+                .filter(item -> "COMPLETED".equals(item.getStatus()))
+                .map(item -> item.getMatchId())
+                .collect(java.util.stream.Collectors.toSet());
+        try {
+            WorkflowReport report = orchestrator.generate(command, completedMatchIds,
+                    matchId -> persistenceService.startItem(runId, matchId),
+                    item -> persistenceService.persistItem(runId, item));
+            return persistenceService.persist(run, command, report);
+        } catch (RuntimeException failure) {
+            persistenceService.markFailed(runId, failure);
+            throw failure;
+        }
+    }
+
     private static String normalizeIdempotencyKey(String key) {
         if (key == null || key.isBlank()) return null;
         String normalized = key.strip();
