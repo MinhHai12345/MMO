@@ -6,6 +6,10 @@ import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.MarketIns
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.ContentCandidate;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.PredictionInsight;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.TeamInsight;
+import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.ContentPlan;
+import com.mmo.module.fb.analytics.service.PlayerAnalyticsService;
+import com.mmo.module.fb.analytics.service.PostMatchAnalysisService;
+import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.analytics.service.TeamFormFeatureService;
 import com.mmo.module.fb.analytics.service.TeamFormFeatureService.MatchFeatures;
 import com.mmo.module.fb.analytics.service.TeamFormFeatureService.TeamFeatures;
@@ -49,6 +53,8 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
     private final TeamFormFeatureService teamFormFeatureService;
     private final LeagueStandingRepository leagueStandingRepository;
     private final MatchOddsRepository matchOddsRepository;
+    private final PlayerAnalyticsService playerAnalyticsService;
+    private final PostMatchAnalysisService postMatchAnalysisService;
 
 
     @Override
@@ -200,6 +206,12 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
             warnings.add("Venue is unavailable from both the fixture and the home-team stadium metadata.");
         }
 
+        PlayerAnalyticsService.PlayerMatchInsight playerAnalytics =
+                match.getStatus() == MatchStatus.FINISHED ? playerAnalyticsService.analyzeMatch(matchId) : null;
+        PostMatchAnalysisService.PostMatchInsight postMatch =
+                match.getStatus() == MatchStatus.FINISHED ? postMatchAnalysisService.analyze(matchId) : null;
+        ContentPlan contentPlan = buildContentPlan(match, angles, warnings, postMatch);
+
         return new MatchSocialInsight(
                 match.getId(),
                 match.getMatchTime(),
@@ -216,8 +228,65 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
                 prediction,
                 market,
                 matchupInsight(home, away, angles, warnings),
+                playerAnalytics,
+                postMatch,
+                contentPlan,
                 angles,
                 warnings);
+    }
+
+
+    private ContentPlan buildContentPlan(Match match, List<String> preMatchAngles,
+                                         List<String> warnings,
+                                         PostMatchAnalysisService.PostMatchInsight postMatch) {
+        boolean finished = match.getStatus() == MatchStatus.FINISHED
+                && match.getHomeScore() != null && match.getAwayScore() != null;
+        String phase = finished ? "POST_MATCH"
+                : match.getStatus() == MatchStatus.LIVE ? "LIVE" : "PRE_MATCH";
+        List<String> postAngles = postMatch == null ? List.of() : postMatch.editorialAngles();
+        List<String> longAngles = new ArrayList<>();
+        if (!finished) {
+            longAngles.addAll(preMatchAngles.stream().limit(4).toList());
+            longAngles.add("Compare both teams' recent form and venue-specific samples, clearly stating sample sizes.");
+            longAngles.add("Separate model probabilities from facts and avoid presenting any outcome as certain.");
+        } else {
+            longAngles.addAll(postMatch == null ? List.of() : postMatch.evidenceBasedFindings());
+            longAngles.addAll(postAngles.stream().limit(4).toList());
+            if (postMatch != null && postMatch.playerAnalytics() != null) {
+                postMatch.playerAnalytics().standoutPlayers().stream().limit(2).forEach(player ->
+                        longAngles.add("Player segment: " + player.playerName() + " — " + String.join(", ", player.evidence())));
+            }
+        }
+        List<String> shorts = new ArrayList<>();
+        if (finished) {
+            shorts.add(match.getHomeTeam().getName() + " " + match.getHomeScore() + "–"
+                    + match.getAwayScore() + " " + match.getAwayTeam().getName() + ": the key takeaway.");
+            if (match.getHomeXG() != null && match.getAwayXG() != null) {
+                shorts.add("The score was " + match.getHomeScore() + "–" + match.getAwayScore()
+                        + ", while xG was " + decimal(match.getHomeXG()) + "–" + decimal(match.getAwayXG())
+                        + ". What does that tell us?");
+            }
+            if (postMatch != null && postMatch.playerAnalytics() != null
+                    && !postMatch.playerAnalytics().standoutPlayers().isEmpty()) {
+                PlayerAnalyticsService.PlayerPerformance leader = postMatch.playerAnalytics().standoutPlayers().get(0);
+                if (leader.playerName() != null) {
+                    shorts.add("Player spotlight: " + leader.playerName() + " — "
+                            + String.join(", ", leader.evidence()) + ".");
+                }
+            }
+        } else {
+            shorts.addAll(preMatchAngles.stream().limit(2).map(a -> "Pre-match question: " + a).toList());
+        }
+        List<String> caveats = new ArrayList<>(warnings);
+        if (!finished) caveats.add("This is a pre-match content plan; final score and post-match statistics are not yet available.");
+        if (finished && (match.getHomeXG() == null || match.getAwayXG() == null)) {
+            caveats.add("Do not use xG comparison in the video until both teams' match xG values are available.");
+        }
+        return new ContentPlan(phase,
+                finished ? List.of() : preMatchAngles,
+                postAngles, longAngles.stream().distinct().limit(8).toList(),
+                shorts.stream().filter(s -> s != null && !s.isBlank()).distinct().limit(3).toList(),
+                caveats.stream().distinct().toList());
     }
 
     private TeamInsight teamInsight(Team team, Match match, TeamFeatures features, List<String> warnings) {
