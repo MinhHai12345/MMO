@@ -5,9 +5,12 @@ import com.mmo.module.fb.analytics.service.ContentDraftService.DraftFormat;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Consumer;
 
 public interface ContentWorkflowOrchestrator {
     WorkflowReport generate(WorkflowCommand command);
+    WorkflowReport generate(WorkflowCommand command, Set<Long> skipMatchIds, Consumer<Long> onStart, Consumer<WorkflowItem> onItem);
 
     record WorkflowCommand(Instant from, Instant to, Long leagueId, int limit, DraftFormat format) {}
 
