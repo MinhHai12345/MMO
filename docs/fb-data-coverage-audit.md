@@ -35,6 +35,19 @@ The audit therefore uses a season-aware expected count for the Championship and 
 
 For the 557-match seasons, first confirm the 5 playoff fixtures and their stages/round metadata. Only treat the remaining count or pairings as anomalous after separating regular-season fixtures from playoffs. Inspect provider external IDs and source match IDs before changing any records. Never delete rows automatically.
 
+## Point-in-time team-form backtest
+
+Use `GET /api/fb/analytics/team-form-backtest?from=<ISO-8601>&to=<ISO-8601>` to evaluate the team-form baseline on finished fixtures in the half-open interval `[from, to)`.
+
+- Test candidates are paged to exhaustion; the report is no longer silently capped at 500 matches.
+- Features use only same-league team results whose kickoff is at least four hours before the target kickoff. This is a conservative proxy for when a prior match result is available because the schema does not store final-whistle timestamps.
+- The service loads the historical match pool in bounded pages and builds rolling histories in memory, rather than issuing two history queries per target fixture.
+- Matches sharing a kickoff time use the same pre-kickoff history; results from that kickoff cannot leak into one another's features.
+- The four-hour lag reduces, but cannot perfectly prove, point-in-time availability. If exact final-whistle or result-publication timestamps become available, use those instead.
+- This is a goals-only heuristic benchmark, not the production prediction engine. Compare Brier score, log loss, accuracy, evaluated matches, skipped matches and report status before drawing conclusions.
+
+The walk-forward prediction backtest is available separately at `GET /api/fb/analytics/walk-forward-backtest?from=<ISO-8601>&to=<ISO-8601>`; it evaluates persisted predictions that were calculated before kickoff and matures historical outcomes using the same conservative four-hour proxy.
+
 ## How to interpret the response
 
 - Top-level `status`: `CRITICAL` if a critical finding exists, otherwise `WARNING` if a warning exists, otherwise `OK`. Informational findings do not change status.
