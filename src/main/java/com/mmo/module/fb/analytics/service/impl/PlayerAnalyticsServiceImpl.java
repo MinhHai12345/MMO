@@ -26,7 +26,7 @@ public class PlayerAnalyticsServiceImpl implements PlayerAnalyticsService {
 
     private static final int SCALE = 3;
     private final MatchRepository matchRepository;
-    private final MatchPlayerStatsRepository playerMatchStatsRepository;
+    private final PlayerMatchStatsRepository playerMatchStatsRepository;
 
     @Override
     public PlayerMatchInsight analyzeMatch(Long matchId) {
