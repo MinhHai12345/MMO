@@ -8,6 +8,8 @@ import com.mmo.module.fb.content.persistence.ContentDraftVersionEntity;
 import com.mmo.module.fb.content.persistence.ContentDraftVersionRepository;
 import com.mmo.module.fb.content.persistence.ContentWorkflowRunEntity;
 import com.mmo.module.fb.content.persistence.ContentWorkflowRunRepository;
+import com.mmo.module.fb.content.persistence.ContentWorkflowItemEntity;
+import com.mmo.module.fb.content.persistence.ContentWorkflowItemRepository;
 import com.mmo.module.fb.analytics.service.ContentDraftService.ContentDraft;
 import com.mmo.module.fb.analytics.service.ContentDraftService.QualityReview;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowCommand;
@@ -24,6 +26,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ContentWorkflowPersistenceService {
     private final ContentWorkflowRunRepository runRepository;
+    private final ContentWorkflowItemRepository itemRepository;
     private final ContentDraftRecordRepository draftRepository;
     private final ContentDraftVersionRepository versionRepository;
     private final ObjectMapper objectMapper;
@@ -66,11 +69,46 @@ public class ContentWorkflowPersistenceService {
         run.setWarningsJson(writeJson(report.warnings()));
         runRepository.save(run);
 
-        for (WorkflowItem item : report.items()) {
-            if (item.draft() == null) continue;
-            ContentDraft draft = item.draft();
+        return run;
+    }
+
+    @Transactional
+    public void startItem(Long runId, Long matchId) {
+        ContentWorkflowRunEntity run = runRepository.findById(runId)
+                .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
+        ContentWorkflowItemEntity item = itemRepository.findByWorkflowRunIdAndMatchId(runId, matchId)
+                .orElseGet(ContentWorkflowItemEntity::new);
+        item.setWorkflowRun(run);
+        item.setMatchId(matchId);
+        item.setStatus("RUNNING");
+        item.setAttemptCount(item.getAttemptCount() + 1);
+        item.setStartedAt(Instant.now());
+        item.setCompletedAt(null);
+        item.setFailureReason(null);
+        itemRepository.save(item);
+    }
+
+    @Transactional
+    public void persistItem(Long runId, WorkflowItem item) {
+        ContentWorkflowRunEntity run = runRepository.findById(runId)
+                .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
+        ContentWorkflowItemEntity checkpoint = itemRepository.findByWorkflowRunIdAndMatchId(runId, item.matchId())
+                .orElseGet(ContentWorkflowItemEntity::new);
+        checkpoint.setWorkflowRun(run);
+        checkpoint.setMatchId(item.matchId());
+        checkpoint.setCompletedAt(Instant.now());
+        checkpoint.setFailureReason(item.failureReason());
+        if (item.draft() == null) {
+            checkpoint.setStatus("FAILED");
+            itemRepository.save(checkpoint);
+            return;
+        }
+        ContentDraft draft = item.draft();
+        ContentDraft existing = null;
+        ContentDraftRecordEntity record = draftRepository.findByWorkflowRunIdAndMatchId(runId, item.matchId()).orElse(null);
+        if (record == null) {
             QualityReview review = draft.qualityReview();
-            ContentDraftRecordEntity record = new ContentDraftRecordEntity();
+            record = new ContentDraftRecordEntity();
             record.setWorkflowRun(run);
             record.setMatchId(item.matchId());
             record.setFormat(draft.format());
@@ -98,7 +136,9 @@ public class ContentWorkflowPersistenceService {
             version.setSnapshotJson(snapshot(record));
             versionRepository.save(version);
         }
-        return run;
+        checkpoint.setStatus("COMPLETED");
+        checkpoint.setDraftId(record.getId());
+        itemRepository.save(checkpoint);
     }
 
     @Transactional
