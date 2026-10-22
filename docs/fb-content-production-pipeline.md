@@ -31,3 +31,6 @@ Production plans provide suggestions for original graphics, tactical boards, lic
 ## Validation
 
 Run `mvn clean compile` and `mvn test` in the project environment. Integration tests against real platform APIs require credentials and should use provider sandboxes where available.
+
+## Performance feedback
+`ContentPerformanceMetrics` normalizes impressions, views, clicks, reactions, shares, average watch duration and video length. It calculates CTR, engagement rate and watch-completion percentage while returning null when a denominator is unavailable. Actual metric ingestion and historical storage require official platform insights APIs, account permissions, and a persisted metrics store; those integrations are not enabled by this contract alone.
