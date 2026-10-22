@@ -28,6 +28,20 @@ class ContentDraftQualityGateTest {
     }
 
     @Test
+    void blocksPlaceholderEvidence() {
+        ContentDraft input = new ContentDraft(10L, DraftFormat.PRE_MATCH, "READY_FOR_EDITOR_REVIEW",
+                "Match preview", "Opening", List.of("Recent form"), List.of(),
+                List.of("No additional evidence was available from the current analytics payload."),
+                List.of("Sample is limited"), null);
+
+        ContentDraft result = gate.evaluate(input);
+
+        assertEquals("BLOCKED", result.status());
+        assertTrue(result.qualityReview().blockers().stream()
+                .anyMatch(reason -> reason.contains("placeholder rather than traceable match data")));
+    }
+
+    @Test
     void blocksBettingAndGuaranteedOutcomeLanguage() {
         ContentDraft input = new ContentDraft(10L, DraftFormat.PRE_MATCH, "READY_FOR_EDITOR_REVIEW",
                 "Guaranteed win", "Opening", List.of("Recent form"), List.of(),
