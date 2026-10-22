@@ -29,9 +29,27 @@ public class ContentWorkflowPersistenceService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public ContentWorkflowRunEntity persist(WorkflowCommand command, WorkflowReport report, String idempotencyKey) {
+    public ContentWorkflowRunEntity reserve(WorkflowCommand command, String idempotencyKey) {
         ContentWorkflowRunEntity run = new ContentWorkflowRunEntity();
         run.setIdempotencyKey(idempotencyKey);
+        run.setStatus("RUNNING");
+        run.setFormat(command.format() == null ? com.mmo.module.fb.analytics.service.ContentDraftService.DraftFormat.PRE_MATCH : command.format());
+        run.setStartedAt(Instant.now());
+        run.setFilterFrom(command.from());
+        run.setFilterTo(command.to());
+        run.setLeagueId(command.leagueId());
+        run.setRequestedLimit(normalizeLimit(command.limit()));
+        run.setCandidatesDiscovered(0);
+        run.setDraftsGenerated(0);
+        run.setDraftsNeedingReview(0);
+        run.setDraftsBlocked(0);
+        run.setFailures(0);
+        run.setWarningsJson("[]");
+        return runRepository.saveAndFlush(run);
+    }
+
+    @Transactional
+    public ContentWorkflowRunEntity persist(ContentWorkflowRunEntity run, WorkflowCommand command, WorkflowReport report) {
         run.setStatus(report.status());
         run.setFormat(report.format());
         run.setStartedAt(report.startedAt());
