@@ -40,24 +40,22 @@ public class AnalyticsWorkflowServiceImpl implements AnalyticsWorkflowService {
                 "CRITICAL".equals(coverage.status()) ? "FAILED" : "COMPLETED",
                 "Audit persisted fixture, score, duplicate and provider-mapping coverage."));
 
+        var readiness = readinessService.getReadiness();
+        steps.add(new WorkflowStep("DATA_READINESS", "COMPLETED",
+                "Readiness is informational for feature availability; missing xG does not block the goals-only baseline."));
+
         var totals = coverage.totals();
         boolean blocked = "CRITICAL".equals(coverage.status())
                 || totals.finishedMissingScores() > 0
                 || totals.duplicateFixtureGroups() > 0;
         if (blocked) {
-            steps.add(new WorkflowStep("DATA_READINESS", "BLOCKED",
-                    "Analytics evaluation is blocked because critical data-quality findings remain."));
             steps.add(new WorkflowStep("TEAM_FORM_BACKTEST", "SKIPPED",
                     "Resolve critical coverage findings before evaluating the model."));
             steps.add(new WorkflowStep("PREDICTION_WALK_FORWARD_BACKTEST", "SKIPPED",
                     "Resolve critical coverage findings before evaluating persisted predictions."));
             return new AnalyticsWorkflowReport(Instant.now(), fromInclusive, toExclusive,
-                    "BLOCKED_DATA_QUALITY", steps, coverage, null, null, null);
+                    "BLOCKED_DATA_QUALITY", steps, coverage, readiness, null, null);
         }
-
-        var readiness = readinessService.getReadiness();
-        steps.add(new WorkflowStep("DATA_READINESS", "COMPLETED",
-                "Readiness is informational for feature availability; missing xG does not block the goals-only baseline."));
 
         TeamFormBackTestReport teamForm = teamFormBackTestService.run(fromInclusive, toExclusive);
         steps.add(new WorkflowStep("TEAM_FORM_BACKTEST", stepStatus(teamForm.status()),
