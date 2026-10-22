@@ -216,19 +216,30 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
             warnings.add("Tactical matchup is limited to score-derived indicators because historical team xG is incomplete.");
         }
 
-        long homeEdges = signals.stream().filter(s -> s.dimension().startsWith("HOME_")
-                && "ATTACKING_SIDE".equals(s.edge())).count();
-        long awayEdges = signals.stream().filter(s -> s.dimension().startsWith("AWAY_")
-                && "ATTACKING_SIDE".equals(s.edge())).count();
+        long attackRateHigher = signals.stream()
+                .filter(signal -> "ATTACK_RATE_HIGHER".equals(signal.edge()))
+                .count();
+        long concessionRateHigher = signals.stream()
+                .filter(signal -> "OPPONENT_CONCESSION_RATE_HIGHER".equals(signal.edge()))
+                .count();
+        long similarRates = signals.stream()
+                .filter(signal -> "SIMILAR_RATES".equals(signal.edge()))
+                .count();
+
         String summary;
         if (signals.isEmpty()) {
             summary = "Insufficient comparable historical metrics to describe this matchup.";
-        } else if (homeEdges > awayEdges) {
-            summary = "Available statistical indicators lean toward the home side; this is not a tactical or outcome certainty.";
-        } else if (awayEdges > homeEdges) {
-            summary = "Available statistical indicators lean toward the away side; this is not a tactical or outcome certainty.";
+        } else if (attackRateHigher == signals.size()) {
+            summary = "Across all available comparisons, attack rates are higher than the corresponding opponent concession averages. This describes historical rates, not a match-result prediction.";
+        } else if (concessionRateHigher == signals.size()) {
+            summary = "Across all available comparisons, opponent concession averages are higher than the corresponding attack rates. This does not by itself establish a match-result advantage.";
+        } else if (similarRates == signals.size()) {
+            summary = "Attack rates and opponent concession averages are similar across the available comparisons; these indicators do not establish a match-result advantage.";
         } else {
-            summary = "Available statistical indicators are mixed or balanced; no clear side has an edge.";
+            summary = "Available comparisons are mixed: " + attackRateHigher
+                    + " attack-rate comparison(s) are higher, " + concessionRateHigher
+                    + " opponent-concession comparison(s) are higher, and " + similarRates
+                    + " are similar. These are historical rate comparisons, not a match-result prediction.";
         }
         angles.add("Statistical matchup compares historical attack and concession rates; formation, pressing and player-level tactical data are not available in this analysis.");
         return new MatchupInsight(summary, xgAvailable, signals);
@@ -242,13 +253,14 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
         }
         BigDecimal difference = attackRate.subtract(opponentConcessionRate);
         BigDecimal threshold = new BigDecimal("0.150");
-        String edge = difference.compareTo(threshold) > 0 ? "ATTACKING_SIDE"
-                : difference.compareTo(threshold.negate()) < 0 ? "OPPONENT_DEFENCE" : "BALANCED";
+        String edge = difference.compareTo(threshold) > 0 ? "ATTACK_RATE_HIGHER"
+                : difference.compareTo(threshold.negate()) < 0
+                ? "OPPONENT_CONCESSION_RATE_HIGHER" : "SIMILAR_RATES";
         String confidence = attackSamples >= 8 && defenceSamples >= 8 ? "MODERATE"
                 : attackSamples >= 4 && defenceSamples >= 4 ? "LOW" : "VERY_LOW";
         signals.add(new MatchupSignal(dimension, edge,
                 evidence + ": " + attackRate.toPlainString() + " vs " + opponentConcessionRate.toPlainString()
-                        + " goals/xG per match; samples=" + attackSamples + "/" + defenceSamples,
+                        + " per match; samples=" + attackSamples + "/" + defenceSamples,
                 confidence));
     }
 
