@@ -35,7 +35,7 @@ public class PlayerAnalyticsServiceImpl implements PlayerAnalyticsService {
         }
         Match match = matchRepository.findById(matchId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Match not found: " + matchId));
-        List<PlayerMatchStats> stats = playerMatchStatsRepository.findAllByMatchId(matchId);
+        List<PlayerMatchStats> stats = playerMatchStatsRepository.findAllByMatchIdOrderByIdAsc(matchId);
         List<String> warnings = new ArrayList<>();
         if (match.getStatus() != com.mmo.module.fb.domain.enums.MatchStatus.FINISHED) {
             warnings.add("Player match analytics is most reliable after the fixture is finished and provider statistics have settled.");
