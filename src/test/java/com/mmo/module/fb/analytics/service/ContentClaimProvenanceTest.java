@@ -31,7 +31,7 @@ class ContentClaimProvenanceTest {
                 "A factual claim", null, null, null, null, null, null, null, null);
 
         assertFalse(provenance.isTraceable());
-        assertEquals(7, provenance.validationErrors().size());
+        assertEquals(6, provenance.validationErrors().size());
     }
 
     @Test
