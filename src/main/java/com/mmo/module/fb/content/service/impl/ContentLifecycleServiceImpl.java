@@ -70,13 +70,14 @@ public class ContentLifecycleServiceImpl implements ContentLifecycleService {
             return existing;
         }
 
+        String executionToken = run.getExecutionToken();
         try {
             WorkflowReport report = orchestrator.generate(command, Set.of(),
-                    matchId -> persistenceService.startItem(run.getId(), matchId),
-                    item -> persistenceService.persistItem(run.getId(), item));
-            return persistenceService.persist(run, command, report);
+                    matchId -> persistenceService.startItem(run.getId(), executionToken, matchId),
+                    item -> persistenceService.persistItem(run.getId(), executionToken, item));
+            return persistenceService.persist(run, executionToken, command, report);
         } catch (RuntimeException failure) {
-            persistenceService.markFailed(run.getId(), failure);
+            persistenceService.markFailed(run.getId(), executionToken, failure);
             throw failure;
         }
     }
@@ -92,6 +93,7 @@ public class ContentLifecycleServiceImpl implements ContentLifecycleService {
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Workflow run not found");
         }
+        String executionToken = run.getExecutionToken();
         WorkflowCommand command = new WorkflowCommand(run.getFilterFrom(), run.getFilterTo(), run.getLeagueId(),
                 run.getRequestedLimit(), run.getFormat());
         Set<Long> completedMatchIds = itemRepository.findByWorkflowRunIdOrderByIdAsc(runId).stream()
@@ -100,11 +102,11 @@ public class ContentLifecycleServiceImpl implements ContentLifecycleService {
                 .collect(java.util.stream.Collectors.toSet());
         try {
             WorkflowReport report = orchestrator.generate(command, completedMatchIds,
-                    matchId -> persistenceService.startItem(runId, matchId),
-                    item -> persistenceService.persistItem(runId, item));
-            return persistenceService.persist(run, command, report);
+                    matchId -> persistenceService.startItem(runId, executionToken, matchId),
+                    item -> persistenceService.persistItem(runId, executionToken, item));
+            return persistenceService.persist(run, executionToken, command, report);
         } catch (RuntimeException failure) {
-            persistenceService.markFailed(runId, failure);
+            persistenceService.markFailed(runId, executionToken, failure);
             throw failure;
         }
     }
