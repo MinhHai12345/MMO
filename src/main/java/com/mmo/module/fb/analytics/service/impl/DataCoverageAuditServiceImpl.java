@@ -55,7 +55,7 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
         Map<String, MappingCoverage> mapping = new LinkedHashMap<>();
         addMapping(mapping, "league", "League", "LeagueExternalId", "league", lp);
         addMapping(mapping, "team", "Team", "TeamExternalId", "team", tp);
-        addMapping(mapping, "season", "Season", "SeasonExternalId", "season", fp);
+        addMapping(mapping, "season", "Season", "SeasonExternalId", "season", lp);
         addMapping(mapping, "match", "Match", "MatchExternalId", "match", fp);
 
         List<SeasonCoverage> seasonCoverage = new ArrayList<>();
@@ -92,8 +92,16 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
                 findings.add(new AuditFinding("WARNING", "SEASON_WITHOUT_FIXTURES", "Season has no stored fixtures.", 1, league + " " + year + " (seasonId=" + id + ")"));
             }
             if (seasonFinished > seasonScored) issues.add("FINISHED_MATCHES_MISSING_SCORES");
-            if (seasonStandingRows == 0) issues.add("NO_STANDINGS");
-            if (seasonStandingRows > 0 && totalRows == 0) issues.add("MISSING_TOTAL_STANDINGS");
+            if (seasonStandingRows == 0) {
+                issues.add("NO_STANDINGS");
+                findings.add(new AuditFinding("WARNING", "SEASON_WITHOUT_STANDINGS",
+                        "Season has no stored standings.", 1, league + " " + year + " (seasonId=" + id + ")"));
+            }
+            if (seasonStandingRows > 0 && totalRows == 0) {
+                issues.add("MISSING_TOTAL_STANDINGS");
+                findings.add(new AuditFinding("WARNING", "SEASON_MISSING_TOTAL_STANDINGS",
+                        "Season has standings rows but no TOTAL table.", 1, league + " " + year + " (seasonId=" + id + ")"));
+            }
             if (totalRows > 0 && teamsInStandings > totalRows) issues.add("TOTAL_STANDINGS_MAY_BE_INCOMPLETE");
             if (seasonFinished > 0 && seasonScored == 0) issues.add("NO_FINISHED_MATCHES_WITH_SCORES");
             seasonCoverage.add(new SeasonCoverage(id, league, year, current, total, seasonFinished, seasonScored,
