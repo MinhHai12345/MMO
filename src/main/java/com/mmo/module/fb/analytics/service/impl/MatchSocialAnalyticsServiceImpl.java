@@ -238,17 +238,20 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
     private ContentPlan buildContentPlan(Match match, List<String> preMatchAngles,
                                          List<String> warnings,
                                          PostMatchAnalysisService.PostMatchInsight postMatch) {
-        boolean finished = match.getStatus() == MatchStatus.FINISHED
-                && match.getHomeScore() != null && match.getAwayScore() != null;
+        boolean completedStatus = match.getStatus() == MatchStatus.FINISHED;
+        boolean finished = completedStatus && match.getHomeScore() != null && match.getAwayScore() != null;
         String phase = finished ? "POST_MATCH"
-                : match.getStatus() == MatchStatus.LIVE ? "LIVE" : "PRE_MATCH";
+                : completedStatus ? "POST_MATCH_INCOMPLETE"
+                : match.getStatus() == MatchStatus.LIVE ? "LIVE"
+                : match.getStatus() == MatchStatus.SCHEDULED ? "PRE_MATCH"
+                : match.getStatus() == null ? "UNKNOWN" : match.getStatus().name();
         List<String> postAngles = postMatch == null ? List.of() : postMatch.editorialAngles();
         List<String> longAngles = new ArrayList<>();
-        if (!finished) {
+        if ("PRE_MATCH".equals(phase)) {
             longAngles.addAll(preMatchAngles.stream().limit(4).toList());
             longAngles.add("Compare both teams' recent form and venue-specific samples, clearly stating sample sizes.");
             longAngles.add("Separate model probabilities from facts and avoid presenting any outcome as certain.");
-        } else {
+        } else if (finished) {
             longAngles.addAll(postMatch == null ? List.of() : postMatch.evidenceBasedFindings());
             longAngles.addAll(postAngles.stream().limit(4).toList());
             if (postMatch != null && postMatch.playerAnalytics() != null) {
@@ -273,7 +276,7 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
                             + String.join(", ", leader.evidence()) + ".");
                 }
             }
-        } else {
+        } else if ("PRE_MATCH".equals(phase)) {
             shorts.addAll(preMatchAngles.stream().limit(2).map(a -> "Pre-match question: " + a).toList());
             if (shorts.isEmpty()) {
                 shorts.add("Three questions before " + match.getHomeTeam().getName() + " vs "
@@ -281,14 +284,17 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
             }
             longAngles.add("Opening: what is known about " + match.getHomeTeam().getName() + " vs "
                     + match.getAwayTeam().getName() + " before kickoff?");
-        }
-        List<String> caveats = new ArrayList<>(warnings);
-        if (!finished) caveats.add("This is a pre-match content plan; final score and post-match statistics are not yet available.");
+        } else if ("LIVE".equals(phase)) {
+            shorts.add("Live update: " + match.getHomeTeam().getName() + " vs " + match.getAwayTeam().getName()
+                    + ". Verify the live score and event feed before publishing.");
+        } = new ArrayList<>(warnings);
+        if ("PRE_MATCH".equals(phase)) caveats.add("This is a pre-match content plan; final score and post-match statistics are not yet available.");
+        if ("POST_MATCH_INCOMPLETE".equals(phase)) caveats.add("The fixture is marked finished, but one or both final scores are missing.");
         if (finished && (match.getHomeXG() == null || match.getAwayXG() == null)) {
             caveats.add("Do not use xG comparison in the video until both teams' match xG values are available.");
         }
         return new ContentPlan(phase,
-                finished ? List.of() : preMatchAngles,
+                "PRE_MATCH".equals(phase) ? preMatchAngles : List.of(),
                 postAngles, longAngles.stream().distinct().limit(8).toList(),
                 shorts.stream().filter(s -> s != null && !s.isBlank()).distinct().limit(3).toList(),
                 caveats.stream().distinct().toList());
