@@ -101,6 +101,7 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
                 away,
                 prediction,
                 market,
+                matchupInsight(home, away, angles, warnings),
                 angles,
                 warnings);
     }
@@ -128,7 +129,9 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
                 decimal(features == null ? null : features.cleanSheetRate()),
                 decimal(features == null ? null : features.scoredRate()),
                 decimal(features == null ? null : features.averageXgFor()),
-                decimal(features == null ? null : features.averageXgAgainst()));
+                decimal(features == null ? null : features.averageXgAgainst()),
+                decimal(features == null ? null : features.venueAverageGoalsFor()),
+                decimal(features == null ? null : features.venueAverageGoalsAgainst()));
     }
 
     private PredictionInsight predictionInsight(MatchPrediction prediction) {
@@ -169,6 +172,84 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
         return new MarketInsight(odds.getHomeWinOdds(), odds.getDrawOdds(), odds.getAwayWinOdds(),
                 decimal(home / total), decimal(draw / total), decimal(away / total),
                 decimal(total - 1.0));
+    }
+
+
+    private MatchupInsight matchupInsight(TeamInsight home, TeamInsight away,
+                                          List<String> angles, List<String> warnings) {
+        List<MatchupSignal> signals = new ArrayList<>();
+
+        addMatchupSignal(signals, "HOME_ATTACK_VS_AWAY_DEFENCE",
+                home.averageGoalsFor(), away.averageGoalsAgainst(),
+                "Home attack scoring rate compared with away goals conceded",
+                home.matchesAnalyzed(), away.matchesAnalyzed());
+        addMatchupSignal(signals, "AWAY_ATTACK_VS_HOME_DEFENCE",
+                away.averageGoalsFor(), home.averageGoalsAgainst(),
+                "Away attack scoring rate compared with home goals conceded",
+                away.matchesAnalyzed(), home.matchesAnalyzed());
+
+        if (home.venueAverageGoalsFor() != null && away.venueAverageGoalsAgainst() != null) {
+            addMatchupSignal(signals, "HOME_VENUE_ATTACK_VS_AWAY_VENUE_DEFENCE",
+                    home.venueAverageGoalsFor(), away.venueAverageGoalsAgainst(),
+                    "Home team's home scoring rate compared with away team's away concession rate",
+                    home.venueMatchesAnalyzed(), away.venueMatchesAnalyzed());
+        }
+        if (away.venueAverageGoalsFor() != null && home.venueAverageGoalsAgainst() != null) {
+            addMatchupSignal(signals, "AWAY_VENUE_ATTACK_VS_HOME_VENUE_DEFENCE",
+                    away.venueAverageGoalsFor(), home.venueAverageGoalsAgainst(),
+                    "Away team's away scoring rate compared with home team's home concession rate",
+                    away.venueMatchesAnalyzed(), home.venueMatchesAnalyzed());
+        }
+
+        boolean xgAvailable = home.averageXgFor() != null && home.averageXgAgainst() != null
+                && away.averageXgFor() != null && away.averageXgAgainst() != null;
+        if (xgAvailable) {
+            addMatchupSignal(signals, "HOME_XG_ATTACK_VS_AWAY_XG_DEFENCE",
+                    home.averageXgFor(), away.averageXgAgainst(),
+                    "Historical xG-for compared with opponent xG-against",
+                    home.matchesAnalyzed(), away.matchesAnalyzed());
+            addMatchupSignal(signals, "AWAY_XG_ATTACK_VS_HOME_XG_DEFENCE",
+                    away.averageXgFor(), home.averageXgAgainst(),
+                    "Historical xG-for compared with opponent xG-against",
+                    away.matchesAnalyzed(), home.matchesAnalyzed());
+        } else {
+            warnings.add("Tactical matchup is limited to score-derived indicators because historical team xG is incomplete.");
+        }
+
+        long homeEdges = signals.stream().filter(s -> s.dimension().startsWith("HOME_")
+                && "ATTACKING_SIDE".equals(s.edge())).count();
+        long awayEdges = signals.stream().filter(s -> s.dimension().startsWith("AWAY_")
+                && "ATTACKING_SIDE".equals(s.edge())).count();
+        String summary;
+        if (signals.isEmpty()) {
+            summary = "Insufficient comparable historical metrics to describe this matchup.";
+        } else if (homeEdges > awayEdges) {
+            summary = "Available statistical indicators lean toward the home side; this is not a tactical or outcome certainty.";
+        } else if (awayEdges > homeEdges) {
+            summary = "Available statistical indicators lean toward the away side; this is not a tactical or outcome certainty.";
+        } else {
+            summary = "Available statistical indicators are mixed or balanced; no clear side has an edge.";
+        }
+        angles.add("Statistical matchup compares historical attack and concession rates; formation, pressing and player-level tactical data are not available in this analysis.");
+        return new MatchupInsight(summary, xgAvailable, signals);
+    }
+
+    private void addMatchupSignal(List<MatchupSignal> signals, String dimension,
+                                  BigDecimal attackRate, BigDecimal opponentConcessionRate,
+                                  String evidence, int attackSamples, int defenceSamples) {
+        if (attackRate == null || opponentConcessionRate == null) {
+            return;
+        }
+        BigDecimal difference = attackRate.subtract(opponentConcessionRate);
+        BigDecimal threshold = new BigDecimal("0.150");
+        String edge = difference.compareTo(threshold) > 0 ? "ATTACKING_SIDE"
+                : difference.compareTo(threshold.negate()) < 0 ? "OPPONENT_DEFENCE" : "BALANCED";
+        String confidence = attackSamples >= 8 && defenceSamples >= 8 ? "MODERATE"
+                : attackSamples >= 4 && defenceSamples >= 4 ? "LOW" : "VERY_LOW";
+        signals.add(new MatchupSignal(dimension, edge,
+                evidence + ": " + attackRate.toPlainString() + " vs " + opponentConcessionRate.toPlainString()
+                        + " goals/xG per match; samples=" + attackSamples + "/" + defenceSamples,
+                confidence));
     }
 
     private void addFormAngles(TeamInsight home, TeamInsight away, List<String> angles) {
