@@ -59,7 +59,27 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
         addMapping(mapping, "match", "Match", "MatchExternalId", "match", fp);
 
         List<SeasonCoverage> seasonCoverage = new ArrayList<>();
-        for (Object[] s : entityManager.createQuery("select s.id, l.name, s.year, s.isCurrent from Season s join s.league l order by l.name asc, s.year desc", Object[].class).getResultList()) {
+        List<String> configuredSeasons = properties.getFootballData() == null
+                ? List.of() : properties.getFootballData().getSeasons();
+        List<Object[]> seasonRows;
+        if (configuredSeasons != null && !configuredSeasons.isEmpty()) {
+            seasonRows = entityManager.createQuery("""
+                    select s.id, l.name, s.year, s.isCurrent
+                    from Season s join s.league l
+                    where s.year in :years
+                    order by l.name asc, s.year desc
+                    """, Object[].class).setParameter("years", configuredSeasons).getResultList();
+        } else {
+            // Same default semantics as FootballData configuration: when no explicit years are set,
+            // focus the season-level audit on seasons marked current instead of stale historical rows.
+            seasonRows = entityManager.createQuery("""
+                    select s.id, l.name, s.year, s.isCurrent
+                    from Season s join s.league l
+                    where s.isCurrent = true
+                    order by l.name asc, s.year desc
+                    """, Object[].class).getResultList();
+        }
+        for (Object[] s : seasonRows) {
             Long id = ((Number) s[0]).longValue();
             String league = (String) s[1];
             String year = (String) s[2];

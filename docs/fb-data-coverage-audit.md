@@ -8,15 +8,15 @@ After the application starts against the populated database, call:
 GET http://localhost:8188/api/fb/analytics/data-coverage-audit
 ```
 
-The endpoint is read-only. It audits league/season/team/match counts, finished score and xG coverage, standings by `TOTAL`/`HOME`/`AWAY`, provider-specific external-ID mappings, seasons without fixtures, exact duplicate signatures, and repeated home/away pairings.
+The endpoint is read-only. Global totals describe all persisted data. The per-season detail and season-level fixture/standing findings are scoped to `app.football-data.seasons`; when that list is empty, only seasons marked current are detailed. It audits league/season/team/match counts, finished score and xG coverage, standings by `TOTAL`/`HOME`/`AWAY`, provider-specific external-ID mappings, seasons without fixtures, exact duplicate signatures, and repeated home/away pairings.
 
 ## Historical backfill workflow
 
-1. Configure the desired start years in `FOOTBALL_DATA_SEASONS`, for example `2021,2022,2023,2024,2025,2026`. These are season start years, not calendar-year coverage.
+1. Configure the intended start years in `FOOTBALL_DATA_SEASONS`. For the current FB scope, use `2023,2024,2025,2026`. These are season start years, not calendar-year coverage.
 2. Confirm `FOOTBALL_DATA_COMPETITION_IDS` contains the intended competition IDs and `FOOTBALL_DATA_API_KEY` is valid.
 3. Trigger the existing `FootballDataBootstrapJob` through the application's CronJob controls (or run the same `FootballDataBootstrapService.syncCoreData()` operation). It syncs leagues/seasons, teams, all fixtures returned for configured seasons, and standings. Fixture persistence upserts by provider external ID, so rerunning is intended to be idempotent.
 4. Review application logs for per-competition/season fixture counts, `403` restricted resources, rate-limit interruptions, skipped unmapped teams, and failed persistence.
-5. Re-run the audit and compare each season's `matches`, `expectedMatches`, `matchCountDifference`, `repeatedHomeAwayPairGroups`, and `fixtureIntegrityStatus`.
+5. Re-run the audit and compare only the configured seasons' `matches`, `expectedMatches`, `matchCountDifference`, `repeatedHomeAwayPairGroups`, and `fixtureIntegrityStatus`. Unconfigured historical seasons are not treated as backfill targets.
 
 The client paces football-data.org requests conservatively, so historical backfill can take several minutes. Do not assume a zero-fixture response means a genuinely empty season: it can also mean the provider response was restricted or unavailable. The sync log is required to distinguish those cases.
 
