@@ -109,8 +109,7 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
             // Do not apply this assumption to cup/knockout competitions such as the Champions League.
             long teamsInSeason = teamsInStandings > 0 ? teamsInStandings : countDistinctSeasonTeams(id);
             if (teamsInSeason < 2) teamsInSeason = expectedTeamCountForLeague(league);
-            Long expectedMatches = isDoubleRoundRobinLeague(league) && teamsInSeason > 1
-                    ? teamsInSeason * (teamsInSeason - 1) : null;
+            Long expectedMatches = expectedMatchesForSeason(league, teamsInSeason, year);
             List<Long> repeatedPairGroups = entityManager.createQuery("""
                     select count(m) from Match m
                     where m.season.id = :seasonId
@@ -178,6 +177,24 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
         Set<Long> ids = new HashSet<>(homeTeams);
         ids.addAll(awayTeams);
         return ids.size();
+    }
+
+    private Long expectedMatchesForSeason(String leagueName, long teamCount, String seasonYear) {
+        if (!isDoubleRoundRobinLeague(leagueName) || teamCount < 2) return null;
+        long expected = teamCount * (teamCount - 1);
+        if (leagueName != null && leagueName.toLowerCase(Locale.ROOT).contains("championship")) {
+            // Championship counts include playoffs in the provider's competition fixture list.
+            // Seasons through 2025/26 had 4-team, two-legged semi-finals + final (5 games).
+            // From 2026/27, the EFL-approved format has 2 eliminators + two-legged semis + final (7 games).
+            int startYear;
+            try {
+                startYear = Integer.parseInt(seasonYear);
+            } catch (RuntimeException ignored) {
+                return null;
+            }
+            expected += startYear >= 2026 ? 7 : 5;
+        }
+        return expected;
     }
 
     private long expectedTeamCountForLeague(String leagueName) {
