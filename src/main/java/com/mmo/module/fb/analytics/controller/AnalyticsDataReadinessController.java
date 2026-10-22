@@ -2,6 +2,8 @@ package com.mmo.module.fb.analytics.controller;
 
 import com.mmo.module.fb.analytics.service.AnalyticsDataReadinessService;
 import com.mmo.module.fb.analytics.service.AnalyticsDataReadinessService.DataReadinessReport;
+import com.mmo.module.fb.analytics.service.DataCoverageAuditService;
+import com.mmo.module.fb.analytics.service.DataCoverageAuditService.DataCoverageAuditReport;
 import com.mmo.module.fb.analytics.service.TeamFormBackTestService;
 import com.mmo.module.fb.analytics.service.TeamFormBackTestService.TeamFormBackTestReport;
 import com.mmo.module.fb.analytics.service.WalkForwardBackTestService;
@@ -14,15 +16,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.time.Instant;
 
-/**
- * Read-only operational endpoint for inspecting analytics data coverage.
- */
+/** Read-only operational endpoints for inspecting analytics data coverage. */
 @RestController
 @RequestMapping("/api/fb/analytics")
 @RequiredArgsConstructor
 public class AnalyticsDataReadinessController {
-
     private final AnalyticsDataReadinessService analyticsDataReadinessService;
+    private final DataCoverageAuditService dataCoverageAuditService;
     private final TeamFormBackTestService teamFormBackTestService;
     private final WalkForwardBackTestService walkForwardBackTestService;
 
@@ -30,23 +30,21 @@ public class AnalyticsDataReadinessController {
     public DataReadinessReport getDataReadiness() {
         return analyticsDataReadinessService.getReadiness();
     }
-    
-    /**
-     * Evaluates a team-form-only model on completed matches without changing live predictions.
-     */
+
+    /** Runs a read-only audit of persisted coverage, scores, standings, duplicates and provider mappings. */
+    @GetMapping("/data-coverage-audit")
+    public DataCoverageAuditReport getDataCoverageAudit() {
+        return dataCoverageAuditService.runAudit();
+    }
+
     @GetMapping("/team-form-backtest")
-    public TeamFormBackTestReport runTeamFormBackTest(@RequestParam Instant from,
-                                                       @RequestParam Instant to) {
+    public TeamFormBackTestReport runTeamFormBackTest(@RequestParam Instant from, @RequestParam Instant to) {
         return teamFormBackTestService.run(from, to);
     }
 
-    /**
-     * Runs a walk-forward evaluation without changing live predictions.
-     * Dates must be ISO-8601 instants; the start is inclusive and the end is exclusive.
-     */
+    /** Dates are ISO-8601 instants; start is inclusive and end is exclusive. */
     @GetMapping("/walk-forward-backtest")
-    public BackTestReport runWalkForwardBackTest(@RequestParam Instant from,
-                                                  @RequestParam Instant to) {
+    public BackTestReport runWalkForwardBackTest(@RequestParam Instant from, @RequestParam Instant to) {
         return walkForwardBackTestService.run(from, to);
     }
 }
