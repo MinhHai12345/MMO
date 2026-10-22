@@ -132,14 +132,47 @@ public class SocialContentPackageServiceImpl implements SocialContentPackageServ
         List<String> hashtagList = hashtagList(home, away, insight.competition());
         String hashtags = String.join(" ", hashtagList);
 
-        String shortVideoScript = opening + "\n\n"
-                + analysisPoints.stream()
-                        .limit(3)
-                        .map(point -> point + ".")
-                        .collect(Collectors.joining("\n"))
-                + probabilitySection
-                + "\n\n"
-                + DISCLAIMER;
+        String shortVideoScript;
+        if (effectiveFormat == DraftFormat.LONG_VIDEO) {
+            List<String> chapters = new ArrayList<>();
+            chapters.add("INTRO (0:00-0:30): " + opening);
+            int chapter = 1;
+            for (String point : analysisPoints) {
+                chapters.add("CHAPTER " + chapter++ + ": " + point
+                        + "\nVisual: original tactical board, licensed footage, or verified data graphic."
+                        + "\nTransition: explain which evidence supports this point and what remains uncertain.");
+            }
+            chapters.add("CONCLUSION: Summarize the strongest evidence, the main uncertainty, and invite viewers to discuss.");
+            shortVideoScript = String.join("\n\n", chapters)
+                    + "\n\nEDITOR NOTE: Add verified score/stat citations and review every claim before recording."
+                    + "\n" + DISCLAIMER;
+        } else if (effectiveFormat == DraftFormat.SHORTS) {
+            String keyPoints = analysisPoints.stream().limit(3)
+                    .map(point -> point + ".")
+                    .collect(Collectors.joining("\n"));
+            shortVideoScript = "0-3s | HOOK: " + opening
+                    + "\n3-20s | ANALYSIS:\n" + keyPoints
+                    + "\n20-27s | TAKEAWAY: One evidence-based insight; avoid certainty claims."
+                    + "\n27-30s | CTA: What did you notice in this match?"
+                    + probabilitySection + "\n" + DISCLAIMER;
+        } else {
+            shortVideoScript = opening + "\n\n"
+                    + analysisPoints.stream().limit(3).map(point -> point + ".")
+                    .collect(Collectors.joining("\n"))
+                    + probabilitySection + "\n\n" + DISCLAIMER;
+        }
+
+        String instagramCopy = opening + "\n\n"
+                + analysisPoints.stream().limit(3).map(point -> "• " + point)
+                .collect(Collectors.joining("\n"))
+                + probabilitySection + "\n\n" + hashtags;
+        String facebookCopy = baseCopy + "\n\n"
+                + "Join the discussion: which tactical detail mattered most?\n\n" + hashtags;
+        String youtubeCopy = baseCopy + "\n\n"
+                + "CHAPTERS\n00:00 Introduction\n"
+                + (analysisPoints.isEmpty() ? "" : "00:30 Key analysis\n")
+                + "Data note: estimates are model-generated; verify claims and source timestamps before publishing.\n"
+                + hashtags;
 
         String editorialStatus = draft.status();
         if ("BLOCKED".equalsIgnoreCase(editorialStatus)) {
@@ -163,11 +196,11 @@ public class SocialContentPackageServiceImpl implements SocialContentPackageServ
                 DISCLAIMER,
                 draft.evidence(),
                 caveats,
-                baseCopy + "\n\n" + hashtags,
-                baseCopy + "\n\n" + hashtags,
+                instagramCopy,
+                facebookCopy,
                 truncate(opening + " " + String.join(" ", analysisPoints)
                         + probabilitySection + " " + hashtags, 275),
-                baseCopy + "\n\n" + hashtags,
+                youtubeCopy,
                 shortVideoScript,
                 hashtagList
         );
