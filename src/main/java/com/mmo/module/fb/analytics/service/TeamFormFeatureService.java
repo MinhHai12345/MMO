@@ -9,6 +9,10 @@ public interface TeamFormFeatureService {
 
     Optional<MatchFeatures> buildFeatures(Match targetMatch);
 
+    /** Builds a point-in-time snapshot from already matured history, ordered newest first. */
+    Optional<MatchFeatures> buildFeatures(Match targetMatch, java.util.List<Match> homeHistory,
+                                          java.util.List<Match> awayHistory);
+
     record MatchFeatures(
             Long targetMatchId,
             Instant targetKickoff,
