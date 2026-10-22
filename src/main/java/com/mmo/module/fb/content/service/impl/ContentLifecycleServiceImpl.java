@@ -18,14 +18,24 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class ContentLifecycleServiceImpl implements ContentLifecycleService {
+
     private static final int DEFAULT_LIMIT = 20;
     private static final int MAX_LIMIT = 100;
-    private static final Set<String> REVIEW_STATUSES = Set.of("PENDING_REVIEW", "CHANGES_REQUESTED", "APPROVED", "REJECTED");
+    private static final Set<String> REVIEW_STATUSES =
+            Set.of("PENDING_REVIEW", "CHANGES_REQUESTED", "APPROVED", "REJECTED");
+    private static final Map<String, Set<String>> ALLOWED_TRANSITIONS = Map.of(
+            "PENDING_REVIEW", Set.of("APPROVED", "CHANGES_REQUESTED", "REJECTED"),
+            "CHANGES_REQUESTED", Set.of("PENDING_REVIEW", "APPROVED", "REJECTED"),
+            "APPROVED", Set.of("CHANGES_REQUESTED"),
+            "REJECTED", Set.of("CHANGES_REQUESTED")
+    );
 
     private final ContentWorkflowOrchestrator orchestrator;
     private final ContentWorkflowPersistenceService persistenceService;
@@ -49,15 +59,25 @@ public class ContentLifecycleServiceImpl implements ContentLifecycleService {
     @Transactional(readOnly = true)
     public List<ContentDraftRecordEntity> listDrafts(String editorialStatus, int limit) {
         PageRequest page = PageRequest.of(0, normalizeLimit(limit));
-        if (editorialStatus == null || editorialStatus.isBlank()) return draftRepository.findAllByOrderByIdDesc(page);
-        if (!REVIEW_STATUSES.contains(editorialStatus)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported editorialStatus");
-        return draftRepository.findByEditorialStatusOrderByIdDesc(editorialStatus, page);
+        if (editorialStatus == null || editorialStatus.isBlank()) {
+            return draftRepository.findAllByOrderByIdDesc(page);
+        }
+
+        String status = editorialStatus.strip().toUpperCase(Locale.ROOT);
+        if (!REVIEW_STATUSES.contains(status)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported editorialStatus");
+        }
+        return draftRepository.findByEditorialStatusOrderByIdDesc(status, page);
     }
 
     @Override
     @Transactional(readOnly = true)
     public ContentDraftRecordEntity getDraft(Long draftId) {
-        return draftRepository.findById(draftId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Draft not found"));
+        if (draftId == null || draftId <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A positive draftId is required");
+        }
+        return draftRepository.findById(draftId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Draft not found"));
     }
 
     @Override
@@ -70,16 +90,37 @@ public class ContentLifecycleServiceImpl implements ContentLifecycleService {
     @Override
     @Transactional
     public ContentDraftRecordEntity review(Long draftId, ReviewCommand command) {
-        if (command == null || command.status() == null || !REVIEW_STATUSES.contains(command.status()))
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status must be PENDING_REVIEW, CHANGES_REQUESTED, APPROVED, or REJECTED");
-        ContentDraftRecordEntity draft = draftRepository.findById(draftId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Draft not found"));
-        if ("APPROVED".equals(command.status()) && "BLOCKED".equals(draft.getGenerationStatus()))
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Blocked drafts cannot be approved; regenerate after fixing blockers");
-        draft.setEditorialStatus(command.status());
+        if (command == null || command.status() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Review status is required");
+        }
+
+        String requestedStatus = command.status().strip().toUpperCase(Locale.ROOT);
+        if (!REVIEW_STATUSES.contains(requestedStatus) || "PENDING_REVIEW".equals(requestedStatus)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "status must be APPROVED, CHANGES_REQUESTED, or REJECTED");
+        }
+
+        ContentDraftRecordEntity draft = getDraft(draftId);
+        String currentStatus = draft.getEditorialStatus() == null
+                ? "PENDING_REVIEW"
+                : draft.getEditorialStatus().toUpperCase(Locale.ROOT);
+
+        if (!ALLOWED_TRANSITIONS.getOrDefault(currentStatus, Set.of()).contains(requestedStatus)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Editorial status cannot transition from " + currentStatus + " to " + requestedStatus);
+        }
+        if ("APPROVED".equals(requestedStatus) && "BLOCKED".equals(draft.getGenerationStatus())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Blocked drafts cannot be approved; regenerate after fixing blockers");
+        }
+
+        draft.setEditorialStatus(requestedStatus);
         draft.setReviewNotes(command.notes());
         draft.setVersionNumber(draft.getVersionNumber() + 1);
         draft = draftRepository.save(draft);
+
         ContentDraftVersionEntity version = new ContentDraftVersionEntity();
         version.setDraft(draft);
         version.setVersionNumber(draft.getVersionNumber());
@@ -92,5 +133,7 @@ public class ContentLifecycleServiceImpl implements ContentLifecycleService {
         return draft;
     }
 
-    private static int normalizeLimit(int limit) { return limit <= 0 ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT); }
+    private static int normalizeLimit(int limit) {
+        return limit <= 0 ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
+    }
 }
