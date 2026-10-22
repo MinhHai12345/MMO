@@ -99,6 +99,14 @@ public class ContentWorkflowPersistenceService {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.CONFLICT, "Only failed or partially failed workflows can be resumed");
         }
+        itemRepository.findByWorkflowRunIdOrderByIdAsc(runId).stream()
+                .filter(item -> !"COMPLETED".equals(item.getStatus()) && item.getAttemptCount() >= 3)
+                .forEach(item -> {
+                    item.setStatus("FAILED");
+                    item.setFailureReason("Retry limit of 3 attempts reached.");
+                    item.setCompletedAt(Instant.now());
+                    itemRepository.save(item);
+                });
         run.setStatus("RUNNING");
         run.setStartedAt(Instant.now());
         run.setCompletedAt(null);
