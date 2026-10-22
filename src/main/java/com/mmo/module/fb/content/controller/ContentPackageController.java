@@ -9,7 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/fb/content")
+@RequestMapping("/api/fb/content/workflows")
 @RequiredArgsConstructor
 public class ContentPackageController {
 
