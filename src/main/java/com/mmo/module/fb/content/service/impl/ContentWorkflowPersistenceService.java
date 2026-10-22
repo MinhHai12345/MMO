@@ -58,6 +58,8 @@ public class ContentWorkflowPersistenceService {
 
     @Transactional
     public ContentWorkflowRunEntity persist(ContentWorkflowRunEntity run, String executionToken, WorkflowCommand command, WorkflowReport report) {
+        run = runRepository.findById(run.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + run.getId()));
         assertLease(run, executionToken);
         run.setStatus(report.status());
         run.setFormat(report.format());
