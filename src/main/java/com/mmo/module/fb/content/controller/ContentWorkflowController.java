@@ -4,7 +4,7 @@ import com.mmo.module.fb.content.persistence.ContentDraftRecordEntity;
 import com.mmo.module.fb.content.persistence.ContentDraftVersionEntity;
 import com.mmo.module.fb.content.persistence.ContentWorkflowRunEntity;
 import com.mmo.module.fb.analytics.service.ContentDraftService.DraftFormat;
-import com.mmo.module.fb.content.service.ContentLifecycleService;
+import com.mmo.module.fb.content.service.ContentLifecycleService;\nimport com.mmo.module.fb.content.service.SocialContentPackageService;\nimport com.mmo.module.fb.content.service.SocialContentPackageService.SocialContentPackage;
 import com.mmo.module.fb.content.service.ContentLifecycleService.ReviewCommand;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowCommand;
 import lombok.RequiredArgsConstructor;
@@ -18,9 +18,9 @@ import java.util.List;
 @RequestMapping("/api/fb/content/workflows")
 @RequiredArgsConstructor
 public class ContentWorkflowController {
-    private final ContentLifecycleService lifecycleService;
+    private final ContentLifecycleService lifecycleService;\n    private final SocialContentPackageService socialContentPackageService;
 
-    @PostMapping("/generate")
+    @GetMapping("/matches/{matchId}/social-package")\n    public SocialContentPackage socialPackage(\n            @PathVariable Long matchId,\n            @RequestParam(defaultValue = "PRE_MATCH") DraftFormat format) {\n        return socialContentPackageService.generate(matchId, format);\n    }\n\n    @PostMapping("/generate")
     public ContentWorkflowRunEntity generate(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
