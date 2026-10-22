@@ -275,6 +275,12 @@ public class MatchSocialAnalyticsServiceImpl implements MatchSocialAnalyticsServ
             }
         } else {
             shorts.addAll(preMatchAngles.stream().limit(2).map(a -> "Pre-match question: " + a).toList());
+            if (shorts.isEmpty()) {
+                shorts.add("Three questions before " + match.getHomeTeam().getName() + " vs "
+                        + match.getAwayTeam().getName() + ": recent form, venue trends, and what the available data cannot tell us.");
+            }
+            longAngles.add("Opening: what is known about " + match.getHomeTeam().getName() + " vs "
+                    + match.getAwayTeam().getName() + " before kickoff?");
         }
         List<String> caveats = new ArrayList<>(warnings);
         if (!finished) caveats.add("This is a pre-match content plan; final score and post-match statistics are not yet available.");
