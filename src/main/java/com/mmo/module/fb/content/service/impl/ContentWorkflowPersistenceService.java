@@ -101,6 +101,17 @@ public class ContentWorkflowPersistenceService {
         return run;
     }
 
+    @Transactional
+    public void markFailed(Long runId, RuntimeException failure) {
+        runRepository.findById(runId).ifPresent(run -> {
+            run.setStatus("FAILED");
+            run.setCompletedAt(Instant.now());
+            String reason = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
+            run.setWarningsJson(writeJson(List.of("Workflow execution failed: " + reason)));
+            runRepository.save(run);
+        });
+    }
+
     private static int normalizeLimit(int limit) {
         return limit <= 0 ? 20 : Math.min(limit, 50);
     }
