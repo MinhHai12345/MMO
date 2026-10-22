@@ -4,6 +4,7 @@ import com.mmo.module.fb.analytics.service.ContentDraftService.DraftFormat;
 import com.mmo.module.fb.content.persistence.ContentDraftRecordEntity;
 import com.mmo.module.fb.content.persistence.ContentDraftVersionEntity;
 import com.mmo.module.fb.content.persistence.ContentWorkflowRunEntity;
+import com.mmo.module.fb.content.persistence.ContentWorkflowItemEntity;
 import com.mmo.module.fb.content.service.ContentLifecycleService;
 import com.mmo.module.fb.content.service.ContentLifecycleService.ReviewCommand;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowCommand;
@@ -33,6 +34,16 @@ public class ContentWorkflowController {
             @RequestParam(defaultValue = "PRE_MATCH") DraftFormat format
     ) {
         return lifecycleService.generate(new WorkflowCommand(from, to, leagueId, limit, format), idempotencyKey);
+    }
+
+    @PostMapping("/runs/{runId}/resume")
+    public ContentWorkflowRunEntity resume(@PathVariable Long runId) {
+        return lifecycleService.resume(runId);
+    }
+
+    @GetMapping("/runs/{runId}/items")
+    public List<ContentWorkflowItemEntity> listWorkflowItems(@PathVariable Long runId) {
+        return lifecycleService.listWorkflowItems(runId);
     }
 
     @GetMapping("/runs")
