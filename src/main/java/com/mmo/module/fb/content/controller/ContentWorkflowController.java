@@ -23,6 +23,7 @@ public class ContentWorkflowController {
 
     @PostMapping("/generate")
     public ContentWorkflowRunEntity generate(
+            @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam(required = false)
@@ -31,7 +32,7 @@ public class ContentWorkflowController {
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "PRE_MATCH") DraftFormat format
     ) {
-        return lifecycleService.generate(new WorkflowCommand(from, to, leagueId, limit, format));
+        return lifecycleService.generate(new WorkflowCommand(from, to, leagueId, limit, format), idempotencyKey);
     }
 
     @GetMapping("/runs")
