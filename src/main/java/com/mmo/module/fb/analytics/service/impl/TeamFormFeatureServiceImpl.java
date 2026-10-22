@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -24,6 +25,7 @@ public class TeamFormFeatureServiceImpl implements TeamFormFeatureService {
 
     private static final int HISTORY_SIZE = 10;
     private static final int VENUE_HISTORY_SIZE = 5;
+    private static final Duration RESULT_AVAILABILITY_LAG = Duration.ofHours(4);
 
     private final MatchRepository matchRepository;
 
@@ -33,16 +35,25 @@ public class TeamFormFeatureServiceImpl implements TeamFormFeatureService {
             return Optional.empty();
         }
 
-        Instant kickoff = targetMatch.getMatchTime();
+        Instant cutoff = targetMatch.getMatchTime().minus(RESULT_AVAILABILITY_LAG);
         Long leagueId = targetMatch.getSeason().getLeague().getId();
-        List<Match> homeHistory = history(targetMatch.getHomeTeam(), leagueId, kickoff);
-        List<Match> awayHistory = history(targetMatch.getAwayTeam(), leagueId, kickoff);
+        List<Match> homeHistory = history(targetMatch.getHomeTeam(), leagueId, cutoff);
+        List<Match> awayHistory = history(targetMatch.getAwayTeam(), leagueId, cutoff);
+        return buildFeatures(targetMatch, homeHistory, awayHistory);
+    }
 
+    @Override
+    public Optional<MatchFeatures> buildFeatures(Match targetMatch, List<Match> homeHistory,
+                                                 List<Match> awayHistory) {
+        if (!validTarget(targetMatch)) {
+            return Optional.empty();
+        }
+        Instant kickoff = targetMatch.getMatchTime();
         return Optional.of(new MatchFeatures(
                 targetMatch.getId(),
                 kickoff,
-                summarize(targetMatch.getHomeTeam(), homeHistory, true),
-                summarize(targetMatch.getAwayTeam(), awayHistory, false)
+                summarize(targetMatch.getHomeTeam(), homeHistory == null ? List.of() : homeHistory, true),
+                summarize(targetMatch.getAwayTeam(), awayHistory == null ? List.of() : awayHistory, false)
         ));
     }
 
