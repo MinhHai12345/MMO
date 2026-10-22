@@ -12,7 +12,6 @@ import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowRep
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -22,7 +21,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
-@Service @RequiredArgsConstructor @Transactional(readOnly = true)
+@Service @RequiredArgsConstructor
 public class ContentWorkflowOrchestratorImpl implements ContentWorkflowOrchestrator {
     private static final int DEFAULT_LIMIT = 20;
     private static final int MAX_LIMIT = 50;
