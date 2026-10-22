@@ -1,6 +1,8 @@
 package com.mmo.module.fb.analytics.controller;
 
 import com.mmo.module.fb.analytics.service.AnalyticsDataReadinessService;
+import com.mmo.module.fb.analytics.service.AnalyticsWorkflowService;
+import com.mmo.module.fb.analytics.service.AnalyticsWorkflowService.AnalyticsWorkflowReport;
 import com.mmo.module.fb.analytics.service.AnalyticsDataReadinessService.DataReadinessReport;
 import com.mmo.module.fb.analytics.service.DataCoverageAuditService;
 import com.mmo.module.fb.analytics.service.DataCoverageAuditService.DataCoverageAuditReport;
@@ -22,6 +24,7 @@ import java.time.Instant;
 @RequiredArgsConstructor
 public class AnalyticsDataReadinessController {
     private final AnalyticsDataReadinessService analyticsDataReadinessService;
+    private final AnalyticsWorkflowService analyticsWorkflowService;
     private final DataCoverageAuditService dataCoverageAuditService;
     private final TeamFormBackTestService teamFormBackTestService;
     private final WalkForwardBackTestService walkForwardBackTestService;
@@ -29,6 +32,16 @@ public class AnalyticsDataReadinessController {
     @GetMapping("/data-readiness")
     public DataReadinessReport getDataReadiness() {
         return analyticsDataReadinessService.getReadiness();
+    }
+
+    /**
+     * Runs the read-only analytics workflow in order: coverage audit, readiness,
+     * point-in-time team-form benchmark, then persisted-prediction walk-forward evaluation.
+     * The backtests are skipped when critical data-quality findings remain.
+     */
+    @GetMapping("/workflow")
+    public AnalyticsWorkflowReport runWorkflow(@RequestParam Instant from, @RequestParam Instant to) {
+        return analyticsWorkflowService.run(from, to);
     }
 
     /** Runs a read-only audit of persisted coverage, scores, standings, duplicates and provider mappings. */
