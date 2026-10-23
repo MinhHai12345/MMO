@@ -44,8 +44,8 @@ The legacy top-level `domain` package has been removed. Entity table names, colu
 - `publish.controller`: HTTP transport for publication workflows.
 - `publish.service` and `publish.service.impl`: application contracts and orchestration.
 - `publish.domain`: platform identifiers, state transitions, payload validation.
-- `publish.provider.<platform>`: platform-specific adapters. Telegram currently uses the shared `TelegramClient` configured by the application.
-- Future Facebook, X, YouTube, TikTok and Instagram adapters belong under `publish.provider.<platform>`; do not put these under `content`.
+- `publish.provider.telegram`, `publish.provider.facebook`, and `publish.provider.x`: platform-specific integrations. Telegram uses the shared `TelegramClient` configured by the application.
+- Future YouTube, TikTok and Instagram adapters belong under `publish.provider.<platform>`; do not put these under `content`.
 
 ## Dependency rules
 
