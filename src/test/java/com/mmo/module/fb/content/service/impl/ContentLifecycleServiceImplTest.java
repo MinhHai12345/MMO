@@ -1,11 +1,11 @@
 package com.mmo.module.fb.content.service.impl;
 
 import com.mmo.module.fb.analytics.service.ContentDraftService.DraftFormat;
-import com.mmo.module.fb.content.persistence.ContentDraftRecordRepository;
-import com.mmo.module.fb.content.persistence.ContentDraftVersionRepository;
-import com.mmo.module.fb.content.persistence.ContentWorkflowItemRepository;
-import com.mmo.module.fb.content.persistence.ContentWorkflowRunEntity;
-import com.mmo.module.fb.content.persistence.ContentWorkflowRunRepository;
+import com.mmo.module.fb.content.repository.ContentDraftRecordRepository;
+import com.mmo.module.fb.content.repository.ContentDraftVersionRepository;
+import com.mmo.module.fb.content.repository.ContentWorkflowItemRepository;
+import com.mmo.module.fb.content.entity.ContentWorkflowRunEntity;
+import com.mmo.module.fb.content.repository.ContentWorkflowRunRepository;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowCommand;
 import org.junit.jupiter.api.Test;
