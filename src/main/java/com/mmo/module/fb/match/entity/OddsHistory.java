@@ -1,4 +1,4 @@
-package com.mmo.module.fb.domain.entity;
+package com.mmo.module.fb.match.entity;
 
 import com.mmo.core.entity.AbstractEntity;
 import jakarta.persistence.*;
