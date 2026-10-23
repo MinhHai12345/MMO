@@ -1,23 +1,23 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
-import com.mmo.module.fb.domain.entity.League;
-import com.mmo.module.fb.domain.entity.LeagueExternalId;
-import com.mmo.module.fb.domain.entity.Match;
-import com.mmo.module.fb.domain.entity.MatchAdvancedStats;
-import com.mmo.module.fb.domain.entity.MatchExternalId;
-import com.mmo.module.fb.domain.entity.Season;
-import com.mmo.module.fb.domain.entity.SeasonExternalId;
-import com.mmo.module.fb.domain.enums.MatchStatus;
-import com.mmo.module.fb.domain.enums.Provider;
-import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
-import com.mmo.module.fb.domain.repository.LeagueRepository;
-import com.mmo.module.fb.domain.repository.MatchAdvancedStatsRepository;
-import com.mmo.module.fb.domain.repository.MatchExternalIdRepository;
-import com.mmo.module.fb.domain.repository.MatchPredictionRepository;
-import com.mmo.module.fb.domain.repository.MatchRepository;
-import com.mmo.module.fb.domain.repository.SeasonExternalIdRepository;
-import com.mmo.module.fb.domain.repository.SeasonRepository;
-import com.mmo.module.fb.domain.repository.TeamRepository;
+import com.mmo.module.fb.league.entity.League;
+import com.mmo.module.fb.league.entity.LeagueExternalId;
+import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.match.entity.MatchAdvancedStats;
+import com.mmo.module.fb.match.entity.MatchExternalId;
+import com.mmo.module.fb.league.entity.Season;
+import com.mmo.module.fb.league.entity.SeasonExternalId;
+import com.mmo.module.fb.match.enums.MatchStatus;
+import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
+import com.mmo.module.fb.league.repository.LeagueRepository;
+import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
+import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
+import com.mmo.module.fb.analytics.repository.MatchPredictionRepository;
+import com.mmo.module.fb.match.repository.MatchRepository;
+import com.mmo.module.fb.league.repository.SeasonExternalIdRepository;
+import com.mmo.module.fb.league.repository.SeasonRepository;
+import com.mmo.module.fb.team.repository.TeamRepository;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchStatisticsData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
@@ -321,7 +321,7 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
     }
 
     private MatchAdvancedStats upsertTeamStatistics(Match match,
-                                                     com.mmo.module.fb.domain.entity.Team team,
+                                                     com.mmo.module.fb.team.entity.Team team,
                                                      List<SofaMatchStatisticsData.StatisticItemDTO> items,
                                                      boolean homeSide) {
         MatchAdvancedStats stats = matchAdvancedStatsRepository

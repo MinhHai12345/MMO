@@ -7,7 +7,7 @@ import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.league.entity.Season;
 import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.team.entity.TeamForm;
-import com.mmo.module.fb.domain.enums.MatchStatus;
+import com.mmo.module.fb.match.enums.MatchStatus;
 import com.mmo.module.fb.match.repository.H2HRecordRepository;
 import com.mmo.module.fb.match.repository.MatchRepository;
 import com.mmo.module.fb.league.repository.SeasonRepository;
