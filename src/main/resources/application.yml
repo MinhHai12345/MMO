@@ -47,12 +47,12 @@ app:
   content:
     workflow:
       scheduler:
-        # Creates drafts only; editorial review remains manual.
+        # Quartz job creates drafts only; editorial review remains manual.
         enabled: ${CONTENT_WORKFLOW_SCHEDULER_ENABLED:true}
-        # Run after the default fixture-sync and prediction jobs (UTC).
-        cron: ${CONTENT_WORKFLOW_SCHEDULER_CRON:0 30 11 * * *}
+        # Quartz cron expression in UTC; schedule after ingestion/prediction refreshes.
+        cron: ${CONTENT_WORKFLOW_SCHEDULER_CRON:0 30 11 * * ?}
     publishing:
-      # Live Telegram publishing is disabled until a non-empty secret is configured.
+      # Live Telegram publishing is disabled until credentials and permissions are verified.
       api-key: ${CONTENT_PUBLISHING_API_KEY:}
       worker:
         # Opt in only after Telegram credentials and channel permissions are verified.
@@ -126,4 +126,4 @@ app:
     seasons: ${FOOTBALL_DATA_SEASONS:}
 
   understats:
-    base-url: https://understat.com
+    base-url: ${UNDERSTAT_BASE_URL:https://understat.com}
