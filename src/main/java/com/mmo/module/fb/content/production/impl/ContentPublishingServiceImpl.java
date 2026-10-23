@@ -129,7 +129,7 @@ public class ContentPublishingServiceImpl implements ContentPublishingService {
         }
         publication.setApprovedBy(actor);
         publication.setApprovedAt(Instant.now());
-        publication.setLastAttemptMessage(normalizeOptional(command.notes()));
+        publication.setReviewNotes(normalizeOptional(command.notes()));
         publication.setUpdatedAtSnapshot(Instant.now());
         return details(publicationRepository.save(publication));
     }
@@ -198,7 +198,7 @@ public class ContentPublishingServiceImpl implements ContentPublishingService {
             publication.setLastAttemptAt(completedAt);
             publication.setUpdatedAtSnapshot(completedAt);
             publicationRepository.save(publication);
-            throw failure;
+            return details(publication);
         }
     }
 
@@ -234,7 +234,7 @@ public class ContentPublishingServiceImpl implements ContentPublishingService {
                 publication.getState(), publication.getIdempotencyKey(), publication.getTitle(),
                 publication.getBody(), publication.getMediaReference(), publication.getScheduledAt(),
                 publication.getCreatedBy(), publication.getApprovedBy(), publication.getApprovedAt(),
-                publication.getExternalPostId(), publication.getLastAttemptStatus(),
+                publication.getReviewNotes(), publication.getExternalPostId(), publication.getLastAttemptStatus(),
                 publication.getLastAttemptMessage(), publication.getAttemptCount(),
                 publication.getLastAttemptAt(), publication.getPublishedAt(),
                 publication.getCreatedAtSnapshot(), publication.getUpdatedAtSnapshot(), attempts);
