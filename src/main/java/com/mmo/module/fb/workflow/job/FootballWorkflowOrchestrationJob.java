@@ -19,6 +19,7 @@ import org.springframework.scheduling.quartz.QuartzJobBean;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -50,7 +51,7 @@ public class FootballWorkflowOrchestrationJob extends QuartzJobBean {
         log.info("Starting FB end-to-end workflow for {}", today);
 
         // Reuse the existing persisted jobs; ordering here is explicit and completion-gated.
-        runExistingJob("FootballDataBootstrapJob");
+        runBootstrapIfNeeded();
         runExistingJob("MatchResultSyncJob");
         runExistingJob("MatchFixtureSyncJob");
         runExistingJob("MatchStatisticsSyncJob");
@@ -65,6 +66,25 @@ public class FootballWorkflowOrchestrationJob extends QuartzJobBean {
 
         log.info("FB end-to-end workflow completed for {}: runId={} status={} generated={} failures={}",
                 today, run.getId(), run.getStatus(), run.getDraftsGenerated(), run.getFailures());
+    }
+
+    /**
+     * Bootstrap can backfill configured historical seasons, so do not repeat it every day.
+     * Re-run it when it has never succeeded, failed last time, or is at least 30 days old.
+     */
+    private void runBootstrapIfNeeded() {
+        CronJob bootstrap = cronJobService.getJob("FootballDataBootstrapJob", JOB_GROUP);
+        ZonedDateTime lastExecution = bootstrap.getLastExecutedTime();
+        boolean recentlySucceeded = bootstrap.getLastCompleteStatus() == JobCompleteState.SUCCESS
+                && lastExecution != null
+                && lastExecution.isAfter(ZonedDateTime.now(ZoneOffset.UTC).minus(Duration.ofDays(30)));
+
+        if (recentlySucceeded) {
+            log.info("Workflow stage SKIPPED job=FootballDataBootstrapJob reason=recent_success lastExecutedTime={}",
+                    lastExecution);
+            return;
+        }
+        runExistingJob("FootballDataBootstrapJob");
     }
 
     private void runExistingJob(String jobName) {
