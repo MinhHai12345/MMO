@@ -50,7 +50,11 @@ public class FootballWorkflowOrchestrationJob extends QuartzJobBean {
         log.info("Starting FB end-to-end workflow for {}", today);
 
         // Reuse the existing persisted jobs; ordering here is explicit and completion-gated.
-        runBootstrapIfNeeded();
+        boolean bootstrapExecuted = runBootstrapIfNeeded();
+        if (!bootstrapExecuted) {
+            runExistingJobIfStale("LeagueSyncJob", Duration.ofDays(30));
+            runExistingJobIfStale("TeamSyncJob", Duration.ofDays(15));
+        }
         runExistingJob("MatchResultSyncJob");
         runExistingJob("MatchFixtureSyncJob");
         runExistingJob("MatchStatisticsSyncJob");
@@ -71,7 +75,7 @@ public class FootballWorkflowOrchestrationJob extends QuartzJobBean {
      * Bootstrap can backfill configured historical seasons, so do not repeat it every day.
      * Re-run it when it has never succeeded, failed last time, or is at least 30 days old.
      */
-    private void runBootstrapIfNeeded() {
+    private boolean runBootstrapIfNeeded() {
         waitUntilNotRunning(new JobKey("FootballDataBootstrapJob", JOB_GROUP), "FootballDataBootstrapJob");
         CronJob bootstrap = cronJobService.getJob("FootballDataBootstrapJob", JOB_GROUP);
         ZonedDateTime lastExecution = bootstrap.getLastExecutedTime();
@@ -82,9 +86,25 @@ public class FootballWorkflowOrchestrationJob extends QuartzJobBean {
         if (recentlySucceeded) {
             log.info("Workflow stage SKIPPED job=FootballDataBootstrapJob reason=recent_success lastExecutedTime={}",
                     lastExecution);
-            return;
+            return false;
         }
         runExistingJob("FootballDataBootstrapJob");
+        return true;
+    }
+
+    private void runExistingJobIfStale(String jobName, Duration maxAge) {
+        waitUntilNotRunning(new JobKey(jobName, JOB_GROUP), jobName);
+        CronJob job = cronJobService.getJob(jobName, JOB_GROUP);
+        ZonedDateTime lastExecution = job.getLastExecutedTime();
+        boolean recentlySucceeded = job.getLastCompleteStatus() == JobCompleteState.SUCCESS
+                && lastExecution != null
+                && lastExecution.isAfter(ZonedDateTime.now(ZoneOffset.UTC).minus(maxAge));
+        if (recentlySucceeded) {
+            log.info("Workflow stage SKIPPED job={} reason=recent_success lastExecutedTime={}",
+                    jobName, lastExecution);
+            return;
+        }
+        runExistingJob(jobName);
     }
 
     private void runExistingJob(String jobName) {
