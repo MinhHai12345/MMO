@@ -1,7 +1,7 @@
 package com.mmo.module.fb.player.entity;
 
 import com.mmo.core.entity.AbstractEntity;
-import com.mmo.module.fb.domain.entity.Match;
+import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.team.entity.Team;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

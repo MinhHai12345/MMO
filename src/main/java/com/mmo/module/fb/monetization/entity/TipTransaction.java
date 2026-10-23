@@ -1,7 +1,7 @@
 package com.mmo.module.fb.monetization.entity;
 
 import com.mmo.core.entity.AbstractEntity;
-import com.mmo.module.fb.domain.entity.MatchPrediction;
+import com.mmo.module.fb.analytics.entity.MatchPrediction;
 import jakarta.persistence.*;
 import lombok.*;
 
