@@ -1,5 +1,7 @@
 # Telegram live publishing
 
+The preferred API base path is `/api/fb/publish/publications`. The previous `/api/fb/content/publications` path remains as a compatibility alias while existing clients migrate.
+
 The content publication workflow uses the application's shared `TelegramClient` bean (configured by `TelegramConfiguration` with `OkHttpTelegramClient`) and the official Telegram Bot API. It does not create a second HTTP client.
 
 ## Configuration
@@ -14,12 +16,12 @@ The endpoint remains disabled with HTTP 503 when `CONTENT_PUBLISHING_API_KEY` is
 
 ## Workflow
 
-1. Create a publication with `POST /api/fb/content/publications` and an `Idempotency-Key`.
-2. Complete editorial review and approve it with `POST /api/fb/content/publications/{id}/approve`.
+1. Create a publication with `POST /api/fb/publish/publications` and an `Idempotency-Key`.
+2. Complete editorial review and approve it with `POST /api/fb/publish/publications/{id}/approve`.
 3. Explicitly send it using:
 
 ```http
-POST /api/fb/content/publications/{id}/publish/telegram
+POST /api/fb/publish/publications/{id}/publish/telegram
 X-Publishing-Key: <CONTENT_PUBLISHING_API_KEY>
 X-Publishing-Actor: operator-or-service-name
 ```

@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/fb/content/publications")
+@RequestMapping({"/api/fb/publish/publications", "/api/fb/content/publications"})
 @RequiredArgsConstructor
 public class ContentPublishingController {
 
