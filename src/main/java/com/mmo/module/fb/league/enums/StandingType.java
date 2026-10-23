@@ -1,4 +1,4 @@
-package com.mmo.module.fb.domain.enums;
+package com.mmo.module.fb.league.enums;
 
 /** Scope of a league table row supplied by a football data provider. */
 public enum StandingType {

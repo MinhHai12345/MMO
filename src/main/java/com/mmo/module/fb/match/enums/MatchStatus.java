@@ -1,4 +1,4 @@
-package com.mmo.module.fb.domain.enums;
+package com.mmo.module.fb.match.enums;
 
 public enum MatchStatus {
     SCHEDULED,

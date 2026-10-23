@@ -1,4 +1,4 @@
-package com.mmo.module.fb.domain.enums;
+package com.mmo.module.fb.ingest.enums;
 
 public enum Provider {
     SOFA_SCORE,
