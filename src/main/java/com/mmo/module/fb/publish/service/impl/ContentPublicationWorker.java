@@ -6,10 +6,8 @@ import com.mmo.module.fb.publish.provider.telegram.TelegramLivePublishingService
 import com.mmo.module.fb.publish.repository.ContentPublicationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
@@ -17,17 +15,12 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
- * Polls the canonical publication table and sends only approved, due Telegram publications.
- *
- * <p>The worker intentionally does not claim support for platforms without a live adapter.
- * The publishing service locks and re-checks each row before making the external API call,
- * so overlapping scheduler ticks cannot publish the same persisted row concurrently.</p>
+ * Application service used by the Quartz publication worker job.
+ * Only approved, due Telegram publications are eligible for live publishing.
  */
 @Slf4j
-@Component
+@Service
 @RequiredArgsConstructor
-@ConditionalOnProperty(prefix = "app.content.publishing.worker", name = "enabled",
-        havingValue = "true", matchIfMissing = false)
 public class ContentPublicationWorker {
 
     private static final List<PublicationStateMachine.State> ACTIVE_STATES = List.of(
@@ -46,9 +39,6 @@ public class ContentPublicationWorker {
     @org.springframework.beans.factory.annotation.Value("${app.content.publishing.worker.retry-delay-ms:300000}")
     private long configuredRetryDelayMillis = 300_000L;
 
-    @Scheduled(
-            fixedDelayString = "${app.content.publishing.worker.fixed-delay-ms:30000}",
-            initialDelayString = "${app.content.publishing.worker.initial-delay-ms:15000}")
     public void processDuePublications() {
         Instant now = Instant.now();
         int batchSize = Math.max(1, Math.min(configuredBatchSize, 100));
@@ -81,11 +71,9 @@ public class ContentPublicationWorker {
                             publicationId, result.state(), result.message());
                 }
             } catch (ResponseStatusException conflictOrInvalidState) {
-                // A different worker may have completed the row after this batch was queried.
                 log.warn("Skipped publicationId={} because it is no longer publishable: {}",
                         publicationId, conflictOrInvalidState.getReason());
             } catch (RuntimeException failure) {
-                // One broken publication must not prevent the rest of this batch from running.
                 log.error("Unexpected worker failure for publicationId={}: {}",
                         publicationId, safeMessage(failure), failure);
             }
