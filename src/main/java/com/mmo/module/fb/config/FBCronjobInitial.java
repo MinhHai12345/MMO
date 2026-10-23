@@ -97,38 +97,42 @@ public class FBCronjobInitial implements DataInitializer {
     }
 
     private void configurePublicationWorker() {
+        String jobName = PublicationWorkerQuartzJob.class.getSimpleName();
         String cronExpression = publicationWorkerEnabled
                 ? PUBLICATION_WORKER_CRON_EXPRESSION
                 : DISABLED_CRON_EXPRESSION;
-        String jobName = PublicationWorkerQuartzJob.class.getSimpleName();
+        String description = "Poll approved, due Telegram publications; opt-in via CONTENT_PUBLISHING_WORKER_ENABLED";
 
-        CronJob job = cronJobRepository.findByJobNameAndJobGroup(jobName, FB_JOB_GROUP).orElse(null);
-        if (job == null) {
-            createJobIfNotExist(
-                    jobName,
-                    PublicationWorkerQuartzJob.class,
-                    cronExpression,
-                    "Poll approved, due Telegram publications; opt-in via CONTENT_PUBLISHING_WORKER_ENABLED"
-            );
+        cronJobRepository.findByJobNameAndJobGroup(jobName, FB_JOB_GROUP)
+                .ifPresentOrElse(
+                        job -> updatePublicationWorkerSchedule(job, cronExpression),
+                        () -> createJobIfNotExist(
+                                jobName,
+                                PublicationWorkerQuartzJob.class,
+                                cronExpression,
+                                description
+                        )
+                );
+    }
+
+    private void updatePublicationWorkerSchedule(CronJob job, String cronExpression) {
+        if (cronExpression.equals(job.getCronExpression())) {
             return;
         }
 
-        // Reconcile this opt-in worker's persisted trigger with current configuration on startup.
-        if (!cronExpression.equals(job.getCronExpression())) {
-            job.setCronExpression(cronExpression);
-            cronJobService.updateScheduleJob(job);
-            log.info(
-                    "Updated CronJob [{}] schedule to [{}] (enabled={})",
-                    jobName,
-                    cronExpression,
-                    publicationWorkerEnabled
-            );
-        }
+        job.setCronExpression(cronExpression);
+        cronJobService.updateScheduleJob(job);
+        log.info(
+                "Updated CronJob [{}] schedule to [{}] (enabled={})",
+                job.getJobName(),
+                cronExpression,
+                publicationWorkerEnabled
+        );
     }
 
     private void createJobIfNotExist(String jobName, Class<?> jobClass, String cronExpression, String description) {
         if (cronJobRepository.findByJobNameAndJobGroup(jobName, FB_JOB_GROUP).isEmpty()) {
-            final CronJob job = new CronJob();
+            CronJob job = new CronJob();
             job.setJobName(jobName);
             job.setJobGroup(FB_JOB_GROUP);
             job.setJobClass(jobClass.getName());
