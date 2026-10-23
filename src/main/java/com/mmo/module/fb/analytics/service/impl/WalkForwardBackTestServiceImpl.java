@@ -8,7 +8,7 @@ import com.mmo.module.fb.league.entity.League;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.analytics.entity.MatchPrediction;
 import com.mmo.module.fb.league.entity.Season;
-import com.mmo.module.fb.domain.enums.MatchStatus;
+import com.mmo.module.fb.match.enums.MatchStatus;
 import com.mmo.module.fb.analytics.repository.MatchPredictionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
