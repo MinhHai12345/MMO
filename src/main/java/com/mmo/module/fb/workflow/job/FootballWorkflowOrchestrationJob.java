@@ -2,6 +2,7 @@ package com.mmo.module.fb.workflow.job;
 
 import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.entity.JobCompleteState;
+import com.mmo.core.cronjob.entity.JobState;
 import com.mmo.core.cronjob.service.CronJobService;
 import com.mmo.module.fb.content.service.ContentDraftService.DraftFormat;
 import com.mmo.module.fb.content.service.ContentLifecycleService;
@@ -113,6 +114,9 @@ public class FootballWorkflowOrchestrationJob extends QuartzJobBean {
 
     private void runExistingJob(String jobName) {
         CronJob definition = cronJobService.getJob(jobName, JOB_GROUP);
+        if (definition.getJobStatus() == JobState.PAUSED) {
+            throw new IllegalStateException("Workflow stage is paused in the CronJob registry: " + jobName);
+        }
         JobKey jobKey = new JobKey(definition.getJobName(), definition.getJobGroup());
 
         waitUntilNotRunning(jobKey, jobName);
