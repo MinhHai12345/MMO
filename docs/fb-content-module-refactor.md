@@ -34,7 +34,7 @@ The legacy top-level `domain` package has been removed. Entity table names, colu
 ## Job ownership
 
 - `ingest.job`: provider synchronization, fixture status/results, lineups/odds updates, crawler health and cleanup.
-- `analytics.job`: prediction generation, match insights, evaluation and walk-forward backtesting.
+- `analytics.job`: prediction generation, evaluation and walk-forward backtesting.
 - `content.job`: content scheduling.
 - Disabled no-op recap/dashboard scheduler stubs were removed instead of registering jobs that perform no work.
 - `monetization.job`: subscription expiry lifecycle.
