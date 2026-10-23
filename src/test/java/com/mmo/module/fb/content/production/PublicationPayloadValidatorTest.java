@@ -31,8 +31,10 @@ class PublicationPayloadValidatorTest {
     }
 
     @Test
-    void countsUnicodeCodePointsForTextLimits() {
+    void countsSurrogatePairsConservativelyForX() {
         assertDoesNotThrow(() -> PublicationPayloadValidator.validate(
-                PublicationPlatform.X, "Preview", "⚽".repeat(280), null));
+                PublicationPlatform.X, "Preview", "⚽".repeat(140), null));
+        assertThrows(ResponseStatusException.class, () -> PublicationPayloadValidator.validate(
+                PublicationPlatform.X, "Preview", "⚽".repeat(141), null));
     }
 }
