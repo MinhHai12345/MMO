@@ -1,25 +1,16 @@
-package com.mmo.module.fb.domain.entity;
+package com.mmo.module.fb.monetization.entity;
 
 import com.mmo.core.entity.AbstractEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "fb_affiliate_tracking",
         uniqueConstraints = @UniqueConstraint(name = "uk_fb_affiliate_code", columnNames = "affiliate_code"))
-@Getter
-@Setter
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor
+@Getter @Setter @Builder @AllArgsConstructor @NoArgsConstructor
 public class AffiliateTracking extends AbstractEntity {
-
     @Column(name = "affiliate_code", nullable = false, length = 100)
     private String affiliateCode;
 

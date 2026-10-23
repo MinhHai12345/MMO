@@ -1,27 +1,17 @@
-package com.mmo.module.fb.domain.entity;
+package com.mmo.module.fb.monetization.entity;
 
 import com.mmo.core.entity.AbstractEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "fb_subscribers",
-        uniqueConstraints = @UniqueConstraint(name = "uk_fb_subscriber_user", columnNames = "user_id"))
-@Getter
-@Setter
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor
+@Table(name = "fb_subscribers", uniqueConstraints = @UniqueConstraint(name = "uk_fb_subscriber_user", columnNames = "user_id"))
+@Getter @Setter @Builder @AllArgsConstructor @NoArgsConstructor
 public class Subscriber extends AbstractEntity {
-
     @Column(name = "user_id", nullable = false, length = 128)
     private String userId;
 

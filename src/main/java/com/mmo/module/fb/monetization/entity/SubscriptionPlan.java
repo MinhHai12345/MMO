@@ -1,14 +1,9 @@
-package com.mmo.module.fb.domain.entity;
+package com.mmo.module.fb.monetization.entity;
 
 import com.mmo.core.entity.AbstractEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
-import jakarta.persistence.Lob;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,13 +12,8 @@ import java.util.List;
 @Table(name = "fb_subscription_plans",
         uniqueConstraints = @UniqueConstraint(name = "uk_fb_subscription_plan_name", columnNames = "name"),
         indexes = @Index(name = "idx_fb_subscription_plan_active", columnList = "is_active"))
-@Getter
-@Setter
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor
+@Getter @Setter @Builder @AllArgsConstructor @NoArgsConstructor
 public class SubscriptionPlan extends AbstractEntity {
-
     @Column(nullable = false, length = 120)
     private String name;
 
