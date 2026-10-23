@@ -44,6 +44,11 @@ server:
   port: 8188
 
 app:
+  content:
+    publishing:
+      # Live Telegram publishing is disabled until a non-empty secret is configured.
+      api-key: ${CONTENT_PUBLISHING_API_KEY:}
+
   initial-data:
     auto-import: ${APP_INITIAL_DATA_AUTO_IMPORT:true}
 
