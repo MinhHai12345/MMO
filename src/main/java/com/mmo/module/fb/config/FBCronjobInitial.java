@@ -4,7 +4,7 @@ import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.repository.CronJobRepository;
 import com.mmo.core.cronjob.service.CronJobService;
 import com.mmo.core.initialize.DataInitializer;
-import com.mmo.module.fb.ingest.job.AdvancedMetricsJob;
+import com.mmo.module.fb.analytics.job.AdvancedMetricsJob;
 import com.mmo.module.fb.content.job.ContentSchedulingJob;
 import com.mmo.module.fb.ingest.job.CrawlerHealthCheckJob;
 import com.mmo.module.fb.ingest.job.DataCleanupJob;
