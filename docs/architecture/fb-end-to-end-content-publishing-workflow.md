@@ -26,7 +26,6 @@ Live publishing is opt-in and disabled by default. The worker schedule is manage
 
 ```properties
 CONTENT_PUBLISHING_WORKER_ENABLED=true
-CONTENT_PUBLISHING_WORKER_CRON=0/30 * * * * ?
 CONTENT_PUBLISHING_API_KEY=<long-random-secret>
 TELEGRAM_TOKEN=<bot-token>
 TELEGRAM_CHANNEL_ID=<channel-id>
@@ -35,7 +34,7 @@ TELEGRAM_CHANNEL_ID=<channel-id>
 The API key protects the manual live-publish endpoint; enabling the worker is a separate switch. When disabled, its persisted registry trigger is moved to a dormant annual expression and manual invocations are guarded. On startup, the worker's schedule is reconciled from configuration. Configure Telegram credentials and confirm the bot has permission to post to the target channel before enabling it.
 
 Worker settings:
-- CONTENT_PUBLISHING_WORKER_CRON (default `0/30 * * * * ?`, every 30 seconds UTC)
+- Publication worker schedule is defined in `FBCronjobInitial` (`0/30 * * * * ?`, every 30 seconds UTC); change `PUBLICATION_WORKER_CRON_EXPRESSION` in code to adjust it.
 - CONTENT_PUBLISHING_WORKER_BATCH_SIZE (default 10)
 - CONTENT_PUBLISHING_WORKER_MAX_ATTEMPTS (default 5)
 - CONTENT_PUBLISHING_WORKER_RETRY_DELAY_MS (default 300000)
