@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.provider.service;
 
 import com.microsoft.playwright.Page;
-import com.mmo.module.fb.domain.entity.Team;
+import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaDailyMatchWrapper;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchStatisticsData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData;

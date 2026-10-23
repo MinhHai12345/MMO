@@ -1,7 +1,7 @@
 package com.mmo.module.fb.league.repository;
 
 import com.mmo.module.fb.league.entity.LeagueExternalId;
-import com.mmo.module.fb.domain.enums.Provider;
+import com.mmo.module.fb.ingest.enums.Provider;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
