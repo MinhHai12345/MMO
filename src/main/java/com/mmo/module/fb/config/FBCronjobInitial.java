@@ -5,22 +5,25 @@ import com.mmo.core.cronjob.repository.CronJobRepository;
 import com.mmo.core.cronjob.service.CronJobService;
 import com.mmo.core.initialize.DataInitializer;
 import com.mmo.module.fb.analytics.job.AdvancedMetricsJob;
+import com.mmo.module.fb.analytics.job.MatchProcessPredictionJob;
+import com.mmo.module.fb.analytics.job.PredictionEvaluationJob;
+import com.mmo.module.fb.analytics.job.WalkForwardBackTestJob;
 import com.mmo.module.fb.ingest.job.CrawlerHealthCheckJob;
 import com.mmo.module.fb.ingest.job.DataCleanupJob;
 import com.mmo.module.fb.ingest.job.FootballDataBootstrapJob;
 import com.mmo.module.fb.ingest.job.LeagueSyncJob;
 import com.mmo.module.fb.ingest.job.MatchFixtureSyncJob;
 import com.mmo.module.fb.ingest.job.MatchLineupOddsUpdateJob;
-import com.mmo.module.fb.analytics.job.MatchProcessPredictionJob;
 import com.mmo.module.fb.ingest.job.MatchResultSyncJob;
 import com.mmo.module.fb.ingest.job.MatchStatisticsSyncJob;
-import com.mmo.module.fb.analytics.job.PredictionEvaluationJob;
 import com.mmo.module.fb.ingest.job.MatchStatusTrackerJob;
-import com.mmo.module.fb.monetization.job.SubscriptionExpiryCheckJob;
 import com.mmo.module.fb.ingest.job.TeamSyncJob;
-import com.mmo.module.fb.analytics.job.WalkForwardBackTestJob;
+import com.mmo.module.fb.monetization.job.SubscriptionExpiryCheckJob;
+import com.mmo.module.fb.workflow.job.FootballWorkflowOrchestrationJob;
+import com.mmo.module.fb.workflow.job.PublicationWorkerQuartzJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -28,18 +31,33 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class FBCronjobInitial implements DataInitializer {
     private static final String FB_JOB_GROUP = "FBJobGroup";
+    private static final String DISABLED_CRON_EXPRESSION = "0 0 0 1 1 ?";
+    private static final String PUBLICATION_WORKER_CRON_EXPRESSION = "0/30 * * * * ?";
 
     private final CronJobRepository cronJobRepository;
     private final CronJobService cronJobService;
 
+    @Value("${app.content.publishing.worker.enabled:false}")
+    private boolean publicationWorkerEnabled;
+
     @Override
     public void initialize() {
         log.info("Initializing Football Analytics CronJobs (UTC Timezone)...");
-        createJobIfNotExist(FootballDataBootstrapJob.class.getSimpleName(), FootballDataBootstrapJob.class,
-                "0 0 1 1 * ?", "Bootstrap leagues, teams, fixtures, scores and standings for configured seasons; " +
-                               "FOOTBALL_DATA_SEASONS enables historical backfill (UTC 01:00 / VN 08:00 AM - 1st of month)");
+        createJobIfNotExist(
+                FootballWorkflowOrchestrationJob.class.getSimpleName(),
+                FootballWorkflowOrchestrationJob.class,
+                "0 30 11 * * ?",
+                "End-to-end workflow: run ingestion and analytics jobs in sequence, then generate PRE_MATCH drafts (UTC 11:30)"
+        );
 
-        //
+        createJobIfNotExist(
+                FootballDataBootstrapJob.class.getSimpleName(),
+                FootballDataBootstrapJob.class,
+                "0 0 1 1 * ?",
+                "Bootstrap leagues, teams, fixtures, scores and standings for configured seasons; "
+                        + "FOOTBALL_DATA_SEASONS enables historical backfill (UTC 01:00 / VN 08:00 AM - 1st of month)"
+        );
+
         createJobIfNotExist(LeagueSyncJob.class.getSimpleName(), LeagueSyncJob.class,
                 "0 0 2 1 * ?", "Sync League and Season info (UTC 02:00 / VN 09:00 AM - 1st of month)");
         createJobIfNotExist(TeamSyncJob.class.getSimpleName(), TeamSyncJob.class,
@@ -74,12 +92,21 @@ public class FBCronjobInitial implements DataInitializer {
         createJobIfNotExist(SubscriptionExpiryCheckJob.class.getSimpleName(), SubscriptionExpiryCheckJob.class,
                 "0 0 0 * * ?", "Check subscription expiry and send warnings (Daily at midnight UTC)");
 
+        createJobIfNotExist(
+                PublicationWorkerQuartzJob.class.getSimpleName(),
+                PublicationWorkerQuartzJob.class,
+                publicationWorkerEnabled
+                        ? PUBLICATION_WORKER_CRON_EXPRESSION
+                        : DISABLED_CRON_EXPRESSION,
+                "Poll approved, due Telegram publications; opt-in via CONTENT_PUBLISHING_WORKER_ENABLED"
+        );
+
         log.info("CronJobs initialization completed successfully.");
     }
 
     private void createJobIfNotExist(String jobName, Class<?> jobClass, String cronExpression, String description) {
         if (cronJobRepository.findByJobNameAndJobGroup(jobName, FB_JOB_GROUP).isEmpty()) {
-            final CronJob job = new CronJob();
+            CronJob job = new CronJob();
             job.setJobName(jobName);
             job.setJobGroup(FB_JOB_GROUP);
             job.setJobClass(jobClass.getName());

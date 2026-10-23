@@ -1,28 +1,37 @@
 package com.mmo.module.fb.workflow.job;
 
+import com.mmo.core.cronjob.entity.CronJob;
+import com.mmo.core.cronjob.job.AbstractJob;
 import com.mmo.module.fb.publish.service.impl.ContentPublicationWorker;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.quartz.QuartzJobBean;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
-/** Quartz polling job for approved and due publication rows. */
+/**
+ * CronJob-registry entry point for polling approved and due publication rows.
+ * Publishing remains opt-in and is guarded even when the job is triggered manually.
+ */
 @Slf4j
+@Component
 @DisallowConcurrentExecution
-public class PublicationWorkerQuartzJob extends QuartzJobBean {
+@RequiredArgsConstructor
+public class PublicationWorkerQuartzJob extends AbstractJob<CronJob> {
 
-    @Autowired
-    private ContentPublicationWorker publicationWorker;
+    private final ContentPublicationWorker publicationWorker;
+
+    @Value("${app.content.publishing.worker.enabled:false}")
+    private boolean enabled;
 
     @Override
-    protected void executeInternal(JobExecutionContext context) throws JobExecutionException {
-        try {
-            publicationWorker.processDuePublications();
-        } catch (RuntimeException failure) {
-            log.error("Quartz publication worker failed", failure);
-            throw new JobExecutionException("Publication worker failed", failure, false);
+    protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
+        if (!enabled) {
+            log.debug("Publication worker is disabled; skipping execution");
+            return;
         }
+
+        publicationWorker.processDuePublications();
     }
 }
