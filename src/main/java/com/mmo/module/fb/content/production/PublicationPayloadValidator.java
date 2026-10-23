@@ -25,7 +25,7 @@ public final class PublicationPayloadValidator {
 
         int bodyLength = codePointLength(body);
         switch (platform) {
-            case X -> requireAtMost(bodyLength, 280, "X post body exceeds 280 characters");
+            case X -> requireAtMost(body.length(), 280, "X post body exceeds the conservative 280-character preflight limit");
             case TELEGRAM -> requireAtMost(bodyLength, 4096, "Telegram message exceeds 4096 characters");
             case FACEBOOK -> requireAtMost(bodyLength, 63206, "Facebook post body exceeds 63206 characters");
             case INSTAGRAM -> {
