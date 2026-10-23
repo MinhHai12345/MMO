@@ -5,7 +5,7 @@ import com.mmo.core.cronjob.job.AbstractJob;
 import com.mmo.module.fb.analytics.engine.CompositePredictionEngine;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.analytics.entity.MatchPrediction;
-import com.mmo.module.fb.domain.enums.MatchStatus;
+import com.mmo.module.fb.match.enums.MatchStatus;
 import com.mmo.module.fb.analytics.repository.MatchPredictionRepository;
 import com.mmo.module.fb.match.repository.MatchRepository;
 import jakarta.annotation.Resource;
