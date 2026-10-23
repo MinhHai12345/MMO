@@ -134,7 +134,7 @@ public class ContentLifecycleServiceImpl implements ContentLifecycleService {
     private static boolean sameRequest(ContentWorkflowRunEntity existing, WorkflowCommand command) {
         int requestedLimit = command.limit() <= 0 ? 20 : Math.min(command.limit(), 50);
         var format = command.format() == null
-                ? com.mmo.module.fb.analytics.service.ContentDraftService.DraftFormat.PRE_MATCH : command.format();
+                ? com.mmo.module.fb.content.service.ContentDraftService.DraftFormat.PRE_MATCH : command.format();
         return java.util.Objects.equals(existing.getFilterFrom(), command.from())
                 && java.util.Objects.equals(existing.getFilterTo(), command.to())
                 && java.util.Objects.equals(existing.getLeagueId(), command.leagueId())
