@@ -1,5 +1,6 @@
 package com.mmo.module.fb.content.service.impl;
 
+import com.mmo.module.fb.content.service.ContentDraftService;
 import com.mmo.module.fb.content.service.ContentDraftService.ContentDraft;
 import com.mmo.module.fb.content.service.ContentDraftService.QualityReview;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.MatchSocialInsight;
