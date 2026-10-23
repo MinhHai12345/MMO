@@ -1,14 +1,14 @@
 package com.mmo.module.fb.ingest.service.impl;
 
-import com.mmo.module.fb.domain.entity.Match;
-import com.mmo.module.fb.domain.entity.Season;
-import com.mmo.module.fb.domain.entity.Team;
+import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.league.entity.Season;
+import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.enums.Provider;
-import com.mmo.module.fb.domain.repository.MatchExternalIdRepository;
-import com.mmo.module.fb.domain.repository.MatchRepository;
-import com.mmo.module.fb.domain.repository.SeasonRepository;
-import com.mmo.module.fb.domain.repository.TeamRepository;
+import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
+import com.mmo.module.fb.match.repository.MatchRepository;
+import com.mmo.module.fb.league.repository.SeasonRepository;
+import com.mmo.module.fb.team.repository.TeamRepository;
 import com.mmo.module.fb.domain.service.ExternalIdMappingService;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import com.mmo.module.fb.ingest.service.FixturePersistenceService;
@@ -47,7 +47,7 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
         if (season == null || home == null || away == null) return false;
 
         Match match = matchExternalIdRepository.findByProviderAndExternalId(provider, fixture.externalId())
-                .map(com.mmo.module.fb.domain.entity.MatchExternalId::getMatch)
+                .map(com.mmo.module.fb.match.entity.MatchExternalId::getMatch)
                 .orElse(null);
 
         if (match != null && (match.getSeason() == null
