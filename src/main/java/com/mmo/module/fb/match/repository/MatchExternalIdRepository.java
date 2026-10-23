@@ -1,7 +1,7 @@
-package com.mmo.module.fb.domain.repository;
+package com.mmo.module.fb.match.repository;
 
-import com.mmo.module.fb.domain.entity.Match;
-import com.mmo.module.fb.domain.entity.MatchExternalId;
+import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.match.entity.MatchExternalId;
 import com.mmo.module.fb.domain.enums.Provider;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

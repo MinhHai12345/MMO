@@ -1,6 +1,6 @@
-package com.mmo.module.fb.domain.repository;
+package com.mmo.module.fb.match.repository;
 
-import com.mmo.module.fb.domain.entity.Match;
+import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.domain.entity.Team;
 import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.enums.Provider;
