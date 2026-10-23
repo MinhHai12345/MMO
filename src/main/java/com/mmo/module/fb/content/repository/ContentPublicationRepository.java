@@ -1,7 +1,7 @@
-package com.mmo.module.fb.content.production.persistence;
+package com.mmo.module.fb.content.repository;
 
-import com.mmo.module.fb.content.production.PublicationPlatform;
-import com.mmo.module.fb.content.production.PublicationStateMachine;
+import com.mmo.module.fb.content.publish.PublicationPlatform;
+import com.mmo.module.fb.content.publish.PublicationStateMachine;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

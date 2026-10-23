@@ -1,4 +1,4 @@
-package com.mmo.module.fb.content.production.persistence;
+package com.mmo.module.fb.content.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
