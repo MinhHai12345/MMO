@@ -1,7 +1,7 @@
 package com.mmo.module.fb.analytics.engine;
 
-import com.mmo.module.fb.domain.entity.Match;
-import com.mmo.module.fb.domain.entity.MatchPrediction;
+import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.analytics.entity.MatchPrediction;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
