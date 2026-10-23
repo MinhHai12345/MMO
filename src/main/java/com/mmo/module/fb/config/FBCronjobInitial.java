@@ -19,6 +19,7 @@ import com.mmo.module.fb.ingest.job.MatchStatusTrackerJob;
 import com.mmo.module.fb.monetization.job.SubscriptionExpiryCheckJob;
 import com.mmo.module.fb.ingest.job.TeamSyncJob;
 import com.mmo.module.fb.analytics.job.WalkForwardBackTestJob;
+import com.mmo.module.fb.workflow.job.FootballWorkflowOrchestrationJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -35,6 +36,9 @@ public class FBCronjobInitial implements DataInitializer {
     @Override
     public void initialize() {
         log.info("Initializing Football Analytics CronJobs (UTC Timezone)...");
+        createJobIfNotExist(FootballWorkflowOrchestrationJob.class.getSimpleName(), FootballWorkflowOrchestrationJob.class,
+                "0 30 11 * * ?", "End-to-end workflow: trigger existing ingestion/analytics CronJobs in sequence, wait for completion, then generate PRE_MATCH content drafts (UTC 11:30)");
+
         createJobIfNotExist(FootballDataBootstrapJob.class.getSimpleName(), FootballDataBootstrapJob.class,
                 "0 0 1 1 * ?", "Bootstrap leagues, teams, fixtures, scores and standings for configured seasons; " +
                                "FOOTBALL_DATA_SEASONS enables historical backfill (UTC 01:00 / VN 08:00 AM - 1st of month)");
