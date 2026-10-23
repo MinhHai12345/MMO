@@ -43,12 +43,20 @@ public class FBCronjobInitial implements DataInitializer {
     @Override
     public void initialize() {
         log.info("Initializing Football Analytics CronJobs (UTC Timezone)...");
-        createJobIfNotExist(FootballWorkflowOrchestrationJob.class.getSimpleName(), FootballWorkflowOrchestrationJob.class,
-                "0 30 11 * * ?", "End-to-end workflow: trigger existing ingestion/analytics CronJobs in sequence, wait for completion, then generate PRE_MATCH content drafts (UTC 11:30)");
+        createJobIfNotExist(
+                FootballWorkflowOrchestrationJob.class.getSimpleName(),
+                FootballWorkflowOrchestrationJob.class,
+                "0 30 11 * * ?",
+                "End-to-end workflow: run ingestion and analytics jobs in sequence, then generate PRE_MATCH drafts (UTC 11:30)"
+        );
 
-        createJobIfNotExist(FootballDataBootstrapJob.class.getSimpleName(), FootballDataBootstrapJob.class,
-                "0 0 1 1 * ?", "Bootstrap leagues, teams, fixtures, scores and standings for configured seasons; " +
-                               "FOOTBALL_DATA_SEASONS enables historical backfill (UTC 01:00 / VN 08:00 AM - 1st of month)");
+        createJobIfNotExist(
+                FootballDataBootstrapJob.class.getSimpleName(),
+                FootballDataBootstrapJob.class,
+                "0 0 1 1 * ?",
+                "Bootstrap leagues, teams, fixtures, scores and standings for configured seasons; "
+                        + "FOOTBALL_DATA_SEASONS enables historical backfill (UTC 01:00 / VN 08:00 AM - 1st of month)"
+        );
 
         createJobIfNotExist(LeagueSyncJob.class.getSimpleName(), LeagueSyncJob.class,
                 "0 0 2 1 * ?", "Sync League and Season info (UTC 02:00 / VN 09:00 AM - 1st of month)");
@@ -96,8 +104,12 @@ public class FBCronjobInitial implements DataInitializer {
 
         CronJob job = cronJobRepository.findByJobNameAndJobGroup(jobName, FB_JOB_GROUP).orElse(null);
         if (job == null) {
-            createJobIfNotExist(jobName, PublicationWorkerQuartzJob.class, cronExpression,
-                    "Poll approved, due Telegram publications; opt-in and controlled by CONTENT_PUBLISHING_WORKER_ENABLED");
+            createJobIfNotExist(
+                    jobName,
+                    PublicationWorkerQuartzJob.class,
+                    cronExpression,
+                    "Poll approved, due Telegram publications; opt-in via CONTENT_PUBLISHING_WORKER_ENABLED"
+            );
             return;
         }
 
@@ -105,8 +117,12 @@ public class FBCronjobInitial implements DataInitializer {
         if (!cronExpression.equals(job.getCronExpression())) {
             job.setCronExpression(cronExpression);
             cronJobService.updateScheduleJob(job);
-            log.info("Updated CronJob [{}] schedule to [{}] (enabled={})",
-                    jobName, cronExpression, publicationWorkerEnabled);
+            log.info(
+                    "Updated CronJob [{}] schedule to [{}] (enabled={})",
+                    jobName,
+                    cronExpression,
+                    publicationWorkerEnabled
+            );
         }
     }
 
