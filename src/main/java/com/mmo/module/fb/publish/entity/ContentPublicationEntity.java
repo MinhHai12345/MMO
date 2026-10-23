@@ -1,17 +1,13 @@
 package com.mmo.module.fb.publish.entity;
 
 import com.mmo.core.entity.AbstractEntity;
-import com.mmo.module.fb.content.entity.ContentDraftRecordEntity;
 import com.mmo.module.fb.publish.domain.PublicationPlatform;
 import com.mmo.module.fb.publish.domain.PublicationStateMachine;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
@@ -35,9 +31,8 @@ import java.time.Instant;
 @NoArgsConstructor
 public class ContentPublicationEntity extends AbstractEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "draft_id", nullable = false)
-    private ContentDraftRecordEntity draft;
+    @Column(name = "draft_id", nullable = false)
+    private Long draftId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 24)

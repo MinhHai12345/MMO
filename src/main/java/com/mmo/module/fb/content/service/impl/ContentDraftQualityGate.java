@@ -1,7 +1,8 @@
 package com.mmo.module.fb.content.service.impl;
 
-import com.mmo.module.fb.analytics.service.ContentDraftService.ContentDraft;
-import com.mmo.module.fb.analytics.service.ContentDraftService.QualityReview;
+import com.mmo.module.fb.content.service.ContentDraftService.ContentDraft;
+import com.mmo.module.fb.content.service.ContentDraftService.QualityReview;
+import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.MatchSocialInsight;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -90,6 +91,52 @@ public class ContentDraftQualityGate {
         return new ContentDraft(draft.matchId(), draft.format(), status, draft.title(),
                 draft.openingHook(), draft.outline(), draft.shortHooks(), draft.evidence(),
                 draft.caveats(), review);
+    }
+
+
+    /**
+     * Adds analytics-specific evidence warnings to the single content-owned gate.
+     * This is a deterministic editorial check, not a proof of factual accuracy.
+     */
+    public QualityReview review(ContentDraft draft, MatchSocialInsight insight) {
+        if (insight == null) {
+            return new QualityReview("BLOCKED", 0,
+                    List.of("Analytics insight is required to review this draft."), List.of());
+        }
+
+        ContentDraft structurallyReviewed = evaluate(draft);
+        List<String> blockers = new ArrayList<>(structurallyReviewed.qualityReview().blockers());
+        List<String> warnings = new ArrayList<>(structurallyReviewed.qualityReview().warnings());
+
+        if (insight.home() == null || insight.home().name() == null
+                || insight.away() == null || insight.away().name() == null) {
+            blockers.add("Both teams must be identified before publication.");
+        }
+        warnings.addAll(insight.dataWarnings());
+        if (insight.prediction() == null) {
+            warnings.add("No persisted prediction is available; do not imply a model forecast.");
+        }
+        if (insight.matchup() == null || insight.matchup().signals().isEmpty()) {
+            warnings.add("No matchup signals are available; avoid strong tactical conclusions.");
+        }
+        if (insight.contentPlan() != null) {
+            warnings.addAll(insight.contentPlan().factualCaveats());
+        }
+        if (insight.playerAnalytics() == null || insight.playerAnalytics().playersWithStats() == 0) {
+            warnings.add("Player-level statistics are unavailable; omit player-specific performance claims.");
+        }
+        if (insight.postMatchAnalysis() == null
+                && draft.format() == ContentDraftService.DraftFormat.POST_MATCH) {
+            blockers.add("Post-match draft requested before a completed-match analysis is available.");
+        }
+
+        blockers = blockers.stream().filter(value -> value != null && !value.isBlank()).distinct().toList();
+        warnings = warnings.stream().filter(value -> value != null && !value.isBlank()).distinct().toList();
+        String decision = !blockers.isEmpty() ? "BLOCKED"
+                : !warnings.isEmpty() ? "REVIEW_REQUIRED" : "READY_FOR_EDITOR_REVIEW";
+        int score = Math.max(0, 100 - Math.min(60, blockers.size() * 30)
+                - Math.min(35, warnings.size() * 5));
+        return new QualityReview(decision, score, blockers, warnings);
     }
 
     private static boolean isBlank(String value) {

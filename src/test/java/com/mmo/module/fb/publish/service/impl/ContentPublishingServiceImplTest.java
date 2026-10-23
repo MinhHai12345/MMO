@@ -1,7 +1,6 @@
 package com.mmo.module.fb.publish.service.impl;
 
-import com.mmo.module.fb.content.entity.ContentDraftRecordEntity;
-import com.mmo.module.fb.content.repository.ContentDraftRecordRepository;
+import com.mmo.module.fb.content.api.ApprovedContentReader;
 import com.mmo.module.fb.publish.service.ContentPublisher;
 import com.mmo.module.fb.publish.service.ContentPublishingService.CreatePublicationCommand;
 import com.mmo.module.fb.publish.domain.PublicationPlatform;
@@ -11,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -19,19 +17,19 @@ import static org.mockito.Mockito.*;
 
 class ContentPublishingServiceImplTest {
 
-    private final ContentDraftRecordRepository draftRepository = mock(ContentDraftRecordRepository.class);
+    private final ApprovedContentReader approvedContentReader = mock(ApprovedContentReader.class);
     private final ContentPublicationRepository publicationRepository = mock(ContentPublicationRepository.class);
     private final ContentPublicationAttemptRepository attemptRepository = mock(ContentPublicationAttemptRepository.class);
     private final ContentPublisher dryRunPublisher = new DryRunContentPublisher();
 
     private final ContentPublishingServiceImpl service = new ContentPublishingServiceImpl(
-            draftRepository, publicationRepository, attemptRepository, dryRunPublisher);
+            approvedContentReader, publicationRepository, attemptRepository, dryRunPublisher);
 
     @Test
     void refusesToCreatePublicationFromDraftWithoutEditorialApproval() {
-        ContentDraftRecordEntity draft = mock(ContentDraftRecordEntity.class);
-        when(draft.getEditorialStatus()).thenReturn("PENDING_REVIEW");
-        when(draftRepository.findById(12L)).thenReturn(Optional.of(draft));
+        when(approvedContentReader.requireApproved(12L)).thenThrow(
+                new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.CONFLICT, "Not approved"));
         when(publicationRepository.findByPlatformAndIdempotencyKey(
                 PublicationPlatform.TELEGRAM, "publish-12-telegram")).thenReturn(Optional.empty());
 
@@ -51,6 +49,6 @@ class ContentPublishingServiceImplTest {
                 null, null, "editor");
 
         assertThrows(ResponseStatusException.class, () -> service.create("  ", command));
-        verifyNoInteractions(draftRepository);
+        verifyNoInteractions(approvedContentReader);
     }
 }

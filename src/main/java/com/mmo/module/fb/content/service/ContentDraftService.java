@@ -1,4 +1,4 @@
-package com.mmo.module.fb.analytics.service;
+package com.mmo.module.fb.content.service;
 
 import java.util.List;
 
