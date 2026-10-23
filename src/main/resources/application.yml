@@ -44,20 +44,10 @@ server:
   port: 8188
 
 app:
-  fb:
-    workflow:
-      # Maximum time to wait for each existing ingestion/analytics CronJob.
-      job-timeout-ms: ${FB_WORKFLOW_JOB_TIMEOUT_MS:1800000}
   content:
     publishing:
       # Live Telegram publishing is disabled until credentials and permissions are verified.
-      api-key: ${CONTENT_PUBLISHING_API_KEY:}
-      worker:
-        # Opt in only after Telegram credentials and channel permissions are verified.
-        enabled: ${CONTENT_PUBLISHING_WORKER_ENABLED:false}
-        batch-size: ${CONTENT_PUBLISHING_WORKER_BATCH_SIZE:10}
-        max-attempts: ${CONTENT_PUBLISHING_WORKER_MAX_ATTEMPTS:5}
-        retry-delay-ms: ${CONTENT_PUBLISHING_WORKER_RETRY_DELAY_MS:300000}
+      api-key: ${CONTENT_PUBLISHING_API_KEY:haivo}
 
   initial-data:
     auto-import: ${APP_INITIAL_DATA_AUTO_IMPORT:true}

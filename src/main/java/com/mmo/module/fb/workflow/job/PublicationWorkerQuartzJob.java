@@ -7,7 +7,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionContext;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -22,16 +21,8 @@ public class PublicationWorkerQuartzJob extends AbstractJob<CronJob> {
 
     private final ContentPublicationWorker publicationWorker;
 
-    @Value("${app.content.publishing.worker.enabled:false}")
-    private boolean enabled;
-
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
-        if (!enabled) {
-            log.debug("Publication worker is disabled; skipping execution");
-            return;
-        }
-
         publicationWorker.processDuePublications();
     }
 }

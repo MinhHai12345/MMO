@@ -23,7 +23,6 @@ import com.mmo.module.fb.workflow.job.FootballWorkflowOrchestrationJob;
 import com.mmo.module.fb.workflow.job.PublicationWorkerQuartzJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -31,14 +30,9 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class FBCronjobInitial implements DataInitializer {
     private static final String FB_JOB_GROUP = "FBJobGroup";
-    private static final String DISABLED_CRON_EXPRESSION = "0 0 0 1 1 ?";
-    private static final String PUBLICATION_WORKER_CRON_EXPRESSION = "0/30 * * * * ?";
 
     private final CronJobRepository cronJobRepository;
     private final CronJobService cronJobService;
-
-    @Value("${app.content.publishing.worker.enabled:false}")
-    private boolean publicationWorkerEnabled;
 
     @Override
     public void initialize() {
@@ -55,7 +49,7 @@ public class FBCronjobInitial implements DataInitializer {
                 FootballDataBootstrapJob.class,
                 "0 0 1 1 * ?",
                 "Bootstrap leagues, teams, fixtures, scores and standings for configured seasons; "
-                        + "FOOTBALL_DATA_SEASONS enables historical backfill (UTC 01:00 / VN 08:00 AM - 1st of month)"
+                + "FOOTBALL_DATA_SEASONS enables historical backfill (UTC 01:00 / VN 08:00 AM - 1st of month)"
         );
 
         createJobIfNotExist(LeagueSyncJob.class.getSimpleName(), LeagueSyncJob.class,
@@ -92,12 +86,8 @@ public class FBCronjobInitial implements DataInitializer {
         createJobIfNotExist(SubscriptionExpiryCheckJob.class.getSimpleName(), SubscriptionExpiryCheckJob.class,
                 "0 0 0 * * ?", "Check subscription expiry and send warnings (Daily at midnight UTC)");
 
-        createJobIfNotExist(
-                PublicationWorkerQuartzJob.class.getSimpleName(),
-                PublicationWorkerQuartzJob.class,
-                publicationWorkerEnabled
-                        ? PUBLICATION_WORKER_CRON_EXPRESSION
-                        : DISABLED_CRON_EXPRESSION,
+        createJobIfNotExist(PublicationWorkerQuartzJob.class.getSimpleName(), PublicationWorkerQuartzJob.class,
+                "0/30 * * * * ?",
                 "Poll approved, due Telegram publications; opt-in via CONTENT_PUBLISHING_WORKER_ENABLED"
         );
 

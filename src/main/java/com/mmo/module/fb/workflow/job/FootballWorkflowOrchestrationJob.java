@@ -41,9 +41,6 @@ public class FootballWorkflowOrchestrationJob extends AbstractJob<CronJob> {
     private final Scheduler scheduler;
     private final ContentLifecycleService contentLifecycleService;
 
-    @Value("${app.fb.workflow.job-timeout-ms:1800000}")
-    private long jobTimeoutMs;
-
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
@@ -122,7 +119,7 @@ public class FootballWorkflowOrchestrationJob extends AbstractJob<CronJob> {
 
         log.info("Workflow stage STARTED job={}", jobName);
         cronJobService.startJobNow(definition.getId());
-        long deadline = System.currentTimeMillis() + Math.max(POLL_INTERVAL_MS, jobTimeoutMs);
+        long deadline = System.currentTimeMillis() + Math.max(POLL_INTERVAL_MS, 1800000);
 
         while (System.currentTimeMillis() < deadline) {
             CronJob current = cronJobService.getJob(jobName, JOB_GROUP);
@@ -149,11 +146,11 @@ public class FootballWorkflowOrchestrationJob extends AbstractJob<CronJob> {
         }
 
         throw new IllegalStateException("Timed out waiting for existing CronJob " + jobName
-                + " after " + jobTimeoutMs + " ms");
+                + " after " + 1800000 + " ms");
     }
 
     private void waitUntilNotRunning(JobKey jobKey, String jobName) {
-        long deadline = System.currentTimeMillis() + Math.max(POLL_INTERVAL_MS, jobTimeoutMs);
+        long deadline = System.currentTimeMillis() + Math.max(POLL_INTERVAL_MS, 1800000);
         while (System.currentTimeMillis() < deadline) {
             try {
                 boolean running = scheduler.getCurrentlyExecutingJobs().stream()

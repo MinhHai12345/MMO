@@ -30,29 +30,20 @@ public class ContentPublicationWorker {
     private final ContentPublicationRepository publicationRepository;
     private final TelegramLivePublishingService telegramLivePublishingService;
 
-    @org.springframework.beans.factory.annotation.Value("${app.content.publishing.worker.batch-size:10}")
-    private int configuredBatchSize = 10;
-
-    @org.springframework.beans.factory.annotation.Value("${app.content.publishing.worker.max-attempts:5}")
-    private int configuredMaxAttempts = 5;
-
-    @org.springframework.beans.factory.annotation.Value("${app.content.publishing.worker.retry-delay-ms:300000}")
-    private long configuredRetryDelayMillis = 300_000L;
-
     public void processDuePublications() {
         Instant now = Instant.now();
-        int batchSize = Math.max(1, Math.min(configuredBatchSize, 100));
-        int maxAttempts = Math.max(1, Math.min(configuredMaxAttempts, 10));
-        long retryDelayMillis = Math.max(1_000L, configuredRetryDelayMillis);
+        int configuredBatchSize = 10;
+        int configuredMaxAttempts = 5;
+        long configuredRetryDelayMillis = 300_000L;
 
         List<Long> dueIds = publicationRepository.findDuePublicationIds(
                 PublicationPlatform.TELEGRAM,
                 ACTIVE_STATES,
                 PublicationStateMachine.State.FAILED,
                 now,
-                now.minus(retryDelayMillis, ChronoUnit.MILLIS),
-                maxAttempts,
-                PageRequest.of(0, batchSize));
+                now.minus(configuredRetryDelayMillis, ChronoUnit.MILLIS),
+                configuredMaxAttempts,
+                PageRequest.of(0, configuredBatchSize));
 
         if (dueIds.isEmpty()) {
             return;
