@@ -2,8 +2,8 @@ package com.mmo.module.fb.ingest.job;
 
 import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.job.AbstractJob;
-import com.mmo.module.fb.domain.entity.Subscriber;
-import com.mmo.module.fb.domain.repository.SubscriberRepository;
+import com.mmo.module.fb.monetization.entity.Subscriber;
+import com.mmo.module.fb.monetization.repository.SubscriberRepository;
 //import com.mmo.module.fb.monetization.SubscriptionService;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
