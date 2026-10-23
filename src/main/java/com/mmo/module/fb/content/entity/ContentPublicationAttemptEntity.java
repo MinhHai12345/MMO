@@ -1,4 +1,4 @@
-package com.mmo.module.fb.content.production.persistence;
+package com.mmo.module.fb.content.entity;
 
 import com.mmo.core.entity.AbstractEntity;
 import jakarta.persistence.Column;
