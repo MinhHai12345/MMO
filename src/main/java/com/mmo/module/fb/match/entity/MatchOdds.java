@@ -1,7 +1,7 @@
 package com.mmo.module.fb.match.entity;
 
 import com.mmo.core.entity.AbstractEntity;
-import com.mmo.module.fb.domain.entity.Bookmaker;
+import com.mmo.module.fb.match.entity.Bookmaker;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -3,7 +3,7 @@ package com.mmo.module.fb.match.entity;
 import com.mmo.core.entity.AbstractEntity;
 import com.mmo.module.fb.league.entity.Season;
 import com.mmo.module.fb.team.entity.Team;
-import com.mmo.module.fb.domain.enums.MatchStatus;
+import com.mmo.module.fb.match.enums.MatchStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
