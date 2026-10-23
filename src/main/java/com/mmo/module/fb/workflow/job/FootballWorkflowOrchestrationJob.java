@@ -1,0 +1,130 @@
+package com.mmo.module.fb.workflow.job;
+
+import com.mmo.core.cronjob.entity.CronJob;
+import com.mmo.core.cronjob.entity.JobCompleteState;
+import com.mmo.core.cronjob.entity.JobState;
+import com.mmo.core.cronjob.service.CronJobService;
+import com.mmo.module.fb.content.service.ContentDraftService.DraftFormat;
+import com.mmo.module.fb.content.service.ContentLifecycleService;
+import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowCommand;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.quartz.DisallowConcurrentExecution;
+import org.quartz.JobExecutionContext;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
+import org.quartz.JobKey;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.quartz.QuartzJobBean;
+import org.springframework.stereotype.Component;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.Objects;
+
+/**
+ * Coordinates the end-to-end FB workflow by triggering the project's persisted CronJob
+ * definitions and waiting for each job's listener-persisted completion state before
+ * advancing to the next dependent stage.
+ */
+@Slf4j
+@Component
+@DisallowConcurrentExecution
+@RequiredArgsConstructor
+public class FootballWorkflowOrchestrationJob extends QuartzJobBean {
+
+    private static final String JOB_GROUP = "FBJobGroup";
+    private static final long POLL_INTERVAL_MS = 1_000L;
+
+    private final CronJobService cronJobService;
+    private final Scheduler scheduler;
+    private final ContentLifecycleService contentLifecycleService;
+
+    @Value("${app.fb.workflow.job-timeout-ms:1800000}")
+    private long jobTimeoutMs;
+
+    @Override
+    protected void executeInternal(JobExecutionContext context) {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        log.info("Starting FB end-to-end workflow for {}", today);
+
+        // Reuse the existing persisted jobs; ordering here is explicit and completion-gated.
+        runExistingJob("FootballDataBootstrapJob");
+        runExistingJob("MatchResultSyncJob");
+        runExistingJob("MatchFixtureSyncJob");
+        runExistingJob("MatchStatisticsSyncJob");
+        runExistingJob("AdvancedMetricsJob");
+        runExistingJob("MatchProcessPredictionJob");
+
+        Instant from = today.atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant to = today.plusDays(15).atStartOfDay().toInstant(ZoneOffset.UTC);
+        WorkflowCommand command = new WorkflowCommand(from, to, null, 20, DraftFormat.PRE_MATCH);
+        String idempotencyKey = "scheduled-content-" + today;
+        var run = contentLifecycleService.generate(command, idempotencyKey);
+
+        log.info("FB end-to-end workflow completed for {}: runId={} status={} generated={} failures={}",
+                today, run.getId(), run.getStatus(), run.getDraftsGenerated(), run.getFailures());
+    }
+
+    private void runExistingJob(String jobName) {
+        CronJob definition = cronJobService.getJob(jobName, JOB_GROUP);
+        JobKey jobKey = new JobKey(definition.getJobName(), definition.getJobGroup());
+
+        waitUntilNotRunning(jobKey, jobName);
+        ZonedDateTime previousExecution = cronJobService.getJob(jobName, JOB_GROUP).getLastExecutedTime();
+
+        log.info("Workflow stage STARTED job={}", jobName);
+        cronJobService.startJobNow(definition.getId());
+        long deadline = System.currentTimeMillis() + Math.max(POLL_INTERVAL_MS, jobTimeoutMs);
+
+        while (System.currentTimeMillis() < deadline) {
+            CronJob current = cronJobService.getJob(jobName, JOB_GROUP);
+            ZonedDateTime lastExecution = current.getLastExecutedTime();
+            boolean thisExecutionCompleted = lastExecution != null
+                    && (previousExecution == null || lastExecution.isAfter(previousExecution))
+                    && current.getJobStatus() == JobState.COMPLETE;
+
+            if (thisExecutionCompleted) {
+                if (current.getLastCompleteStatus() != JobCompleteState.SUCCESS) {
+                    throw new IllegalStateException("Workflow stage failed: " + jobName
+                            + " completed with status " + current.getLastCompleteStatus());
+                }
+                log.info("Workflow stage COMPLETED job={} lastExecutedTime={}", jobName, lastExecution);
+                return;
+            }
+
+            sleep(jobName);
+        }
+
+        throw new IllegalStateException("Timed out waiting for existing CronJob " + jobName
+                + " after " + jobTimeoutMs + " ms");
+    }
+
+    private void waitUntilNotRunning(JobKey jobKey, String jobName) {
+        long deadline = System.currentTimeMillis() + Math.max(POLL_INTERVAL_MS, jobTimeoutMs);
+        while (System.currentTimeMillis() < deadline) {
+            try {
+                boolean running = scheduler.getCurrentlyExecutingJobs().stream()
+                        .anyMatch(execution -> execution.getJobDetail().getKey().equals(jobKey));
+                if (!running) {
+                    return;
+                }
+            } catch (SchedulerException exception) {
+                throw new IllegalStateException("Cannot inspect running Quartz jobs before " + jobName, exception);
+            }
+            sleep(jobName);
+        }
+        throw new IllegalStateException("Timed out waiting for existing CronJob to become idle: " + jobName);
+    }
+
+    private void sleep(String jobName) {
+        try {
+            Thread.sleep(POLL_INTERVAL_MS);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while waiting for CronJob " + jobName, exception);
+        }
+    }
+}
