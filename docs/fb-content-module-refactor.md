@@ -29,7 +29,7 @@ com.mmo.module.fb
 - `monetization.entity/repository`: subscribers, subscription plans, tip transactions, and affiliate tracking.
 - `ingest.entity/repository`: crawler health and ingestion data-quality metrics.
 
-The legacy top-level `domain` package has been removed. Entity table names, column names, join-column names, and `mappedBy` property names are preserved by the package refactor. When changing a relationship, update both sides together and verify the owning side, inverse side, repository query paths, and application imports.
+A dedicated `report` module should be introduced when an actual cross-module reporting use case/read model exists; do not create an empty package. The legacy top-level `domain` package has been removed. Entity table names, column names, join-column names, and `mappedBy` property names are preserved by the package refactor. When changing a relationship, update both sides together and verify the owning side, inverse side, repository query paths, and application imports.
 
 ## Job ownership
 
