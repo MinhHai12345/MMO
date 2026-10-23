@@ -4,6 +4,9 @@ import com.mmo.module.fb.analytics.entity.MatchInsight;
 import com.mmo.module.fb.analytics.entity.MatchNarratives;
 import com.mmo.module.fb.analytics.entity.MatchPrediction;
 import com.mmo.module.fb.analytics.entity.PredictionPerformance;
+import com.mmo.module.fb.content.entity.ContentTemplate;
+import com.mmo.module.fb.ingest.entity.CrawlerHealth;
+import com.mmo.module.fb.ingest.entity.DataQualityMetrics;
 import com.mmo.module.fb.league.entity.LeagueStanding;
 import com.mmo.module.fb.league.entity.Season;
 import com.mmo.module.fb.league.entity.SeasonExternalId;
@@ -29,6 +32,20 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class FbJpaRelationshipMappingTest {
+
+    @Test
+    void persistenceTypesAreOwnedByTheirBusinessModules() {
+        assertEquals("com.mmo.module.fb.league.entity", Season.class.getPackageName());
+        assertEquals("com.mmo.module.fb.team.entity", Team.class.getPackageName());
+        assertEquals("com.mmo.module.fb.player.entity", Player.class.getPackageName());
+        assertEquals("com.mmo.module.fb.match.entity", Match.class.getPackageName());
+        assertEquals("com.mmo.module.fb.analytics.entity", MatchPrediction.class.getPackageName());
+        assertEquals("com.mmo.module.fb.content.entity", ContentTemplate.class.getPackageName());
+        assertEquals("com.mmo.module.fb.publish.entity", SocialPost.class.getPackageName());
+        assertEquals("com.mmo.module.fb.monetization.entity", Subscriber.class.getPackageName());
+        assertEquals("com.mmo.module.fb.ingest.entity", CrawlerHealth.class.getPackageName());
+        assertEquals("com.mmo.module.fb.ingest.entity", DataQualityMetrics.class.getPackageName());
+    }
 
     @Test
     void matchAndAnalyticsAssociationsRemainConsistentAfterModuleMove() throws Exception {
