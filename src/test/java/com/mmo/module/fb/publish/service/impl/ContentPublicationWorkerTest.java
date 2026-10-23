@@ -26,6 +26,10 @@ class ContentPublicationWorkerTest {
                 eq(PublicationStateMachine.State.FAILED),
                 any(Instant.class), any(Instant.class), eq(5), any(Pageable.class)))
                 .thenReturn(List.of(12L, 13L));
+        when(telegramService.publish(12L, "fb-publication-worker"))
+                .thenReturn(published(12L));
+        when(telegramService.publish(13L, "fb-publication-worker"))
+                .thenReturn(published(13L));
 
         ContentPublicationWorker worker = new ContentPublicationWorker(repository, telegramService);
         worker.processDuePublications();
@@ -55,13 +59,17 @@ class ContentPublicationWorkerTest {
         when(telegramService.publish(12L, "fb-publication-worker"))
                 .thenThrow(new IllegalStateException("simulated failure"));
         when(telegramService.publish(13L, "fb-publication-worker"))
-                .thenReturn(new TelegramLivePublishingService.LivePublishResponse(
-                        13L, PublicationStateMachine.State.PUBLISHED, "ext-13", Instant.now(), "ok"));
+                .thenReturn(published(13L));
 
         ContentPublicationWorker worker = new ContentPublicationWorker(repository, telegramService);
         worker.processDuePublications();
 
         verify(telegramService).publish(12L, "fb-publication-worker");
         verify(telegramService).publish(13L, "fb-publication-worker");
+    }
+
+    private static TelegramLivePublishingService.LivePublishResponse published(Long id) {
+        return new TelegramLivePublishingService.LivePublishResponse(
+                id, PublicationStateMachine.State.PUBLISHED, "ext-" + id, Instant.now(), "ok");
     }
 }
