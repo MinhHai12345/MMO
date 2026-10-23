@@ -1,6 +1,6 @@
-package com.mmo.module.fb.content.repository;
+package com.mmo.module.fb.publish.repository;
 
-import com.mmo.module.fb.content.entity.ContentPublicationAttemptEntity;
+import com.mmo.module.fb.publish.entity.ContentPublicationAttemptEntity;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

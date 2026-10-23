@@ -1,4 +1,4 @@
-package com.mmo.module.fb.content.publish;
+package com.mmo.module.fb.publish.domain;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;

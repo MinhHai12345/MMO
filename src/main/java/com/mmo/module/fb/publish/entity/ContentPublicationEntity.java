@@ -1,8 +1,9 @@
-package com.mmo.module.fb.content.entity;
+package com.mmo.module.fb.publish.entity;
 
 import com.mmo.core.entity.AbstractEntity;
-import com.mmo.module.fb.content.publish.PublicationPlatform;
-import com.mmo.module.fb.content.publish.PublicationStateMachine;
+import com.mmo.module.fb.content.entity.ContentDraftRecordEntity;
+import com.mmo.module.fb.publish.domain.PublicationPlatform;
+import com.mmo.module.fb.publish.domain.PublicationStateMachine;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

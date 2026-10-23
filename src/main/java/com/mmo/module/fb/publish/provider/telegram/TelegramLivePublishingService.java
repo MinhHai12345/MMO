@@ -1,11 +1,11 @@
-package com.mmo.module.fb.content.publish.telegram;
+package com.mmo.module.fb.publish.provider.telegram;
 
-import com.mmo.module.fb.content.publish.PublicationPlatform;
-import com.mmo.module.fb.content.publish.PublicationStateMachine;
-import com.mmo.module.fb.content.entity.ContentPublicationAttemptEntity;
-import com.mmo.module.fb.content.repository.ContentPublicationAttemptRepository;
-import com.mmo.module.fb.content.entity.ContentPublicationEntity;
-import com.mmo.module.fb.content.repository.ContentPublicationRepository;
+import com.mmo.module.fb.publish.domain.PublicationPlatform;
+import com.mmo.module.fb.publish.domain.PublicationStateMachine;
+import com.mmo.module.fb.publish.entity.ContentPublicationAttemptEntity;
+import com.mmo.module.fb.publish.repository.ContentPublicationAttemptRepository;
+import com.mmo.module.fb.publish.entity.ContentPublicationEntity;
+import com.mmo.module.fb.publish.repository.ContentPublicationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;

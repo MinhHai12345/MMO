@@ -1,4 +1,4 @@
-package com.mmo.module.fb.content.publish;
+package com.mmo.module.fb.publish.domain;
 
 import java.util.EnumMap;
 import java.util.EnumSet;

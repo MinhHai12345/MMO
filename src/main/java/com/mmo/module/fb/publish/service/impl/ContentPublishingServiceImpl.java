@@ -1,16 +1,16 @@
-package com.mmo.module.fb.content.publish.impl;
+package com.mmo.module.fb.publish.service.impl;
 
 import com.mmo.module.fb.content.entity.ContentDraftRecordEntity;
 import com.mmo.module.fb.content.repository.ContentDraftRecordRepository;
-import com.mmo.module.fb.content.publish.ContentPublisher;
-import com.mmo.module.fb.content.publish.ContentPublishingService;
-import com.mmo.module.fb.content.publish.PublicationPlatform;
-import com.mmo.module.fb.content.publish.PublicationPayloadValidator;
-import com.mmo.module.fb.content.publish.PublicationStateMachine;
-import com.mmo.module.fb.content.entity.ContentPublicationAttemptEntity;
-import com.mmo.module.fb.content.repository.ContentPublicationAttemptRepository;
-import com.mmo.module.fb.content.entity.ContentPublicationEntity;
-import com.mmo.module.fb.content.repository.ContentPublicationRepository;
+import com.mmo.module.fb.publish.service.ContentPublisher;
+import com.mmo.module.fb.publish.service.ContentPublishingService;
+import com.mmo.module.fb.publish.domain.PublicationPlatform;
+import com.mmo.module.fb.publish.domain.PublicationPayloadValidator;
+import com.mmo.module.fb.publish.domain.PublicationStateMachine;
+import com.mmo.module.fb.publish.entity.ContentPublicationAttemptEntity;
+import com.mmo.module.fb.publish.repository.ContentPublicationAttemptRepository;
+import com.mmo.module.fb.publish.entity.ContentPublicationEntity;
+import com.mmo.module.fb.publish.repository.ContentPublicationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;

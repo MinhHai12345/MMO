@@ -1,4 +1,4 @@
-package com.mmo.module.fb.content.publish;
+package com.mmo.module.fb.publish.domain;
 
 /**
  * Supported publication destinations. A platform value does not imply that
