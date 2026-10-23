@@ -123,4 +123,3 @@ app:
 
   understats:
     base-url: ${UNDERSTAT_BASE_URL:https://understat.com}
-    
