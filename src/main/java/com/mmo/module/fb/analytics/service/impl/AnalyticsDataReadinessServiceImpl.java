@@ -3,7 +3,7 @@ package com.mmo.module.fb.analytics.service.impl;
 import com.mmo.module.fb.analytics.service.AnalyticsDataReadinessService;
 import com.mmo.module.fb.analytics.service.AnalyticsDataReadinessService.DataReadinessReport;
 import com.mmo.module.fb.analytics.service.AnalyticsDataReadinessService.SeasonReadiness;
-import com.mmo.module.fb.domain.enums.MatchStatus;
+import com.mmo.module.fb.match.enums.MatchStatus;
 import com.mmo.module.fb.match.repository.MatchRepository;
 import com.mmo.module.fb.match.repository.MatchRepository.SeasonDataReadinessProjection;
 import lombok.RequiredArgsConstructor;

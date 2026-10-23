@@ -1,9 +1,9 @@
 package com.mmo.module.fb.match.repository;
 
 import com.mmo.module.fb.match.entity.Match;
-import com.mmo.module.fb.domain.entity.Team;
-import com.mmo.module.fb.domain.enums.MatchStatus;
-import com.mmo.module.fb.domain.enums.Provider;
+import com.mmo.module.fb.team.entity.Team;
+import com.mmo.module.fb.match.enums.MatchStatus;
+import com.mmo.module.fb.ingest.enums.Provider;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
