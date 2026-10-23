@@ -5,7 +5,7 @@ import com.mmo.module.fb.league.entity.Season;
 import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRateLimitException;
 import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
 import com.mmo.module.fb.team.entity.TeamExternalId;
-import com.mmo.module.fb.domain.enums.Provider;
+import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.league.repository.SeasonRepository;
 import com.mmo.module.fb.team.repository.TeamExternalIdRepository;

@@ -3,7 +3,7 @@ package com.mmo.module.fb.ingest.service.impl;
 import com.mmo.module.fb.league.entity.LeagueStanding;
 import com.mmo.module.fb.league.entity.Season;
 import com.mmo.module.fb.team.entity.Team;
-import com.mmo.module.fb.domain.enums.StandingType;
+import com.mmo.module.fb.league.enums.StandingType;
 import com.mmo.module.fb.league.repository.LeagueStandingRepository;
 import com.mmo.module.fb.league.repository.SeasonRepository;
 import com.mmo.module.fb.team.repository.TeamRepository;
