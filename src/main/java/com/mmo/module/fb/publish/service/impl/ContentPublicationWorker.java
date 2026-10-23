@@ -38,13 +38,13 @@ public class ContentPublicationWorker {
     private final TelegramLivePublishingService telegramLivePublishingService;
 
     @org.springframework.beans.factory.annotation.Value("${app.content.publishing.worker.batch-size:10}")
-    private int configuredBatchSize;
+    private int configuredBatchSize = 10;
 
     @org.springframework.beans.factory.annotation.Value("${app.content.publishing.worker.max-attempts:5}")
-    private int configuredMaxAttempts;
+    private int configuredMaxAttempts = 5;
 
     @org.springframework.beans.factory.annotation.Value("${app.content.publishing.worker.retry-delay-ms:300000}")
-    private long configuredRetryDelayMillis;
+    private long configuredRetryDelayMillis = 300_000L;
 
     @Scheduled(
             fixedDelayString = "${app.content.publishing.worker.fixed-delay-ms:30000}",
