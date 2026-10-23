@@ -5,6 +5,7 @@ import com.mmo.module.fb.content.persistence.ContentDraftRecordRepository;
 import com.mmo.module.fb.content.production.ContentPublisher;
 import com.mmo.module.fb.content.production.ContentPublishingService;
 import com.mmo.module.fb.content.production.PublicationPlatform;
+import com.mmo.module.fb.content.production.PublicationPayloadValidator;
 import com.mmo.module.fb.content.production.PublicationStateMachine;
 import com.mmo.module.fb.content.production.persistence.ContentPublicationAttemptEntity;
 import com.mmo.module.fb.content.production.persistence.ContentPublicationAttemptRepository;
