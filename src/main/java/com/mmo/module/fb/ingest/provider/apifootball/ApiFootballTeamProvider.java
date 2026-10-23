@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.provider.apifootball;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.mmo.module.fb.domain.enums.Provider;
+import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballClient;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.TeamItem;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;

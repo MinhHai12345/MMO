@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.provider.footballdata.mapper;
 
 import com.mmo.AppProperties;
-import com.mmo.module.fb.domain.enums.StandingType;
+import com.mmo.module.fb.league.enums.StandingType;
 import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.*;
 import com.mmo.module.fb.ingest.provider.model.*;
 import lombok.RequiredArgsConstructor;
