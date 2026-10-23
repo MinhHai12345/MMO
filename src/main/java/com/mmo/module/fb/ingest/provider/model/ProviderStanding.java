@@ -1,6 +1,6 @@
 package com.mmo.module.fb.ingest.provider.model;
 
-import com.mmo.module.fb.domain.enums.StandingType;
+import com.mmo.module.fb.league.enums.StandingType;
 
 public record ProviderStanding(
         String teamExternalId,
