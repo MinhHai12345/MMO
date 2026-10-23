@@ -11,9 +11,10 @@ Scheduling timestamps are persisted for review, but there is no scheduler or liv
 1. Generate and persist a content draft through the existing workflow.
 2. Complete editorial review; the source draft must have `editorialStatus=APPROVED` and must not be blocked.
 3. Create a platform-specific publication request with an `Idempotency-Key`. The request enters `NEEDS_REVIEW`.
-4. Review and approve the exact title/body/media reference. A future `scheduledAt` moves the request to `SCHEDULED`; otherwise it moves to `APPROVED`.
-5. Call the dry-run endpoint. The payload is validated and a persisted attempt record is written. The publication remains `APPROVED` or `SCHEDULED`; it never becomes `PUBLISHED` because no platform API was called.
-6. Inspect the publication detail and attempt history before adding a real provider adapter.
+4. Validate platform-specific basic payload constraints (including text length and required media for video/image destinations).
+5. Review and approve the exact title/body/media reference. A future `scheduledAt` moves the request to `SCHEDULED`; otherwise it moves to `APPROVED`.
+6. Call the dry-run endpoint. A persisted attempt record is written. The publication remains `APPROVED` or `SCHEDULED`; it never becomes `PUBLISHED` because no platform API was called.
+7. Inspect the publication detail and attempt history before adding a real provider adapter.
 
 ## Endpoints
 
@@ -81,10 +82,11 @@ The response has `lastAttemptStatus=DRY_RUN`, a null `externalPostId`, and an at
 - A draft must already be editorially approved; blocked drafts cannot enter publishing.
 - A publication request requires its own approval after title/body/media have been fixed.
 - The idempotency key is unique per platform.
-- Approval and attempt records are persisted.
+- Approval notes and attempt records are persisted.
 - No state is marked `PUBLISHED` during dry-run.
 - Platform names are destinations only; selecting a platform does not mean credentials or an official adapter exist.
-- The current `requestedBy` / `approvedBy` values are audit labels supplied by the caller. They are **not authenticated identities**. Secure these endpoints with application authentication/authorization before exposing them publicly.
+- Character/media checks are conservative preflight checks, not a substitute for current provider API validation.
+- The current `requestedBy` / `approvedBy` values are **caller-supplied audit labels**, not authenticated identities. Secure these endpoints with application authentication/authorization before exposing them publicly.
 
 ## Before live publishing
 
