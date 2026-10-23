@@ -256,6 +256,7 @@ public class ContentPublishingServiceImpl implements ContentPublishingService {
         if (command.body() == null || command.body().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Publication body is required");
         }
+        PublicationPayloadValidator.validate(command.platform(), command.title().strip(), command.body().strip(), command.mediaReference());
         if (command.mediaReference() != null && command.mediaReference().length() > 1000) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "mediaReference must be at most 1000 characters");
         }
