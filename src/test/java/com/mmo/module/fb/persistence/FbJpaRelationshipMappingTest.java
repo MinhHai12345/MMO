@@ -76,7 +76,7 @@ class FbJpaRelationshipMappingTest {
         assertFieldAnnotation(Subscriber.class, "subscriptionPlan", ManyToOne.class);
         assertMappedBy(Subscriber.class, "tipTransactions", "subscriber");
         assertMappedBy(Subscriber.class, "affiliateTrackings", "subscriber");
-        assertFieldAnnotation(SubscriptionPlan.class, "subscribers", OneToMany.class);
+        assertMappedBy(SubscriptionPlan.class, "subscribers", "subscriptionPlan");
         assertFieldAnnotation(TipTransaction.class, "subscriber", ManyToOne.class);
         assertFieldAnnotation(AffiliateTracking.class, "subscriber", ManyToOne.class);
     }
