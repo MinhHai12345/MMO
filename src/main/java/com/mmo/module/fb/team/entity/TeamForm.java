@@ -1,6 +1,7 @@
-package com.mmo.module.fb.domain.entity;
+package com.mmo.module.fb.team.entity;
 
 import com.mmo.core.entity.AbstractEntity;
+import com.mmo.module.fb.league.entity.Season;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
