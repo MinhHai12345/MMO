@@ -1,6 +1,6 @@
-package com.mmo.module.fb.domain.repository;
+package com.mmo.module.fb.match.repository;
 
-import com.mmo.module.fb.domain.entity.Bookmaker;
+import com.mmo.module.fb.match.entity.Bookmaker;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
