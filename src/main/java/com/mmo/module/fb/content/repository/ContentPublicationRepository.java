@@ -1,5 +1,7 @@
 package com.mmo.module.fb.content.repository;
 
+import com.mmo.module.fb.content.entity.ContentPublicationEntity;
+
 import com.mmo.module.fb.content.publish.PublicationPlatform;
 import com.mmo.module.fb.content.publish.PublicationStateMachine;
 import jakarta.persistence.LockModeType;
