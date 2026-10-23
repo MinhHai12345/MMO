@@ -1,6 +1,6 @@
-package com.mmo.module.fb.domain.repository;
+package com.mmo.module.fb.player.repository;
 
-import com.mmo.module.fb.domain.entity.Player;
+import com.mmo.module.fb.player.entity.Player;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
