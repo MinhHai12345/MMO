@@ -85,8 +85,7 @@ class TelegramBotApiPublisherTest {
     private static Message telegramMessage(Integer messageId, Long chatId) {
         Message message = new Message();
         message.setMessageId(messageId);
-        Chat chat = new Chat();
-        chat.setId(chatId);
+        Chat chat = new Chat(chatId, "channel");
         message.setChat(chat);
         return message;
     }
