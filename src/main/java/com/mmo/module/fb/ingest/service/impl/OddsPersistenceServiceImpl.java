@@ -1,10 +1,10 @@
 package com.mmo.module.fb.ingest.service.impl;
 
-import com.mmo.module.fb.domain.entity.Bookmaker;
+import com.mmo.module.fb.match.entity.Bookmaker;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchOdds;
 import com.mmo.module.fb.match.entity.OddsHistory;
-import com.mmo.module.fb.domain.repository.BookmakerRepository;
+import com.mmo.module.fb.match.repository.BookmakerRepository;
 import com.mmo.module.fb.match.repository.MatchOddsRepository;
 import com.mmo.module.fb.match.repository.MatchRepository;
 import com.mmo.module.fb.match.repository.OddsHistoryRepository;
