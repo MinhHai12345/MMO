@@ -10,7 +10,7 @@ The workflow is scheduled by the project's existing persisted Quartz CronJob reg
 4. The orchestrator checks each job's persisted lastExecutedTime, jobStatus, and lastCompleteStatus. It proceeds only after a new execution is marked COMPLETE/SUCCESS; failure or timeout stops the pipeline before content generation.
 5. After analytics/predictions finish, the workflow discovers upcoming matches in the next 15 days and creates PRE_MATCH drafts through the existing content lifecycle/orchestrator. The workflow run, item checkpoints and draft versions remain persisted and idempotent by UTC date.
 6. Editorial approval remains an explicit human gate. The workflow does not auto-approve drafts or publish unreviewed content.
-7. When explicitly enabled, PublicationWorkerQuartzJob polls approved, due Telegram publications. It delegates delivery to the Telegram adapter and records attempt outcomes.
+7. When explicitly enabled, PublicationWorkerQuartzJob is registered in the same persisted FBJobGroup CronJob registry and polls approved, due Telegram publications on its configured UTC cron expression. It delegates delivery to the Telegram adapter and records attempt outcomes.
 
 The orchestrator uses the existing CronJob definitions by name in FBJobGroup; those definitions must be initialized by FBCronjobInitial. Each stage waits up to FB_WORKFLOW_JOB_TIMEOUT_MS (default 30 minutes). DisallowConcurrentExecution prevents concurrent executions of the same orchestrator job detail.
 
@@ -22,20 +22,20 @@ The orchestration job is registered with the existing cron-job registry at UTC 1
 FB_WORKFLOW_JOB_TIMEOUT_MS=1800000
 ```
 
-Live publishing is opt-in and disabled by default:
+Live publishing is opt-in and disabled by default. The worker schedule is managed through the same persisted CronJob registry:
 
 ```properties
 CONTENT_PUBLISHING_WORKER_ENABLED=true
+CONTENT_PUBLISHING_WORKER_CRON=0/30 * * * * ?
 CONTENT_PUBLISHING_API_KEY=<long-random-secret>
 TELEGRAM_TOKEN=<bot-token>
 TELEGRAM_CHANNEL_ID=<channel-id>
 ```
 
-The API key protects the manual live-publish endpoint; enabling the Quartz worker is a separate switch. Configure Telegram credentials and confirm the bot has permission to post to the target channel before enabling the worker.
+The API key protects the manual live-publish endpoint; enabling the worker is a separate switch. When disabled, its persisted registry trigger is moved to a dormant annual expression and manual invocations are guarded. On startup, the worker's schedule is reconciled from configuration. Configure Telegram credentials and confirm the bot has permission to post to the target channel before enabling it.
 
 Worker settings:
-- CONTENT_PUBLISHING_WORKER_FIXED_DELAY_MS (default 30000)
-- CONTENT_PUBLISHING_WORKER_INITIAL_DELAY_MS (default 15000)
+- CONTENT_PUBLISHING_WORKER_CRON (default `0/30 * * * * ?`, every 30 seconds UTC)
 - CONTENT_PUBLISHING_WORKER_BATCH_SIZE (default 10)
 - CONTENT_PUBLISHING_WORKER_MAX_ATTEMPTS (default 5)
 - CONTENT_PUBLISHING_WORKER_RETRY_DELAY_MS (default 300000)
