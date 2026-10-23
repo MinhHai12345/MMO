@@ -1,4 +1,4 @@
-//package com.mmo.module.fb.controller;
+//package com.mmo.module.fb.monetization.controller;
 //
 //import com.mmo.module.fb.domain.entity.Subscriber;
 //import com.mmo.module.fb.domain.entity.SubscriptionPlan;

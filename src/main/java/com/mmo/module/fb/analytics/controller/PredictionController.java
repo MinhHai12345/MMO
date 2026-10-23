@@ -1,4 +1,4 @@
-package com.mmo.module.fb.controller;
+package com.mmo.module.fb.analytics.controller;
 
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchPrediction;

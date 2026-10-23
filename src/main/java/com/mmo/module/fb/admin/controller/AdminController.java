@@ -1,4 +1,4 @@
-package com.mmo.module.fb.controller;
+package com.mmo.module.fb.admin.controller;
 
 import com.mmo.module.fb.domain.entity.League;
 import com.mmo.module.fb.domain.entity.Match;
