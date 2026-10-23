@@ -35,7 +35,6 @@ A dedicated `report` module should be introduced when an actual cross-module rep
 
 - `ingest.job`: provider synchronization, fixture status/results, lineups/odds updates, crawler health and cleanup.
 - `analytics.job`: team-form/H2H calculations, prediction generation, evaluation and walk-forward backtesting.
-- `content.job`: content scheduling.
 - Disabled no-op recap/dashboard scheduler stubs were removed instead of registering jobs that perform no work.
 - `monetization.job`: subscription expiry lifecycle.
 
