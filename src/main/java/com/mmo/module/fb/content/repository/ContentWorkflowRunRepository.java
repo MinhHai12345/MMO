@@ -1,5 +1,7 @@
 package com.mmo.module.fb.content.repository;
 
+import com.mmo.module.fb.content.entity.ContentWorkflowRunEntity;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;

@@ -1,6 +1,6 @@
 package com.mmo.module.fb.content.controller;
 
-import com.mmo.module.fb.content.controller.TelegramLivePublishingController;
+import com.mmo.module.fb.content.publish.telegram.TelegramLivePublishingService;
 import com.mmo.module.fb.content.publish.PublicationStateMachine;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
