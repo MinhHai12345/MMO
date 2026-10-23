@@ -33,8 +33,8 @@ class PublicationPayloadValidatorTest {
     @Test
     void countsSurrogatePairsConservativelyForX() {
         assertDoesNotThrow(() -> PublicationPayloadValidator.validate(
-                PublicationPlatform.X, "Preview", "⚽".repeat(140), null));
+                PublicationPlatform.X, "Preview", "😀".repeat(140), null));
         assertThrows(ResponseStatusException.class, () -> PublicationPayloadValidator.validate(
-                PublicationPlatform.X, "Preview", "⚽".repeat(141), null));
+                PublicationPlatform.X, "Preview", "😀".repeat(141), null));
     }
 }
