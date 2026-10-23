@@ -1,6 +1,6 @@
 package com.mmo.module.fb.content.controller;
 
-import com.mmo.module.fb.analytics.service.ContentDraftService.DraftFormat;
+import com.mmo.module.fb.content.service.ContentDraftService.DraftFormat;
 import com.mmo.module.fb.content.production.ContentProductionPlanService;
 import com.mmo.module.fb.content.production.ContentProductionPlanService.ProductionPlan;
 import com.mmo.module.fb.content.service.SocialContentPackageService;

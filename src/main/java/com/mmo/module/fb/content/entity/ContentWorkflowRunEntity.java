@@ -31,7 +31,7 @@ public class ContentWorkflowRunEntity extends AbstractEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "draft_format", nullable = false, length = 24)
-    private com.mmo.module.fb.analytics.service.ContentDraftService.DraftFormat format;
+    private com.mmo.module.fb.content.service.ContentDraftService.DraftFormat format;
 
     @Column(name = "started_at", nullable = false)
     private Instant startedAt;

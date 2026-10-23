@@ -1,7 +1,7 @@
 package com.mmo.module.fb.content.entity;
 
 import com.mmo.core.entity.AbstractEntity;
-import com.mmo.module.fb.analytics.service.ContentDraftService.DraftFormat;
+import com.mmo.module.fb.content.service.ContentDraftService.DraftFormat;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

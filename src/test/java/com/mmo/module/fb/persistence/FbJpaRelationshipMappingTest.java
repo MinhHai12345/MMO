@@ -15,8 +15,7 @@ import com.mmo.module.fb.match.entity.MatchExternalId;
 import com.mmo.module.fb.player.entity.Player;
 import com.mmo.module.fb.player.entity.PlayerExternalId;
 import com.mmo.module.fb.player.entity.PlayerMatchStats;
-import com.mmo.module.fb.publish.entity.ContentQueue;
-import com.mmo.module.fb.publish.entity.SocialPost;
+import com.mmo.module.fb.publish.entity.ContentPublicationEntity;
 import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.team.entity.TeamExternalId;
 import com.mmo.module.fb.team.entity.TeamForm;
@@ -41,7 +40,6 @@ class FbJpaRelationshipMappingTest {
         assertEquals("com.mmo.module.fb.match.entity", Match.class.getPackageName());
         assertEquals("com.mmo.module.fb.analytics.entity", MatchPrediction.class.getPackageName());
         assertEquals("com.mmo.module.fb.content.entity", ContentTemplate.class.getPackageName());
-        assertEquals("com.mmo.module.fb.publish.entity", SocialPost.class.getPackageName());
         assertEquals("com.mmo.module.fb.monetization.entity", Subscriber.class.getPackageName());
         assertEquals("com.mmo.module.fb.ingest.entity", CrawlerHealth.class.getPackageName());
         assertEquals("com.mmo.module.fb.ingest.entity", DataQualityMetrics.class.getPackageName());
@@ -85,10 +83,8 @@ class FbJpaRelationshipMappingTest {
     }
 
     @Test
-    void contentPublishingAndMonetizationInverseRelationshipsRemainConsistent() throws Exception {
-        assertFieldAnnotation(SocialPost.class, "match", ManyToOne.class);
-        assertMappedBy(SocialPost.class, "queue", "socialPost");
-        assertFieldAnnotation(ContentQueue.class, "socialPost", ManyToOne.class);
+    void contentPublishingAndMonetizationPersistenceRemainConsistent() throws Exception {
+        assertNotNull(ContentPublicationEntity.class.getDeclaredField("draftId"));
 
         assertFieldAnnotation(Subscriber.class, "subscriptionPlan", ManyToOne.class);
         assertMappedBy(Subscriber.class, "tipTransactions", "subscriber");

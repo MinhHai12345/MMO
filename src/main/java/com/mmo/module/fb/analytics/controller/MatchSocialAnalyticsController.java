@@ -3,9 +3,6 @@ package com.mmo.module.fb.analytics.controller;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.MatchSocialInsight;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.ContentCandidate;
-import com.mmo.module.fb.analytics.service.ContentDraftService;
-import com.mmo.module.fb.analytics.service.ContentDraftService.ContentDraft;
-import com.mmo.module.fb.analytics.service.ContentDraftService.DraftFormat;
 import com.mmo.module.fb.analytics.service.PlayerAnalyticsService;
 import com.mmo.module.fb.analytics.service.PostMatchAnalysisService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -29,7 +26,6 @@ public class MatchSocialAnalyticsController {
     private final MatchSocialAnalyticsService matchSocialAnalyticsService;
     private final PlayerAnalyticsService playerAnalyticsService;
     private final PostMatchAnalysisService postMatchAnalysisService;
-    private final ContentDraftService contentDraftService;
 
 
     @GetMapping("/social-insights")
@@ -49,13 +45,6 @@ public class MatchSocialAnalyticsController {
     @GetMapping("/{matchId}/post-match-analysis")
     public PostMatchAnalysisService.PostMatchInsight getPostMatchAnalysis(@PathVariable Long matchId) {
         return postMatchAnalysisService.analyze(matchId);
-    }
-
-    @GetMapping("/{matchId}/content-draft")
-    public ContentDraft getContentDraft(
-            @PathVariable Long matchId,
-            @RequestParam(defaultValue = "PRE_MATCH") DraftFormat format) {
-        return contentDraftService.generate(matchId, format);
     }
 
     @GetMapping("/{matchId}/social-insight")

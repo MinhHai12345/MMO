@@ -1,10 +1,10 @@
-package com.mmo.module.fb.analytics.service.impl;
+package com.mmo.module.fb.content.service.impl;
 
-import com.mmo.module.fb.analytics.service.ContentDraftService;
-import com.mmo.module.fb.analytics.service.ContentDraftService.ContentDraft;
-import com.mmo.module.fb.analytics.service.ContentDraftService.DraftFormat;
-import com.mmo.module.fb.analytics.service.ContentDraftService.QualityReview;
-import com.mmo.module.fb.analytics.service.EditorialQualityGateService;
+import com.mmo.module.fb.content.service.ContentDraftService;
+import com.mmo.module.fb.content.service.ContentDraftService.ContentDraft;
+import com.mmo.module.fb.content.service.ContentDraftService.DraftFormat;
+import com.mmo.module.fb.content.service.ContentDraftService.QualityReview;
+
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.ContentPlan;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.MatchSocialInsight;
@@ -25,7 +25,7 @@ import java.util.stream.Stream;
 public class ContentDraftServiceImpl implements ContentDraftService {
 
     private final MatchSocialAnalyticsService socialAnalyticsService;
-    private final EditorialQualityGateService qualityGateService;
+    private final ContentDraftQualityGate qualityGate;
 
     @Override
     public ContentDraft generate(Long matchId, DraftFormat format) {
@@ -117,7 +117,7 @@ public class ContentDraftServiceImpl implements ContentDraftService {
         ContentDraft candidate = new ContentDraft(matchId, format, "DRAFT", title, opening,
                 outline.stream().distinct().toList(), hooks.stream().distinct().limit(5).toList(),
                 evidence.stream().distinct().toList(), caveats.stream().distinct().toList(), null);
-        QualityReview review = qualityGateService.review(candidate, insight);
+        QualityReview review = qualityGate.review(candidate, insight);
         String status = review.decision().equals("BLOCKED") ? "BLOCKED"
                 : review.decision().equals("REVIEW_REQUIRED") ? "NEEDS_EDITOR_REVIEW" : "READY_FOR_EDITOR_REVIEW";
         return new ContentDraft(matchId, format, status, title, opening, candidate.outline(),

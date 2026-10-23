@@ -1,7 +1,6 @@
 package com.mmo.module.fb.publish.service.impl;
 
-import com.mmo.module.fb.content.entity.ContentDraftRecordEntity;
-import com.mmo.module.fb.content.repository.ContentDraftRecordRepository;
+import com.mmo.module.fb.content.api.ApprovedContentReader;
 import com.mmo.module.fb.publish.service.ContentPublisher;
 import com.mmo.module.fb.publish.service.ContentPublishingService;
 import com.mmo.module.fb.publish.domain.PublicationPlatform;
@@ -32,7 +31,7 @@ public class ContentPublishingServiceImpl implements ContentPublishingService {
     private static final int MAX_IDEMPOTENCY_KEY_LENGTH = 128;
     private static final int MAX_ACTOR_LENGTH = 120;
 
-    private final ContentDraftRecordRepository draftRepository;
+    private final ApprovedContentReader approvedContentReader;
     private final ContentPublicationRepository publicationRepository;
     private final ContentPublicationAttemptRepository attemptRepository;
     private final ContentPublisher dryRunPublisher;
@@ -55,12 +54,10 @@ public class ContentPublishingServiceImpl implements ContentPublishingService {
             return details(existing);
         }
 
-        ContentDraftRecordEntity draft = draftRepository.findById(command.draftId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Content draft not found"));
-        requireEditorialApproval(draft);
+        ApprovedContentReader.ApprovedContent draft = approvedContentReader.requireApproved(command.draftId());
 
         ContentPublicationEntity publication = new ContentPublicationEntity();
-        publication.setDraft(draft);
+        publication.setDraftId(draft.draftId());
         publication.setPlatform(command.platform());
         publication.setIdempotencyKey(key);
         publication.setTitle(command.title().strip());
@@ -121,7 +118,7 @@ public class ContentPublishingServiceImpl implements ContentPublishingService {
                     "Only a publication in NEEDS_REVIEW can be approved");
         }
 
-        requireEditorialApproval(publication.getDraft());
+        approvedContentReader.requireApproved(publication.getDraftId());
         publication.setState(PublicationStateMachine.transition(
                 publication.getState(), PublicationStateMachine.State.APPROVED));
         if (publication.getScheduledAt() != null && publication.getScheduledAt().isAfter(Instant.now())) {
@@ -149,7 +146,7 @@ public class ContentPublishingServiceImpl implements ContentPublishingService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Dry-run requires an approved publication");
         }
-        requireEditorialApproval(publication.getDraft());
+        approvedContentReader.requireApproved(publication.getDraftId());
 
         int attemptNumber = publication.getAttemptCount() + 1;
         Instant startedAt = Instant.now();
@@ -214,7 +211,7 @@ public class ContentPublishingServiceImpl implements ContentPublishingService {
 
     private PublicationSummary summary(ContentPublicationEntity publication) {
         return new PublicationSummary(
-                publication.getId(), publication.getDraft().getId(), publication.getPlatform(),
+                publication.getId(), publication.getDraftId(), publication.getPlatform(),
                 publication.getState(), publication.getTitle(), publication.getScheduledAt(),
                 publication.getCreatedBy(), publication.getApprovedBy(), publication.getApprovedAt(),
                 publication.getLastAttemptStatus(), publication.getLastAttemptMessage(),
@@ -231,7 +228,7 @@ public class ContentPublishingServiceImpl implements ContentPublishingService {
                         attempt.getRequestedBy(), attempt.getStartedAt(), attempt.getCompletedAt()))
                 .toList();
         return new PublicationDetails(
-                publication.getId(), publication.getDraft().getId(), publication.getPlatform(),
+                publication.getId(), publication.getDraftId(), publication.getPlatform(),
                 publication.getState(), publication.getIdempotencyKey(), publication.getTitle(),
                 publication.getBody(), publication.getMediaReference(), publication.getScheduledAt(),
                 publication.getCreatedBy(), publication.getApprovedBy(), publication.getApprovedAt(),
@@ -294,19 +291,9 @@ public class ContentPublishingServiceImpl implements ContentPublishingService {
         return limit <= 0 ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
     }
 
-    private static void requireEditorialApproval(ContentDraftRecordEntity draft) {
-        if (!"APPROVED".equalsIgnoreCase(draft.getEditorialStatus())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "The source content draft must be editorially APPROVED first");
-        }
-        if ("BLOCKED".equalsIgnoreCase(draft.getGenerationStatus())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Blocked content drafts cannot be published");
-        }
-    }
-
     private static boolean sameRequest(ContentPublicationEntity existing, CreatePublicationCommand command) {
-        return existing.getDraft() != null
-                && java.util.Objects.equals(existing.getDraft().getId(), command.draftId())
+        return existing.getDraftId() != null
+                && java.util.Objects.equals(existing.getDraftId(), command.draftId())
                 && existing.getPlatform() == command.platform()
                 && java.util.Objects.equals(existing.getTitle(), command.title().strip())
                 && java.util.Objects.equals(existing.getBody(), command.body().strip())
