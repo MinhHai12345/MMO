@@ -11,7 +11,6 @@ import com.mmo.module.fb.ingest.job.DataCleanupJob;
 import com.mmo.module.fb.ingest.job.FootballDataBootstrapJob;
 import com.mmo.module.fb.ingest.job.LeagueSyncJob;
 import com.mmo.module.fb.content.job.MatchDailyRecapJob;
-import com.mmo.module.fb.ingest.job.MatchDashboardJob;
 import com.mmo.module.fb.ingest.job.MatchFixtureSyncJob;
 import com.mmo.module.fb.analytics.job.MatchInsightJob;
 import com.mmo.module.fb.ingest.job.MatchLineupOddsUpdateJob;
@@ -66,8 +65,6 @@ public class FBCronjobInitial implements DataInitializer {
                 "0 0/30 6-9 * * ?", "Fetch H2H, Form, Rest Days & Injuries (Every 30m UTC 06:00-09:00 / VN 13:00-16:00)");
         createJobIfNotExist(MatchProcessPredictionJob.class.getSimpleName(), MatchProcessPredictionJob.class,
                 "0 0 10 * * ?", "Calculate expected xG, Win Probs & Confidence Score (UTC 10:00 / VN 17:00 PM)");
-        createJobIfNotExist(MatchDashboardJob.class.getSimpleName(), MatchDashboardJob.class,
-                "0 30 10 * * ?", "Render Thymeleaf templates & enqueue to NotificationQueue (UTC 10:30 / VN 17:30 PM)");
 
         createJobIfNotExist(NotificationPublisherJob.class.getSimpleName(), NotificationPublisherJob.class,
                 "0 */2 * * * ?", "Scan queue and publish messages to Telegram/Facebook/X (Every 2 mins)");
