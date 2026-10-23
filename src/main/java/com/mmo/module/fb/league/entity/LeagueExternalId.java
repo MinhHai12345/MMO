@@ -1,4 +1,4 @@
-package com.mmo.module.fb.domain.entity;
+package com.mmo.module.fb.league.entity;
 
 import com.mmo.core.entity.AbstractEntity;
 import com.mmo.module.fb.domain.enums.Provider;
@@ -10,22 +10,22 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "fb_season_external_ids",
+@Table(name = "fb_league_external_ids",
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_fb_season_provider_entity", columnNames = {"season_id", "provider"}),
-                @UniqueConstraint(name = "uk_fb_season_provider_external", columnNames = {"provider", "external_id"})
+                @UniqueConstraint(name = "uk_fb_league_provider_entity", columnNames = {"league_id", "provider"}),
+                @UniqueConstraint(name = "uk_fb_league_provider_external", columnNames = {"provider", "external_id"})
         },
-        indexes = @Index(name = "idx_season_external_ids_provider", columnList = "provider"))
+        indexes = @Index(name = "idx_league_external_ids_provider", columnList = "provider"))
 @Getter
 @Setter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class SeasonExternalId extends AbstractEntity {
+public class LeagueExternalId extends AbstractEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "season_id", nullable = false)
-    private Season season;
+    @JoinColumn(name = "league_id", nullable = false)
+    private League league;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "provider", nullable = false, length = 32)
