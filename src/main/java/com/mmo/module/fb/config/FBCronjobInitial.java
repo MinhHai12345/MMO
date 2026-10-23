@@ -92,42 +92,16 @@ public class FBCronjobInitial implements DataInitializer {
         createJobIfNotExist(SubscriptionExpiryCheckJob.class.getSimpleName(), SubscriptionExpiryCheckJob.class,
                 "0 0 0 * * ?", "Check subscription expiry and send warnings (Daily at midnight UTC)");
 
-        configurePublicationWorker();
-        log.info("CronJobs initialization completed successfully.");
-    }
-
-    private void configurePublicationWorker() {
-        String jobName = PublicationWorkerQuartzJob.class.getSimpleName();
-        String cronExpression = publicationWorkerEnabled
-                ? PUBLICATION_WORKER_CRON_EXPRESSION
-                : DISABLED_CRON_EXPRESSION;
-        String description = "Poll approved, due Telegram publications; opt-in via CONTENT_PUBLISHING_WORKER_ENABLED";
-
-        cronJobRepository.findByJobNameAndJobGroup(jobName, FB_JOB_GROUP)
-                .ifPresentOrElse(
-                        job -> updatePublicationWorkerSchedule(job, cronExpression),
-                        () -> createJobIfNotExist(
-                                jobName,
-                                PublicationWorkerQuartzJob.class,
-                                cronExpression,
-                                description
-                        )
-                );
-    }
-
-    private void updatePublicationWorkerSchedule(CronJob job, String cronExpression) {
-        if (cronExpression.equals(job.getCronExpression())) {
-            return;
-        }
-
-        job.setCronExpression(cronExpression);
-        cronJobService.updateScheduleJob(job);
-        log.info(
-                "Updated CronJob [{}] schedule to [{}] (enabled={})",
-                job.getJobName(),
-                cronExpression,
+        createJobIfNotExist(
+                PublicationWorkerQuartzJob.class.getSimpleName(),
+                PublicationWorkerQuartzJob.class,
                 publicationWorkerEnabled
+                        ? PUBLICATION_WORKER_CRON_EXPRESSION
+                        : DISABLED_CRON_EXPRESSION,
+                "Poll approved, due Telegram publications; opt-in via CONTENT_PUBLISHING_WORKER_ENABLED"
         );
+
+        log.info("CronJobs initialization completed successfully.");
     }
 
     private void createJobIfNotExist(String jobName, Class<?> jobClass, String cronExpression, String description) {
