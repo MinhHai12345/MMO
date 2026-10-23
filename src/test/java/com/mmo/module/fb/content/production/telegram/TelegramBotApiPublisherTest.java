@@ -1,86 +1,93 @@
 package com.mmo.module.fb.content.production.telegram;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mmo.AppProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.client.MockRestServiceServer;
-import org.springframework.web.client.RestTemplate;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import org.telegram.telegrambots.meta.api.objects.Chat;
+import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 class TelegramBotApiPublisherTest {
-    private RestTemplate restTemplate;
-    private MockRestServiceServer server;
-    private TelegramBotApiPublisher publisher;
+    private TelegramClient telegramClient;
     private AppProperties properties;
+    private TelegramBotApiPublisher publisher;
 
     @BeforeEach
     void setUp() {
-        restTemplate = new RestTemplate();
-        server = MockRestServiceServer.createServer(restTemplate);
+        telegramClient = mock(TelegramClient.class);
         properties = new AppProperties();
         properties.getTelegram().getBot().setToken("test-token");
         properties.getTelegram().getChannel().setId("@football_test");
-        publisher = new TelegramBotApiPublisher(restTemplate, new ObjectMapper(), properties);
+        publisher = new TelegramBotApiPublisher(telegramClient, properties);
     }
 
     @Test
-    void sendsTextToOfficialSendMessageEndpointAndReturnsMessageId() {
-        server.expect(requestTo("https://api.telegram.org/bottest-token/sendMessage"))
-                .andExpect(method(org.springframework.http.HttpMethod.POST))
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.chat_id").value("@football_test"))
-                .andExpect(jsonPath("$.text").value("Match preview\n\nHome vs Away"))
-                .andRespond(withSuccess("""
-                        {"ok":true,"result":{"message_id":123,"chat":{"id":-100123}}}
-                        """, MediaType.APPLICATION_JSON));
+    void sendsTextThroughSharedTelegramClientAndReturnsMessageId() throws Exception {
+        Message response = telegramMessage(123, -100123L);
+        when(telegramClient.execute(any(SendMessage.class))).thenReturn(response);
 
         var result = publisher.publish("Match preview", "Home vs Away", null);
+
         assertEquals("123", result.messageId());
         assertEquals("-100123", result.chatId());
-        server.verify();
+        var captor = org.mockito.ArgumentCaptor.forClass(SendMessage.class);
+        verify(telegramClient).execute(captor.capture());
+        assertEquals("@football_test", captor.getValue().getChatId());
+        assertEquals("Match preview\n\nHome vs Away", captor.getValue().getText());
+        verifyNoMoreInteractions(telegramClient);
     }
 
     @Test
-    void sendsPhotoWhenMediaReferenceIsProvided() {
-        server.expect(requestTo("https://api.telegram.org/bottest-token/sendPhoto"))
-                .andExpect(jsonPath("$.photo").value("AgAC-file-id"))
-                .andExpect(jsonPath("$.caption").value("Preview\n\nHome vs Away"))
-                .andRespond(withSuccess("""
-                        {"ok":true,"result":{"message_id":124,"chat":{"id":-100123}}}
-                        """, MediaType.APPLICATION_JSON));
+    void sendsPhotoThroughSharedTelegramClient() throws Exception {
+        when(telegramClient.execute(any(SendPhoto.class))).thenReturn(telegramMessage(124, -100123L));
 
-        assertEquals("124", publisher.publish("Preview", "Home vs Away", "AgAC-file-id").messageId());
-        server.verify();
+        var result = publisher.publish("Preview", "Home vs Away", "AgAC-file-id");
+
+        assertEquals("124", result.messageId());
+        var captor = org.mockito.ArgumentCaptor.forClass(SendPhoto.class);
+        verify(telegramClient).execute(captor.capture());
+        assertEquals("@football_test", captor.getValue().getChatId());
+        assertEquals("Preview\n\nHome vs Away", captor.getValue().getCaption());
+        assertNotNull(captor.getValue().getPhoto());
     }
 
     @Test
-    void rejectsUnconfiguredCredentialsBeforeNetworkCall() {
+    void rejectsUnconfiguredCredentialsBeforeCallingClient() {
         properties.getTelegram().getBot().setToken("mock");
         assertThrows(IllegalStateException.class, () -> publisher.publish("Title", "Body", null));
-        server.verify();
+        verifyNoInteractions(telegramClient);
     }
 
     @Test
-    void rejectsTelegramApiFailure() {
-        server.expect(requestTo("https://api.telegram.org/bottest-token/sendMessage"))
-                .andRespond(withSuccess("""
-                        {"ok":false,"description":"chat not found"}
-                        """, MediaType.APPLICATION_JSON));
+    void propagatesTelegramApiFailureAsRuntimeFailure() throws Exception {
+        when(telegramClient.execute(any(SendMessage.class))).thenThrow(new TelegramApiException("chat not found"));
+
         var failure = assertThrows(TelegramBotApiPublisher.TelegramPublishingException.class,
                 () -> publisher.publish("Title", "Body", null));
+
         assertTrue(failure.getMessage().contains("chat not found"));
-        server.verify();
     }
 
     @Test
-    void rejectsPhotoCaptionOverTelegramLimit() {
+    void rejectsPhotoCaptionOverTelegramLimitBeforeCallingClient() {
         assertThrows(IllegalArgumentException.class,
                 () -> publisher.publish("title", "x".repeat(1024), "AgAC-file-id"));
-        server.verify();
+        verifyNoInteractions(telegramClient);
+    }
+
+    private static Message telegramMessage(Integer messageId, Long chatId) {
+        Message message = new Message();
+        message.setMessageId(messageId);
+        Chat chat = new Chat();
+        chat.setId(chatId);
+        message.setChat(chat);
+        return message;
     }
 }
