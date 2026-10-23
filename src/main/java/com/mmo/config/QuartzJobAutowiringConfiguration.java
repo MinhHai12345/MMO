@@ -1,27 +1,21 @@
 package com.mmo.config;
 
-import org.quartz.spi.TriggerFiredBundle;
-import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
+import com.mmo.core.cronjob.job.CronJobFactory;
 import org.springframework.boot.autoconfigure.quartz.SchedulerFactoryBeanCustomizer;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.scheduling.quartz.SpringBeanJobFactory;
 
-/** Makes Spring services available to Quartz-created job instances. */
+/**
+ * Configures the shared CronJobFactory for Quartz jobs managed by the application.
+ */
 @Configuration
 public class QuartzJobAutowiringConfiguration {
 
     @Bean
-    public SchedulerFactoryBeanCustomizer quartzJobFactoryCustomizer(
-            AutowireCapableBeanFactory beanFactory) {
-        SpringBeanJobFactory jobFactory = new SpringBeanJobFactory() {
-            @Override
-            protected Object createJobInstance(TriggerFiredBundle bundle) throws Exception {
-                Object job = super.createJobInstance(bundle);
-                beanFactory.autowireBean(job);
-                return job;
-            }
-        };
+    public SchedulerFactoryBeanCustomizer quartzJobFactoryCustomizer(ApplicationContext applicationContext) {
+        CronJobFactory jobFactory = new CronJobFactory();
+        jobFactory.setApplicationContext(applicationContext);
         return schedulerFactory -> schedulerFactory.setJobFactory(jobFactory);
     }
 }
