@@ -4,7 +4,6 @@ import com.mmo.module.fb.analytics.entity.MatchInsight;
 import com.mmo.module.fb.analytics.entity.MatchNarratives;
 import com.mmo.module.fb.analytics.entity.MatchPrediction;
 import com.mmo.module.fb.analytics.entity.PredictionPerformance;
-import com.mmo.module.fb.content.entity.ContentDraftRecordEntity;
 import com.mmo.module.fb.league.entity.LeagueStanding;
 import com.mmo.module.fb.league.entity.Season;
 import com.mmo.module.fb.match.entity.Match;
@@ -16,7 +15,6 @@ import com.mmo.module.fb.monetization.entity.AffiliateTracking;
 import com.mmo.module.fb.monetization.entity.Subscriber;
 import com.mmo.module.fb.monetization.entity.TipTransaction;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import org.junit.jupiter.api.Test;
 
