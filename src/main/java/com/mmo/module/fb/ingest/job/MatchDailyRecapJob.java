@@ -2,7 +2,7 @@ package com.mmo.module.fb.ingest.job;
 
 import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.job.AbstractJob;
-import com.mmo.module.fb.domain.repository.MatchPredictionRepository;
+import com.mmo.module.fb.analytics.repository.MatchPredictionRepository;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
