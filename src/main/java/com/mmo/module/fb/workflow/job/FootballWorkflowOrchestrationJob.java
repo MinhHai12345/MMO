@@ -3,63 +3,58 @@ package com.mmo.module.fb.workflow.job;
 import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.entity.JobCompleteState;
 import com.mmo.core.cronjob.entity.JobState;
+import com.mmo.core.cronjob.job.AbstractJob;
 import com.mmo.core.cronjob.service.CronJobService;
 import com.mmo.module.fb.content.service.ContentDraftService.DraftFormat;
 import com.mmo.module.fb.content.service.ContentLifecycleService;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowCommand;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionContext;
+import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
-import org.quartz.JobKey;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.quartz.QuartzJobBean;
 import org.springframework.stereotype.Component;
 
-import java.time.Instant;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 
 /**
- * Coordinates the end-to-end FB workflow by triggering the project's persisted CronJob
- * definitions and waiting for each job's listener-persisted completion state before
- * advancing to the next dependent stage.
+ * Coordinates the end-to-end FB workflow by triggering the persisted CronJob
+ * definitions and waiting for each job's completion state before advancing.
  */
 @Slf4j
 @Component
 @DisallowConcurrentExecution
-public class FootballWorkflowOrchestrationJob extends QuartzJobBean {
+@RequiredArgsConstructor
+public class FootballWorkflowOrchestrationJob extends AbstractJob<CronJob> {
 
     private static final String JOB_GROUP = "FBJobGroup";
     private static final long POLL_INTERVAL_MS = 1_000L;
 
-    @Autowired
-    private CronJobService cronJobService;
-
-    @Autowired
-    private Scheduler scheduler;
-
-    @Autowired
-    private ContentLifecycleService contentLifecycleService;
+    private final CronJobService cronJobService;
+    private final Scheduler scheduler;
+    private final ContentLifecycleService contentLifecycleService;
 
     @Value("${app.fb.workflow.job-timeout-ms:1800000}")
     private long jobTimeoutMs;
 
     @Override
-    protected void executeInternal(JobExecutionContext context) {
+    protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         log.info("Starting FB end-to-end workflow for {}", today);
 
-        // Reuse the existing persisted jobs; ordering here is explicit and completion-gated.
         boolean bootstrapExecuted = runBootstrapIfNeeded();
         if (!bootstrapExecuted) {
             runExistingJobIfStale("LeagueSyncJob", Duration.ofDays(30));
             runExistingJobIfStale("TeamSyncJob", Duration.ofDays(15));
         }
+
         runExistingJob("MatchResultSyncJob");
         runExistingJob("MatchFixtureSyncJob");
         runExistingJob("MatchStatisticsSyncJob");
@@ -77,8 +72,8 @@ public class FootballWorkflowOrchestrationJob extends QuartzJobBean {
     }
 
     /**
-     * Bootstrap can backfill configured historical seasons, so do not repeat it every day.
-     * Re-run it when it has never succeeded, failed last time, or is at least 30 days old.
+     * Bootstrap can backfill configured historical seasons, so it is only rerun
+     * when it has never succeeded, failed, or is at least 30 days old.
      */
     private boolean runBootstrapIfNeeded() {
         waitUntilNotRunning(new JobKey("FootballDataBootstrapJob", JOB_GROUP), "FootballDataBootstrapJob");
@@ -86,13 +81,14 @@ public class FootballWorkflowOrchestrationJob extends QuartzJobBean {
         ZonedDateTime lastExecution = bootstrap.getLastExecutedTime();
         boolean recentlySucceeded = bootstrap.getLastCompleteStatus() == JobCompleteState.SUCCESS
                 && lastExecution != null
-                && lastExecution.isAfter(ZonedDateTime.now(ZoneOffset.UTC).minus(Duration.ofDays(30)));
+                && lastExecution.isAfter(ZonedDateTime.now(ZoneOffset.UTC).minusDays(30));
 
         if (recentlySucceeded) {
             log.info("Workflow stage SKIPPED job=FootballDataBootstrapJob reason=recent_success lastExecutedTime={}",
                     lastExecution);
             return false;
         }
+
         runExistingJob("FootballDataBootstrapJob");
         return true;
     }
@@ -104,11 +100,13 @@ public class FootballWorkflowOrchestrationJob extends QuartzJobBean {
         boolean recentlySucceeded = job.getLastCompleteStatus() == JobCompleteState.SUCCESS
                 && lastExecution != null
                 && lastExecution.isAfter(ZonedDateTime.now(ZoneOffset.UTC).minus(maxAge));
+
         if (recentlySucceeded) {
             log.info("Workflow stage SKIPPED job={} reason=recent_success lastExecutedTime={}",
                     jobName, lastExecution);
             return;
         }
+
         runExistingJob(jobName);
     }
 
@@ -117,8 +115,8 @@ public class FootballWorkflowOrchestrationJob extends QuartzJobBean {
         if (definition.getJobStatus() == JobState.PAUSED) {
             throw new IllegalStateException("Workflow stage is paused in the CronJob registry: " + jobName);
         }
-        JobKey jobKey = new JobKey(definition.getJobName(), definition.getJobGroup());
 
+        JobKey jobKey = new JobKey(definition.getJobName(), definition.getJobGroup());
         waitUntilNotRunning(jobKey, jobName);
         ZonedDateTime previousExecution = cronJobService.getJob(jobName, JOB_GROUP).getLastExecutedTime();
 
@@ -134,14 +132,14 @@ public class FootballWorkflowOrchestrationJob extends QuartzJobBean {
                     && current.getLastCompleteStatus() != null;
 
             if (executionRecorded) {
-                // The execution listener persists the completion timestamp before Quartz fully
-                // releases the execution slot. Wait for that slot and re-read the final state.
+                // The listener records completion before Quartz releases the execution slot.
                 waitUntilNotRunning(jobKey, jobName);
                 CronJob completed = cronJobService.getJob(jobName, JOB_GROUP);
                 if (completed.getLastCompleteStatus() != JobCompleteState.SUCCESS) {
                     throw new IllegalStateException("Workflow stage failed: " + jobName
                             + " completed with status " + completed.getLastCompleteStatus());
                 }
+
                 log.info("Workflow stage COMPLETED job={} lastExecutedTime={}",
                         jobName, completed.getLastExecutedTime());
                 return;
@@ -166,9 +164,11 @@ public class FootballWorkflowOrchestrationJob extends QuartzJobBean {
             } catch (SchedulerException exception) {
                 throw new IllegalStateException("Cannot inspect running Quartz jobs before " + jobName, exception);
             }
+
             sleep(jobName);
         }
-        throw new IllegalStateException("Timed out waiting for existing CronJob to become idle: " + jobName);
+
+        throw new IllegalStateException("Timed out waiting for CronJob to become idle: " + jobName);
     }
 
     private void sleep(String jobName) {
