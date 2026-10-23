@@ -6,7 +6,7 @@ import com.microsoft.playwright.BrowserType;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.options.ScreenshotType;
-import com.mmo.module.fb.domain.entity.MatchPrediction;
+import com.mmo.module.fb.analytics.entity.MatchPrediction;
 import com.mmo.module.fb.publish.model.Platform;
 import com.mmo.module.fb.publish.model.PredictionData;
 import com.mmo.module.fb.publish.strategy.ContentStrategy;
