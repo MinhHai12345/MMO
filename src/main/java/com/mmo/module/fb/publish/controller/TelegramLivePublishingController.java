@@ -1,6 +1,6 @@
-package com.mmo.module.fb.content.controller;
+package com.mmo.module.fb.publish.controller;
 
-import com.mmo.module.fb.content.publish.telegram.TelegramLivePublishingService;
+import com.mmo.module.fb.publish.provider.telegram.TelegramLivePublishingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;

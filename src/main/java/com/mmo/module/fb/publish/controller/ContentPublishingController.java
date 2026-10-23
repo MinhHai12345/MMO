@@ -1,11 +1,11 @@
-package com.mmo.module.fb.content.controller;
+package com.mmo.module.fb.publish.controller;
 
-import com.mmo.module.fb.content.publish.ContentPublishingService;
-import com.mmo.module.fb.content.publish.ContentPublishingService.ApprovalCommand;
-import com.mmo.module.fb.content.publish.ContentPublishingService.CreatePublicationCommand;
-import com.mmo.module.fb.content.publish.ContentPublishingService.DryRunCommand;
-import com.mmo.module.fb.content.publish.ContentPublishingService.PublicationDetails;
-import com.mmo.module.fb.content.publish.ContentPublishingService.PublicationSummary;
+import com.mmo.module.fb.publish.service.ContentPublishingService;
+import com.mmo.module.fb.publish.service.ContentPublishingService.ApprovalCommand;
+import com.mmo.module.fb.publish.service.ContentPublishingService.CreatePublicationCommand;
+import com.mmo.module.fb.publish.service.ContentPublishingService.DryRunCommand;
+import com.mmo.module.fb.publish.service.ContentPublishingService.PublicationDetails;
+import com.mmo.module.fb.publish.service.ContentPublishingService.PublicationSummary;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

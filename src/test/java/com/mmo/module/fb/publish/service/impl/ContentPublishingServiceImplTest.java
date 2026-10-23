@@ -1,12 +1,12 @@
-package com.mmo.module.fb.content.publish.impl;
+package com.mmo.module.fb.publish.service.impl;
 
 import com.mmo.module.fb.content.entity.ContentDraftRecordEntity;
 import com.mmo.module.fb.content.repository.ContentDraftRecordRepository;
-import com.mmo.module.fb.content.publish.ContentPublisher;
-import com.mmo.module.fb.content.publish.ContentPublishingService.CreatePublicationCommand;
-import com.mmo.module.fb.content.publish.PublicationPlatform;
-import com.mmo.module.fb.content.repository.ContentPublicationAttemptRepository;
-import com.mmo.module.fb.content.repository.ContentPublicationRepository;
+import com.mmo.module.fb.publish.service.ContentPublisher;
+import com.mmo.module.fb.publish.service.ContentPublishingService.CreatePublicationCommand;
+import com.mmo.module.fb.publish.domain.PublicationPlatform;
+import com.mmo.module.fb.publish.repository.ContentPublicationAttemptRepository;
+import com.mmo.module.fb.publish.repository.ContentPublicationRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 
