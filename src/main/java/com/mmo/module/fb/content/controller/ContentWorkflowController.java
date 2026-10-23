@@ -1,10 +1,10 @@
 package com.mmo.module.fb.content.controller;
 
 import com.mmo.module.fb.analytics.service.ContentDraftService.DraftFormat;
-import com.mmo.module.fb.content.persistence.ContentDraftRecordEntity;
-import com.mmo.module.fb.content.persistence.ContentDraftVersionEntity;
-import com.mmo.module.fb.content.persistence.ContentWorkflowRunEntity;
-import com.mmo.module.fb.content.persistence.ContentWorkflowItemEntity;
+import com.mmo.module.fb.content.entity.ContentDraftRecordEntity;
+import com.mmo.module.fb.content.entity.ContentDraftVersionEntity;
+import com.mmo.module.fb.content.entity.ContentWorkflowRunEntity;
+import com.mmo.module.fb.content.entity.ContentWorkflowItemEntity;
 import com.mmo.module.fb.content.service.ContentLifecycleService;
 import com.mmo.module.fb.content.service.ContentLifecycleService.ReviewCommand;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowCommand;

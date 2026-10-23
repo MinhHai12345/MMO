@@ -1,12 +1,12 @@
 package com.mmo.module.fb.content.service.impl;
 
-import com.mmo.module.fb.content.persistence.ContentDraftRecordEntity;
-import com.mmo.module.fb.content.persistence.ContentDraftRecordRepository;
-import com.mmo.module.fb.content.persistence.ContentDraftVersionEntity;
-import com.mmo.module.fb.content.persistence.ContentDraftVersionRepository;
-import com.mmo.module.fb.content.persistence.ContentWorkflowRunEntity;
-import com.mmo.module.fb.content.persistence.ContentWorkflowRunRepository;
-import com.mmo.module.fb.content.persistence.ContentWorkflowItemRepository;
+import com.mmo.module.fb.content.entity.ContentDraftRecordEntity;
+import com.mmo.module.fb.content.repository.ContentDraftRecordRepository;
+import com.mmo.module.fb.content.entity.ContentDraftVersionEntity;
+import com.mmo.module.fb.content.repository.ContentDraftVersionRepository;
+import com.mmo.module.fb.content.entity.ContentWorkflowRunEntity;
+import com.mmo.module.fb.content.repository.ContentWorkflowRunRepository;
+import com.mmo.module.fb.content.repository.ContentWorkflowItemRepository;
 import com.mmo.module.fb.content.service.ContentLifecycleService;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowCommand;
@@ -113,7 +113,7 @@ public class ContentLifecycleServiceImpl implements ContentLifecycleService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<com.mmo.module.fb.content.persistence.ContentWorkflowItemEntity> listWorkflowItems(Long runId) {
+    public List<com.mmo.module.fb.content.entity.ContentWorkflowItemEntity> listWorkflowItems(Long runId) {
         if (runId == null || runId <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A positive workflow run ID is required");
         }
