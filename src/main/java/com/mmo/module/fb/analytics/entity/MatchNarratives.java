@@ -1,6 +1,7 @@
-package com.mmo.module.fb.domain.entity;
+package com.mmo.module.fb.analytics.entity;
 
 import com.mmo.core.entity.AbstractEntity;
+import com.mmo.module.fb.match.entity.Match;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
