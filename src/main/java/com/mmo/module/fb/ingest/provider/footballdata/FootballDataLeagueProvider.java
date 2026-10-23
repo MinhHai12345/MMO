@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.provider.footballdata;
 
 import com.mmo.AppProperties;
-import com.mmo.module.fb.domain.enums.Provider;
+import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataClient;
 import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.CompetitionDto;
 import com.mmo.module.fb.ingest.provider.footballdata.mapper.FootballDataMapper;

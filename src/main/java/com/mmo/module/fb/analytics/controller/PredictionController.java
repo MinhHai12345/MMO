@@ -1,10 +1,10 @@
 package com.mmo.module.fb.analytics.controller;
 
-import com.mmo.module.fb.domain.entity.Match;
-import com.mmo.module.fb.domain.entity.MatchPrediction;
-import com.mmo.module.fb.domain.enums.MatchStatus;
-import com.mmo.module.fb.domain.repository.MatchPredictionRepository;
-import com.mmo.module.fb.domain.repository.MatchRepository;
+import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.analytics.entity.MatchPrediction;
+import com.mmo.module.fb.match.enums.MatchStatus;
+import com.mmo.module.fb.analytics.repository.MatchPredictionRepository;
+import com.mmo.module.fb.match.repository.MatchRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;

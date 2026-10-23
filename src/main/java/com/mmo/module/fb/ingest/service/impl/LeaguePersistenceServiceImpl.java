@@ -1,15 +1,15 @@
 package com.mmo.module.fb.ingest.service.impl;
 
-import com.mmo.module.fb.domain.entity.League;
-import com.mmo.module.fb.domain.entity.LeagueExternalId;
-import com.mmo.module.fb.domain.entity.Season;
-import com.mmo.module.fb.domain.entity.SeasonExternalId;
-import com.mmo.module.fb.domain.enums.Provider;
-import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
-import com.mmo.module.fb.domain.repository.LeagueRepository;
-import com.mmo.module.fb.domain.repository.SeasonExternalIdRepository;
-import com.mmo.module.fb.domain.repository.SeasonRepository;
-import com.mmo.module.fb.domain.service.ExternalIdMappingService;
+import com.mmo.module.fb.league.entity.League;
+import com.mmo.module.fb.league.entity.LeagueExternalId;
+import com.mmo.module.fb.league.entity.Season;
+import com.mmo.module.fb.league.entity.SeasonExternalId;
+import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
+import com.mmo.module.fb.league.repository.LeagueRepository;
+import com.mmo.module.fb.league.repository.SeasonExternalIdRepository;
+import com.mmo.module.fb.league.repository.SeasonRepository;
+import com.mmo.module.fb.ingest.service.ExternalIdMappingService;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
 import com.mmo.module.fb.ingest.service.LeaguePersistenceService;

@@ -1,8 +1,8 @@
 package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.AppProperties;
-import com.mmo.module.fb.domain.enums.Provider;
-import com.mmo.module.fb.domain.repository.LeagueExternalIdRepository;
+import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;

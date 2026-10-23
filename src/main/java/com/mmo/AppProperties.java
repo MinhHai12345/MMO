@@ -1,7 +1,7 @@
 package com.mmo;
 
 import jakarta.validation.constraints.NotBlank;
-import com.mmo.module.fb.domain.enums.Provider;
+import com.mmo.module.fb.ingest.enums.Provider;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;

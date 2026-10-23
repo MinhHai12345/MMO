@@ -1,6 +1,6 @@
 package com.mmo.module.fb.ingest.provider.spi;
 
-import com.mmo.module.fb.domain.enums.Provider;
+import com.mmo.module.fb.ingest.enums.Provider;
 import org.springframework.stereotype.Component;
 
 import java.util.EnumMap;

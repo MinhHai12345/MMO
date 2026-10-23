@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 
 @RestController
-@RequestMapping("/api/fb/content/publications")
+@RequestMapping({"/api/fb/publish/publications", "/api/fb/content/publications"})
 @RequiredArgsConstructor
 public class TelegramLivePublishingController {
     private final TelegramLivePublishingService livePublishingService;

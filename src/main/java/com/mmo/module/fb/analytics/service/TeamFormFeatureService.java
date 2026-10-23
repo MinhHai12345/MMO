@@ -1,6 +1,6 @@
 package com.mmo.module.fb.analytics.service;
 
-import com.mmo.module.fb.domain.entity.Match;
+import com.mmo.module.fb.match.entity.Match;
 
 import java.time.Instant;
 import java.util.Optional;

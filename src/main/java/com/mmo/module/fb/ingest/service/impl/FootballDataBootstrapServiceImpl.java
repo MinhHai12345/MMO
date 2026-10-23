@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.AppProperties;
-import com.mmo.module.fb.domain.enums.Provider;
+import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.service.FixtureIngestionService;
 import com.mmo.module.fb.ingest.service.FootballDataBootstrapService;
 import com.mmo.module.fb.ingest.service.LeagueIngestionService;

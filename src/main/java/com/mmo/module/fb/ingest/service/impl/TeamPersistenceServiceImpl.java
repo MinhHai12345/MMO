@@ -1,12 +1,12 @@
 package com.mmo.module.fb.ingest.service.impl;
 
-import com.mmo.module.fb.domain.entity.Season;
-import com.mmo.module.fb.domain.entity.Team;
-import com.mmo.module.fb.domain.entity.TeamExternalId;
-import com.mmo.module.fb.domain.enums.Provider;
-import com.mmo.module.fb.domain.repository.TeamExternalIdRepository;
-import com.mmo.module.fb.domain.repository.TeamRepository;
-import com.mmo.module.fb.domain.service.ExternalIdMappingService;
+import com.mmo.module.fb.league.entity.Season;
+import com.mmo.module.fb.team.entity.Team;
+import com.mmo.module.fb.team.entity.TeamExternalId;
+import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.team.repository.TeamExternalIdRepository;
+import com.mmo.module.fb.team.repository.TeamRepository;
+import com.mmo.module.fb.ingest.service.ExternalIdMappingService;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.service.TeamPersistenceService;
 import lombok.RequiredArgsConstructor;

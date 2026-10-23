@@ -1,12 +1,12 @@
 package com.mmo.module.fb.admin.controller;
 
-import com.mmo.module.fb.domain.entity.League;
-import com.mmo.module.fb.domain.entity.Match;
-import com.mmo.module.fb.domain.entity.Team;
-import com.mmo.module.fb.domain.enums.MatchStatus;
-import com.mmo.module.fb.domain.repository.LeagueRepository;
-import com.mmo.module.fb.domain.repository.MatchRepository;
-import com.mmo.module.fb.domain.repository.TeamRepository;
+import com.mmo.module.fb.league.entity.League;
+import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.team.entity.Team;
+import com.mmo.module.fb.match.enums.MatchStatus;
+import com.mmo.module.fb.league.repository.LeagueRepository;
+import com.mmo.module.fb.match.repository.MatchRepository;
+import com.mmo.module.fb.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;

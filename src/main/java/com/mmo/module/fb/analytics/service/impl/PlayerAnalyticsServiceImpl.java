@@ -1,10 +1,10 @@
 package com.mmo.module.fb.analytics.service.impl;
 
 import com.mmo.module.fb.analytics.service.PlayerAnalyticsService;
-import com.mmo.module.fb.domain.entity.Match;
-import com.mmo.module.fb.domain.entity.PlayerMatchStats;
-import com.mmo.module.fb.domain.repository.MatchRepository;
-import com.mmo.module.fb.domain.repository.PlayerMatchStatsRepository;
+import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.player.entity.PlayerMatchStats;
+import com.mmo.module.fb.match.repository.MatchRepository;
+import com.mmo.module.fb.player.repository.PlayerMatchStatsRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -35,7 +35,7 @@ public class PlayerAnalyticsServiceImpl implements PlayerAnalyticsService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Match not found: " + matchId));
         List<PlayerMatchStats> stats = playerMatchStatsRepository.findAllByMatchIdOrderByIdAsc(matchId);
         List<String> warnings = new ArrayList<>();
-        if (match.getStatus() != com.mmo.module.fb.domain.enums.MatchStatus.FINISHED) {
+        if (match.getStatus() != com.mmo.module.fb.match.enums.MatchStatus.FINISHED) {
             warnings.add("Player match analytics is most reliable after the fixture is finished and provider statistics have settled.");
         }
         if (stats.isEmpty()) {
