@@ -6,7 +6,7 @@ import com.mmo.module.fb.analytics.service.TeamFormFeatureService;
 import com.mmo.module.fb.analytics.service.TeamFormFeatureService.MatchFeatures;
 import com.mmo.module.fb.analytics.service.TeamFormFeatureService.TeamFeatures;
 import com.mmo.module.fb.match.entity.Match;
-import com.mmo.module.fb.domain.enums.MatchStatus;
+import com.mmo.module.fb.match.enums.MatchStatus;
 import com.mmo.module.fb.match.repository.MatchRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

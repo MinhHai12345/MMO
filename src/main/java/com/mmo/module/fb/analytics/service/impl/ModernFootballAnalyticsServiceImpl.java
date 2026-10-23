@@ -5,7 +5,7 @@ import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchAdvancedStats;
 import com.mmo.module.fb.player.entity.PlayerMatchStats;
 import com.mmo.module.fb.team.entity.Team;
-import com.mmo.module.fb.domain.enums.MatchStatus;
+import com.mmo.module.fb.match.enums.MatchStatus;
 import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
 import com.mmo.module.fb.match.repository.MatchRepository;
 import com.mmo.module.fb.player.repository.PlayerMatchStatsRepository;

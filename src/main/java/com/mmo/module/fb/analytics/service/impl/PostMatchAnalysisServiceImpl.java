@@ -4,7 +4,7 @@ import com.mmo.module.fb.analytics.service.PlayerAnalyticsService;
 import com.mmo.module.fb.analytics.service.PostMatchAnalysisService;
 import com.mmo.module.fb.analytics.service.PostMatchAnalysisService.PostMatchInsight;
 import com.mmo.module.fb.match.entity.Match;
-import com.mmo.module.fb.domain.enums.MatchStatus;
+import com.mmo.module.fb.match.enums.MatchStatus;
 import com.mmo.module.fb.match.repository.MatchRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
