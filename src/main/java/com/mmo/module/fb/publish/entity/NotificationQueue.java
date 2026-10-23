@@ -1,8 +1,8 @@
 package com.mmo.module.fb.publish.entity;
 
 import com.mmo.core.entity.AbstractEntity;
-import com.mmo.module.fb.domain.enums.PublishStatus;
-import com.mmo.module.fb.domain.enums.TargetChannel;
+import com.mmo.module.fb.publish.enums.PublishStatus;
+import com.mmo.module.fb.publish.enums.TargetChannel;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
