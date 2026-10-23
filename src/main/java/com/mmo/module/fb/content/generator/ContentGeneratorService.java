@@ -1,10 +1,10 @@
 package com.mmo.module.fb.content.generator;
 
-import com.mmo.module.fb.domain.entity.ContentTemplate;
+import com.mmo.module.fb.content.entity.ContentTemplate;
 import com.mmo.module.fb.domain.entity.Match;
 import com.mmo.module.fb.domain.entity.MatchPrediction;
 import com.mmo.module.fb.domain.entity.TeamForm;
-import com.mmo.module.fb.domain.repository.ContentTemplateRepository;
+import com.mmo.module.fb.content.repository.ContentTemplateRepository;
 import com.mmo.module.fb.domain.repository.TeamFormRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
