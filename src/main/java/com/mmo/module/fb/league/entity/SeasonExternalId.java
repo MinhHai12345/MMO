@@ -1,7 +1,7 @@
 package com.mmo.module.fb.league.entity;
 
 import com.mmo.core.entity.AbstractEntity;
-import com.mmo.module.fb.domain.enums.Provider;
+import com.mmo.module.fb.ingest.enums.Provider;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
