@@ -6,13 +6,13 @@ import com.mmo.core.cronjob.service.CronJobService;
 import com.mmo.module.fb.content.service.ContentDraftService.DraftFormat;
 import com.mmo.module.fb.content.service.ContentLifecycleService;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowCommand;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionContext;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.JobKey;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.quartz.QuartzJobBean;
 import org.springframework.stereotype.Component;
@@ -31,15 +31,19 @@ import java.time.ZonedDateTime;
 @Slf4j
 @Component
 @DisallowConcurrentExecution
-@RequiredArgsConstructor
 public class FootballWorkflowOrchestrationJob extends QuartzJobBean {
 
     private static final String JOB_GROUP = "FBJobGroup";
     private static final long POLL_INTERVAL_MS = 1_000L;
 
-    private final CronJobService cronJobService;
-    private final Scheduler scheduler;
-    private final ContentLifecycleService contentLifecycleService;
+    @Autowired
+    private CronJobService cronJobService;
+
+    @Autowired
+    private Scheduler scheduler;
+
+    @Autowired
+    private ContentLifecycleService contentLifecycleService;
 
     @Value("${app.fb.workflow.job-timeout-ms:1800000}")
     private long jobTimeoutMs;
