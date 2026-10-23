@@ -1,6 +1,6 @@
-package com.mmo.module.fb.domain.repository;
+package com.mmo.module.fb.analytics.repository;
 
-import com.mmo.module.fb.domain.entity.PredictionPerformance;
+import com.mmo.module.fb.analytics.entity.PredictionPerformance;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

@@ -1,6 +1,6 @@
-package com.mmo.module.fb.domain.repository;
+package com.mmo.module.fb.analytics.repository;
 
-import com.mmo.module.fb.domain.entity.MatchPrediction;
+import com.mmo.module.fb.analytics.entity.MatchPrediction;
 import com.mmo.module.fb.domain.enums.MatchStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
