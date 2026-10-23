@@ -57,6 +57,7 @@ public interface ContentPublishingService {
             String createdBy,
             String approvedBy,
             Instant approvedAt,
+            String reviewNotes,
             String externalPostId,
             String lastAttemptStatus,
             String lastAttemptMessage,
