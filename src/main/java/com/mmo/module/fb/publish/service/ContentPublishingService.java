@@ -1,5 +1,8 @@
 package com.mmo.module.fb.publish.service;
 
+import com.mmo.module.fb.publish.domain.PublicationPlatform;
+import com.mmo.module.fb.publish.domain.PublicationStateMachine;
+
 import java.time.Instant;
 import java.util.List;
 
