@@ -5,7 +5,6 @@ import com.mmo.core.cronjob.repository.CronJobRepository;
 import com.mmo.core.cronjob.service.CronJobService;
 import com.mmo.core.initialize.DataInitializer;
 import com.mmo.module.fb.analytics.job.AdvancedMetricsJob;
-import com.mmo.module.fb.content.job.ContentSchedulingJob;
 import com.mmo.module.fb.ingest.job.CrawlerHealthCheckJob;
 import com.mmo.module.fb.ingest.job.DataCleanupJob;
 import com.mmo.module.fb.ingest.job.FootballDataBootstrapJob;
@@ -71,8 +70,6 @@ public class FBCronjobInitial implements DataInitializer {
 
         createJobIfNotExist(AdvancedMetricsJob.class.getSimpleName(), AdvancedMetricsJob.class,
                 "0 */2 * * * ?", "Calculate PPDA, Field Tilt, xG Chain and store advanced metrics (Every 2 hours)");
-        createJobIfNotExist(ContentSchedulingJob.class.getSimpleName(), ContentSchedulingJob.class,
-                "0 0 8,12,18 * * ?", "Schedule content for upcoming matches to different platforms (3 times daily)");
 
         createJobIfNotExist(SubscriptionExpiryCheckJob.class.getSimpleName(), SubscriptionExpiryCheckJob.class,
                 "0 0 0 * * ?", "Check subscription expiry and send warnings (Daily at midnight UTC)");
