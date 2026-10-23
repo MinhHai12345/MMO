@@ -1,6 +1,6 @@
-package com.mmo.module.fb.domain.repository;
+package com.mmo.module.fb.team.repository;
 
-import com.mmo.module.fb.domain.entity.TeamForm;
+import com.mmo.module.fb.team.entity.TeamForm;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

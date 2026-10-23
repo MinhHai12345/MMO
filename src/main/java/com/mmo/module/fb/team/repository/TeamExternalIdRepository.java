@@ -1,6 +1,6 @@
-package com.mmo.module.fb.domain.repository;
+package com.mmo.module.fb.team.repository;
 
-import com.mmo.module.fb.domain.entity.TeamExternalId;
+import com.mmo.module.fb.team.entity.TeamExternalId;
 import com.mmo.module.fb.domain.enums.Provider;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
