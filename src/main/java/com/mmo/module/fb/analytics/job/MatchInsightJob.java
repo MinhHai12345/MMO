@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.job;
+package com.mmo.module.fb.analytics.job;
 
 import com.mmo.core.converter.DynamicConverter;
 import com.mmo.core.cronjob.entity.CronJob;
