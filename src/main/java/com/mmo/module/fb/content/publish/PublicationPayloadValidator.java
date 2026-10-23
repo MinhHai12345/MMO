@@ -1,4 +1,4 @@
-package com.mmo.module.fb.content.production;
+package com.mmo.module.fb.content.publish;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;

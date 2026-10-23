@@ -1,4 +1,4 @@
-package com.mmo.module.fb.content.production;
+package com.mmo.module.fb.content.publish;
 
 import java.time.Instant;
 

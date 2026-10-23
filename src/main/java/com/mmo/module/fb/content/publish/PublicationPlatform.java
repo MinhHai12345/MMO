@@ -1,4 +1,4 @@
-package com.mmo.module.fb.content.production;
+package com.mmo.module.fb.content.publish;
 
 /**
  * Supported publication destinations. A platform value does not imply that
