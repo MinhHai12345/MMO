@@ -1,6 +1,6 @@
-package com.mmo.module.fb.content.production.impl;
+package com.mmo.module.fb.content.publish.impl;
 
-import com.mmo.module.fb.content.production.ContentPublisher;
+import com.mmo.module.fb.content.publish.ContentPublisher;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;

@@ -1,4 +1,4 @@
-package com.mmo.module.fb.content.production.telegram;
+package com.mmo.module.fb.content.publish.telegram;
 
 import com.mmo.AppProperties;
 import lombok.RequiredArgsConstructor;
