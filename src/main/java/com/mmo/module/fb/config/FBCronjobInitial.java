@@ -10,7 +10,6 @@ import com.mmo.module.fb.ingest.job.CrawlerHealthCheckJob;
 import com.mmo.module.fb.ingest.job.DataCleanupJob;
 import com.mmo.module.fb.ingest.job.FootballDataBootstrapJob;
 import com.mmo.module.fb.ingest.job.LeagueSyncJob;
-import com.mmo.module.fb.content.job.MatchDailyRecapJob;
 import com.mmo.module.fb.ingest.job.MatchFixtureSyncJob;
 import com.mmo.module.fb.analytics.job.MatchInsightJob;
 import com.mmo.module.fb.ingest.job.MatchLineupOddsUpdateJob;
@@ -57,8 +56,6 @@ public class FBCronjobInitial implements DataInitializer {
                 "0 0/30 * * * ?", "Evaluate completed predictions using actual results and normalized Brier quality (every 30 minutes)");
         createJobIfNotExist(WalkForwardBackTestJob.class.getSimpleName(), WalkForwardBackTestJob.class,
                 "0 15 6 * * ?", "Run 180-day leakage-safe walk-forward backtest and probability calibration (daily UTC 06:15)");
-        createJobIfNotExist(MatchDailyRecapJob.class.getSimpleName(), MatchDailyRecapJob.class,
-                "0 0 5 * * ?", "Calculate yesterday's prediction accuracy & ROI (UTC 05:00 / VN 12:00 PM)");
         createJobIfNotExist(MatchFixtureSyncJob.class.getSimpleName(), MatchFixtureSyncJob.class,
                 "0 30 5 * * ?", "Refresh fixtures from today through the next 14 days (UTC 05:30 / VN 12:30 PM)");
         createJobIfNotExist(MatchInsightJob.class.getSimpleName(), MatchInsightJob.class,
