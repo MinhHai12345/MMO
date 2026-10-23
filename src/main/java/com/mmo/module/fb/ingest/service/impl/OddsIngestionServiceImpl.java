@@ -1,12 +1,12 @@
 package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.AppProperties;
-import com.mmo.module.fb.domain.entity.Match;
-import com.mmo.module.fb.domain.entity.MatchExternalId;
+import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.match.entity.MatchExternalId;
 import com.mmo.module.fb.domain.enums.MatchStatus;
 import com.mmo.module.fb.domain.enums.Provider;
-import com.mmo.module.fb.domain.repository.MatchExternalIdRepository;
-import com.mmo.module.fb.domain.repository.MatchRepository;
+import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
+import com.mmo.module.fb.match.repository.MatchRepository;
 import com.mmo.module.fb.ingest.provider.model.OddsQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
