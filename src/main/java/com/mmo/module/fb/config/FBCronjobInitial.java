@@ -18,7 +18,6 @@ import com.mmo.module.fb.ingest.job.MatchResultSyncJob;
 import com.mmo.module.fb.ingest.job.MatchStatisticsSyncJob;
 import com.mmo.module.fb.analytics.job.PredictionEvaluationJob;
 import com.mmo.module.fb.ingest.job.MatchStatusTrackerJob;
-import com.mmo.module.fb.publish.job.NotificationPublisherJob;
 import com.mmo.module.fb.monetization.job.SubscriptionExpiryCheckJob;
 import com.mmo.module.fb.ingest.job.TeamSyncJob;
 import com.mmo.module.fb.analytics.job.WalkForwardBackTestJob;
@@ -63,8 +62,6 @@ public class FBCronjobInitial implements DataInitializer {
         createJobIfNotExist(MatchProcessPredictionJob.class.getSimpleName(), MatchProcessPredictionJob.class,
                 "0 0 10 * * ?", "Calculate expected xG, Win Probs & Confidence Score (UTC 10:00 / VN 17:00 PM)");
 
-        createJobIfNotExist(NotificationPublisherJob.class.getSimpleName(), NotificationPublisherJob.class,
-                "0 */2 * * * ?", "Scan queue and publish messages to Telegram/Facebook/X (Every 2 mins)");
         createJobIfNotExist(MatchStatusTrackerJob.class.getSimpleName(), MatchStatusTrackerJob.class,
                 "0 0 */3 * * ?", "Track postponed/cancelled matches (Every 3 hours)");
         createJobIfNotExist(MatchLineupOddsUpdateJob.class.getSimpleName(), MatchLineupOddsUpdateJob.class,

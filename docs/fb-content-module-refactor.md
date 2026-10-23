@@ -37,7 +37,6 @@ The legacy top-level `domain` package has been removed. Entity table names, colu
 - `analytics.job`: prediction generation, match insights, evaluation and walk-forward backtesting.
 - `content.job`: content scheduling.
 - Disabled no-op recap/dashboard scheduler stubs were removed instead of registering jobs that perform no work.
-- `publish.job`: publication/notification delivery.
 - `monetization.job`: subscription expiry lifecycle.
 
 ## Publishing boundaries
