@@ -1,4 +1,4 @@
-package com.mmo.module.fb.publish;
+package com.mmo.module.fb.publish.provider.facebook;
 
 import com.mmo.AppProperties;
 import lombok.RequiredArgsConstructor;
