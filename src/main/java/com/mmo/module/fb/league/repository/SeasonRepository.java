@@ -1,6 +1,6 @@
-package com.mmo.module.fb.domain.repository;
+package com.mmo.module.fb.league.repository;
 
-import com.mmo.module.fb.domain.entity.Season;
+import com.mmo.module.fb.league.entity.Season;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
