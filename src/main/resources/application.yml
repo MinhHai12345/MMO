@@ -45,9 +45,23 @@ server:
 
 app:
   content:
+    workflow:
+      scheduler:
+        # Quartz job creates drafts only; editorial review remains manual.
+        enabled: ${CONTENT_WORKFLOW_SCHEDULER_ENABLED:true}
+        # Quartz cron expression in UTC; schedule after ingestion/prediction refreshes.
+        cron: ${CONTENT_WORKFLOW_SCHEDULER_CRON:0 30 11 * * ?}
     publishing:
-      # Live Telegram publishing is disabled until a non-empty secret is configured.
+      # Live Telegram publishing is disabled until credentials and permissions are verified.
       api-key: ${CONTENT_PUBLISHING_API_KEY:}
+      worker:
+        # Opt in only after Telegram credentials and channel permissions are verified.
+        enabled: ${CONTENT_PUBLISHING_WORKER_ENABLED:false}
+        fixed-delay-ms: ${CONTENT_PUBLISHING_WORKER_FIXED_DELAY_MS:30000}
+        initial-delay-ms: ${CONTENT_PUBLISHING_WORKER_INITIAL_DELAY_MS:15000}
+        batch-size: ${CONTENT_PUBLISHING_WORKER_BATCH_SIZE:10}
+        max-attempts: ${CONTENT_PUBLISHING_WORKER_MAX_ATTEMPTS:5}
+        retry-delay-ms: ${CONTENT_PUBLISHING_WORKER_RETRY_DELAY_MS:300000}
 
   initial-data:
     auto-import: ${APP_INITIAL_DATA_AUTO_IMPORT:true}
@@ -112,4 +126,4 @@ app:
     seasons: ${FOOTBALL_DATA_SEASONS:}
 
   understats:
-    base-url: https://understat.com
+    base-url: ${UNDERSTAT_BASE_URL:https://understat.com}
