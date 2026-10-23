@@ -71,6 +71,9 @@ public class ContentPublicationEntity extends AbstractEntity {
     @Column(name = "approved_at")
     private Instant approvedAt;
 
+    @Column(name = "review_notes", columnDefinition = "TEXT")
+    private String reviewNotes;
+
     @Column(name = "external_post_id", length = 255)
     private String externalPostId;
 
