@@ -32,15 +32,13 @@ import org.springframework.stereotype.Component;
 public class FBCronjobInitial implements DataInitializer {
     private static final String FB_JOB_GROUP = "FBJobGroup";
     private static final String DISABLED_CRON_EXPRESSION = "0 0 0 1 1 ?";
+    private static final String PUBLICATION_WORKER_CRON_EXPRESSION = "0/30 * * * * ?";
 
     private final CronJobRepository cronJobRepository;
     private final CronJobService cronJobService;
 
     @Value("${app.content.publishing.worker.enabled:false}")
     private boolean publicationWorkerEnabled;
-
-    @Value("${app.content.publishing.worker.cron:0/30 * * * * ?}")
-    private String publicationWorkerCronExpression;
 
     @Override
     public void initialize() {
@@ -92,7 +90,7 @@ public class FBCronjobInitial implements DataInitializer {
 
     private void configurePublicationWorker() {
         String cronExpression = publicationWorkerEnabled
-                ? publicationWorkerCronExpression
+                ? PUBLICATION_WORKER_CRON_EXPRESSION
                 : DISABLED_CRON_EXPRESSION;
         String jobName = PublicationWorkerQuartzJob.class.getSimpleName();
 
