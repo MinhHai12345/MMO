@@ -1,14 +1,14 @@
 package com.mmo.module.fb.analytics.service.impl;
 
 import com.mmo.module.fb.analytics.service.ModernFootballAnalyticsService;
-import com.mmo.module.fb.domain.entity.Match;
-import com.mmo.module.fb.domain.entity.MatchAdvancedStats;
-import com.mmo.module.fb.domain.entity.PlayerMatchStats;
-import com.mmo.module.fb.domain.entity.Team;
+import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.match.entity.MatchAdvancedStats;
+import com.mmo.module.fb.player.entity.PlayerMatchStats;
+import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.domain.enums.MatchStatus;
-import com.mmo.module.fb.domain.repository.MatchAdvancedStatsRepository;
-import com.mmo.module.fb.domain.repository.MatchRepository;
-import com.mmo.module.fb.domain.repository.PlayerMatchStatsRepository;
+import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
+import com.mmo.module.fb.match.repository.MatchRepository;
+import com.mmo.module.fb.player.repository.PlayerMatchStatsRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;

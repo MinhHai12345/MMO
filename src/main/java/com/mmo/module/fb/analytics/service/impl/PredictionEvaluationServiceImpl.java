@@ -1,12 +1,12 @@
 package com.mmo.module.fb.analytics.service.impl;
 
 import com.mmo.module.fb.analytics.service.PredictionEvaluationService;
-import com.mmo.module.fb.domain.entity.Match;
-import com.mmo.module.fb.domain.entity.MatchPrediction;
-import com.mmo.module.fb.domain.entity.PredictionPerformance;
+import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.analytics.entity.MatchPrediction;
+import com.mmo.module.fb.analytics.entity.PredictionPerformance;
 import com.mmo.module.fb.domain.enums.MatchStatus;
-import com.mmo.module.fb.domain.repository.MatchPredictionRepository;
-import com.mmo.module.fb.domain.repository.PredictionPerformanceRepository;
+import com.mmo.module.fb.analytics.repository.MatchPredictionRepository;
+import com.mmo.module.fb.analytics.repository.PredictionPerformanceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
