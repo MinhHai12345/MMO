@@ -2,7 +2,6 @@ package com.mmo.module.fb.workflow.job;
 
 import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.entity.JobCompleteState;
-import com.mmo.core.cronjob.entity.JobState;
 import com.mmo.core.cronjob.service.CronJobService;
 import com.mmo.module.fb.content.service.ContentDraftService.DraftFormat;
 import com.mmo.module.fb.content.service.ContentLifecycleService;
@@ -73,6 +72,7 @@ public class FootballWorkflowOrchestrationJob extends QuartzJobBean {
      * Re-run it when it has never succeeded, failed last time, or is at least 30 days old.
      */
     private void runBootstrapIfNeeded() {
+        waitUntilNotRunning(new JobKey("FootballDataBootstrapJob", JOB_GROUP), "FootballDataBootstrapJob");
         CronJob bootstrap = cronJobService.getJob("FootballDataBootstrapJob", JOB_GROUP);
         ZonedDateTime lastExecution = bootstrap.getLastExecutedTime();
         boolean recentlySucceeded = bootstrap.getLastCompleteStatus() == JobCompleteState.SUCCESS
@@ -101,16 +101,21 @@ public class FootballWorkflowOrchestrationJob extends QuartzJobBean {
         while (System.currentTimeMillis() < deadline) {
             CronJob current = cronJobService.getJob(jobName, JOB_GROUP);
             ZonedDateTime lastExecution = current.getLastExecutedTime();
-            boolean thisExecutionCompleted = lastExecution != null
+            boolean executionRecorded = lastExecution != null
                     && (previousExecution == null || lastExecution.isAfter(previousExecution))
-                    && current.getJobStatus() == JobState.COMPLETE;
+                    && current.getLastCompleteStatus() != null;
 
-            if (thisExecutionCompleted) {
-                if (current.getLastCompleteStatus() != JobCompleteState.SUCCESS) {
+            if (executionRecorded) {
+                // The execution listener persists the completion timestamp before Quartz fully
+                // releases the execution slot. Wait for that slot and re-read the final state.
+                waitUntilNotRunning(jobKey, jobName);
+                CronJob completed = cronJobService.getJob(jobName, JOB_GROUP);
+                if (completed.getLastCompleteStatus() != JobCompleteState.SUCCESS) {
                     throw new IllegalStateException("Workflow stage failed: " + jobName
-                            + " completed with status " + current.getLastCompleteStatus());
+                            + " completed with status " + completed.getLastCompleteStatus());
                 }
-                log.info("Workflow stage COMPLETED job={} lastExecutedTime={}", jobName, lastExecution);
+                log.info("Workflow stage COMPLETED job={} lastExecutedTime={}",
+                        jobName, completed.getLastExecutedTime());
                 return;
             }
 
