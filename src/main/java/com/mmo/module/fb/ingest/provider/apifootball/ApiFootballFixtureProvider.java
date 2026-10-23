@@ -8,7 +8,7 @@ import com.mmo.module.fb.ingest.provider.apifootball.mapper.ApiFootballFixtureMa
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import com.mmo.module.fb.ingest.provider.spi.FixtureProvider;
-import com.mmo.module.fb.domain.enums.Provider;
+import com.mmo.module.fb.ingest.enums.Provider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
