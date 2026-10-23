@@ -2,6 +2,7 @@ package com.mmo.module.fb.workflow.job;
 
 import com.mmo.module.fb.publish.service.impl.ContentPublicationWorker;
 import lombok.extern.slf4j.Slf4j;
+import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,7 @@ import org.springframework.scheduling.quartz.QuartzJobBean;
  * The worker remains opt-in; the guard also protects manual triggers while disabled.
  */
 @Slf4j
+@DisallowConcurrentExecution
 public class PublicationWorkerQuartzJob extends QuartzJobBean {
 
     @Autowired
