@@ -5,6 +5,9 @@ import org.quartz.JobExecutionContext;
 import org.quartz.JobDataMap;
 
 import java.util.Locale;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Reads optional provider overrides supplied for a single Quartz execution.
@@ -39,6 +42,21 @@ public final class IngestionJobParameters {
                 + "' for ingestion resource '" + resource + "'. Supported providers: "
                 + String.join(", ", java.util.Arrays.stream(Provider.values())
                     .map(Enum::name).toList()));
+    }
+
+    public static Map<String, String> providerParameters(JobExecutionContext context) {
+        Set<String> supportedKeys = Set.of(
+                "provider", "provider.league", "provider.team", "provider.fixture",
+                "provider.standings", "provider.odds");
+        Map<String, String> parameters = new LinkedHashMap<>();
+        JobDataMap data = context.getMergedJobDataMap();
+        for (String key : supportedKeys) {
+            Object value = data.get(key);
+            if (value != null && !value.toString().isBlank()) {
+                parameters.put(key, value.toString().trim());
+            }
+        }
+        return Map.copyOf(parameters);
     }
 
     private static String normalize(String value) {
