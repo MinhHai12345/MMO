@@ -201,9 +201,7 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
      * name and only created when no canonical team exists.
      */
     public void syncTeams() {
-        List<SeasonExternalId> seasonMappings = seasonExternalIdRepository.findAll().stream()
-                .filter(mapping -> mapping.getProvider() == Provider.SOFA_SCORE)
-                .toList();
+        List<SeasonExternalId> seasonMappings = seasonExternalIdRepository.findAllByProvider(Provider.SOFA_SCORE);
         if (CollectionUtils.isEmpty(seasonMappings)) {
             log.warn("No SofaScore season mappings found. Run storeSeasons before syncTeams.");
             return;
@@ -261,8 +259,8 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
      * The external event mapping is the idempotency key for subsequent runs.
      */
     public void storeMatches() {
-        List<SeasonExternalId> seasons = seasonExternalIdRepository.findAll().stream()
-                .filter(mapping -> mapping.getProvider() == Provider.SOFA_SCORE)
+        List<SeasonExternalId> seasons = seasonExternalIdRepository.findAllByProvider(Provider.SOFA_SCORE).stream()
+                .filter(mapping -> mapping.getSeason() != null && mapping.getSeason().isCurrent())
                 .toList();
         if (CollectionUtils.isEmpty(seasons)) {
             log.warn("No SofaScore season mappings found. Run storeSeasons before storeMatches.");
