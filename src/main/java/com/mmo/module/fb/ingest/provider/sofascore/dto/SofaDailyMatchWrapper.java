@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.model.sofa;
+package com.mmo.module.fb.ingest.provider.sofascore.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

@@ -2,13 +2,13 @@ package com.mmo.module.fb.ingest.provider.sofascore.client;
 
 import com.microsoft.playwright.Page;
 import com.mmo.module.fb.team.entity.Team;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaDailyMatchWrapper;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchStatisticsData;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaOddsData;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaStandingsData;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaUniqueTournamentsData;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaDailyMatchWrapper;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaMatchStatisticsData;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaMatchesData;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaOddsData;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaSeasonData;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaStandingsData;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaUniqueTournamentsData;
 
 import java.util.List;
 import java.util.Map;

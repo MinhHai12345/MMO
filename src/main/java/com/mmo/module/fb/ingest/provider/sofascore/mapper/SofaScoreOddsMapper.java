@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.provider.sofascore.mapper;
 
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaOddsData;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaOddsData;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;

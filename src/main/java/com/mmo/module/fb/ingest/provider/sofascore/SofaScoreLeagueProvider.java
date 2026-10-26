@@ -2,8 +2,8 @@ package com.mmo.module.fb.ingest.provider.sofascore;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaUniqueTournamentsData;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaSeasonData;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaUniqueTournamentsData;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreLeagueMapper;
 import com.mmo.module.fb.ingest.provider.spi.LeagueProvider;

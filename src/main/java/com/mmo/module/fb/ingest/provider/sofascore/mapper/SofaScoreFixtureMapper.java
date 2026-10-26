@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.provider.sofascore.mapper;
 
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaMatchesData;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;

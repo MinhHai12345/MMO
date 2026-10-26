@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.model.sofa;
+package com.mmo.module.fb.ingest.provider.sofascore.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;

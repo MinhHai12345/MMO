@@ -2,8 +2,8 @@ package com.mmo.module.fb.ingest.provider.sofascore.mapper;
 
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaUniqueTournamentsData;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaSeasonData;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaUniqueTournamentsData;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;

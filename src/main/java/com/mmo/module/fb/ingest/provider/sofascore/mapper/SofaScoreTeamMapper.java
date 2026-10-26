@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.provider.sofascore.mapper;
 
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaStandingsData;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaStandingsData;
 import org.springframework.stereotype.Component;
 
 @Component
