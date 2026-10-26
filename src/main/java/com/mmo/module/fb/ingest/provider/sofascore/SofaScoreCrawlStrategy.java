@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaMatchStatisticsData;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchAdvancedStats;
@@ -68,7 +68,7 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
                         return Collections.emptyList();
                     }
                     try {
-                        List<SofaMatchStatisticsData.PeriodStatisticsDTO> statistics =
+                        List<SofaScoreResponseDTO.PeriodStatisticsDTO> statistics =
                                 sofaScoreClient.fetchMatchStatistics(
                                         Long.valueOf(externalId.get().getExternalId()), page);
                         return statistics == null ? Collections.emptyList() : statistics;
@@ -82,7 +82,7 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
     }
 
     private void persistMatchStatistics(Match match,
-                                       List<SofaMatchStatisticsData.PeriodStatisticsDTO> periods) {
+                                       List<SofaScoreResponseDTO.PeriodStatisticsDTO> periods) {
         if (match == null) {
             return;
         }
@@ -96,12 +96,12 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
                 .filter(Objects::nonNull)
                 .filter(period -> "ALL".equalsIgnoreCase(period.getPeriod()))
                 .findFirst()
-                .map(SofaMatchStatisticsData.PeriodStatisticsDTO::getGroups)
+                .map(SofaScoreResponseDTO.PeriodStatisticsDTO::getGroups)
                 .orElseGet(() -> periods.stream()
                         .filter(Objects::nonNull)
                         .filter(period -> CollectionUtils.isNotEmpty(period.getGroups()))
                         .findFirst()
-                        .map(SofaMatchStatisticsData.PeriodStatisticsDTO::getGroups)
+                        .map(SofaScoreResponseDTO.PeriodStatisticsDTO::getGroups)
                         .orElse(Collections.emptyList()))
                 .stream()
                 .filter(Objects::nonNull)
