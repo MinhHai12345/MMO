@@ -7,9 +7,9 @@ spring:
     name: mmo
 
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/fb_ai?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:1234}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 30
@@ -43,83 +43,83 @@ spring:
       max-file-size: 10MB
 
 server:
-  port: ${SERVER_PORT:8188}
+  port: ${SERVER_PORT}
 
 # Framework settings stay under spring.* / server.*.
 # Application settings are bound by com.mmo.AppProperties.
 app:
   content:
     publishing:
-      api-key: ${CONTENT_PUBLISHING_API_KEY:haivo}
+      api-key: ${CONTENT_PUBLISHING_API_KEY}
 
   initial-data:
-    auto-import: ${APP_INITIAL_DATA_AUTO_IMPORT:true}
+    auto-import: ${APP_INITIAL_DATA_AUTO_IMPORT}
 
   # Credentials and destination identifiers for outbound social publishing.
   social:
     telegram:
       bot:
-        token: ${TELEGRAM_TOKEN:mock}
-        username: ${TELEGRAM_BOT_USERNAME:H2_FB_Bot}
+        token: ${TELEGRAM_TOKEN}
+        username: ${TELEGRAM_BOT_USERNAME}
       channel:
-        id: ${TELEGRAM_CHANNEL_ID:mock}
-        free: ${FREE_CHANNEL_ID:mock}
-        premium: ${PREMIUM_CHANNEL_ID:mock}
+        id: ${TELEGRAM_CHANNEL_ID}
+        free: ${FREE_CHANNEL_ID}
+        premium: ${PREMIUM_CHANNEL_ID}
 
     twitter:
       consumer:
-        key: ${TWITTER_CONSUMER_KEY:mock}
-        secret: ${TWITTER_CONSUMER_SECRET:mock}
+        key: ${TWITTER_CONSUMER_KEY}
+        secret: ${TWITTER_CONSUMER_SECRET}
       access:
-        token: ${TWITTER_ACCESS_TOKEN:mock}
-        secret: ${TWITTER_ACCESS_SECRET:mock}
+        token: ${TWITTER_ACCESS_TOKEN}
+        secret: ${TWITTER_ACCESS_SECRET}
 
     facebook:
       page:
-        id: ${FACEBOOK_PAGE_ID:mock}
+        id: ${FACEBOOK_PAGE_ID}
       access:
-        token: ${FACEBOOK_ACCESS_TOKEN:mock}
+        token: ${FACEBOOK_ACCESS_TOKEN}
 
   stripe:
     api:
-      key: ${STRIPE_API_KEY:mock}
+      key: ${STRIPE_API_KEY}
       webhook:
-        secret: ${STRIPE_WEBHOOK_SECRET:mock}
+        secret: ${STRIPE_WEBHOOK_SECRET}
 
   # Ingestion owns all football-data provider configuration and provider routing.
   ingestion:
     providers:
-      league: ${INGESTION_LEAGUE_PROVIDER:FOOTBALL_DATA}
-      team: ${INGESTION_TEAM_PROVIDER:FOOTBALL_DATA}
-      fixture: ${INGESTION_FIXTURE_PROVIDER:FOOTBALL_DATA}
-      standings: ${INGESTION_STANDINGS_PROVIDER:FOOTBALL_DATA}
-      odds: ${INGESTION_ODDS_PROVIDER:API_FOOTBALL}
+      league: ${INGESTION_LEAGUE_PROVIDER}
+      team: ${INGESTION_TEAM_PROVIDER}
+      fixture: ${INGESTION_FIXTURE_PROVIDER}
+      standings: ${INGESTION_STANDINGS_PROVIDER}
+      odds: ${INGESTION_ODDS_PROVIDER}
 
     sofa-score:
-      api: ${SOFASCORE_API_URL:https://api.sofascore.com/api/v1/}
-      url: ${SOFASCORE_WEB_URL:https://www.sofascore.com}
-      tournament-region: ${SOFASCORE_TOURNAMENT_REGION:EN}
+      api: ${SOFA_SCORE_API_URL}
+      url: ${SOFA_SCORE_WEB_URL}
+      tournament-region: ${SOFASCORE_TOURNAMENT_REGION}
 
     api-football:
-      enabled: ${API_FOOTBALL_ENABLED:true}
-      base-url: ${API_FOOTBALL_BASE_URL:https://v3.football.api-sports.io}
-      api-key: ${API_FOOTBALL_API_KEY:mock}
-      league-ids: ${API_FOOTBALL_LEAGUE_IDS:}
+      enabled: ${API_FOOTBALL_ENABLED}
+      base-url: ${API_FOOTBALL_BASE_URL}
+      api-key: ${API_FOOTBALL_API_KEY}
+      league-ids: ${API_FOOTBALL_LEAGUE_IDS}
 
     football-data:
-      enabled: ${FOOTBALL_DATA_ENABLED:true}
-      base-url: ${FOOTBALL_DATA_BASE_URL:https://api.football-data.org/v4}
-      api-key: ${FOOTBALL_DATA_API_KEY:mock}
-      competition-ids: ${FOOTBALL_DATA_COMPETITION_IDS:}
-      seasons: ${FOOTBALL_DATA_SEASONS:}
+      enabled: ${FOOTBALL_DATA_ENABLED}
+      base-url: ${FOOTBALL_DATA_BASE_URL}
+      api-key: ${FOOTBALL_DATA_API_KEY}
+      competition-ids: ${FOOTBALL_DATA_COMPETITION_IDS}
+      seasons: ${FOOTBALL_DATA_SEASONS}
 
     understats:
-      base-url: ${UNDERSTAT_BASE_URL:https://understat.com}
+      base-url: ${UNDER_STAT_BASE_URL}
 
   sync:
-    bootstrap-on-start: ${APP_SYNC_BOOTSTRAP_ON_START:true}
-    seasons-per-league: ${APP_SYNC_SEASONS_PER_LEAGUE:3}
+    bootstrap-on-start: ${APP_SYNC_BOOTSTRAP_ON_START}
+    seasons-per-league: ${APP_SYNC_SEASONS_PER_LEAGUE}
     # Comma-separated SofaScore unique tournament IDs; empty enables provider discovery/default behavior.
-    tournament-ids: ${SOFASCORE_TOURNAMENT_IDS:}
-    max-event-pages: ${SOFASCORE_MAX_EVENT_PAGES:20}
-    max-rounds: ${SOFASCORE_MAX_ROUNDS:50}
+    tournament-ids: ${SOFA_SCORE_TOURNAMENT_IDS}
+    max-event-pages: ${SOFA_SCORE_MAX_EVENT_PAGES}
+    max-rounds: ${SOFA_SCORE_MAX_ROUNDS}

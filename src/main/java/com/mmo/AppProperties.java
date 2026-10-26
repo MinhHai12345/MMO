@@ -130,14 +130,14 @@ public class AppProperties {
         @Getter
         @Setter
         public static class Api {
-            private String key = "mock";
+            private String key;
             private Webhook webhook = new Webhook();
         }
 
         @Getter
         @Setter
         public static class Webhook {
-            private String secret = "mock";
+            private String secret;
         }
     }
 
@@ -178,18 +178,18 @@ public class AppProperties {
     @Setter
     public static class SofaScore {
         @NotBlank
-        private String api = "https://api.sofascore.com/api/v1/";
+        private String api;
         @NotBlank
-        private String url = "https://www.sofascore.com";
-        private String tournamentRegion = "EN";
+        private String url;
+        private String tournamentRegion;
     }
 
     @Getter
     @Setter
     public static class ApiFootball {
         private boolean enabled = true;
-        private String baseUrl = "https://v3.football.api-sports.io";
-        private String apiKey = "mock";
+        private String baseUrl;
+        private String apiKey;
         private List<Long> leagueIds = new ArrayList<>();
     }
 
@@ -197,8 +197,8 @@ public class AppProperties {
     @Setter
     public static class FootballData {
         private boolean enabled = true;
-        private String baseUrl = "https://api.football-data.org/v4";
-        private String apiKey = "mock";
+        private String baseUrl;
+        private String apiKey;
         private List<Long> competitionIds = new ArrayList<>();
         private List<String> seasons = new ArrayList<>();
     }
@@ -206,7 +206,7 @@ public class AppProperties {
     @Getter
     @Setter
     public static class Understats {
-        private String baseUrl = "https://understat.com";
+        private String baseUrl;
     }
 
     @Getter
@@ -216,14 +216,14 @@ public class AppProperties {
         private Channel channel = new Channel();
         @Getter @Setter
         public static class Bot {
-            private String token = "mock";
-            private String username = "H2_FB_Bot";
+            private String token;
+            private String username;
         }
         @Getter @Setter
         public static class Channel {
-            private String id = "mock";
-            private String free = "mock";
-            private String premium = "mock";
+            private String id;
+            private String free;
+            private String premium;
         }
     }
 
@@ -234,13 +234,13 @@ public class AppProperties {
         private Access access = new Access();
         @Getter @Setter
         public static class Consumer {
-            private String key = "mock";
-            private String secret = "mock";
+            private String key;
+            private String secret;
         }
         @Getter @Setter
         public static class Access {
-            private String token = "mock";
-            private String secret = "mock";
+            private String token;
+            private String secret;
         }
     }
 
@@ -251,11 +251,11 @@ public class AppProperties {
         private Access access = new Access();
         @Getter @Setter
         public static class Page {
-            private String id = "mock";
+            private String id;
         }
         @Getter @Setter
         public static class Access {
-            private String token = "mock";
+            private String token;
         }
     }
 }
