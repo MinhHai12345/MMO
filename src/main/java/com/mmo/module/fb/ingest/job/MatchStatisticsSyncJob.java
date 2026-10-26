@@ -19,8 +19,9 @@ public class MatchStatisticsSyncJob extends AbstractJob<CronJob> {
 
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
-        log.info("Starting current-season finished-match statistics and xG synchronization");
+        log.info("Starting SofaScore core-data bootstrap and current-season statistics synchronization");
+        sofaScoreCrawlStrategy.syncInitialDataIfRequired();
         sofaScoreCrawlStrategy.storeMatchStatistics();
-        log.info("Current-season finished-match statistics and xG synchronization completed");
+        log.info("SofaScore core-data bootstrap and statistics synchronization completed");
     }
 }
