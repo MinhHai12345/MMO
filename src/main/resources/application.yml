@@ -5,9 +5,9 @@ spring:
     name: mmo
 
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/fb_ai?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:1234}
+    url: jdbc:mysql://localhost:3306/fb_ai?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: root
+    password: 1234
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 30
@@ -43,10 +43,12 @@ spring:
 server:
   port: 8188
 
+# Application-owned settings are bound by com.mmo.AppProperties.
+# Keep framework settings above independent from application provider settings.
 app:
   content:
     publishing:
-      # Live Telegram publishing is disabled until credentials and permissions are verified.
+      # Shared endpoint key only; real social credentials are configured per provider below.
       api-key: ${CONTENT_PUBLISHING_API_KEY:haivo}
 
   initial-data:
@@ -87,14 +89,17 @@ app:
     tournament-region: ${SOFASCORE_TOURNAMENT_REGION:EN}
 
   sync:
-    # Use unique tournament IDs to bound the initial SofaScore catalogue import.
+    bootstrap-on-start: ${APP_SYNC_BOOTSTRAP_ON_START:true}
+    seasons-per-league: ${APP_SYNC_SEASONS_PER_LEAGUE:3}
+    # Comma-separated SofaScore unique tournament IDs; empty means use provider discovery/default behavior.
     tournament-ids: ${SOFASCORE_TOURNAMENT_IDS:}
     max-event-pages: ${SOFASCORE_MAX_EVENT_PAGES:20}
     max-rounds: ${SOFASCORE_MAX_ROUNDS:50}
 
   ingestion:
     providers:
-      # Values must match com.mmo.module.fb.domain.enums.Provider.
+      # Enum values are com.mmo.module.fb.ingest.enums.Provider.
+      # Keep the working core providers as defaults; switch resources independently when needed.
       league: ${INGESTION_LEAGUE_PROVIDER:FOOTBALL_DATA}
       team: ${INGESTION_TEAM_PROVIDER:FOOTBALL_DATA}
       fixture: ${INGESTION_FIXTURE_PROVIDER:FOOTBALL_DATA}
@@ -102,20 +107,19 @@ app:
       odds: ${INGESTION_ODDS_PROVIDER:API_FOOTBALL}
 
   api-football:
-    enabled: true
-    base-url: https://v3.football.api-sports.io
+    enabled: ${API_FOOTBALL_ENABLED:true}
+    base-url: ${API_FOOTBALL_BASE_URL:https://v3.football.api-sports.io}
     api-key: ${API_FOOTBALL_API_KEY:mock}
-    # Required for the initial data bootstrap. Use comma-separated API-Football league IDs.
-    # Keep the list focused to control API quota; an empty list intentionally prevents league ingestion.
+    # Comma-separated API-Football league IDs; keep empty to avoid an unbounded catalogue import.
     league-ids: ${API_FOOTBALL_LEAGUE_IDS:}
 
   football-data:
-    enabled: true
-    base-url: https://api.football-data.org/v4
+    enabled: ${FOOTBALL_DATA_ENABLED:true}
+    base-url: ${FOOTBALL_DATA_BASE_URL:https://api.football-data.org/v4}
     api-key: ${FOOTBALL_DATA_API_KEY:mock}
-    # Numeric competition IDs, comma-separated; for example 2021 (Premier League), 2001 (Champions League).
+    # Comma-separated numeric competition IDs, e.g. 2021 (Premier League), 2001 (Champions League).
     competition-ids: ${FOOTBALL_DATA_COMPETITION_IDS:}
-    # Optional season start years to backfill; empty means current season only.
+    # Optional comma-separated season start years; empty means current seasons only.
     seasons: ${FOOTBALL_DATA_SEASONS:}
 
   understats:
