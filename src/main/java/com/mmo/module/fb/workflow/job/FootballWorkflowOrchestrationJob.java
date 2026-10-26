@@ -7,6 +7,7 @@ import com.mmo.core.cronjob.job.AbstractJob;
 import com.mmo.core.cronjob.service.CronJobService;
 import com.mmo.module.fb.content.service.ContentDraftService.DraftFormat;
 import com.mmo.module.fb.content.service.ContentLifecycleService;
+import com.mmo.module.fb.ingest.job.IngestionJobParameters;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowCommand;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.Map;
 
 /**
  * Coordinates the end-to-end FB workflow by triggering the persisted CronJob
@@ -44,17 +46,18 @@ public class FootballWorkflowOrchestrationJob extends AbstractJob<CronJob> {
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
-        log.info("Starting FB end-to-end workflow for {}", today);
+        Map<String, String> providerOverrides = IngestionJobParameters.providerParameters(context);
+        log.info("Starting FB end-to-end workflow for {}; providerOverrides={}", today, providerOverrides);
 
-        boolean bootstrapExecuted = runBootstrapIfNeeded();
+        boolean bootstrapExecuted = runBootstrapIfNeeded(providerOverrides);
         if (!bootstrapExecuted) {
-            runExistingJobIfStale("LeagueSyncJob", Duration.ofDays(30));
-            runExistingJobIfStale("TeamSyncJob", Duration.ofDays(15));
+            runExistingJobIfStale("LeagueSyncJob", Duration.ofDays(30), providerOverrides);
+            runExistingJobIfStale("TeamSyncJob", Duration.ofDays(15), providerOverrides);
         }
 
-        runExistingJob("MatchResultSyncJob");
-        runExistingJob("MatchFixtureSyncJob");
-        runExistingJob("MatchStatisticsSyncJob");
+        runExistingJob("MatchResultSyncJob", providerOverrides);
+        runExistingJob("MatchFixtureSyncJob", providerOverrides);
+        runExistingJob("MatchStatisticsSyncJob", providerOverrides);
         runExistingJob("AdvancedMetricsJob");
         runExistingJob("MatchProcessPredictionJob");
 
@@ -72,7 +75,7 @@ public class FootballWorkflowOrchestrationJob extends AbstractJob<CronJob> {
      * Bootstrap can backfill configured historical seasons, so it is only rerun
      * when it has never succeeded, failed, or is at least 30 days old.
      */
-    private boolean runBootstrapIfNeeded() {
+    private boolean runBootstrapIfNeeded(Map<String, String> providerOverrides) {
         waitUntilNotRunning(new JobKey("FootballDataBootstrapJob", JOB_GROUP), "FootballDataBootstrapJob");
         CronJob bootstrap = cronJobService.getJob("FootballDataBootstrapJob", JOB_GROUP);
         ZonedDateTime lastExecution = bootstrap.getLastExecutedTime();
@@ -86,11 +89,11 @@ public class FootballWorkflowOrchestrationJob extends AbstractJob<CronJob> {
             return false;
         }
 
-        runExistingJob("FootballDataBootstrapJob");
+        runExistingJob("FootballDataBootstrapJob", providerOverrides);
         return true;
     }
 
-    private void runExistingJobIfStale(String jobName, Duration maxAge) {
+    private void runExistingJobIfStale(String jobName, Duration maxAge, Map<String, String> providerOverrides) {
         waitUntilNotRunning(new JobKey(jobName, JOB_GROUP), jobName);
         CronJob job = cronJobService.getJob(jobName, JOB_GROUP);
         ZonedDateTime lastExecution = job.getLastExecutedTime();
@@ -104,10 +107,14 @@ public class FootballWorkflowOrchestrationJob extends AbstractJob<CronJob> {
             return;
         }
 
-        runExistingJob(jobName);
+        runExistingJob(jobName, providerOverrides);
     }
 
     private void runExistingJob(String jobName) {
+        runExistingJob(jobName, Map.of());
+    }
+
+    private void runExistingJob(String jobName, Map<String, String> providerOverrides) {
         CronJob definition = cronJobService.getJob(jobName, JOB_GROUP);
         if (definition.getJobStatus() == JobState.PAUSED) {
             throw new IllegalStateException("Workflow stage is paused in the CronJob registry: " + jobName);
@@ -118,7 +125,7 @@ public class FootballWorkflowOrchestrationJob extends AbstractJob<CronJob> {
         ZonedDateTime previousExecution = cronJobService.getJob(jobName, JOB_GROUP).getLastExecutedTime();
 
         log.info("Workflow stage STARTED job={}", jobName);
-        cronJobService.startJobNow(definition.getId());
+        cronJobService.startJobNow(definition.getId(), providerOverrides);
         long deadline = System.currentTimeMillis() + Math.max(POLL_INTERVAL_MS, 1800000);
 
         while (System.currentTimeMillis() < deadline) {
