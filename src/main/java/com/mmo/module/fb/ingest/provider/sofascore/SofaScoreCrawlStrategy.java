@@ -81,9 +81,6 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
 
             int linked = 0;
             int created = 0;
-            for (SofaSeasonData.TournamentDTO ignored : Collections.<SofaSeasonData.TournamentDTO>emptyList()) {
-                // Keeps the DTO types separate; the actual tournament DTO is handled below.
-            }
             for (com.mmo.module.fb.ingest.provider.model.sofa.SofaUniqueTournamentsData.UniqueTournamentDTO dto : tournaments) {
                 if (dto == null || dto.getId() == null || dto.getName() == null || dto.getName().isBlank()) {
                     continue;
