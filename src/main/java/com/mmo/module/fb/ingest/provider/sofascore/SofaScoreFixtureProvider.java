@@ -53,7 +53,7 @@ public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implemen
                     ? appProperties.getSync().getMaxRounds() : 50;
             for (int round = 1; round <= maxRounds; round++) {
                 List<SofaMatchesData.SofaEventDTO> events =
-                        sofaCrawlerService.fetchMatchesByRound(query.leagueId(), season.getId(), round, page);
+                        sofaScoreClient.fetchMatchesByRound(query.leagueId(), season.getId(), round, page);
                 if (events == null || events.isEmpty()) {
                     emptyRounds++;
                     if (emptyRounds >= 4 && round > 10) break;

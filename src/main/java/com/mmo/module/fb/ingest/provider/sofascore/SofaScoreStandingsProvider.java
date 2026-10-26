@@ -41,7 +41,7 @@ public class SofaScoreStandingsProvider extends AbstractSofaScoreProvider implem
             if (season == null || season.getId() == null) return List.of();
 
             List<SofaStandingsData.StandingGroupDTO> groups =
-                    sofaCrawlerService.fetchStandingTotal(query.leagueId(), season.getId(), page);
+                    sofaScoreClient.fetchStandingTotal(query.leagueId(), season.getId(), page);
             return mapper.toProviderStandings(groups);
         });
     }

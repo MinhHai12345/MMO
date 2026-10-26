@@ -55,7 +55,7 @@ public class SofaScoreTeamProvider extends AbstractSofaScoreProvider implements 
 
     private SofaSeasonData.SeasonDTO findSeason(Long tournamentId, String year, Page page) {
         List<SofaSeasonData.SeasonDTO> seasons =
-                sofaCrawlerService.fetchSeasonByTournamentId(tournamentId, page);
+                sofaScoreClient.fetchSeasonByTournamentId(tournamentId, page);
         if (seasons == null) return null;
         return seasons.stream()
                 .filter(Objects::nonNull)

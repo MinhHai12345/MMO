@@ -39,7 +39,7 @@ public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implement
                                           || externalLeagueIds.contains(tournament.getId()))
                     .map(tournament -> {
                         List<SofaSeasonData.SeasonDTO> seasons =
-                                sofaCrawlerService.fetchSeasonByTournamentId(tournament.getId(), page);
+                                sofaScoreClient.fetchSeasonByTournamentId(tournament.getId(), page);
                         return mapper.toProviderLeague(tournament, seasons);
                     })
                     .filter(Objects::nonNull)
