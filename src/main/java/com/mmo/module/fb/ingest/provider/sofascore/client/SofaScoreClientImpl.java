@@ -97,10 +97,8 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
         String url = String.format(FETCH_MATCH_BY_ROUND_URI, appProperties.getSofaScore().getApi(),
                 sofaTournamentId, sofaSeasonId, round);
         MatchesResponseDTO matchData = safeFetch(url, page, MatchesResponseDTO.class);
-        if (matchData == null) {
-            throw new SofaScoreFetchException("SofaScore fixture request failed for tournament "
-                                              + sofaTournamentId + " season " + sofaSeasonId + " round " + round);
-        }
+        // A missing round is a valid empty result; access/rate-limit errors are thrown by safeFetch.
+        if (matchData == null) return Collections.emptyList();
         return matchData.events() != null ? matchData.events() : Collections.emptyList();
     }
 
