@@ -16,6 +16,12 @@ class SofaScoreSeasonMatcherTest {
     }
 
     @Test
+    void canonicalizesTwoDigitSeasonLabels() {
+        assertEquals("2026", SofaScoreSeasonMatcher.canonicalStartYear("26/27"));
+        assertEquals("2025", SofaScoreSeasonMatcher.canonicalStartYear("Bundesliga 2025/2026"));
+    }
+
+    @Test
     void doesNotMatchDifferentSeason() {
         assertFalse(SofaScoreSeasonMatcher.matches("2024",
                 new SeasonDTO(2L, "Bundesliga 2026/2027", "26/27", false)));
