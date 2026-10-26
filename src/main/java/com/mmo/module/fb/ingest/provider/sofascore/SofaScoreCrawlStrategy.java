@@ -290,11 +290,13 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
         BigDecimal homeXg = statisticValue(items, true, "expectedGoals", "xg");
         BigDecimal awayXg = statisticValue(items, false, "expectedGoals", "xg");
         boolean matchChanged = false;
-        if (homeXg != null && !homeXg.equals(BigDecimal.valueOf(match.getHomeXG() == null ? -1D : match.getHomeXG()))) {
+        if (homeXg != null && (match.getHomeXG() == null
+                || Double.compare(homeXg.doubleValue(), match.getHomeXG()) != 0)) {
             match.setHomeXG(homeXg.doubleValue());
             matchChanged = true;
         }
-        if (awayXg != null && !awayXg.equals(BigDecimal.valueOf(match.getAwayXG() == null ? -1D : match.getAwayXG()))) {
+        if (awayXg != null && (match.getAwayXG() == null
+                || Double.compare(awayXg.doubleValue(), match.getAwayXG()) != 0)) {
             match.setAwayXG(awayXg.doubleValue());
             matchChanged = true;
         }
