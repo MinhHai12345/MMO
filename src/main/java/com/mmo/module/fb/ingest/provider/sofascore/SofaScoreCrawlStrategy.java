@@ -290,11 +290,11 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
         BigDecimal homeXg = statisticValue(items, true, "expectedGoals", "xg");
         BigDecimal awayXg = statisticValue(items, false, "expectedGoals", "xg");
         boolean matchChanged = false;
-        if (homeXg != null && match.getHomeXG() == null) {
+        if (homeXg != null && !homeXg.equals(BigDecimal.valueOf(match.getHomeXG() == null ? -1D : match.getHomeXG()))) {
             match.setHomeXG(homeXg.doubleValue());
             matchChanged = true;
         }
-        if (awayXg != null && match.getAwayXG() == null) {
+        if (awayXg != null && !awayXg.equals(BigDecimal.valueOf(match.getAwayXG() == null ? -1D : match.getAwayXG()))) {
             match.setAwayXG(awayXg.doubleValue());
             matchChanged = true;
         }
@@ -346,6 +346,23 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
                 "setPieceXg", "setPieceExpectedGoals");
         setDecimalIfPresent(items, homeSide, value -> stats.setCounterAttackXg(value),
                 "counterAttackXg", "counterAttackExpectedGoals");
+        setIntegerIfPresent(items, homeSide, stats::setTotalShots, "totalShots", "shotsTotal", "totalShotsAttempted");
+        setIntegerIfPresent(items, homeSide, stats::setShotsOnTarget, "shotsOnTarget", "shotsOnGoal", "shotsOnTargetTotal");
+        setIntegerIfPresent(items, homeSide, stats::setShotsOffTarget, "shotsOffTarget", "shotsOffGoal", "shotsOffTargetTotal");
+        setIntegerIfPresent(items, homeSide, stats::setBlockedShots, "blockedShots", "blockedShotsTotal");
+        setIntegerIfPresent(items, homeSide, stats::setCornerKicks, "cornerKicks", "corners", "cornerKicksTotal");
+        setIntegerIfPresent(items, homeSide, stats::setFouls, "fouls", "totalFouls");
+        setIntegerIfPresent(items, homeSide, stats::setYellowCards, "yellowCards", "yellowCardsTotal");
+        setIntegerIfPresent(items, homeSide, stats::setRedCards, "redCards", "redCardsTotal");
+        setIntegerIfPresent(items, homeSide, stats::setOffsides, "offsides", "offside");
+        setIntegerIfPresent(items, homeSide, stats::setTotalPasses, "totalPasses", "passes");
+        setIntegerIfPresent(items, homeSide, stats::setAccuratePasses, "accuratePasses", "passesAccurate");
+        setDecimalIfPresent(items, homeSide, stats::setPassAccuracy, "accuratePassesPercentage", "passAccuracy", "passesAccuracy");
+        setIntegerIfPresent(items, homeSide, stats::setGoalkeeperSaves, "goalkeeperSaves", "saves");
+        setIntegerIfPresent(items, homeSide, stats::setBigChancesCreated, "bigChancesCreated");
+        setIntegerIfPresent(items, homeSide, stats::setBigChancesMissed, "bigChancesMissed");
+        stats.setStatisticsProvider(Provider.SOFA_SCORE.name());
+        stats.setStatisticsSyncedAt(Instant.now());
         return stats;
     }
 
@@ -355,7 +372,14 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
                 || stats.getPossession() != null || stats.getDeepCompletions() != null
                 || stats.getFinalThirdEntries() != null || stats.getShotsFromBox() != null
                 || stats.getShotsOutsideBox() != null || stats.getSetPieceXg() != null
-                || stats.getCounterAttackXg() != null;
+                || stats.getCounterAttackXg() != null || stats.getTotalShots() != null
+                || stats.getShotsOnTarget() != null || stats.getShotsOffTarget() != null
+                || stats.getBlockedShots() != null || stats.getCornerKicks() != null
+                || stats.getFouls() != null || stats.getYellowCards() != null
+                || stats.getRedCards() != null || stats.getOffsides() != null
+                || stats.getTotalPasses() != null || stats.getAccuratePasses() != null
+                || stats.getPassAccuracy() != null || stats.getGoalkeeperSaves() != null
+                || stats.getBigChancesCreated() != null || stats.getBigChancesMissed() != null;
     }
 
     private void setDecimalIfPresent(List<SofaMatchStatisticsData.StatisticItemDTO> items,
