@@ -33,6 +33,7 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
 
     @Override
     public void syncCoreData(ProviderOverrides overrides) {
+        overrides = overrides == null ? ProviderOverrides.defaults() : overrides;
         AppProperties.Providers defaults = appProperties.getIngestion().getProviders();
         Provider leagueProvider = overrides.league() != null ? overrides.league() : defaults.getLeague();
         Provider teamProvider = overrides.team() != null ? overrides.team() : defaults.getTeam();
