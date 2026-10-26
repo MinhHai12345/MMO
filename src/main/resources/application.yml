@@ -89,11 +89,11 @@ app:
   # Ingestion owns all football-data provider configuration and provider routing.
   ingestion:
     providers:
-      league: ${INGESTION_LEAGUE_PROVIDER}
-      team: ${INGESTION_TEAM_PROVIDER}
-      fixture: ${INGESTION_FIXTURE_PROVIDER}
-      standings: ${INGESTION_STANDINGS_PROVIDER}
-      odds: ${INGESTION_ODDS_PROVIDER}
+      league: ${INGESTION_LEAGUE_PROVIDER:FOOTBALL_DATA}
+      team: ${INGESTION_TEAM_PROVIDER:FOOTBALL_DATA}
+      fixture: ${INGESTION_FIXTURE_PROVIDER:FOOTBALL_DATA}
+      standings: ${INGESTION_STANDINGS_PROVIDER:FOOTBALL_DATA}
+      odds: ${INGESTION_ODDS_PROVIDER:API_FOOTBALL}
 
     sofa-score:
       api: ${SOFA_SCORE_API_URL}
