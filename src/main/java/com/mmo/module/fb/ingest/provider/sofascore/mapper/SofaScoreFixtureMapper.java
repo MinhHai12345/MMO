@@ -3,7 +3,6 @@ package com.mmo.module.fb.ingest.provider.sofascore.mapper;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
 
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.MatchesResponseDTO;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;

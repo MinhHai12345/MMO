@@ -4,8 +4,6 @@ import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
 
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SeasonsResponseDTO;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.TournamentsResponseDTO;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

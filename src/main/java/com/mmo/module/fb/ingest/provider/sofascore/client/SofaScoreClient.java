@@ -5,12 +5,6 @@ import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
 import com.microsoft.playwright.Page;
 import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaDailyMatchWrapper;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.StatisticsResponseDTO;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.MatchesResponseDTO;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.OddsResponseDTO;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SeasonsResponseDTO;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.StandingsResponseDTO;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.TournamentsResponseDTO;
 
 import java.util.List;
 import java.util.Map;

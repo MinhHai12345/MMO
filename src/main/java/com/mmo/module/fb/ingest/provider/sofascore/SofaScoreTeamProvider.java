@@ -6,8 +6,6 @@ import com.microsoft.playwright.Page;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.provider.model.TeamQuery;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SeasonsResponseDTO;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.StandingsResponseDTO;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreTeamMapper;
 import com.mmo.module.fb.ingest.provider.spi.TeamProvider;

@@ -6,8 +6,6 @@ import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.MatchesResponseDTO;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SeasonsResponseDTO;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreFixtureMapper;
 import com.mmo.module.fb.ingest.provider.spi.FixtureProvider;
