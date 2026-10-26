@@ -6,7 +6,7 @@ import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
-import com.mmo.module.fb.ingest.provider.service.SofaCrawlerService;
+import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreFixtureMapper;
 import com.mmo.module.fb.ingest.provider.spi.FixtureProvider;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implements FixtureProvider {
 
     private final SofaScoreFixtureMapper mapper;
-    private final SofaCrawlerService sofaCrawlerService;
+    private final SofaScoreClient sofaScoreClient;
     private final AppProperties appProperties;
 
     @Override
@@ -38,7 +38,7 @@ public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implemen
         if (query == null || query.leagueId() == null) return List.of();
         return withPage(page -> {
             List<SofaSeasonData.SeasonDTO> seasons =
-                    sofaCrawlerService.fetchSeasonByTournamentId(query.leagueId(), page);
+                    sofaScoreClient.fetchSeasonByTournamentId(query.leagueId(), page);
             if (seasons == null) return List.of();
             SofaSeasonData.SeasonDTO season = seasons.stream()
                     .filter(Objects::nonNull)
@@ -53,7 +53,7 @@ public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implemen
                     ? appProperties.getSync().getMaxRounds() : 50;
             for (int round = 1; round <= maxRounds; round++) {
                 List<SofaMatchesData.SofaEventDTO> events =
-                        sofaCrawlerService.fetchMatchesByRound(query.leagueId(), season.getId(), round, page);
+                        sofaScoreClient.fetchMatchesByRound(query.leagueId(), season.getId(), round, page);
                 if (events == null || events.isEmpty()) {
                     emptyRounds++;
                     if (emptyRounds >= 4 && round > 10) break;

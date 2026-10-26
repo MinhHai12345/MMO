@@ -2,7 +2,7 @@ package com.mmo.module.fb.ingest.provider.sofascore;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchStatisticsData;
-import com.mmo.module.fb.ingest.provider.service.SofaCrawlerService;
+import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchAdvancedStats;
 import com.mmo.module.fb.match.entity.MatchExternalId;
@@ -46,7 +46,7 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final MatchAdvancedStatsRepository matchAdvancedStatsRepository;
-    private final SofaCrawlerService sofaCrawlerService;
+    private final SofaScoreClient sofaScoreClient;
 
     public void storeMatchStatistics() {
         List<Match> targetMatches = matchRepository.findFinishedMatchesMissingAdvancedStats(
@@ -69,7 +69,7 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
                     }
                     try {
                         List<SofaMatchStatisticsData.PeriodStatisticsDTO> statistics =
-                                sofaCrawlerService.fetchMatchStatistics(
+                                sofaScoreClient.fetchMatchStatistics(
                                         Long.valueOf(externalId.get().getExternalId()), page);
                         return statistics == null ? Collections.emptyList() : statistics;
                     } catch (NumberFormatException exception) {

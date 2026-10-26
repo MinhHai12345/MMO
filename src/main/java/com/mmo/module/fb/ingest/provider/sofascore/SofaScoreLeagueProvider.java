@@ -4,7 +4,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaUniqueTournamentsData;
-import com.mmo.module.fb.ingest.provider.service.SofaCrawlerService;
+import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreLeagueMapper;
 import com.mmo.module.fb.ingest.provider.spi.LeagueProvider;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,7 @@ import java.util.Objects;
 public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implements LeagueProvider {
 
     private final SofaScoreLeagueMapper mapper;
-    private final SofaCrawlerService sofaCrawlerService;
+    private final SofaScoreClient sofaScoreClient;
 
     @Override
     public Provider getProvider() {
@@ -29,7 +29,7 @@ public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implement
     public List<ProviderLeague> fetchLeagues(List<Long> externalLeagueIds) {
         return withPage(page -> {
             List<SofaUniqueTournamentsData.UniqueTournamentDTO> tournaments =
-                    sofaCrawlerService.fetchLeagues(page);
+                    sofaScoreClient.fetchLeagues(page);
             if (tournaments == null) return List.of();
 
             return tournaments.stream()
@@ -39,7 +39,7 @@ public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implement
                                           || externalLeagueIds.contains(tournament.getId()))
                     .map(tournament -> {
                         List<SofaSeasonData.SeasonDTO> seasons =
-                                sofaCrawlerService.fetchSeasonByTournamentId(tournament.getId(), page);
+                                sofaScoreClient.fetchSeasonByTournamentId(tournament.getId(), page);
                         return mapper.toProviderLeague(tournament, seasons);
                     })
                     .filter(Objects::nonNull)

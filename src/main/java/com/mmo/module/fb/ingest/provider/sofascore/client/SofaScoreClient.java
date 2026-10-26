@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.service;
+package com.mmo.module.fb.ingest.provider.sofascore.client;
 
 import com.microsoft.playwright.Page;
 import com.mmo.module.fb.team.entity.Team;
@@ -13,7 +13,7 @@ import com.mmo.module.fb.ingest.provider.model.sofa.SofaUniqueTournamentsData;
 import java.util.List;
 import java.util.Map;
 
-public interface SofaCrawlerService {
+public interface SofaScoreClient {
 
     /**
      * Fetch all football tournaments

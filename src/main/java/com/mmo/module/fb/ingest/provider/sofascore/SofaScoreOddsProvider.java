@@ -4,7 +4,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.OddsQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaOddsData;
-import com.mmo.module.fb.ingest.provider.service.SofaCrawlerService;
+import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreOddsMapper;
 import com.mmo.module.fb.ingest.provider.spi.OddsProvider;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,7 @@ import java.util.Map;
 public class SofaScoreOddsProvider extends AbstractSofaScoreProvider implements OddsProvider {
 
     private final SofaScoreOddsMapper mapper;
-    private final SofaCrawlerService sofaCrawlerService;
+    private final SofaScoreClient sofaScoreClient;
 
     @Override
     public Provider getProvider() {
@@ -37,7 +37,7 @@ public class SofaScoreOddsProvider extends AbstractSofaScoreProvider implements 
 
         return withPage(page -> {
             Map<Long, SofaOddsData.MatchOddDetailDTO> allOdds =
-                    sofaCrawlerService.fetchDailyMatchOdds(page);
+                    sofaScoreClient.fetchDailyMatchOdds(page);
             if (allOdds == null) return List.of();
             return mapper.toProviderOdds(allOdds.get(eventId));
         });

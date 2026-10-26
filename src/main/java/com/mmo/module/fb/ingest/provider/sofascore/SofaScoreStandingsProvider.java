@@ -5,7 +5,7 @@ import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
 import com.mmo.module.fb.ingest.provider.model.StandingsQuery;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaStandingsData;
-import com.mmo.module.fb.ingest.provider.service.SofaCrawlerService;
+import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreStandingsMapper;
 import com.mmo.module.fb.ingest.provider.spi.StandingsProvider;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +19,7 @@ import java.util.Objects;
 public class SofaScoreStandingsProvider extends AbstractSofaScoreProvider implements StandingsProvider {
 
     private final SofaScoreStandingsMapper mapper;
-    private final SofaCrawlerService sofaCrawlerService;
+    private final SofaScoreClient sofaScoreClient;
 
     @Override
     public Provider getProvider() {
@@ -31,7 +31,7 @@ public class SofaScoreStandingsProvider extends AbstractSofaScoreProvider implem
         if (query == null || query.leagueId() == null) return List.of();
         return withPage(page -> {
             List<SofaSeasonData.SeasonDTO> seasons =
-                    sofaCrawlerService.fetchSeasonByTournamentId(query.leagueId(), page);
+                    sofaScoreClient.fetchSeasonByTournamentId(query.leagueId(), page);
             if (seasons == null) return List.of();
             SofaSeasonData.SeasonDTO season = seasons.stream()
                     .filter(Objects::nonNull)
@@ -41,7 +41,7 @@ public class SofaScoreStandingsProvider extends AbstractSofaScoreProvider implem
             if (season == null || season.getId() == null) return List.of();
 
             List<SofaStandingsData.StandingGroupDTO> groups =
-                    sofaCrawlerService.fetchStandingTotal(query.leagueId(), season.getId(), page);
+                    sofaScoreClient.fetchStandingTotal(query.leagueId(), season.getId(), page);
             return mapper.toProviderStandings(groups);
         });
     }

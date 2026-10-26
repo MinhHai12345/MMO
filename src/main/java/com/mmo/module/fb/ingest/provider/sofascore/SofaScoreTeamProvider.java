@@ -6,7 +6,7 @@ import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.provider.model.TeamQuery;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaStandingsData;
-import com.mmo.module.fb.ingest.provider.service.SofaCrawlerService;
+import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreTeamMapper;
 import com.mmo.module.fb.ingest.provider.spi.TeamProvider;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 public class SofaScoreTeamProvider extends AbstractSofaScoreProvider implements TeamProvider {
 
     private final SofaScoreTeamMapper mapper;
-    private final SofaCrawlerService sofaCrawlerService;
+    private final SofaScoreClient sofaScoreClient;
 
     @Override
     public Provider getProvider() {
@@ -36,7 +36,7 @@ public class SofaScoreTeamProvider extends AbstractSofaScoreProvider implements 
             if (season == null || season.getId() == null) return List.of();
 
             List<SofaStandingsData.StandingGroupDTO> groups =
-                    sofaCrawlerService.fetchStandingTotal(query.leagueId(), season.getId(), page);
+                    sofaScoreClient.fetchStandingTotal(query.leagueId(), season.getId(), page);
             if (groups == null) return List.of();
 
             return groups.stream()
@@ -55,7 +55,7 @@ public class SofaScoreTeamProvider extends AbstractSofaScoreProvider implements 
 
     private SofaSeasonData.SeasonDTO findSeason(Long tournamentId, String year, Page page) {
         List<SofaSeasonData.SeasonDTO> seasons =
-                sofaCrawlerService.fetchSeasonByTournamentId(tournamentId, page);
+                sofaScoreClient.fetchSeasonByTournamentId(tournamentId, page);
         if (seasons == null) return null;
         return seasons.stream()
                 .filter(Objects::nonNull)
