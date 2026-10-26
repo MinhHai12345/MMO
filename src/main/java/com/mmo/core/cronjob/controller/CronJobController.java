@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RequestBody;
+
+import java.util.Map;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -61,7 +64,9 @@ public class CronJobController {
      */
     @PostMapping("/{id}/start")
     @ResponseStatus(code = HttpStatus.OK)
-    public CronJob start(@PathVariable("id") final Long jobId) {
-        return cronJobService.startJobNow(jobId);
+    public CronJob start(
+            @PathVariable("id") final Long jobId,
+            @RequestBody(required = false) Map<String, String> parameters) {
+        return cronJobService.startJobNow(jobId, parameters);
     }
 }
