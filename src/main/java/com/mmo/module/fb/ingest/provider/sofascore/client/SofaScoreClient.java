@@ -1,14 +1,16 @@
 package com.mmo.module.fb.ingest.provider.sofascore.client;
 
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
+
 import com.microsoft.playwright.Page;
 import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaDailyMatchWrapper;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaMatchStatisticsData;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaMatchesData;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaOddsData;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaSeasonData;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaStandingsData;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaUniqueTournamentsData;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.StatisticsResponseDTO;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.MatchesResponseDTO;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.OddsResponseDTO;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SeasonsResponseDTO;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.StandingsResponseDTO;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.TournamentsResponseDTO;
 
 import java.util.List;
 import java.util.Map;
@@ -18,48 +20,48 @@ public interface SofaScoreClient {
     /**
      * Fetch all football tournaments
      */
-    List<SofaUniqueTournamentsData.UniqueTournamentDTO> fetchLeagues(Page page);
+    List<SofaScoreResponseDTO.UniqueTournamentDTO> fetchLeagues(Page page);
 
     /**
      * Fetch season by tournament id
      */
-    List<SofaSeasonData.SeasonDTO> fetchSeasonByTournamentId(Long sofaTournamentId, Page page);
+    List<SofaScoreResponseDTO.SeasonDTO> fetchSeasonByTournamentId(Long sofaTournamentId, Page page);
 
 
     /**
      * Fetch standing total by tournament id and season id
      */
-    List<SofaStandingsData.StandingGroupDTO> fetchStandingTotal(Long sofaTournamentId, Long sofaSeasonId, Page page);
+    List<SofaScoreResponseDTO.StandingGroupDTO> fetchStandingTotal(Long sofaTournamentId, Long sofaSeasonId, Page page);
 
     /**
      * Fetch Match by tournament id and season id and round
      */
-    List<SofaMatchesData.SofaEventDTO> fetchMatchesByRound(Long sofaTournamentId, Long sofaSeasonId, int round, Page page);
+    List<SofaScoreResponseDTO.EventDTO> fetchMatchesByRound(Long sofaTournamentId, Long sofaSeasonId, int round, Page page);
 
     /**
      * Get match Statistics by match id
      */
-    List<SofaMatchStatisticsData.PeriodStatisticsDTO> fetchMatchStatistics(Long sofaMatchId, Page page);
+    List<SofaScoreResponseDTO.PeriodStatisticsDTO> fetchMatchStatistics(Long sofaMatchId, Page page);
 
     /**
      * Get all match odds by today
      */
-    Map<Long, SofaOddsData.MatchOddDetailDTO> fetchDailyMatchOdds(Page page);
+    Map<Long, SofaScoreResponseDTO.MatchOddDetailDTO> fetchDailyMatchOdds(Page page);
 
     /**
      * Fetch Match Daily by tournament id
      */
-    List<SofaMatchesData.SofaEventDTO> fetchMatchesDailyByTournamentId(Long sofaTournamentId, Page page);
+    List<SofaScoreResponseDTO.EventDTO> fetchMatchesDailyByTournamentId(Long sofaTournamentId, Page page);
 
     /**
      * Fetch histories match by team id and index
      */
-    List<SofaMatchesData.SofaEventDTO> fetchHistoriesMatchesByTeamIdAndIndex(Team team, int index, Page page);
+    List<SofaScoreResponseDTO.EventDTO> fetchHistoriesMatchesByTeamIdAndIndex(Team team, int index, Page page);
 
     /**
      * Fetch Match By ID
      */
-    SofaMatchesData.SofaEventDTO fetchMatchById(Long sofaMatchId, Page page);
+    SofaScoreResponseDTO.EventDTO fetchMatchById(Long sofaMatchId, Page page);
 
     /**
      * Fetch Match Daily by tournament id

@@ -1,9 +1,11 @@
 package com.mmo.module.fb.ingest.provider.sofascore.mapper;
 
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
+
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaSeasonData;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaUniqueTournamentsData;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SeasonsResponseDTO;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.TournamentsResponseDTO;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -16,9 +18,9 @@ class SofaScoreLeagueMapperTest {
 
     @Test
     void mapsTournamentAndUsesNewestSeasonWhenCurrentFlagIsMissing() {
-        SofaUniqueTournamentsData.UniqueTournamentDTO tournament = tournament(17L, "Premier League");
-        SofaSeasonData.SeasonDTO newest = season(900L, "2026/2027", "2026", false);
-        SofaSeasonData.SeasonDTO previous = season(899L, "2025/2026", "2025", false);
+        SofaScoreResponseDTO.UniqueTournamentDTO tournament = tournament(17L, "Premier League");
+        SofaScoreResponseDTO.SeasonDTO newest = season(900L, "2026/2027", "2026", false);
+        SofaScoreResponseDTO.SeasonDTO previous = season(899L, "2025/2026", "2025", false);
 
         ProviderLeague mapped = mapper.toProviderLeague(tournament, List.of(newest, previous));
 
@@ -33,9 +35,9 @@ class SofaScoreLeagueMapperTest {
 
     @Test
     void preservesExplicitCurrentSeasonFlag() {
-        SofaUniqueTournamentsData.UniqueTournamentDTO tournament = tournament(17L, "Premier League");
-        SofaSeasonData.SeasonDTO older = season(899L, "2025/2026", "2025", false);
-        SofaSeasonData.SeasonDTO current = season(900L, "2026/2027", "2026", true);
+        SofaScoreResponseDTO.UniqueTournamentDTO tournament = tournament(17L, "Premier League");
+        SofaScoreResponseDTO.SeasonDTO older = season(899L, "2025/2026", "2025", false);
+        SofaScoreResponseDTO.SeasonDTO current = season(900L, "2026/2027", "2026", true);
 
         ProviderLeague mapped = mapper.toProviderLeague(tournament, List.of(older, current));
 
@@ -49,20 +51,11 @@ class SofaScoreLeagueMapperTest {
         assertNull(mapper.toProviderLeague(tournament(null, "Premier League"), List.of()));
     }
 
-    private SofaUniqueTournamentsData.UniqueTournamentDTO tournament(Long id, String name) {
-        SofaUniqueTournamentsData.UniqueTournamentDTO dto =
-                new SofaUniqueTournamentsData.UniqueTournamentDTO();
-        dto.setId(id);
-        dto.setName(name);
-        return dto;
+    private SofaScoreResponseDTO.UniqueTournamentDTO tournament(Long id, String name) {
+        return new SofaScoreResponseDTO.UniqueTournamentDTO(id, name, null, null, null, null, null);
     }
 
-    private SofaSeasonData.SeasonDTO season(Long id, String name, String year, boolean current) {
-        SofaSeasonData.SeasonDTO dto = new SofaSeasonData.SeasonDTO();
-        dto.setId(id);
-        dto.setName(name);
-        dto.setYear(year);
-        dto.setCurrent(current);
-        return dto;
+    private SofaScoreResponseDTO.SeasonDTO season(Long id, String name, String year, boolean current) {
+        return new SofaScoreResponseDTO.SeasonDTO(id, name, year, current);
     }
 }

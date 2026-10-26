@@ -1,9 +1,11 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
+
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.OddsQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaOddsData;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.OddsResponseDTO;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreOddsMapper;
 import com.mmo.module.fb.ingest.provider.spi.OddsProvider;
@@ -36,7 +38,7 @@ public class SofaScoreOddsProvider extends AbstractSofaScoreProvider implements 
         }
 
         return withPage(page -> {
-            Map<Long, SofaOddsData.MatchOddDetailDTO> allOdds =
+            Map<Long, SofaScoreResponseDTO.MatchOddDetailDTO> allOdds =
                     sofaScoreClient.fetchDailyMatchOdds(page);
             if (allOdds == null) return List.of();
             return mapper.toProviderOdds(allOdds.get(eventId));

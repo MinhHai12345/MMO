@@ -1,9 +1,11 @@
 package com.mmo.module.fb.ingest.provider.sofascore.mapper;
 
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
+
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaSeasonData;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaUniqueTournamentsData;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SeasonsResponseDTO;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.TournamentsResponseDTO;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -17,23 +19,23 @@ public class SofaScoreLeagueMapper {
 
     private static final Pattern SEASON_START_YEAR = Pattern.compile("(20\\d{2})");
 
-    public ProviderLeague toProviderLeague(SofaUniqueTournamentsData.UniqueTournamentDTO tournament,
-                                           List<SofaSeasonData.SeasonDTO> sourceSeasons) {
+    public ProviderLeague toProviderLeague(SofaScoreResponseDTO.UniqueTournamentDTO tournament,
+                                           List<SofaScoreResponseDTO.SeasonDTO> sourceSeasons) {
         if (tournament == null || tournament.getId() == null
                 || tournament.getName() == null || tournament.getName().isBlank()) {
             return null;
         }
 
-        List<SofaSeasonData.SeasonDTO> validSeasons = sourceSeasons == null ? List.of()
+        List<SofaScoreResponseDTO.SeasonDTO> validSeasons = sourceSeasons == null ? List.of()
                 : sourceSeasons.stream()
                     .filter(Objects::nonNull)
                     .filter(season -> season.getId() != null)
                     .toList();
-        boolean hasCurrentSeason = validSeasons.stream().anyMatch(SofaSeasonData.SeasonDTO::isCurrent);
+        boolean hasCurrentSeason = validSeasons.stream().anyMatch(SofaScoreResponseDTO.SeasonDTO::isCurrent);
 
         List<ProviderSeason> seasons = new ArrayList<>(validSeasons.size());
         for (int index = 0; index < validSeasons.size(); index++) {
-            SofaSeasonData.SeasonDTO season = validSeasons.get(index);
+            SofaScoreResponseDTO.SeasonDTO season = validSeasons.get(index);
             String year = normalizeSeasonYear(season);
             if (year == null) {
                 continue;
@@ -49,7 +51,7 @@ public class SofaScoreLeagueMapper {
                 country, null, List.copyOf(seasons));
     }
 
-    public ProviderSeason toProviderSeason(SofaSeasonData.SeasonDTO season) {
+    public ProviderSeason toProviderSeason(SofaScoreResponseDTO.SeasonDTO season) {
         if (season == null || season.getId() == null) {
             return null;
         }
@@ -60,7 +62,7 @@ public class SofaScoreLeagueMapper {
         return new ProviderSeason(season.getId().toString(), year, season.isCurrent(), null, null);
     }
 
-    private String normalizeSeasonYear(SofaSeasonData.SeasonDTO season) {
+    private String normalizeSeasonYear(SofaScoreResponseDTO.SeasonDTO season) {
         if (season.getYear() != null && !season.getYear().isBlank()) {
             Matcher matcher = SEASON_START_YEAR.matcher(season.getYear());
             if (matcher.find()) {
