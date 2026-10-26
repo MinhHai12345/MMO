@@ -1,6 +1,6 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.*;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
@@ -30,17 +30,17 @@ public class SofaScoreStandingsProvider extends AbstractSofaScoreProvider implem
     public List<ProviderStanding> fetchStandings(StandingsQuery query) {
         if (query == null || query.leagueId() == null) return List.of();
         return withPage(page -> {
-            List<SofaScoreResponseDTO.SeasonDTO> seasons =
+            List<SeasonDTO> seasons =
                     sofaScoreClient.fetchSeasonByTournamentId(query.leagueId(), page);
             if (seasons == null) return List.of();
-            SofaScoreResponseDTO.SeasonDTO season = seasons.stream()
+            SeasonDTO season = seasons.stream()
                     .filter(Objects::nonNull)
                     .filter(item -> query.season() == null || query.season().equals(item.year())
                                     || query.season().equals(item.name()))
                     .findFirst().orElse(null);
             if (season == null || season.id() == null) return List.of();
 
-            List<SofaScoreResponseDTO.StandingGroupDTO> groups =
+            List<StandingGroupDTO> groups =
                     sofaScoreClient.fetchStandingTotal(query.leagueId(), season.id(), page);
             return mapper.toProviderStandings(groups);
         });

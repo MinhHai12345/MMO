@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.SeasonDTO;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.UniqueTournamentDTO;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
@@ -28,7 +29,7 @@ public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implement
     @Override
     public List<ProviderLeague> fetchLeagues(List<Long> externalLeagueIds) {
         return withPage(page -> {
-            List<SofaScoreResponseDTO.UniqueTournamentDTO> tournaments =
+            List<UniqueTournamentDTO> tournaments =
                     sofaScoreClient.fetchLeagues(page);
             if (tournaments == null) return List.of();
 
@@ -38,7 +39,7 @@ public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implement
                     .filter(tournament -> externalLeagueIds == null || externalLeagueIds.isEmpty()
                                           || externalLeagueIds.contains(tournament.id()))
                     .map(tournament -> {
-                        List<SofaScoreResponseDTO.SeasonDTO> seasons =
+                        List<SeasonDTO> seasons =
                                 sofaScoreClient.fetchSeasonByTournamentId(tournament.id(), page);
                         return mapper.toProviderLeague(tournament, seasons);
                     })

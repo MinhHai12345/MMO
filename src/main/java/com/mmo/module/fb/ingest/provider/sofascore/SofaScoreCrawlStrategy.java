@@ -1,8 +1,10 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.GroupDTO;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.PeriodStatisticsDTO;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.StatisticItemDTO;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchAdvancedStats;
 import com.mmo.module.fb.match.entity.MatchExternalId;
@@ -10,6 +12,7 @@ import com.mmo.module.fb.match.enums.MatchStatus;
 import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
 import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.match.repository.MatchRepository;
+import com.mmo.module.fb.team.entity.Team;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -68,7 +71,7 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
                         return Collections.emptyList();
                     }
                     try {
-                        List<SofaScoreResponseDTO.PeriodStatisticsDTO> statistics =
+                        List<PeriodStatisticsDTO> statistics =
                                 sofaScoreClient.fetchMatchStatistics(
                                         Long.valueOf(externalId.get().getExternalId()), page);
                         return statistics == null ? Collections.emptyList() : statistics;
@@ -82,7 +85,7 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
     }
 
     private void persistMatchStatistics(Match match,
-                                       List<SofaScoreResponseDTO.PeriodStatisticsDTO> periods) {
+                                        List<PeriodStatisticsDTO> periods) {
         if (match == null) {
             return;
         }
@@ -92,20 +95,20 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
             return;
         }
 
-        List<SofaScoreResponseDTO.StatisticItemDTO> items = periods.stream()
+        List<StatisticItemDTO> items = periods.stream()
                 .filter(Objects::nonNull)
                 .filter(period -> "ALL".equalsIgnoreCase(period.period()))
                 .findFirst()
-                .map(SofaScoreResponseDTO.PeriodStatisticsDTO::groups)
+                .map(PeriodStatisticsDTO::groups)
                 .orElseGet(() -> periods.stream()
                         .filter(Objects::nonNull)
                         .filter(period -> CollectionUtils.isNotEmpty(period.groups()))
                         .findFirst()
-                        .map(SofaScoreResponseDTO.PeriodStatisticsDTO::groups)
+                        .map(PeriodStatisticsDTO::groups)
                         .orElse(Collections.emptyList()))
                 .stream()
                 .filter(Objects::nonNull)
-                .map(SofaScoreResponseDTO.GroupDTO::statisticsItems)
+                .map(GroupDTO::statisticsItems)
                 .filter(CollectionUtils::isNotEmpty)
                 .flatMap(List::stream)
                 .filter(Objects::nonNull)
@@ -119,12 +122,12 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
         BigDecimal awayXg = statisticValue(items, false, "expectedGoals", "xg");
         boolean matchChanged = false;
         if (homeXg != null && (match.getHomeXG() == null
-                || Double.compare(homeXg.doubleValue(), match.getHomeXG()) != 0)) {
+                               || Double.compare(homeXg.doubleValue(), match.getHomeXG()) != 0)) {
             match.setHomeXG(homeXg.doubleValue());
             matchChanged = true;
         }
         if (awayXg != null && (match.getAwayXG() == null
-                || Double.compare(awayXg.doubleValue(), match.getAwayXG()) != 0)) {
+                               || Double.compare(awayXg.doubleValue(), match.getAwayXG()) != 0)) {
             match.setAwayXG(awayXg.doubleValue());
             matchChanged = true;
         }
@@ -150,31 +153,30 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
         }
     }
 
-    private MatchAdvancedStats upsertTeamStatistics(Match match,
-                                                     com.mmo.module.fb.team.entity.Team team,
-                                                     List<SofaScoreResponseDTO.StatisticItemDTO> items,
-                                                     boolean homeSide) {
+    private MatchAdvancedStats upsertTeamStatistics(Match match, Team team,
+                                                    List<StatisticItemDTO> items,
+                                                    boolean homeSide) {
         MatchAdvancedStats stats = matchAdvancedStatsRepository
                 .findByMatchIdAndTeamId(match.getId(), team.getId())
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
 
-        setDecimalIfPresent(items, homeSide, value -> stats.setPpda(value),
+        setDecimalIfPresent(items, homeSide, stats::setPpda,
                 "ppda", "opponentHalfPressuresPerDefensiveAction");
-        setIntegerIfPresent(items, homeSide, value -> stats.setPpdaAtt(value), "ppdaAtt");
-        setIntegerIfPresent(items, homeSide, value -> stats.setPpdaDef(value), "ppdaDef");
-        setDecimalIfPresent(items, homeSide, value -> stats.setFieldTilt(value), "fieldTilt");
-        setDecimalIfPresent(items, homeSide, value -> stats.setXgChain(value), "xgChain");
-        setDecimalIfPresent(items, homeSide, value -> stats.setXgBuildup(value), "xgBuildup");
-        setDecimalIfPresent(items, homeSide, value -> stats.setPossession(value), "ballPossession", "possession");
-        setIntegerIfPresent(items, homeSide, value -> stats.setDeepCompletions(value), "deepCompletions");
-        setIntegerIfPresent(items, homeSide, value -> stats.setFinalThirdEntries(value), "finalThirdEntries");
-        setIntegerIfPresent(items, homeSide, value -> stats.setShotsFromBox(value),
+        setIntegerIfPresent(items, homeSide, stats::setPpdaAtt, "ppdaAtt");
+        setIntegerIfPresent(items, homeSide, stats::setPpdaDef, "ppdaDef");
+        setDecimalIfPresent(items, homeSide, stats::setFieldTilt, "fieldTilt");
+        setDecimalIfPresent(items, homeSide, stats::setXgChain, "xgChain");
+        setDecimalIfPresent(items, homeSide, stats::setXgBuildup, "xgBuildup");
+        setDecimalIfPresent(items, homeSide, stats::setPossession, "ballPossession", "possession");
+        setIntegerIfPresent(items, homeSide, stats::setDeepCompletions, "deepCompletions");
+        setIntegerIfPresent(items, homeSide, stats::setFinalThirdEntries, "finalThirdEntries");
+        setIntegerIfPresent(items, homeSide, stats::setShotsFromBox,
                 "shotsInsideBox", "shotsFromInsideTheBox", "shotsFromBox");
-        setIntegerIfPresent(items, homeSide, value -> stats.setShotsOutsideBox(value),
+        setIntegerIfPresent(items, homeSide, stats::setShotsOutsideBox,
                 "shotsOutsideBox", "shotsFromOutsideTheBox");
-        setDecimalIfPresent(items, homeSide, value -> stats.setSetPieceXg(value),
+        setDecimalIfPresent(items, homeSide, stats::setSetPieceXg,
                 "setPieceXg", "setPieceExpectedGoals");
-        setDecimalIfPresent(items, homeSide, value -> stats.setCounterAttackXg(value),
+        setDecimalIfPresent(items, homeSide, stats::setCounterAttackXg,
                 "counterAttackXg", "counterAttackExpectedGoals");
         setIntegerIfPresent(items, homeSide, stats::setTotalShots, "totalShots", "shotsTotal", "totalShotsAttempted");
         setIntegerIfPresent(items, homeSide, stats::setShotsOnTarget, "shotsOnTarget", "shotsOnGoal", "shotsOnTargetTotal");
@@ -198,21 +200,21 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
 
     private boolean hasAdvancedMetrics(MatchAdvancedStats stats) {
         return stats.getPpda() != null || stats.getPpdaAtt() != null || stats.getPpdaDef() != null
-                || stats.getFieldTilt() != null || stats.getXgChain() != null || stats.getXgBuildup() != null
-                || stats.getPossession() != null || stats.getDeepCompletions() != null
-                || stats.getFinalThirdEntries() != null || stats.getShotsFromBox() != null
-                || stats.getShotsOutsideBox() != null || stats.getSetPieceXg() != null
-                || stats.getCounterAttackXg() != null || stats.getTotalShots() != null
-                || stats.getShotsOnTarget() != null || stats.getShotsOffTarget() != null
-                || stats.getBlockedShots() != null || stats.getCornerKicks() != null
-                || stats.getFouls() != null || stats.getYellowCards() != null
-                || stats.getRedCards() != null || stats.getOffsides() != null
-                || stats.getTotalPasses() != null || stats.getAccuratePasses() != null
-                || stats.getPassAccuracy() != null || stats.getGoalkeeperSaves() != null
-                || stats.getBigChancesCreated() != null || stats.getBigChancesMissed() != null;
+               || stats.getFieldTilt() != null || stats.getXgChain() != null || stats.getXgBuildup() != null
+               || stats.getPossession() != null || stats.getDeepCompletions() != null
+               || stats.getFinalThirdEntries() != null || stats.getShotsFromBox() != null
+               || stats.getShotsOutsideBox() != null || stats.getSetPieceXg() != null
+               || stats.getCounterAttackXg() != null || stats.getTotalShots() != null
+               || stats.getShotsOnTarget() != null || stats.getShotsOffTarget() != null
+               || stats.getBlockedShots() != null || stats.getCornerKicks() != null
+               || stats.getFouls() != null || stats.getYellowCards() != null
+               || stats.getRedCards() != null || stats.getOffsides() != null
+               || stats.getTotalPasses() != null || stats.getAccuratePasses() != null
+               || stats.getPassAccuracy() != null || stats.getGoalkeeperSaves() != null
+               || stats.getBigChancesCreated() != null || stats.getBigChancesMissed() != null;
     }
 
-    private void setDecimalIfPresent(List<SofaScoreResponseDTO.StatisticItemDTO> items,
+    private void setDecimalIfPresent(List<StatisticItemDTO> items,
                                      boolean homeSide,
                                      java.util.function.Consumer<BigDecimal> setter,
                                      String... aliases) {
@@ -222,7 +224,7 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
         }
     }
 
-    private void setIntegerIfPresent(List<SofaScoreResponseDTO.StatisticItemDTO> items,
+    private void setIntegerIfPresent(List<StatisticItemDTO> items,
                                      boolean homeSide,
                                      java.util.function.Consumer<Integer> setter,
                                      String... aliases) {
@@ -232,14 +234,14 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
         }
     }
 
-    private BigDecimal statisticValue(List<SofaScoreResponseDTO.StatisticItemDTO> items,
+    private BigDecimal statisticValue(List<StatisticItemDTO> items,
                                       boolean homeSide,
                                       String... aliases) {
         Set<String> normalizedAliases = java.util.Arrays.stream(aliases)
                 .map(this::normalizeStatisticKey)
                 .collect(Collectors.toSet());
 
-        for (SofaScoreResponseDTO.StatisticItemDTO item : items) {
+        for (StatisticItemDTO item : items) {
             String key = normalizeStatisticKey(item.key());
             String name = normalizeStatisticKey(item.name());
             if (!normalizedAliases.contains(key) && !normalizedAliases.contains(name)) {

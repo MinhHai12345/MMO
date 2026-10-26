@@ -1,6 +1,6 @@
 package com.mmo.module.fb.ingest.provider.sofascore.mapper;
 
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.*;
 
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import org.springframework.stereotype.Component;
@@ -16,7 +16,7 @@ public class SofaScoreOddsMapper {
 
     private static final String AGGREGATED_SOURCE = "SofaScore Aggregated";
 
-    public List<ProviderOdds> toProviderOdds(SofaScoreResponseDTO.MatchOddDetailDTO market) {
+    public List<ProviderOdds> toProviderOdds(MatchOddDetailDTO market) {
         if (market == null || market.choices() == null) return List.of();
         String marketName = normalizeMarket(market.marketName());
         if (marketName == null) return List.of();

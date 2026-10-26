@@ -1,6 +1,6 @@
 package com.mmo.module.fb.ingest.provider.sofascore.mapper;
 
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.EventDTO;
 
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import org.springframework.stereotype.Component;
@@ -11,7 +11,7 @@ import java.util.Locale;
 @Component
 public class SofaScoreFixtureMapper {
 
-    public ProviderFixture toProviderFixture(SofaScoreResponseDTO.EventDTO event) {
+    public ProviderFixture toProviderFixture(EventDTO event) {
         if (event == null || event.id() == null || event.homeTeam() == null
                 || event.awayTeam() == null || event.homeTeam().id() == null
                 || event.awayTeam().id() == null) return null;
