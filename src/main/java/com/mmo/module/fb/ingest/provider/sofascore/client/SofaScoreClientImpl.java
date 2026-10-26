@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.service.impl;
+package com.mmo.module.fb.ingest.provider.sofascore.client;
 
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
@@ -18,9 +18,9 @@ import com.mmo.module.fb.ingest.provider.model.sofa.SofaOddsData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaStandingsData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaUniqueTournamentsData;
-import com.mmo.module.fb.ingest.provider.service.AbstractCrawlerService;
-import com.mmo.module.fb.ingest.provider.service.SofaCrawlerService;
-import com.mmo.module.fb.ingest.provider.sofascore.SofaScoreFetchException;
+import com.mmo.module.fb.ingest.provider.sofascore.client.AbstractSofaScoreClient;
+import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
+import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreFetchException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,7 +34,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SofaCrawlerServiceImpl extends AbstractCrawlerService implements SofaCrawlerService {
+public class SofaScoreClientImpl extends AbstractSofaScoreClient implements SofaScoreClient {
     private final AppProperties appProperties;
     private final TeamExternalIdRepository teamExternalIdRepository;
 

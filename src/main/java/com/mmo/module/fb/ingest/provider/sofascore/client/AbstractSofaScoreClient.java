@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.service;
+package com.mmo.module.fb.ingest.provider.sofascore.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microsoft.playwright.Page;
@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 @Slf4j
-public abstract class AbstractCrawlerService {
+public abstract class AbstractSofaScoreClient {
     private final Random random = new Random();
     protected final ObjectMapper objectMapper = new ObjectMapper();
     private final AtomicInteger requestCounter = new AtomicInteger(0);

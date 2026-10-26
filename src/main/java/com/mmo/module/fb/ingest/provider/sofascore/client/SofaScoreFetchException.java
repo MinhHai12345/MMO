@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.sofascore;
+package com.mmo.module.fb.ingest.provider.sofascore.client;
 
 /**
  * Signals that a required SofaScore endpoint did not return a parseable response.
