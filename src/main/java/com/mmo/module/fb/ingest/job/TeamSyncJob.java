@@ -3,6 +3,7 @@ package com.mmo.module.fb.ingest.job;
 import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.job.AbstractJob;
 import com.mmo.module.fb.ingest.service.TeamIngestionService;
+import com.mmo.module.fb.ingest.enums.Provider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.DisallowConcurrentExecution;
@@ -19,8 +20,13 @@ public class TeamSyncJob extends AbstractJob<CronJob> {
 
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
-        log.info("Starting team synchronization");
-        teamIngestionService.syncTeams();
-        log.info("Team synchronization completed");
+        Provider provider = IngestionJobParameters.provider(context, "team");
+        log.info("Starting team synchronization; providerOverride={}", provider);
+        if (provider == null) {
+            teamIngestionService.syncTeams();
+        } else {
+            teamIngestionService.syncTeamsForProvider(provider);
+        }
+        log.info("Team synchronization completed; providerOverride={}", provider);
     }
 }

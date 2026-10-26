@@ -4,6 +4,8 @@ import com.mmo.core.cronjob.entity.CronJob;
 import org.quartz.SchedulerException;
 import org.quartz.SchedulerMetaData;
 
+import java.util.Map;
+
 public interface CronJobService {
 
     /**
@@ -44,6 +46,9 @@ public interface CronJobService {
      * @return CronJob
      */
     CronJob startJobNow(Long jobId);
+
+    /** Trigger a job immediately with one-execution parameters. */
+    CronJob startJobNow(Long jobId, Map<String, String> parameters);
 
     /**
      * Save job

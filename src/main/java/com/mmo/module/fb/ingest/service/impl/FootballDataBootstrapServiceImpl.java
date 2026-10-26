@@ -5,6 +5,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.service.FixtureIngestionService;
 import com.mmo.module.fb.ingest.service.FootballDataBootstrapService;
 import com.mmo.module.fb.ingest.service.LeagueIngestionService;
+import com.mmo.module.fb.ingest.service.ProviderOverrides;
 import com.mmo.module.fb.ingest.service.StandingsIngestionService;
 import com.mmo.module.fb.ingest.service.TeamIngestionService;
 import lombok.RequiredArgsConstructor;
@@ -27,14 +28,25 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
 
     @Override
     public void syncCoreData() {
-        AppProperties.Providers providers = appProperties.getIngestion().getProviders();
-        validateProvider(providers.getLeague(), true);
-        validateProvider(providers.getTeam(), false);
-        validateProvider(providers.getFixture(), false);
-        validateProvider(providers.getStandings(), false);
+        syncCoreData(ProviderOverrides.defaults());
+    }
+
+    @Override
+    public void syncCoreData(ProviderOverrides overrides) {
+        overrides = overrides == null ? ProviderOverrides.defaults() : overrides;
+        AppProperties.Providers defaults = appProperties.getIngestion().getProviders();
+        Provider leagueProvider = overrides.league() != null ? overrides.league() : defaults.getLeague();
+        Provider teamProvider = overrides.team() != null ? overrides.team() : defaults.getTeam();
+        Provider fixtureProvider = overrides.fixture() != null ? overrides.fixture() : defaults.getFixture();
+        Provider standingsProvider = overrides.standings() != null ? overrides.standings() : defaults.getStandings();
+
+        validateProvider(leagueProvider, true);
+        validateProvider(teamProvider, false);
+        validateProvider(fixtureProvider, false);
+        validateProvider(standingsProvider, false);
 
         AppProperties.FootballData footballData = appProperties.getFootballData();
-        if (providers.getFixture() == Provider.FOOTBALL_DATA && footballData != null
+        if (fixtureProvider == Provider.FOOTBALL_DATA && footballData != null
                 && footballData.getSeasons() != null && !footballData.getSeasons().isEmpty()) {
             log.info("Historical fixture backfill enabled for football-data.org seasons={}. "
                             + "Requests are paced by FootballDataClient; seasons unavailable to the subscription "
@@ -44,14 +56,14 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
             log.info("No explicit historical fixture backfill configured; fixture sync uses current seasons.");
         }
         log.info("Starting core-data bootstrap: league={}, team={}, fixture={}, standings={}",
-                providers.getLeague(), providers.getTeam(), providers.getFixture(), providers.getStandings());
+                leagueProvider, teamProvider, fixtureProvider, standingsProvider);
 
-        runStage("leagues", leagueIngestionService::syncLeagues);
-        runStage("teams", teamIngestionService::syncTeams);
+        runStage("leagues", () -> leagueIngestionService.syncLeaguesForProvider(leagueProvider));
+        runStage("teams", () -> teamIngestionService.syncTeamsForProvider(teamProvider));
         // Null date bounds import all fixtures for current seasons, or every configured season
         // when app.football-data.seasons is set. Persistence is idempotent via provider fixture IDs.
-        runStage("fixtures", () -> fixtureIngestionService.syncCurrentSeasonFixtures(null, null));
-        runStage("standings", standingsIngestionService::syncStandings);
+        runStage("fixtures", () -> fixtureIngestionService.syncFixturesForProvider(fixtureProvider, null, null));
+        runStage("standings", () -> standingsIngestionService.syncStandingsForProvider(standingsProvider));
 
         log.info("Core-data bootstrap completed. Stage status: leagues=COMPLETED, teams=COMPLETED, "
                 + "fixtures=COMPLETED, standings=COMPLETED. See per-stage counters for skipped/failed records.");
@@ -78,20 +90,20 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         if (provider == Provider.API_FOOTBALL) {
             AppProperties.ApiFootball config = appProperties.getApiFootball();
             if (config == null || !config.isEnabled()) {
-                throw new IllegalStateException("API-Football ingestion is disabled. Set app.api-football.enabled=true.");
+                throw new IllegalStateException("API-Football ingestion is disabled. Set app.ingestion.api-football.enabled=true.");
             }
             requireToken(config.getApiKey(), "API_FOOTBALL_API_KEY");
             if (leagueResource && (config.getLeagueIds() == null || config.getLeagueIds().isEmpty())) {
-                throw new IllegalStateException("Set API_FOOTBALL_LEAGUE_IDS to a comma-separated list of API-Football league IDs.");
+                throw new IllegalStateException("Set app.ingestion.api-football.league-ids to a comma-separated list of API-Football league IDs.");
             }
         } else if (provider == Provider.FOOTBALL_DATA) {
             AppProperties.FootballData config = appProperties.getFootballData();
             if (config == null || !config.isEnabled()) {
-                throw new IllegalStateException("football-data.org ingestion is disabled. Set FOOTBALL_DATA_ENABLED=true.");
+                throw new IllegalStateException("football-data.org ingestion is disabled. Set app.ingestion.football-data.enabled=true.");
             }
             requireToken(config.getApiKey(), "FOOTBALL_DATA_API_KEY");
             if (leagueResource && (config.getCompetitionIds() == null || config.getCompetitionIds().isEmpty())) {
-                throw new IllegalStateException("Set FOOTBALL_DATA_COMPETITION_IDS to numeric football-data.org competition IDs.");
+                throw new IllegalStateException("Set app.ingestion.football-data.competition-ids to numeric football-data.org competition IDs.");
             }
         }
     }

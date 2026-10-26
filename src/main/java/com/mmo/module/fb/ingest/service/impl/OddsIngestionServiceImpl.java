@@ -45,11 +45,19 @@ public class OddsIngestionServiceImpl implements OddsIngestionService {
      * Coordinates provider I/O and database work without holding a transaction open
      * while waiting for the upstream odds API.
      */
+    @Override
     public void syncUpcomingOdds() {
-        Provider selectedProvider = appProperties.getIngestion().getProviders().getOdds();
+        syncUpcomingOdds(appProperties.getIngestion().getProviders().getOdds());
+    }
+
+    @Override
+    public void syncUpcomingOdds(Provider selectedProvider) {
+        if (selectedProvider == null) {
+            throw new IllegalArgumentException("Odds provider must not be null");
+        }
         if (selectedProvider == Provider.API_FOOTBALL
                 && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
-            return;
+            throw new IllegalStateException("API-Football is disabled but was selected for odds ingestion");
         }
 
         Instant now = Instant.now();

@@ -11,6 +11,7 @@ import org.quartz.CronTrigger;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
 import org.quartz.JobKey;
+import org.quartz.JobDataMap;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.SchedulerMetaData;
@@ -25,6 +26,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.ZonedDateTime;
+import java.util.Map;
+import java.util.LinkedHashMap;
 
 @RequiredArgsConstructor
 @Service
@@ -108,6 +111,12 @@ public class CronJobServiceImpl implements CronJobService {
     @Transactional
     @Override
     public CronJob startJobNow(final Long jobId) {
+        return startJobNow(jobId, Map.of());
+    }
+
+    @Transactional
+    @Override
+    public CronJob startJobNow(final Long jobId, Map<String, String> parameters) {
         final CronJob cronJob = cronJobRepository.findById(jobId)
                 .orElseThrow(() -> new RuntimeException(String.format(NO_JOB_MSG, jobId)));
 
@@ -130,7 +139,14 @@ public class CronJobServiceImpl implements CronJobService {
                                 cronJob.getJobName(), jobKey));
             }
 
-            scheduler.triggerJob(jobKey);
+            Map<String, String> safeParameters = parameters == null ? Map.of() : new LinkedHashMap<>(parameters);
+            safeParameters.keySet().removeIf(key -> key == null
+                    || !(key.equals("provider") || key.matches("provider\\.(league|team|fixture|standings|odds)")));
+            if (safeParameters.isEmpty()) {
+                scheduler.triggerJob(jobKey);
+            } else {
+                scheduler.triggerJob(jobKey, new JobDataMap(safeParameters));
+            }
             cronJob.setJobStatus(JobState.RUNNING);
             cronJobRepository.save(cronJob);
             LOGGER.info("Job {} is triggered for immediate execution.", jobKey);

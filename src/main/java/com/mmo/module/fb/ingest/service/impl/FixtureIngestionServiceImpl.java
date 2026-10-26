@@ -49,13 +49,11 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
     public void syncFixturesForProvider(Provider selectedProvider, LocalDate from, LocalDate to) {
         if (selectedProvider == Provider.FOOTBALL_DATA
                 && (appProperties.getFootballData() == null || !appProperties.getFootballData().isEnabled())) {
-            log.info("Skipping fixture ingestion because football-data.org is disabled");
-            return;
+            throw new IllegalStateException("football-data.org is disabled but was selected for fixture ingestion");
         }
         if (selectedProvider == Provider.API_FOOTBALL
                 && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
-            log.info("Skipping fixture ingestion because API-Football is disabled");
-            return;
+            throw new IllegalStateException("API-Football is disabled but was selected for fixture ingestion");
         }
         if (from != null && to != null && from.isAfter(to)) {
             throw new IllegalArgumentException("'from' must be before or equal to 'to'");

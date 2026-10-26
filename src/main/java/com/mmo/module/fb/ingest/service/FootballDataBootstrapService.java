@@ -5,4 +5,6 @@ package com.mmo.module.fb.ingest.service;
  */
 public interface FootballDataBootstrapService {
     void syncCoreData();
+
+    void syncCoreData(ProviderOverrides overrides);
 }
