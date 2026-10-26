@@ -20,6 +20,7 @@ import com.mmo.module.fb.league.repository.SeasonRepository;
 import com.mmo.module.fb.team.repository.TeamRepository;
 import com.mmo.module.fb.team.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.team.entity.Team;
+import com.mmo.module.fb.team.entity.TeamExternalId;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchStatisticsData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
@@ -151,7 +152,7 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
         executeStorePipeline(mappedLeagues, (league, page) -> {
             LeagueExternalId mapping = leagueExternalIdRepository
                     .findByLeagueIdAndProvider(league.getId(), Provider.SOFA_SCORE).orElse(null);
-            return mapping == null ? Collections.emptyList()
+            return mapping == null ? Collections.<SofaSeasonData.SeasonDTO>emptyList()
                     : sofaCrawlerService.fetchSeasonByTournamentId(Long.valueOf(mapping.getExternalId()), page);
         }, (league, seasonDtos) -> {
             if (CollectionUtils.isEmpty(seasonDtos)) {
@@ -211,7 +212,7 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
             Season season = seasonMapping.getSeason();
             LeagueExternalId leagueMapping = leagueExternalIdRepository
                     .findByLeagueIdAndProvider(season.getLeague().getId(), Provider.SOFA_SCORE).orElse(null);
-            if (leagueMapping == null) return Collections.emptyList();
+            if (leagueMapping == null) return Collections.<SofaStandingsData.StandingGroupDTO>emptyList();
             return sofaCrawlerService.fetchStandingTotal(Long.valueOf(leagueMapping.getExternalId()),
                     Long.valueOf(seasonMapping.getExternalId()), page);
         }, (seasonMapping, groups) -> {
@@ -271,7 +272,7 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
             LeagueExternalId leagueMapping = leagueExternalIdRepository
                     .findByLeagueIdAndProvider(seasonMapping.getSeason().getLeague().getId(), Provider.SOFA_SCORE)
                     .orElse(null);
-            if (leagueMapping == null) return Collections.emptyList();
+            if (leagueMapping == null) return Collections.<com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData.SofaEventDTO>emptyList();
 
             List<com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData.SofaEventDTO> events = new ArrayList<>();
             int emptyRounds = 0;
