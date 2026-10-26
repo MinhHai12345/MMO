@@ -33,18 +33,18 @@ public class SofaScoreTeamProvider extends AbstractSofaScoreProvider implements 
         if (query == null || query.leagueId() == null) return List.of();
         return withPage(page -> {
             SofaScoreResponseDTO.SeasonDTO season = findSeason(query.leagueId(), query.season(), page);
-            if (season == null || season.getId() == null) return List.of();
+            if (season == null || season.id() == null) return List.of();
 
             List<SofaScoreResponseDTO.StandingGroupDTO> groups =
-                    sofaScoreClient.fetchStandingTotal(query.leagueId(), season.getId(), page);
+                    sofaScoreClient.fetchStandingTotal(query.leagueId(), season.id(), page);
             if (groups == null) return List.of();
 
             return groups.stream()
                     .filter(Objects::nonNull)
-                    .filter(group -> group.getRows() != null)
-                    .flatMap(group -> group.getRows().stream())
+                    .filter(group -> group.rows() != null)
+                    .flatMap(group -> group.rows().stream())
                     .filter(Objects::nonNull)
-                    .map(SofaScoreResponseDTO.StandingRowDTO::getTeam)
+                    .map(SofaScoreResponseDTO.StandingRowDTO::team)
                     .map(mapper::toProviderTeam)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toMap(ProviderTeam::externalId, team -> team,
@@ -59,7 +59,7 @@ public class SofaScoreTeamProvider extends AbstractSofaScoreProvider implements 
         if (seasons == null) return null;
         return seasons.stream()
                 .filter(Objects::nonNull)
-                .filter(season -> year == null || year.equals(season.getYear()) || year.equals(season.getName()))
+                .filter(season -> year == null || year.equals(season.year()) || year.equals(season.name()))
                 .findFirst().orElse(null);
     }
 }
