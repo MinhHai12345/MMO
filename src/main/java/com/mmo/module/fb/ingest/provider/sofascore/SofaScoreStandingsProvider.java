@@ -1,11 +1,12 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.*;
-
+import com.microsoft.playwright.Page;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
 import com.mmo.module.fb.ingest.provider.model.StandingsQuery;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.SeasonDTO;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.StandingGroupDTO;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreStandingsMapper;
 import com.mmo.module.fb.ingest.provider.spi.StandingsProvider;
 import lombok.RequiredArgsConstructor;
@@ -28,20 +29,28 @@ public class SofaScoreStandingsProvider extends AbstractSofaScoreProvider implem
 
     @Override
     public List<ProviderStanding> fetchStandings(StandingsQuery query) {
-        if (query == null || query.leagueId() == null) return List.of();
+        if (query == null || query.leagueId() == null) {
+            return List.of();
+        }
         return withPage(page -> {
             List<SeasonDTO> seasons =
                     sofaScoreClient.fetchSeasonByTournamentId(query.leagueId(), page);
-            if (seasons == null) return List.of();
+            if (seasons == null || seasons.isEmpty()) {
+                throw new IllegalStateException("SofaScore returned no seasons for tournament " + query.leagueId());
+            }
             SeasonDTO season = seasons.stream()
                     .filter(Objects::nonNull)
-                    .filter(item -> query.season() == null || query.season().equals(item.year())
-                                    || query.season().equals(item.name()))
-                    .findFirst().orElse(null);
-            if (season == null || season.id() == null) return List.of();
+                    .filter(item -> SofaScoreSeasonMatcher.matches(query.season(), item))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("SofaScore season '" + query.season()
+                            + "' was not found for tournament " + query.leagueId()));
 
             List<StandingGroupDTO> groups =
                     sofaScoreClient.fetchStandingTotal(query.leagueId(), season.id(), page);
+            if (groups == null || groups.isEmpty()) {
+                throw new IllegalStateException("SofaScore returned no standings for tournament "
+                        + query.leagueId() + " season " + season.id());
+            }
             return mapper.toProviderStandings(groups);
         });
     }
