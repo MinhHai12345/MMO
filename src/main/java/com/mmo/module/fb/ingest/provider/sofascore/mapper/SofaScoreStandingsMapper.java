@@ -1,7 +1,8 @@
 package com.mmo.module.fb.ingest.provider.sofascore.mapper;
 
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
+
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaStandingsData;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -10,7 +11,7 @@ import java.util.Objects;
 @Component
 public class SofaScoreStandingsMapper {
 
-    public List<ProviderStanding> toProviderStandings(List<SofaStandingsData.StandingGroupDTO> groups) {
+    public List<ProviderStanding> toProviderStandings(List<SofaScoreResponseDTO.StandingGroupDTO> groups) {
         if (groups == null) return List.of();
         return groups.stream()
                 .filter(Objects::nonNull)

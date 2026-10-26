@@ -1,11 +1,11 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
+
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreFixtureMapper;
 import com.mmo.module.fb.ingest.provider.spi.FixtureProvider;
@@ -37,10 +37,10 @@ public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implemen
     public List<ProviderFixture> fetchFixtures(FixtureQuery query) {
         if (query == null || query.leagueId() == null) return List.of();
         return withPage(page -> {
-            List<SofaSeasonData.SeasonDTO> seasons =
+            List<SofaScoreResponseDTO.SeasonDTO> seasons =
                     sofaScoreClient.fetchSeasonByTournamentId(query.leagueId(), page);
             if (seasons == null) return List.of();
-            SofaSeasonData.SeasonDTO season = seasons.stream()
+            SofaScoreResponseDTO.SeasonDTO season = seasons.stream()
                     .filter(Objects::nonNull)
                     .filter(item -> query.season() == null || query.season().equals(item.getYear())
                                     || query.season().equals(item.getName()))
@@ -52,7 +52,7 @@ public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implemen
             int maxRounds = appProperties.getSync().getMaxRounds() > 0
                     ? appProperties.getSync().getMaxRounds() : 50;
             for (int round = 1; round <= maxRounds; round++) {
-                List<SofaMatchesData.SofaEventDTO> events =
+                List<SofaScoreResponseDTO.EventDTO> events =
                         sofaScoreClient.fetchMatchesByRound(query.leagueId(), season.getId(), round, page);
                 if (events == null || events.isEmpty()) {
                     emptyRounds++;

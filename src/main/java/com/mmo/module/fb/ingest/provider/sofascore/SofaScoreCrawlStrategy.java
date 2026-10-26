@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchStatisticsData;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchAdvancedStats;
@@ -68,7 +68,7 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
                         return Collections.emptyList();
                     }
                     try {
-                        List<SofaMatchStatisticsData.PeriodStatisticsDTO> statistics =
+                        List<SofaScoreResponseDTO.PeriodStatisticsDTO> statistics =
                                 sofaScoreClient.fetchMatchStatistics(
                                         Long.valueOf(externalId.get().getExternalId()), page);
                         return statistics == null ? Collections.emptyList() : statistics;
@@ -82,7 +82,7 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
     }
 
     private void persistMatchStatistics(Match match,
-                                       List<SofaMatchStatisticsData.PeriodStatisticsDTO> periods) {
+                                       List<SofaScoreResponseDTO.PeriodStatisticsDTO> periods) {
         if (match == null) {
             return;
         }
@@ -92,20 +92,20 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
             return;
         }
 
-        List<SofaMatchStatisticsData.StatisticItemDTO> items = periods.stream()
+        List<SofaScoreResponseDTO.StatisticItemDTO> items = periods.stream()
                 .filter(Objects::nonNull)
                 .filter(period -> "ALL".equalsIgnoreCase(period.getPeriod()))
                 .findFirst()
-                .map(SofaMatchStatisticsData.PeriodStatisticsDTO::getGroups)
+                .map(SofaScoreResponseDTO.PeriodStatisticsDTO::getGroups)
                 .orElseGet(() -> periods.stream()
                         .filter(Objects::nonNull)
                         .filter(period -> CollectionUtils.isNotEmpty(period.getGroups()))
                         .findFirst()
-                        .map(SofaMatchStatisticsData.PeriodStatisticsDTO::getGroups)
+                        .map(SofaScoreResponseDTO.PeriodStatisticsDTO::getGroups)
                         .orElse(Collections.emptyList()))
                 .stream()
                 .filter(Objects::nonNull)
-                .map(SofaMatchStatisticsData.GroupDTO::getStatisticsItems)
+                .map(SofaScoreResponseDTO.GroupDTO::getStatisticsItems)
                 .filter(CollectionUtils::isNotEmpty)
                 .flatMap(List::stream)
                 .filter(Objects::nonNull)
@@ -152,7 +152,7 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
 
     private MatchAdvancedStats upsertTeamStatistics(Match match,
                                                      com.mmo.module.fb.team.entity.Team team,
-                                                     List<SofaMatchStatisticsData.StatisticItemDTO> items,
+                                                     List<SofaScoreResponseDTO.StatisticItemDTO> items,
                                                      boolean homeSide) {
         MatchAdvancedStats stats = matchAdvancedStatsRepository
                 .findByMatchIdAndTeamId(match.getId(), team.getId())
@@ -212,7 +212,7 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
                 || stats.getBigChancesCreated() != null || stats.getBigChancesMissed() != null;
     }
 
-    private void setDecimalIfPresent(List<SofaMatchStatisticsData.StatisticItemDTO> items,
+    private void setDecimalIfPresent(List<SofaScoreResponseDTO.StatisticItemDTO> items,
                                      boolean homeSide,
                                      java.util.function.Consumer<BigDecimal> setter,
                                      String... aliases) {
@@ -222,7 +222,7 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
         }
     }
 
-    private void setIntegerIfPresent(List<SofaMatchStatisticsData.StatisticItemDTO> items,
+    private void setIntegerIfPresent(List<SofaScoreResponseDTO.StatisticItemDTO> items,
                                      boolean homeSide,
                                      java.util.function.Consumer<Integer> setter,
                                      String... aliases) {
@@ -232,14 +232,14 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
         }
     }
 
-    private BigDecimal statisticValue(List<SofaMatchStatisticsData.StatisticItemDTO> items,
+    private BigDecimal statisticValue(List<SofaScoreResponseDTO.StatisticItemDTO> items,
                                       boolean homeSide,
                                       String... aliases) {
         Set<String> normalizedAliases = java.util.Arrays.stream(aliases)
                 .map(this::normalizeStatisticKey)
                 .collect(Collectors.toSet());
 
-        for (SofaMatchStatisticsData.StatisticItemDTO item : items) {
+        for (SofaScoreResponseDTO.StatisticItemDTO item : items) {
             String key = normalizeStatisticKey(item.getKey());
             String name = normalizeStatisticKey(item.getName());
             if (!normalizedAliases.contains(key) && !normalizedAliases.contains(name)) {

@@ -1,11 +1,11 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
+
 import com.microsoft.playwright.Page;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.provider.model.TeamQuery;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
-import com.mmo.module.fb.ingest.provider.model.sofa.SofaStandingsData;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreTeamMapper;
 import com.mmo.module.fb.ingest.provider.spi.TeamProvider;
@@ -32,10 +32,10 @@ public class SofaScoreTeamProvider extends AbstractSofaScoreProvider implements 
     public List<ProviderTeam> fetchTeams(TeamQuery query) {
         if (query == null || query.leagueId() == null) return List.of();
         return withPage(page -> {
-            SofaSeasonData.SeasonDTO season = findSeason(query.leagueId(), query.season(), page);
+            SofaScoreResponseDTO.SeasonDTO season = findSeason(query.leagueId(), query.season(), page);
             if (season == null || season.getId() == null) return List.of();
 
-            List<SofaStandingsData.StandingGroupDTO> groups =
+            List<SofaScoreResponseDTO.StandingGroupDTO> groups =
                     sofaScoreClient.fetchStandingTotal(query.leagueId(), season.getId(), page);
             if (groups == null) return List.of();
 
@@ -44,7 +44,7 @@ public class SofaScoreTeamProvider extends AbstractSofaScoreProvider implements 
                     .filter(group -> group.getRows() != null)
                     .flatMap(group -> group.getRows().stream())
                     .filter(Objects::nonNull)
-                    .map(SofaStandingsData.StandingRowDTO::getTeam)
+                    .map(SofaScoreResponseDTO.StandingRowDTO::getTeam)
                     .map(mapper::toProviderTeam)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toMap(ProviderTeam::externalId, team -> team,
@@ -53,8 +53,8 @@ public class SofaScoreTeamProvider extends AbstractSofaScoreProvider implements 
         });
     }
 
-    private SofaSeasonData.SeasonDTO findSeason(Long tournamentId, String year, Page page) {
-        List<SofaSeasonData.SeasonDTO> seasons =
+    private SofaScoreResponseDTO.SeasonDTO findSeason(Long tournamentId, String year, Page page) {
+        List<SofaScoreResponseDTO.SeasonDTO> seasons =
                 sofaScoreClient.fetchSeasonByTournamentId(tournamentId, page);
         if (seasons == null) return null;
         return seasons.stream()
