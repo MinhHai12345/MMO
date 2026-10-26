@@ -144,7 +144,9 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
                     OR m.homeXG IS NULL
                     OR m.awayXG IS NULL
               )
-            ORDER BY m.matchTime DESC
+            ORDER BY CASE WHEN m.statisticsLastAttemptAt IS NULL THEN 0 ELSE 1 END ASC,
+                     m.statisticsLastAttemptAt ASC,
+                     m.matchTime DESC
             """)
     List<Match> findFinishedMatchesMissingAdvancedStats(@Param("status") MatchStatus status,
                                                        @Param("provider") Provider provider,
