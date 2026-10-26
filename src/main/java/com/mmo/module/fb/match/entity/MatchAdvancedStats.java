@@ -68,4 +68,55 @@ public class MatchAdvancedStats extends AbstractEntity {
 
     @Column(name = "counter_attack_xg", precision = 7, scale = 3)
     private BigDecimal counterAttackXg;
+
+    @Column(name = "total_shots")
+    private Integer totalShots;
+
+    @Column(name = "shots_on_target")
+    private Integer shotsOnTarget;
+
+    @Column(name = "shots_off_target")
+    private Integer shotsOffTarget;
+
+    @Column(name = "blocked_shots")
+    private Integer blockedShots;
+
+    @Column(name = "corner_kicks")
+    private Integer cornerKicks;
+
+    @Column(name = "fouls")
+    private Integer fouls;
+
+    @Column(name = "yellow_cards")
+    private Integer yellowCards;
+
+    @Column(name = "red_cards")
+    private Integer redCards;
+
+    @Column(name = "offsides")
+    private Integer offsides;
+
+    @Column(name = "total_passes")
+    private Integer totalPasses;
+
+    @Column(name = "accurate_passes")
+    private Integer accuratePasses;
+
+    @Column(name = "pass_accuracy", precision = 5, scale = 2)
+    private BigDecimal passAccuracy;
+
+    @Column(name = "goalkeeper_saves")
+    private Integer goalkeeperSaves;
+
+    @Column(name = "big_chances_created")
+    private Integer bigChancesCreated;
+
+    @Column(name = "big_chances_missed")
+    private Integer bigChancesMissed;
+
+    @Column(name = "statistics_provider", length = 32)
+    private String statisticsProvider;
+
+    @Column(name = "statistics_synced_at")
+    private java.time.Instant statisticsSyncedAt;
 }
