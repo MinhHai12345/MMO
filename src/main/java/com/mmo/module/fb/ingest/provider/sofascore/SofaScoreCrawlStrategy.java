@@ -18,9 +18,12 @@ import com.mmo.module.fb.match.repository.MatchRepository;
 import com.mmo.module.fb.league.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.league.repository.SeasonRepository;
 import com.mmo.module.fb.team.repository.TeamRepository;
+import com.mmo.module.fb.team.repository.TeamExternalIdRepository;
+import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchStatisticsData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData;
 import com.mmo.module.fb.ingest.provider.model.sofa.SofaSeasonData;
+import com.mmo.module.fb.ingest.provider.model.sofa.SofaStandingsData;
 import com.mmo.module.fb.ingest.provider.service.SofaCrawlerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,6 +54,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
     private final TeamRepository teamRepository;
+    private final TeamExternalIdRepository teamExternalIdRepository;
     private final MatchRepository matchRepository;
     private final com.mmo.core.converter.DynamicConverter dynamicConverter;
     private final LeagueRepository leagueRepository;
@@ -64,160 +68,324 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
 
     private static final Pattern NUMERIC_VALUE_PATTERN = Pattern.compile("-?\\d+(?:[.,]\\d+)?");
 
+    /**
+     * Bootstraps SofaScore tournament IDs onto the canonical league catalogue.
+     * Existing leagues are matched by slug/name before a new canonical league is created.
+     */
     public void syncLeagues() {
-        executeSimpleStorePipeline(
-                sofaCrawlerService::fetchLeagues,
-                tournaments -> {
-                    if (CollectionUtils.isEmpty(tournaments)) return;
+        executeSimpleStorePipeline(sofaCrawlerService::fetchLeagues, tournaments -> {
+            if (CollectionUtils.isEmpty(tournaments)) {
+                log.warn("SofaScore returned no tournaments; league bootstrap was skipped");
+                return;
+            }
 
-                    Set<String> existingSofaIds = leagueExternalIdRepository.findAll().stream()
-                            .filter(eid -> Provider.SOFA_SCORE.name().equals(eid.getProvider().name()))
-                            .map(LeagueExternalId::getExternalId)
-                            .collect(Collectors.toSet());
-
-//                    List<SofaSeasonData.TournamentDTO> newTournaments = tournaments.stream()
-//                            .filter(Objects::nonNull)
-//                            .filter(t -> !existingSofaIds.contains(String.valueOf(t.getId())))
-//                            .toList();
-
-//                    if (CollectionUtils.isNotEmpty(newTournaments)) {
-//                        List<League> leagues = dynamicConverter.convertAll(newTournaments, League.class);
-//                        List<League> savedLeagues = leagueRepository.saveAll(leagues);
-//
-//                        List<LeagueExternalId> externalIds = savedLeagues.stream()
-//                                .map(league -> LeagueExternalId.builder()
-//                                        .league(league)
-//                                        .provider(Provider.SOFA_SCORE)
-//                                        .externalId(String.valueOf(newTournaments.stream()
-//                                                .filter(t -> t.getName().equals(league.getName()))
-//                                                .findFirst()
-//                                                .orElseThrow()
-//                                                .getId()))
-//                                        .build())
-//                                .toList();
-//                        leagueExternalIdRepository.saveAll(externalIds);
-//                        log.info("✅ Đã lưu thành công {} giải đấu mới.", newTournaments.size());
-//                    }
+            int linked = 0;
+            int created = 0;
+            for (SofaSeasonData.TournamentDTO ignored : Collections.<SofaSeasonData.TournamentDTO>emptyList()) {
+                // Keeps the DTO types separate; the actual tournament DTO is handled below.
+            }
+            for (com.mmo.module.fb.ingest.provider.model.sofa.SofaUniqueTournamentsData.UniqueTournamentDTO dto : tournaments) {
+                if (dto == null || dto.getId() == null || dto.getName() == null || dto.getName().isBlank()) {
+                    continue;
                 }
-        );
+                String externalId = dto.getId().toString();
+                Optional<LeagueExternalId> existingMapping =
+                        leagueExternalIdRepository.findByProviderAndExternalId(Provider.SOFA_SCORE, externalId);
+                if (existingMapping.isPresent()) {
+                    continue;
+                }
+
+                String slug = dto.getSlug();
+                if (slug == null || slug.isBlank()) {
+                    slug = dto.getName().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-")
+                            .replaceAll("(^-|-$)", "");
+                }
+                final String leagueSlug = slug;
+                League league = leagueRepository.findAll().stream()
+                        .filter(candidate -> candidate.getSlug() != null
+                                && candidate.getSlug().equalsIgnoreCase(leagueSlug))
+                        .findFirst()
+                        .orElseGet(() -> leagueRepository.findAll().stream()
+                                .filter(candidate -> normalizeName(candidate.getName()).equals(normalizeName(dto.getName())))
+                                .findFirst().orElse(null));
+
+                if (league == null) {
+                    league = League.builder()
+                            .name(dto.getName())
+                            .slug(leagueSlug)
+                            .country(dto.getCategory() == null ? null : dto.getCategory().getName())
+                            .logoUrl(null)
+                            .popularityScore(BigDecimal.ZERO)
+                            .isActive(true)
+                            .build();
+                    league = leagueRepository.save(league);
+                    created++;
+                }
+                if (leagueExternalIdRepository.findByLeagueIdAndProvider(league.getId(), Provider.SOFA_SCORE).isEmpty()) {
+                    leagueExternalIdRepository.save(LeagueExternalId.builder()
+                            .league(league)
+                            .provider(Provider.SOFA_SCORE)
+                            .externalId(externalId)
+                            .build());
+                    linked++;
+                }
+            }
+            log.info("SofaScore league bootstrap completed: {} mappings created, {} canonical leagues created",
+                    linked, created);
+        });
     }
 
+    /**
+     * Links SofaScore seasons to the canonical league seasons. Missing league mappings are
+     * skipped instead of aborting the whole ingestion run.
+     */
     public void storeSeasons() {
-        List<League> activeLeagues = leagueRepository.findByIsActiveTrue();
-        Set<String> existingSofaSeasonIds = seasonExternalIdRepository.findAll().stream()
-                .filter(eid -> Provider.SOFA_SCORE.name().equals(eid.getProvider().name()))
-                .map(SeasonExternalId::getExternalId)
-                .collect(Collectors.toSet());
-        executeStorePipeline(
-                activeLeagues,
-                (league, page) -> {
-                    LeagueExternalId leagueExtId = leagueExternalIdRepository
-                            .findByLeagueIdAndProvider(league.getId(), Provider.SOFA_SCORE)
-                            .orElseThrow(() -> new RuntimeException("League external ID not found for SOFA_SCORE"));
-                    return sofaCrawlerService.fetchSeasonByTournamentId(Long.valueOf(leagueExtId.getExternalId()), page);
-                },
-                (league, seasonDTOS) -> {
-                    if (CollectionUtils.isEmpty(seasonDTOS)) return;
+        List<LeagueExternalId> mappings = leagueExternalIdRepository.findAllByProvider(Provider.SOFA_SCORE);
+        if (CollectionUtils.isEmpty(mappings)) {
+            log.warn("No SofaScore league mappings found. Run syncLeagues before storeSeasons.");
+            return;
+        }
 
-                    seasonDTOS.get(0).setCurrent(true);
-                    List<SofaSeasonData.SeasonDTO> newSeasons = seasonDTOS.stream()
-                            .filter(Objects::nonNull)
-                            .filter(season -> !existingSofaSeasonIds.contains(String.valueOf(season.getId())))
-                            .toList();
+        List<League> mappedLeagues = mappings.stream()
+                .map(LeagueExternalId::getLeague)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        executeStorePipeline(mappedLeagues, (league, page) -> {
+            LeagueExternalId mapping = leagueExternalIdRepository
+                    .findByLeagueIdAndProvider(league.getId(), Provider.SOFA_SCORE).orElse(null);
+            return mapping == null ? Collections.emptyList()
+                    : sofaCrawlerService.fetchSeasonByTournamentId(Long.valueOf(mapping.getExternalId()), page);
+        }, (league, seasonDtos) -> {
+            if (CollectionUtils.isEmpty(seasonDtos)) {
+                log.debug("No SofaScore seasons returned for league={}", league.getName());
+                return;
+            }
 
-                    if (CollectionUtils.isNotEmpty(newSeasons)) {
-                        List<Season> seasons = newSeasons.stream().map(seasonDTO -> {
-                            Season season = dynamicConverter.convert(seasonDTO, Season.class);
-                            season.setLeague(league);
-                            return season;
-                        }).toList();
+            for (SofaSeasonData.SeasonDTO dto : seasonDtos) {
+                if (dto == null || dto.getId() == null) continue;
+                String externalId = dto.getId().toString();
+                if (seasonExternalIdRepository.findByProviderAndExternalId(Provider.SOFA_SCORE, externalId).isPresent()) {
+                    continue;
+                }
 
-                        List<Season> savedSeasons = seasonRepository.saveAll(seasons);
+                String year = resolveSeasonYear(dto);
+                if (year == null || year.isBlank()) {
+                    log.warn("Skipping SofaScore season with no usable year for league={}", league.getName());
+                    continue;
+                }
 
-                        List<SeasonExternalId> externalIds = savedSeasons.stream()
-                                .map(season -> {
-                                    SofaSeasonData.SeasonDTO dto = newSeasons.stream()
-                                            .filter(s -> s.getName().equals(season.getYear()))
-                                            .findFirst()
-                                            .orElseThrow();
-                                    return SeasonExternalId.builder()
-                                            .season(season)
-                                            .provider(Provider.SOFA_SCORE)
-                                            .externalId(String.valueOf(dto.getId()))
-                                            .build();
-                                })
-                                .toList();
-                        seasonExternalIdRepository.saveAll(externalIds);
+                Season season = seasonRepository.findByLeague_IdAndYear(league.getId(), year).orElse(null);
+                if (season == null) {
+                    season = Season.builder()
+                            .league(league)
+                            .year(year)
+                            .isCurrent(dto.isCurrent())
+                            .build();
+                    season = seasonRepository.save(season);
+                } else if (dto.isCurrent() && !season.isCurrent()) {
+                    season.setCurrent(true);
+                    season = seasonRepository.save(season);
+                }
 
-                        existingSofaSeasonIds.addAll(externalIds.stream().map(SeasonExternalId::getExternalId).toList());
+                if (seasonExternalIdRepository.findBySeasonIdAndProvider(season.getId(), Provider.SOFA_SCORE).isEmpty()) {
+                    seasonExternalIdRepository.save(SeasonExternalId.builder()
+                            .season(season)
+                            .provider(Provider.SOFA_SCORE)
+                            .externalId(externalId)
+                            .build());
+                }
+            }
+        });
+    }
+
+    /**
+     * Seeds team external IDs from the season standings. Teams are matched by normalized
+     * name and only created when no canonical team exists.
+     */
+    public void syncTeams() {
+        List<SeasonExternalId> seasonMappings = seasonExternalIdRepository.findAll().stream()
+                .filter(mapping -> mapping.getProvider() == Provider.SOFA_SCORE)
+                .toList();
+        if (CollectionUtils.isEmpty(seasonMappings)) {
+            log.warn("No SofaScore season mappings found. Run storeSeasons before syncTeams.");
+            return;
+        }
+
+        executeStorePipeline(seasonMappings, (seasonMapping, page) -> {
+            Season season = seasonMapping.getSeason();
+            LeagueExternalId leagueMapping = leagueExternalIdRepository
+                    .findByLeagueIdAndProvider(season.getLeague().getId(), Provider.SOFA_SCORE).orElse(null);
+            if (leagueMapping == null) return Collections.emptyList();
+            return sofaCrawlerService.fetchStandingTotal(Long.valueOf(leagueMapping.getExternalId()),
+                    Long.valueOf(seasonMapping.getExternalId()), page);
+        }, (seasonMapping, groups) -> {
+            if (CollectionUtils.isEmpty(groups)) return;
+            for (SofaStandingsData.StandingGroupDTO group : groups) {
+                if (group == null || CollectionUtils.isEmpty(group.getRows())) continue;
+                for (SofaStandingsData.StandingRowDTO row : group.getRows()) {
+                    SofaStandingsData.TeamDTO dto = row == null ? null : row.getTeam();
+                    if (dto == null || dto.getId() == null || dto.getName() == null || dto.getName().isBlank()) continue;
+                    String externalId = dto.getId().toString();
+                    if (teamExternalIdRepository.findByProviderAndExternalId(Provider.SOFA_SCORE, externalId).isPresent()) continue;
+
+                    Team team = teamRepository.findByName(dto.getName()).orElseGet(() ->
+                            teamRepository.findAll().stream()
+                                    .filter(candidate -> normalizeName(candidate.getName()).equals(normalizeName(dto.getName())))
+                                    .findFirst().orElse(null));
+                    if (team == null) {
+                        String teamSlug = dto.getSlug();
+                        if (teamSlug == null || teamSlug.isBlank()) {
+                            teamSlug = dto.getName().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-")
+                                    .replaceAll("(^-|-$)", "");
+                        }
+                        team = teamRepository.save(Team.builder()
+                                .name(dto.getName())
+                                .shortName(dto.getShortName())
+                                .slug(teamSlug)
+                                .ranking(dto.getRanking())
+                                .isActive(true)
+                                .build());
+                    }
+                    if (teamExternalIdRepository.findByTeamIdAndProvider(team.getId(), Provider.SOFA_SCORE).isEmpty()) {
+                        teamExternalIdRepository.save(TeamExternalId.builder()
+                                .team(team)
+                                .provider(Provider.SOFA_SCORE)
+                                .externalId(externalId)
+                                .build());
                     }
                 }
-        );
+            }
+        });
     }
 
-    public void syncTeams() {
-//        List<League> activeLeagues = leagueRepository.findByActiveIsTrue();
-//        Set<Long> existingSofaTeamIds = teamRepository.findAll().stream()
-//                .map(it -> Long.valueOf(it.getExternalId()))
-//                .filter(Objects::nonNull)
-//                .collect(Collectors.toSet());
-//        executeStorePipeline(
-//                activeLeagues,
-//                (league, page) -> sofaCrawlerService.fetchStandingTotal(league.getSofaScoreId(),
-//                        league.getCurrentSeason().getSofaScoreId(), page),
-//                (league, standings) -> {
-//                    if (CollectionUtils.isEmpty(standings)) return;
-//
-//                    List<SofaStandingsData.TeamDTO> teamDTOS = standings.stream()
-//                            .filter(Objects::nonNull)
-//                            .map(SofaStandingsData.StandingGroupDTO::getRows)
-//                            .flatMap(List::stream)
-//                            .map(SofaStandingsData.StandingRowDTO::getTeam)
-//                            .filter(Objects::nonNull)
-//                            .filter(teamDTO -> !existingSofaTeamIds.contains(teamDTO.getId()))
-//                            .collect(Collectors.toMap(
-//                                    SofaStandingsData.TeamDTO::getId,
-//                                    team -> team,
-//                                    (existing, replacement) -> existing
-//                            )).values().stream().toList();
-//
-//                    if (CollectionUtils.isNotEmpty(teamDTOS)) {
-//                        List<Team> teams = dynamicConverter.convertAll(teamDTOS, Team.class);
-//                        teamRepository.saveAll(teams);
-//                        existingSofaTeamIds.addAll(teams.stream().map(it -> Long.valueOf(it.getExternalId())).collect(Collectors.toSet()));
-//                    }
-//                }
-//        );
-    }
-
+    /**
+     * Imports fixtures by season and round, matching canonical teams through SofaScore IDs.
+     * The external event mapping is the idempotency key for subsequent runs.
+     */
     public void storeMatches() {
-//        List<League> activeLeagues = leagueRepository.findByActiveIsTrue();
-//        Map<Long, Team> teamMap = getTeamMap();
-//        executeStorePipeline(
-//                activeLeagues,
-//                (league, page) -> {
-//                    java.util.List<SofaMatchesData.SofaEventDTO> allLeagueEvents = new java.util.ArrayList<>();
-//                    int emptyCount = 0;
-//                    for (int round = 1; round <= 50; round++) {
-//                        if (page.isClosed()) {
-//                            log.info("⚠️ Page bị đóng tại Round {} của giải {}. Khởi tạo lại...", round, league.getExternalId());
-//                        }
-//                        List<SofaMatchesData.SofaEventDTO> events = sofaCrawlerService.fetchMatchesByRound(league.getExternalId(), league.getCurrentSeason().getSofaScoreId(), round, page);
-//                        if (events.isEmpty()) {
-//                            emptyCount++;
-//                            if (emptyCount > 3 && round > 10) break;
-//                            continue;
-//                        }
-//                        emptyCount = 0;
-//                        allLeagueEvents.addAll(events);
-//                    }
-//                    return allLeagueEvents;
-//                },
-//                (league, allEvents) -> {
-//                    if (CollectionUtils.isEmpty(allEvents)) return;
-//                    saveMatches(allEvents, teamMap, league);
-//                }
-//        );
+        List<SeasonExternalId> seasons = seasonExternalIdRepository.findAll().stream()
+                .filter(mapping -> mapping.getProvider() == Provider.SOFA_SCORE)
+                .toList();
+        if (CollectionUtils.isEmpty(seasons)) {
+            log.warn("No SofaScore season mappings found. Run storeSeasons before storeMatches.");
+            return;
+        }
+
+        executeStorePipeline(seasons, (seasonMapping, page) -> {
+            LeagueExternalId leagueMapping = leagueExternalIdRepository
+                    .findByLeagueIdAndProvider(seasonMapping.getSeason().getLeague().getId(), Provider.SOFA_SCORE)
+                    .orElse(null);
+            if (leagueMapping == null) return Collections.emptyList();
+
+            List<com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData.SofaEventDTO> events = new ArrayList<>();
+            int emptyRounds = 0;
+            for (int round = 1; round <= 50; round++) {
+                List<com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData.SofaEventDTO> roundEvents =
+                        sofaCrawlerService.fetchMatchesByRound(Long.valueOf(leagueMapping.getExternalId()),
+                                Long.valueOf(seasonMapping.getExternalId()), round, page);
+                if (CollectionUtils.isEmpty(roundEvents)) {
+                    emptyRounds++;
+                    if (round > 10 && emptyRounds >= 3) break;
+                    continue;
+                }
+                emptyRounds = 0;
+                events.addAll(roundEvents);
+            }
+            return events;
+        }, (seasonMapping, events) -> {
+            if (CollectionUtils.isEmpty(events)) return;
+            int saved = 0;
+            for (com.mmo.module.fb.ingest.provider.model.sofa.SofaMatchesData.SofaEventDTO event : events) {
+                if (event == null || event.getId() == null || event.getStartTimestamp() == null
+                        || event.getHomeTeam() == null || event.getAwayTeam() == null
+                        || event.getHomeTeam().getId() == null || event.getAwayTeam().getId() == null) continue;
+
+                String externalId = event.getId().toString();
+                if (matchExternalIdRepository.findByProviderAndExternalId(Provider.SOFA_SCORE, externalId).isPresent()) {
+                    continue;
+                }
+                Team home = teamExternalIdRepository.findByProviderAndExternalId(
+                        Provider.SOFA_SCORE, event.getHomeTeam().getId().toString())
+                        .map(TeamExternalId::getTeam).orElse(null);
+                Team away = teamExternalIdRepository.findByProviderAndExternalId(
+                        Provider.SOFA_SCORE, event.getAwayTeam().getId().toString())
+                        .map(TeamExternalId::getTeam).orElse(null);
+                if (home == null || away == null) {
+                    log.debug("Skipping SofaScore event {} because a team mapping is missing", externalId);
+                    continue;
+                }
+
+                Instant kickoff = Instant.ofEpochSecond(event.getStartTimestamp());
+                List<Match> candidates = matchRepository.findFixtureCandidates(
+                        seasonMapping.getSeason().getId(), home.getId(), away.getId(),
+                        kickoff.minus(6, ChronoUnit.HOURS), kickoff.plus(6, ChronoUnit.HOURS));
+                Match match = candidates.stream().findFirst().orElse(null);
+                if (match == null) {
+                    match = Match.builder()
+                            .season(seasonMapping.getSeason())
+                            .homeTeam(home)
+                            .awayTeam(away)
+                            .matchTime(kickoff)
+                            .status(resolveMatchStatus(event.getStatus() == null ? null : event.getStatus().getType()))
+                            .homeScore(event.getHomeScore() == null ? null : event.getHomeScore().getCurrent())
+                            .awayScore(event.getAwayScore() == null ? null : event.getAwayScore().getCurrent())
+                            .roundInfo(event.getRoundInfo() == null || event.getRoundInfo().getRound() == null
+                                    ? null : "Round " + event.getRoundInfo().getRound())
+                            .build();
+                    match = matchRepository.save(match);
+                } else {
+                    if (event.getStatus() != null) match.setStatus(resolveMatchStatus(event.getStatus().getType()));
+                    if (event.getHomeScore() != null) match.setHomeScore(event.getHomeScore().getCurrent());
+                    if (event.getAwayScore() != null) match.setAwayScore(event.getAwayScore().getCurrent());
+                    match = matchRepository.save(match);
+                }
+                matchExternalIdRepository.save(MatchExternalId.builder()
+                        .match(match)
+                        .provider(Provider.SOFA_SCORE)
+                        .externalId(externalId)
+                        .build());
+                saved++;
+            }
+            log.info("SofaScore fixture import for season {}: {} new event mappings",
+                    seasonMapping.getSeason().getYear(), saved);
+        });
+    }
+
+    public void syncInitialDataIfRequired() {
+        if (!leagueExternalIdRepository.findAllByProvider(Provider.SOFA_SCORE).isEmpty()) {
+            log.info("SofaScore core mappings already exist; initial bootstrap is not required");
+            return;
+        }
+        log.info("No SofaScore core mappings found. Starting first-time SofaScore bootstrap.");
+        syncLeagues();
+        storeSeasons();
+        syncTeams();
+        storeMatches();
+        log.info("First-time SofaScore core bootstrap completed");
+    }
+
+    private String resolveSeasonYear(SofaSeasonData.SeasonDTO dto) {
+        if (dto.getYear() != null && !dto.getYear().isBlank()) return dto.getYear().trim();
+        if (dto.getName() == null || dto.getName().isBlank()) return null;
+        Matcher matcher = Pattern.compile("(20\\d{2})").matcher(dto.getName());
+        return matcher.find() ? matcher.group(1) : dto.getName().trim();
+    }
+
+    private MatchStatus resolveMatchStatus(String statusType) {
+        if (statusType == null) return MatchStatus.SCHEDULED;
+        return switch (statusType.toLowerCase(Locale.ROOT)) {
+            case "finished", "ended" -> MatchStatus.FINISHED;
+            case "inprogress", "live", "halftime" -> MatchStatus.LIVE;
+            case "postponed" -> MatchStatus.POSTPONED;
+            case "canceled", "cancelled" -> MatchStatus.CANCELLED;
+            default -> MatchStatus.SCHEDULED;
+        };
+    }
+
+    private String normalizeName(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]", "");
     }
 
     public void storeMatchStatistics() {
