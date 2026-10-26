@@ -159,6 +159,13 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
                 log.debug("No SofaScore seasons returned for league={}", league.getName());
                 return;
             }
+            boolean hasCurrentSeason = seasonDtos.stream().filter(Objects::nonNull)
+                    .anyMatch(SofaSeasonData.SeasonDTO::isCurrent);
+            if (!hasCurrentSeason && seasonDtos.get(0) != null) {
+                // SofaScore normally returns the newest season first; keep the existing
+                // project's fallback when the API omits the isCurrent flag.
+                seasonDtos.get(0).setCurrent(true);
+            }
 
             for (SofaSeasonData.SeasonDTO dto : seasonDtos) {
                 if (dto == null || dto.getId() == null) continue;
@@ -182,6 +189,14 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
                             .build();
                     season = seasonRepository.save(season);
                 } else if (dto.isCurrent() && !season.isCurrent()) {
+                    seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull().stream()
+                            .filter(current -> current.getLeague() != null
+                                    && current.getLeague().getId().equals(league.getId())
+                                    && !current.getId().equals(season.getId()))
+                            .forEach(current -> {
+                                current.setCurrent(false);
+                                seasonRepository.save(current);
+                            });
                     season.setCurrent(true);
                     season = seasonRepository.save(season);
                 }
