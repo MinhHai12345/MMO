@@ -17,14 +17,14 @@ public class SofaScoreOddsMapper {
     private static final String AGGREGATED_SOURCE = "SofaScore Aggregated";
 
     public List<ProviderOdds> toProviderOdds(SofaScoreResponseDTO.MatchOddDetailDTO market) {
-        if (market == null || market.getChoices() == null) return List.of();
-        String marketName = normalizeMarket(market.getMarketName());
+        if (market == null || market.choices() == null) return List.of();
+        String marketName = normalizeMarket(market.marketName());
         if (marketName == null) return List.of();
-        return market.getChoices().stream()
+        return market.choices().stream()
                 .filter(Objects::nonNull)
                 .map(choice -> {
-                    String outcome = normalizeOutcome(choice.getName());
-                    BigDecimal odds = toDecimalOdds(choice.getFractionalValue());
+                    String outcome = normalizeOutcome(choice.name());
+                    BigDecimal odds = toDecimalOdds(choice.fractionalValue());
                     return outcome == null || odds == null ? null
                             : new ProviderOdds(AGGREGATED_SOURCE, marketName, outcome, odds);
                 })
