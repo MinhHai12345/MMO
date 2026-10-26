@@ -2,23 +2,19 @@ package com.mmo.module.fb.ingest.provider.sofascore.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Data;
 
 import java.util.List;
 
-@Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class SofaSeasonData {
-    @JsonProperty("seasons")
-    private List<SeasonDTO> seasons;
+public record SofaSeasonData(@JsonProperty("seasons") List<SeasonDTO> seasons) {
+    public List<SeasonDTO> getSeasons() { return seasons; }
 
-    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class SeasonDTO {
-        @JsonProperty("id")
-        private Long id;
-        private String name;
-        private String year;
-        private boolean isCurrent;
+    public record SeasonDTO(@JsonProperty("id") Long id, String name, String year,
+                            @JsonProperty("isCurrent") boolean current) {
+        public Long getId() { return id; }
+        public String getName() { return name; }
+        public String getYear() { return year; }
+        public boolean isCurrent() { return current; }
     }
 }

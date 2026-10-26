@@ -2,84 +2,75 @@ package com.mmo.module.fb.ingest.provider.sofascore.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Data;
 
 import java.util.List;
 
-@Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class SofaMatchesData {
-    @JsonProperty("events")
-    private List<SofaEventDTO> events;
+public record SofaMatchesData(
+        @JsonProperty("events") List<SofaEventDTO> events,
+        @JsonProperty("hasNextPage") boolean hasNextPage
+) {
+    public List<SofaEventDTO> getEvents() { return events; }
+    public boolean isHasNextPage() { return hasNextPage; }
+    public boolean getHasNextPage() { return hasNextPage; }
 
-    @JsonProperty("hasNextPage")
-    private boolean hasNextPage;
-
-    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class SofaEventDTO {
-
-        @JsonProperty("id")
-        private Long id;
-
-        private String slug;
-        private Long startTimestamp;
-        private Boolean hasXg;
-
-        private TournamentDTO tournament;
-        private SeasonDTO season;
-        private TeamDTO homeTeam;
-        private TeamDTO awayTeam;
-        private ScoreDetailDTO homeScore;
-        private ScoreDetailDTO awayScore;
-        private StatusDTO status;
-        private RoundInfo roundInfo;
+    public record SofaEventDTO(@JsonProperty("id") Long id, String slug, Long startTimestamp,
+                               Boolean hasXg, TournamentDTO tournament, SeasonDTO season,
+                               TeamDTO homeTeam, TeamDTO awayTeam, ScoreDetailDTO homeScore,
+                               ScoreDetailDTO awayScore, StatusDTO status, RoundInfo roundInfo) {
+        public Long getId() { return id; }
+        public String getSlug() { return slug; }
+        public Long getStartTimestamp() { return startTimestamp; }
+        public Boolean getHasXg() { return hasXg; }
+        public TournamentDTO getTournament() { return tournament; }
+        public SeasonDTO getSeason() { return season; }
+        public TeamDTO getHomeTeam() { return homeTeam; }
+        public TeamDTO getAwayTeam() { return awayTeam; }
+        public ScoreDetailDTO getHomeScore() { return homeScore; }
+        public ScoreDetailDTO getAwayScore() { return awayScore; }
+        public StatusDTO getStatus() { return status; }
+        public RoundInfo getRoundInfo() { return roundInfo; }
     }
 
-    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class TournamentDTO {
-        private String name;
-        private String slug;
+    public record TournamentDTO(String name, String slug) {
+        public String getName() { return name; }
+        public String getSlug() { return slug; }
     }
 
-    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class SeasonDTO {
-        private String name;
-        private String year;
+    public record SeasonDTO(String name, String year) {
+        public String getName() { return name; }
+        public String getYear() { return year; }
     }
 
-    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class TeamDTO {
-        private Long id;
-        private String name;
-        private String slug;
-        private String shortName;
-        private String nameCode;
+    public record TeamDTO(Long id, String name, String slug, String shortName, String nameCode) {
+        public Long getId() { return id; }
+        public String getName() { return name; }
+        public String getSlug() { return slug; }
+        public String getShortName() { return shortName; }
+        public String getNameCode() { return nameCode; }
     }
 
-    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class StatusDTO {
-        private Integer code;
-        private String description;
-        private String type;
+    public record StatusDTO(Integer code, String description, String type) {
+        public Integer getCode() { return code; }
+        public String getDescription() { return description; }
+        public String getType() { return type; }
     }
 
-    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class RoundInfo {
-        private Integer round;
+    public record RoundInfo(Integer round) {
+        public Integer getRound() { return round; }
     }
 
-    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class ScoreDetailDTO {
-        private Integer current;
-        private Integer display;
-        private Integer period1;
-        private Integer period2;
+    public record ScoreDetailDTO(Integer current, Integer display, Integer period1, Integer period2) {
+        public Integer getCurrent() { return current; }
+        public Integer getDisplay() { return display; }
+        public Integer getPeriod1() { return period1; }
+        public Integer getPeriod2() { return period2; }
     }
 }

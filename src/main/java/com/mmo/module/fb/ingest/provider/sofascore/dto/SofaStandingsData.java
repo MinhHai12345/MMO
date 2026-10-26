@@ -2,60 +2,54 @@ package com.mmo.module.fb.ingest.provider.sofascore.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Data;
 
 import java.util.List;
 
-@Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class SofaStandingsData {
-    @JsonProperty("standings")
-    private List<StandingGroupDTO> standings;
+public record SofaStandingsData(@JsonProperty("standings") List<StandingGroupDTO> standings) {
+    public List<StandingGroupDTO> getStandings() { return standings; }
 
-    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class StandingGroupDTO {
-        private Long id;
-        private String type;
-        private String name;
-        private List<StandingRowDTO> rows;
+    public record StandingGroupDTO(Long id, String type, String name, List<StandingRowDTO> rows) {
+        public Long getId() { return id; }
+        public String getType() { return type; }
+        public String getName() { return name; }
+        public List<StandingRowDTO> getRows() { return rows; }
     }
 
-    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class StandingRowDTO {
-        private Integer position;
-        private Integer matches;
-        private Integer wins;
-        private Integer draws;
-        private Integer losses;
-        private Integer points;
-        private Integer scoresFor;
-        private Integer scoresAgainst;
-        private String scoreDiffFormatted;
-
-        private TeamDTO team;
+    public record StandingRowDTO(Integer position, Integer matches, Integer wins, Integer draws,
+                                 Integer losses, Integer points, Integer scoresFor, Integer scoresAgainst,
+                                 String scoreDiffFormatted, TeamDTO team) {
+        public Integer getPosition() { return position; }
+        public Integer getMatches() { return matches; }
+        public Integer getWins() { return wins; }
+        public Integer getDraws() { return draws; }
+        public Integer getLosses() { return losses; }
+        public Integer getPoints() { return points; }
+        public Integer getScoresFor() { return scoresFor; }
+        public Integer getScoresAgainst() { return scoresAgainst; }
+        public String getScoreDiffFormatted() { return scoreDiffFormatted; }
+        public TeamDTO getTeam() { return team; }
     }
 
-    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class TeamDTO {
-        private Long id;
-        private String name;
-        private String slug;
-        private String shortName;
-        private String nameCode;
-        private Long userCount;
-        private Integer ranking;
-
-        private CountryDTO country;
+    public record TeamDTO(Long id, String name, String slug, String shortName, String nameCode,
+                          Long userCount, Integer ranking, CountryDTO country) {
+        public Long getId() { return id; }
+        public String getName() { return name; }
+        public String getSlug() { return slug; }
+        public String getShortName() { return shortName; }
+        public String getNameCode() { return nameCode; }
+        public Long getUserCount() { return userCount; }
+        public Integer getRanking() { return ranking; }
+        public CountryDTO getCountry() { return country; }
     }
 
-    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class CountryDTO {
-        private String alpha2;
-        private String alpha3;
-        private String name;
+    public record CountryDTO(String alpha2, String alpha3, String name) {
+        public String getAlpha2() { return alpha2; }
+        public String getAlpha3() { return alpha3; }
+        public String getName() { return name; }
     }
 }

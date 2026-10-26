@@ -1,32 +1,28 @@
 package com.mmo.module.fb.ingest.provider.sofascore.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import lombok.Data;
 
 import java.util.List;
 import java.util.Map;
 
-@Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class SofaOddsData {
+public record SofaOddsData(Map<Long, MatchOddDetailDTO> odds) {
+    public Map<Long, MatchOddDetailDTO> getOdds() { return odds; }
 
-    private Map<Long, MatchOddDetailDTO> odds;
-
-    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class MatchOddDetailDTO {
-        private String id;
-        private Integer marketId;
-        private String marketName;
-        private String marketGroup;
-        private List<ChoiceDTO> choices;
+    public record MatchOddDetailDTO(String id, Integer marketId, String marketName,
+                                    String marketGroup, List<ChoiceDTO> choices) {
+        public String getId() { return id; }
+        public Integer getMarketId() { return marketId; }
+        public String getMarketName() { return marketName; }
+        public String getMarketGroup() { return marketGroup; }
+        public List<ChoiceDTO> getChoices() { return choices; }
     }
 
-    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class ChoiceDTO {
-        private String name;
-        private String fractionalValue;
-        private Long sourceId;
+    public record ChoiceDTO(String name, String fractionalValue, Long sourceId) {
+        public String getName() { return name; }
+        public String getFractionalValue() { return fractionalValue; }
+        public Long getSourceId() { return sourceId; }
     }
 }
