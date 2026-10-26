@@ -12,20 +12,20 @@ import java.util.Locale;
 public class SofaScoreFixtureMapper {
 
     public ProviderFixture toProviderFixture(SofaScoreResponseDTO.EventDTO event) {
-        if (event == null || event.getId() == null || event.getHomeTeam() == null
-                || event.getAwayTeam() == null || event.getHomeTeam().getId() == null
-                || event.getAwayTeam().getId() == null) return null;
-        Instant kickoff = event.getStartTimestamp() == null
-                ? null : Instant.ofEpochSecond(event.getStartTimestamp());
-        String status = event.getStatus() == null ? null : mapStatus(event.getStatus().getType());
-        return new ProviderFixture(event.getId().toString(),
-                event.getHomeTeam().getId().toString(), event.getAwayTeam().getId().toString(),
+        if (event == null || event.id() == null || event.homeTeam() == null
+                || event.awayTeam() == null || event.homeTeam().id() == null
+                || event.awayTeam().id() == null) return null;
+        Instant kickoff = event.startTimestamp() == null
+                ? null : Instant.ofEpochSecond(event.startTimestamp());
+        String status = event.status() == null ? null : mapStatus(event.status().type());
+        return new ProviderFixture(event.id().toString(),
+                event.homeTeam().id().toString(), event.awayTeam().id().toString(),
                 kickoff,
-                event.getRoundInfo() == null || event.getRoundInfo().getRound() == null
-                        ? null : event.getRoundInfo().getRound().toString(),
+                event.roundInfo() == null || event.roundInfo().round() == null
+                        ? null : event.roundInfo().round().toString(),
                 null, null, status,
-                event.getHomeScore() == null ? null : event.getHomeScore().getCurrent(),
-                event.getAwayScore() == null ? null : event.getAwayScore().getCurrent());
+                event.homeScore() == null ? null : event.homeScore().current(),
+                event.awayScore() == null ? null : event.awayScore().current());
     }
 
     private String mapStatus(String status) {
