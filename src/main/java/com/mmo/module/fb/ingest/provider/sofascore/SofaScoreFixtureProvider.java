@@ -48,8 +48,15 @@ public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implemen
             int maxPages = appProperties.getSync().getMaxEventPages() > 0
                     ? appProperties.getSync().getMaxEventPages() : 20;
             Map<String, ProviderFixture> fixtures = new LinkedHashMap<>();
-            fetchDirection(query, season, "last", maxPages, page, fixtures);
-            fetchDirection(query, season, "next", maxPages, page, fixtures);
+            LocalDate today = LocalDate.now(ZoneOffset.UTC);
+            // Scheduled fixture refreshes should not crawl every historical page.
+            // The separate result-sync job owns recent score/status reconciliation.
+            if (query.from() == null || query.from().isBefore(today)) {
+                fetchDirection(query, season, "last", maxPages, page, fixtures);
+            }
+            if (query.to() == null || !query.to().isBefore(today)) {
+                fetchDirection(query, season, "next", maxPages, page, fixtures);
+            }
             log.info("SofaScore fixtures fetched tournament={} season={} count={} pagesPerDirection={}",
                     query.leagueId(), season.name(), fixtures.size(), maxPages);
             return List.copyOf(fixtures.values());
