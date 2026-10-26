@@ -56,42 +56,52 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
     @Override
     public List<UniqueTournamentDTO> fetchLeagues(Page page) {
         String region = appProperties.getSofaScore().getTournamentRegion();
-        if (region == null || !region.matches("[A-Za-z]{2}")) region = "EN";
+        if (region == null || !region.matches("[A-Za-z]{2}")) {
+            region = "EN";
+        }
         String url = appProperties.getSofaScore().getApi()
                 .concat(String.format(FETCH_ALL_UNIQUE_TOURNAMENTS_URI, region.toUpperCase(java.util.Locale.ROOT)));
-        TournamentsResponseDTO response = safeFetch(url, page, TournamentsResponseDTO.class);
-        if (response == null) throw new SofaScoreFetchException("SofaScore tournament catalogue request failed");
-        return response.uniqueTournaments() != null ? response.uniqueTournaments() : Collections.emptyList();
-    }
-
-    @Override
-    public List<SeasonDTO> fetchSeasonByTournamentId(Long tournamentId, Page page) {
-        String url = String.format(FETCH_SEASON_BY_TOURNAMENT_URI, appProperties.getSofaScore().getApi(), tournamentId);
-        SeasonsResponseDTO response = safeFetch(url, page, SeasonsResponseDTO.class);
-        if (response == null) throw new SofaScoreFetchException("SofaScore season request failed for tournament " + tournamentId);
-        return response.seasons() != null ? response.seasons() : Collections.emptyList();
-    }
-
-    @Override
-    public List<StandingGroupDTO> fetchStandingTotal(Long tournamentId, Long seasonId, Page page) {
-        String url = String.format(FETCH_STANDINGS_TOTAL_BY_TOURNAMENT_AND_SEASON_URI,
-                appProperties.getSofaScore().getApi(), tournamentId, seasonId);
-        StandingsResponseDTO response = safeFetch(url, page, StandingsResponseDTO.class);
-        if (response == null) throw new SofaScoreFetchException(
-                "SofaScore standings request failed for tournament " + tournamentId + " season " + seasonId);
-        return response.standings() != null ? response.standings() : Collections.emptyList();
-    }
-
-    @Override
-    public List<EventDTO> fetchMatchesByRound(Long tournamentId, Long seasonId, int round, Page page) {
-        String url = String.format(FETCH_MATCH_BY_ROUND_URI, appProperties.getSofaScore().getApi(),
-                tournamentId, seasonId, round);
-        MatchesResponseDTO response = safeFetch(url, page, MatchesResponseDTO.class);
-        if (response == null) {
-            throw new SofaScoreFetchException("SofaScore fixture request failed for tournament "
-                    + tournamentId + " season " + seasonId + " round " + round);
+        TournamentsResponseDTO tournamentsResponse = safeFetch(url, page, TournamentsResponseDTO.class);
+        if (tournamentsResponse == null) {
+            throw new SofaScoreFetchException("SofaScore tournament catalogue request failed");
         }
-        return response.events() != null ? response.events() : Collections.emptyList();
+        return tournamentsResponse.uniqueTournaments() != null
+                ? tournamentsResponse.uniqueTournaments() : Collections.emptyList();
+    }
+
+    @Override
+    public List<SeasonDTO> fetchSeasonByTournamentId(Long sofaTournamentId, Page page) {
+        String url = String.format(FETCH_SEASON_BY_TOURNAMENT_URI, appProperties.getSofaScore().getApi(), sofaTournamentId);
+        SeasonsResponseDTO seasonData = safeFetch(url, page, SeasonsResponseDTO.class);
+        if (seasonData == null) {
+            throw new SofaScoreFetchException("SofaScore season request failed for tournament " + sofaTournamentId);
+        }
+        return seasonData.seasons() != null ? seasonData.seasons() : Collections.emptyList();
+    }
+
+    @Override
+    public List<StandingGroupDTO> fetchStandingTotal(Long sofaTournamentId, Long sofaSeasonId, Page page) {
+        String url = String.format(FETCH_STANDINGS_TOTAL_BY_TOURNAMENT_AND_SEASON_URI,
+                appProperties.getSofaScore().getApi(), sofaTournamentId, sofaSeasonId);
+        StandingsResponseDTO sofaStandingsData = safeFetch(url, page, StandingsResponseDTO.class);
+        if (sofaStandingsData == null) {
+            throw new SofaScoreFetchException("SofaScore standings request failed for tournament "
+                                              + sofaTournamentId + " season " + sofaSeasonId);
+        }
+        return sofaStandingsData.standings() != null
+                ? sofaStandingsData.standings() : Collections.emptyList();
+    }
+
+    @Override
+    public List<EventDTO> fetchMatchesByRound(Long sofaTournamentId, Long sofaSeasonId, int round, Page page) {
+        String url = String.format(FETCH_MATCH_BY_ROUND_URI, appProperties.getSofaScore().getApi(),
+                sofaTournamentId, sofaSeasonId, round);
+        MatchesResponseDTO matchData = safeFetch(url, page, MatchesResponseDTO.class);
+        if (matchData == null) {
+            throw new SofaScoreFetchException("SofaScore fixture request failed for tournament "
+                                              + sofaTournamentId + " season " + sofaSeasonId + " round " + round);
+        }
+        return matchData.events() != null ? matchData.events() : Collections.emptyList();
     }
 
     @Override
@@ -102,27 +112,32 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
         }
         String url = String.format(FETCH_SEASON_MATCHES_PAGE_URI, appProperties.getSofaScore().getApi(),
                 tournamentId, seasonId, direction, pageIndex);
-        MatchesResponseDTO response = safeFetch(url, page, MatchesResponseDTO.class);
-        // Some competitions have no events in one direction; the direct client treats HTTP 404 as an empty page.
-        return response == null ? new MatchesResponseDTO(Collections.emptyList(), false) : response;
+        // A 404 means that the selected direction has no more events for this season.
+        return safeFetch(url, page, MatchesResponseDTO.class);
     }
 
     @Override
-    public List<PeriodStatisticsDTO> fetchMatchStatistics(Long eventId, Page page) {
-        String url = String.format(FETCH_MATCH_STATISTICS_URI, appProperties.getSofaScore().getApi(), eventId);
-        StatisticsResponseDTO response = safeFetch(url, page, StatisticsResponseDTO.class);
-        if (response == null) throw new SofaScoreFetchException("SofaScore statistics request failed for event " + eventId);
-        return response.statistics() != null ? response.statistics() : Collections.emptyList();
+    public List<PeriodStatisticsDTO> fetchMatchStatistics(Long sofaMatchId, Page page) {
+        String url = String.format(FETCH_MATCH_STATISTICS_URI, appProperties.getSofaScore().getApi(), sofaMatchId);
+        StatisticsResponseDTO matchData = safeFetch(url, page, StatisticsResponseDTO.class);
+        if (matchData == null) {
+            throw new SofaScoreFetchException("SofaScore statistics request failed for event " + sofaMatchId);
+        }
+        return matchData.statistics() != null ? matchData.statistics() : Collections.emptyList();
     }
 
     @Override
     public Map<Long, MatchOddDetailDTO> fetchDailyMatchOdds(Page page) {
         String endpoint = String.format(FETCH_DAILY_ALL_MATCH_ODDS_URI, DateTimeUtils.today());
-        DynamicFetchResult result = safeFetch(appProperties.getSofaScore().getUrl(),
-                Map.of(endpoint, OddsResponseDTO.class), page, this::triggerOdds);
+        DynamicFetchResult result = safeFetch(
+                appProperties.getSofaScore().getUrl(),
+                Map.of(endpoint, OddsResponseDTO.class),
+                page,
+                this::triggerOdds);
         if (!result.hasData(endpoint)) return Collections.emptyMap();
-        OddsResponseDTO response = result.get(endpoint, OddsResponseDTO.class);
-        return response != null && response.odds() != null ? response.odds() : Collections.emptyMap();
+        OddsResponseDTO oddsData = result.get(endpoint, OddsResponseDTO.class);
+        return oddsData != null && oddsData.odds() != null
+                ? oddsData.odds() : Collections.emptyMap();
     }
 
     private void triggerOdds(Page page) {
@@ -140,66 +155,111 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
                         }
                     }
                     """);
-        } catch (TimeoutError exception) {
-            log.warn("SofaScore odds toggle was not found before timeout");
-        } catch (Exception exception) {
-            log.warn("Could not activate SofaScore odds view: {}", exception.getMessage());
+        } catch (TimeoutError ex) {
+            log.warn("SofaScore odds toggle was not found before timeout.");
+        } catch (Exception ex) {
+            log.warn("Could not activate SofaScore odds view: {}", ex.getMessage());
         }
     }
 
     @Override
-    public List<EventDTO> fetchMatchesDailyByTournamentId(Long tournamentId, Page page) {
-        String endpoint = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI, tournamentId, DateTimeUtils.today());
-        DynamicFetchResult result = safeFetch(appProperties.getSofaScore().getUrl(),
-                Map.of(endpoint, MatchesResponseDTO.class), page, null);
+    public List<EventDTO> fetchMatchesDailyByTournamentId(Long sofaTournamentId, Page page) {
+        String endpoint = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI,
+                sofaTournamentId, DateTimeUtils.today());
+        DynamicFetchResult result = safeFetch(
+                appProperties.getSofaScore().getUrl(),
+                Map.of(endpoint, MatchesResponseDTO.class),
+                page,
+                null);
         if (!result.hasData(endpoint)) return Collections.emptyList();
-        MatchesResponseDTO response = result.get(endpoint, MatchesResponseDTO.class);
-        return response != null && response.events() != null ? response.events() : Collections.emptyList();
+        MatchesResponseDTO matchData = result.get(endpoint, MatchesResponseDTO.class);
+        return matchData != null && matchData.events() != null
+                ? matchData.events() : Collections.emptyList();
     }
 
     @Override
     public List<EventDTO> fetchHistoriesMatchesByTeamIdAndIndex(Team team, int index, Page page) {
-        if (team == null || team.getId() == null) return Collections.emptyList();
-        TeamExternalId mapping = teamExternalIdRepository
-                .findByTeamIdAndProvider(team.getId(), Provider.SOFA_SCORE).orElse(null);
-        if (mapping == null) {
+        if (team == null || team.getId() == null) {
+            return Collections.emptyList();
+        }
+        TeamExternalId teamExternalId = teamExternalIdRepository
+                .findByTeamIdAndProvider(team.getId(), Provider.SOFA_SCORE)
+                .orElse(null);
+        if (teamExternalId == null) {
             log.warn("Skipping SofaScore team history: no provider ID mapping for teamId={}", team.getId());
             return Collections.emptyList();
         }
-        String teamId = mapping.getExternalId();
-        String pageUrl = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_PAGE,
-                appProperties.getSofaScore().getUrl(), team.getSlug(), teamId);
-        String endpoint = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_URI, teamId, index);
-        DynamicFetchResult result = safeFetch(pageUrl, Map.of(endpoint, MatchesResponseDTO.class), page, null);
-        if (!result.hasData(endpoint)) return Collections.emptyList();
-        MatchesResponseDTO response = result.get(endpoint, MatchesResponseDTO.class);
-        return response != null && response.events() != null ? response.events() : Collections.emptyList();
-    }
+        String sofaTeamId = teamExternalId.getExternalId();
+        String loadPageUrl = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_PAGE, appProperties.getSofaScore().getUrl(),
+                team.getSlug(), sofaTeamId);
+        String historiesEndpoint = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_URI, sofaTeamId, index);
+        Map<String, Class<?>> configMap = Map.of(historiesEndpoint, MatchesResponseDTO.class);
 
-    @Override
-    public EventDTO fetchMatchById(Long eventId, Page page) {
-        String url = String.format(FETCH_MATCH_BY_ID_URI, appProperties.getSofaScore().getApi(), eventId);
-        MatchResponseDTO response = safeFetch(url, page, MatchResponseDTO.class);
-        return response != null ? response.event() : null;
-    }
-
-    @Override
-    public SofaDailyMatchWrapper fetchMatchesDaily(Long tournamentId, Page page) {
-        String pageUrl = appProperties.getSofaScore().getUrl();
-        String matchesEndpoint = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI, tournamentId, DateTimeUtils.today());
-        String oddsEndpoint = String.format(FETCH_DAILY_ALL_MATCH_ODDS_URI, DateTimeUtils.today());
-        Map<String, Class<?>> config = Map.of(matchesEndpoint, MatchesResponseDTO.class, oddsEndpoint, OddsResponseDTO.class);
-        DynamicFetchResult result = safeFetch(pageUrl, config, page, this::triggerOdds);
+        DynamicFetchResult result = safeFetch(loadPageUrl, configMap, page, null);
         List<EventDTO> events = new ArrayList<>();
-        Map<Long, MatchOddDetailDTO> odds = new HashMap<>();
-        if (result.hasData(matchesEndpoint)) {
-            MatchesResponseDTO response = result.get(matchesEndpoint, MatchesResponseDTO.class);
-            if (response != null && response.events() != null) events = response.events();
+        if (result.hasData(historiesEndpoint)) {
+            MatchesResponseDTO matchData = result.get(historiesEndpoint, MatchesResponseDTO.class);
+            if (matchData != null) return matchData.events();
         }
-        if (result.hasData(oddsEndpoint)) {
-            OddsResponseDTO response = result.get(oddsEndpoint, OddsResponseDTO.class);
-            if (response != null && response.odds() != null) odds = response.odds();
-        }
-        return new SofaDailyMatchWrapper(events, odds);
+
+        return events;
     }
+
+    @Override
+    public EventDTO fetchMatchById(Long sofaMatchId, Page page) {
+        String url = String.format(FETCH_MATCH_BY_ID_URI, appProperties.getSofaScore().getApi(), sofaMatchId);
+        MatchResponseDTO matchData = safeFetch(url, page, MatchResponseDTO.class);
+        return matchData != null ? matchData.event() : null;
+    }
+
+    @Override
+    public SofaDailyMatchWrapper fetchMatchesDaily(Long sofaTournamentId, Page page) {
+        String loadPageUrl = appProperties.getSofaScore().getUrl();
+        String matchEndpoint = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI, sofaTournamentId, DateTimeUtils.today());
+        String oddsEndpoint = String.format(FETCH_DAILY_ALL_MATCH_ODDS_URI, DateTimeUtils.today());
+        Map<String, Class<?>> configMap = Map.of(matchEndpoint, MatchesResponseDTO.class, oddsEndpoint, OddsResponseDTO.class);
+
+        DynamicFetchResult result = safeFetch(loadPageUrl, configMap, page, (p) -> {
+            try {
+                log.info("⏳ Đang chờ bộ khung giao diện chứa nút Odds đính vào DOM...");
+
+                Locator oddsText = p.locator("span:has-text('Odds'), div:has-text('Odds')").first();
+                oddsText.waitFor(new Locator.WaitForOptions()
+                        .setState(com.microsoft.playwright.options.WaitForSelectorState.ATTACHED)
+                        .setTimeout(15000));
+
+                String jsForceClick = """
+                        () => {
+                            const input = document.querySelector("input[role='switch']");
+                            if (input) {
+                                const target = input.nextElementSibling || input.closest('label') || input;
+                                target.click();
+                                return 'CLICKED_SLIDER';
+                            }
+                            return null;
+                        }
+                        """;
+                p.evaluate(jsForceClick);
+            } catch (TimeoutError te) {
+                log.error("❌ [Trigger Timeout] Quá 15 giây không thấy cấu trúc chứa nút Odds xuất hiện.");
+            } catch (Exception ex) {
+                log.error("❌ Lỗi xử lý trong Trigger: {}", ex.getMessage());
+            }
+        });
+
+        List<EventDTO> events = new ArrayList<>();
+        Map<Long, MatchOddDetailDTO> oddsMap = new HashMap<>();
+
+        if (result.hasData(matchEndpoint)) {
+            MatchesResponseDTO matchData = result.get(matchEndpoint, MatchesResponseDTO.class);
+            if (matchData != null) events = matchData.events();
+        }
+
+        if (result.hasData(oddsEndpoint)) {
+            OddsResponseDTO oddsData = result.get(oddsEndpoint, OddsResponseDTO.class);
+            if (oddsData != null) oddsMap = oddsData.odds();
+        }
+        return new SofaDailyMatchWrapper(events, oddsMap);
+    }
+
 }
