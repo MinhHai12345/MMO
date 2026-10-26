@@ -57,7 +57,7 @@ public class OddsIngestionServiceImpl implements OddsIngestionService {
         }
         if (selectedProvider == Provider.API_FOOTBALL
                 && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
-            return;
+            throw new IllegalStateException("API-Football is disabled but was selected for odds ingestion");
         }
 
         Instant now = Instant.now();
