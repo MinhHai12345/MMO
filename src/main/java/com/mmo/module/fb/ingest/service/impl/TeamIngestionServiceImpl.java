@@ -41,13 +41,11 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
     public void syncTeamsForProvider(Provider selectedProvider) {
         if (selectedProvider == Provider.FOOTBALL_DATA
                 && (appProperties.getFootballData() == null || !appProperties.getFootballData().isEnabled())) {
-            log.info("Skipping team ingestion because football-data.org is disabled");
-            return;
+            throw new IllegalStateException("football-data.org is disabled but was selected for team ingestion");
         }
         if (selectedProvider == Provider.API_FOOTBALL
                 && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
-            log.info("Skipping team ingestion because API-Football is disabled");
-            return;
+            throw new IllegalStateException("API-Football is disabled but was selected for team ingestion");
         }
 
         // Team sync can run independently on a cold start, but should not refetch every
