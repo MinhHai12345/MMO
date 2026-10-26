@@ -34,12 +34,12 @@ public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implement
 
             return tournaments.stream()
                     .filter(Objects::nonNull)
-                    .filter(tournament -> tournament.getId() != null)
+                    .filter(tournament -> tournament.id() != null)
                     .filter(tournament -> externalLeagueIds == null || externalLeagueIds.isEmpty()
-                                          || externalLeagueIds.contains(tournament.getId()))
+                                          || externalLeagueIds.contains(tournament.id()))
                     .map(tournament -> {
                         List<SofaScoreResponseDTO.SeasonDTO> seasons =
-                                sofaScoreClient.fetchSeasonByTournamentId(tournament.getId(), page);
+                                sofaScoreClient.fetchSeasonByTournamentId(tournament.id(), page);
                         return mapper.toProviderLeague(tournament, seasons);
                     })
                     .filter(Objects::nonNull)

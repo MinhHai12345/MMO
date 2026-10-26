@@ -53,8 +53,8 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
         if (tournamentsResponse == null) {
             throw new SofaScoreFetchException("SofaScore tournament catalogue request failed");
         }
-        return tournamentsResponse.getUniqueTournaments() != null
-                ? tournamentsResponse.getUniqueTournaments() : Collections.emptyList();
+        return tournamentsResponse.uniqueTournaments() != null
+                ? tournamentsResponse.uniqueTournaments() : Collections.emptyList();
     }
 
     @Override
@@ -64,7 +64,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
         if (seasonData == null) {
             throw new SofaScoreFetchException("SofaScore season request failed for tournament " + sofaTournamentId);
         }
-        return seasonData.getSeasons() != null ? seasonData.getSeasons() : Collections.emptyList();
+        return seasonData.seasons() != null ? seasonData.seasons() : Collections.emptyList();
     }
 
     @Override
@@ -76,8 +76,8 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
             throw new SofaScoreFetchException("SofaScore standings request failed for tournament "
                     + sofaTournamentId + " season " + sofaSeasonId);
         }
-        return sofaStandingsData.getStandings() != null
-                ? sofaStandingsData.getStandings() : Collections.emptyList();
+        return sofaStandingsData.standings() != null
+                ? sofaStandingsData.standings() : Collections.emptyList();
     }
 
     @Override
@@ -89,7 +89,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
             throw new SofaScoreFetchException("SofaScore fixture request failed for tournament "
                     + sofaTournamentId + " season " + sofaSeasonId + " round " + round);
         }
-        return matchData.getEvents() != null ? matchData.getEvents() : Collections.emptyList();
+        return matchData.events() != null ? matchData.events() : Collections.emptyList();
     }
 
     @Override
@@ -99,7 +99,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
         if (matchData == null) {
             throw new SofaScoreFetchException("SofaScore statistics request failed for event " + sofaMatchId);
         }
-        return matchData.getStatistics() != null ? matchData.getStatistics() : Collections.emptyList();
+        return matchData.statistics() != null ? matchData.statistics() : Collections.emptyList();
     }
 
     @Override
@@ -112,8 +112,8 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
                 this::triggerOdds);
         if (!result.hasData(endpoint)) return Collections.emptyMap();
         SofaScoreResponseDTO.OddsResponseDTO oddsData = result.get(endpoint, SofaScoreResponseDTO.OddsResponseDTO.class);
-        return oddsData != null && oddsData.getOdds() != null
-                ? oddsData.getOdds() : Collections.emptyMap();
+        return oddsData != null && oddsData.odds() != null
+                ? oddsData.odds() : Collections.emptyMap();
     }
 
     private void triggerOdds(Page page) {
@@ -149,8 +149,8 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
                 null);
         if (!result.hasData(endpoint)) return Collections.emptyList();
         SofaScoreResponseDTO.MatchesResponseDTO matchData = result.get(endpoint, SofaScoreResponseDTO.MatchesResponseDTO.class);
-        return matchData != null && matchData.getEvents() != null
-                ? matchData.getEvents() : Collections.emptyList();
+        return matchData != null && matchData.events() != null
+                ? matchData.events() : Collections.emptyList();
     }
 
     @Override
@@ -175,7 +175,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
         List<SofaScoreResponseDTO.EventDTO> events = new ArrayList<>();
         if (result.hasData(historiesEndpoint)) {
             SofaScoreResponseDTO.MatchesResponseDTO matchData = result.get(historiesEndpoint, SofaScoreResponseDTO.MatchesResponseDTO.class);
-            if (matchData != null) return matchData.getEvents();
+            if (matchData != null) return matchData.events();
         }
 
         return events;
@@ -185,7 +185,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
     public SofaScoreResponseDTO.EventDTO fetchMatchById(Long sofaMatchId, Page page) {
         String url = String.format(FETCH_MATCH_BY_ID_URI, appProperties.getSofaScore().getApi(), sofaMatchId);
         SofaScoreResponseDTO.MatchResponseDTO matchData = safeFetch(url, page, SofaScoreResponseDTO.MatchResponseDTO.class);
-        return matchData != null ? matchData.getEvent() : null;
+        return matchData != null ? matchData.event() : null;
     }
 
     @Override
@@ -228,12 +228,12 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
 
         if (result.hasData(matchEndpoint)) {
             SofaScoreResponseDTO.MatchesResponseDTO matchData = result.get(matchEndpoint, SofaScoreResponseDTO.MatchesResponseDTO.class);
-            if (matchData != null) events = matchData.getEvents();
+            if (matchData != null) events = matchData.events();
         }
 
         if (result.hasData(oddsEndpoint)) {
             SofaScoreResponseDTO.OddsResponseDTO oddsData = result.get(oddsEndpoint, SofaScoreResponseDTO.OddsResponseDTO.class);
-            if (oddsData != null) oddsMap = oddsData.getOdds();
+            if (oddsData != null) oddsMap = oddsData.odds();
         }
         return new SofaDailyMatchWrapper(events, oddsMap);
     }

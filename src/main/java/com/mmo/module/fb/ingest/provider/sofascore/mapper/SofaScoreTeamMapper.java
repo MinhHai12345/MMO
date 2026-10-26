@@ -9,8 +9,8 @@ import org.springframework.stereotype.Component;
 public class SofaScoreTeamMapper {
 
     public ProviderTeam toProviderTeam(SofaScoreResponseDTO.TeamDTO team) {
-        if (team == null || team.getId() == null || team.getName() == null) return null;
-        return new ProviderTeam(team.getId().toString(), team.getName(),
-                team.getShortName(), null, null, null, null);
+        if (team == null || team.id() == null || team.name() == null) return null;
+        return new ProviderTeam(team.id().toString(), team.name(),
+                team.shortName(), null, null, null, null);
     }
 }

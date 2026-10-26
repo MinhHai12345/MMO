@@ -42,10 +42,10 @@ public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implemen
             if (seasons == null) return List.of();
             SofaScoreResponseDTO.SeasonDTO season = seasons.stream()
                     .filter(Objects::nonNull)
-                    .filter(item -> query.season() == null || query.season().equals(item.getYear())
-                                    || query.season().equals(item.getName()))
+                    .filter(item -> query.season() == null || query.season().equals(item.year())
+                                    || query.season().equals(item.name()))
                     .findFirst().orElse(null);
-            if (season == null || season.getId() == null) return List.of();
+            if (season == null || season.id() == null) return List.of();
 
             List<ProviderFixture> fixtures = new ArrayList<>();
             int emptyRounds = 0;
@@ -53,7 +53,7 @@ public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implemen
                     ? appProperties.getSync().getMaxRounds() : 50;
             for (int round = 1; round <= maxRounds; round++) {
                 List<SofaScoreResponseDTO.EventDTO> events =
-                        sofaScoreClient.fetchMatchesByRound(query.leagueId(), season.getId(), round, page);
+                        sofaScoreClient.fetchMatchesByRound(query.leagueId(), season.id(), round, page);
                 if (events == null || events.isEmpty()) {
                     emptyRounds++;
                     if (emptyRounds >= 4 && round > 10) break;

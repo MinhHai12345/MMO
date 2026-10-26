@@ -35,13 +35,13 @@ public class SofaScoreStandingsProvider extends AbstractSofaScoreProvider implem
             if (seasons == null) return List.of();
             SofaScoreResponseDTO.SeasonDTO season = seasons.stream()
                     .filter(Objects::nonNull)
-                    .filter(item -> query.season() == null || query.season().equals(item.getYear())
-                                    || query.season().equals(item.getName()))
+                    .filter(item -> query.season() == null || query.season().equals(item.year())
+                                    || query.season().equals(item.name()))
                     .findFirst().orElse(null);
-            if (season == null || season.getId() == null) return List.of();
+            if (season == null || season.id() == null) return List.of();
 
             List<SofaScoreResponseDTO.StandingGroupDTO> groups =
-                    sofaScoreClient.fetchStandingTotal(query.leagueId(), season.getId(), page);
+                    sofaScoreClient.fetchStandingTotal(query.leagueId(), season.id(), page);
             return mapper.toProviderStandings(groups);
         });
     }

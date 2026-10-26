@@ -94,18 +94,18 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
 
         List<SofaScoreResponseDTO.StatisticItemDTO> items = periods.stream()
                 .filter(Objects::nonNull)
-                .filter(period -> "ALL".equalsIgnoreCase(period.getPeriod()))
+                .filter(period -> "ALL".equalsIgnoreCase(period.period()))
                 .findFirst()
-                .map(SofaScoreResponseDTO.PeriodStatisticsDTO::getGroups)
+                .map(SofaScoreResponseDTO.PeriodStatisticsDTO::groups)
                 .orElseGet(() -> periods.stream()
                         .filter(Objects::nonNull)
-                        .filter(period -> CollectionUtils.isNotEmpty(period.getGroups()))
+                        .filter(period -> CollectionUtils.isNotEmpty(period.groups()))
                         .findFirst()
-                        .map(SofaScoreResponseDTO.PeriodStatisticsDTO::getGroups)
+                        .map(SofaScoreResponseDTO.PeriodStatisticsDTO::groups)
                         .orElse(Collections.emptyList()))
                 .stream()
                 .filter(Objects::nonNull)
-                .map(SofaScoreResponseDTO.GroupDTO::getStatisticsItems)
+                .map(SofaScoreResponseDTO.GroupDTO::statisticsItems)
                 .filter(CollectionUtils::isNotEmpty)
                 .flatMap(List::stream)
                 .filter(Objects::nonNull)
@@ -240,18 +240,18 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
                 .collect(Collectors.toSet());
 
         for (SofaScoreResponseDTO.StatisticItemDTO item : items) {
-            String key = normalizeStatisticKey(item.getKey());
-            String name = normalizeStatisticKey(item.getName());
+            String key = normalizeStatisticKey(item.key());
+            String name = normalizeStatisticKey(item.name());
             if (!normalizedAliases.contains(key) && !normalizedAliases.contains(name)) {
                 continue;
             }
 
-            BigDecimal typedValue = homeSide ? item.getHomeValue() : item.getAwayValue();
+            BigDecimal typedValue = homeSide ? item.homeValue() : item.awayValue();
             if (typedValue != null && typedValue.signum() >= 0) {
                 return typedValue;
             }
 
-            BigDecimal parsedValue = parseNumericValue(homeSide ? item.getHome() : item.getAway());
+            BigDecimal parsedValue = parseNumericValue(homeSide ? item.home() : item.away());
             if (parsedValue != null && parsedValue.signum() >= 0) {
                 return parsedValue;
             }

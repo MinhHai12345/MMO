@@ -19,17 +19,17 @@ public class SofaScoreLeagueMapper {
 
     public ProviderLeague toProviderLeague(SofaScoreResponseDTO.UniqueTournamentDTO tournament,
                                            List<SofaScoreResponseDTO.SeasonDTO> sourceSeasons) {
-        if (tournament == null || tournament.getId() == null
-                || tournament.getName() == null || tournament.getName().isBlank()) {
+        if (tournament == null || tournament.id() == null
+                || tournament.name() == null || tournament.name().isBlank()) {
             return null;
         }
 
         List<SofaScoreResponseDTO.SeasonDTO> validSeasons = sourceSeasons == null ? List.of()
                 : sourceSeasons.stream()
                     .filter(Objects::nonNull)
-                    .filter(season -> season.getId() != null)
+                    .filter(season -> season.id() != null)
                     .toList();
-        boolean hasCurrentSeason = validSeasons.stream().anyMatch(SofaScoreResponseDTO.SeasonDTO::isCurrent);
+        boolean hasCurrentSeason = validSeasons.stream().anyMatch(SofaScoreResponseDTO.SeasonDTO::current);
 
         List<ProviderSeason> seasons = new ArrayList<>(validSeasons.size());
         for (int index = 0; index < validSeasons.size(); index++) {
@@ -40,37 +40,37 @@ public class SofaScoreLeagueMapper {
             }
             // SofaScore occasionally omits isCurrent. Its seasons endpoint is ordered newest first;
             // use the first valid season as a fallback only when no season is explicitly current.
-            boolean current = season.isCurrent() || (!hasCurrentSeason && seasons.isEmpty());
-            seasons.add(new ProviderSeason(season.getId().toString(), year, current, null, null));
+            boolean current = season.current() || (!hasCurrentSeason && seasons.isEmpty());
+            seasons.add(new ProviderSeason(season.id().toString(), year, current, null, null));
         }
 
-        String country = tournament.getCategory() == null ? null : tournament.getCategory().getName();
-        return new ProviderLeague(tournament.getId().toString(), tournament.getName(),
+        String country = tournament.category() == null ? null : tournament.category().name();
+        return new ProviderLeague(tournament.id().toString(), tournament.name(),
                 country, null, List.copyOf(seasons));
     }
 
     public ProviderSeason toProviderSeason(SofaScoreResponseDTO.SeasonDTO season) {
-        if (season == null || season.getId() == null) {
+        if (season == null || season.id() == null) {
             return null;
         }
         String year = normalizeSeasonYear(season);
         if (year == null) {
             return null;
         }
-        return new ProviderSeason(season.getId().toString(), year, season.isCurrent(), null, null);
+        return new ProviderSeason(season.id().toString(), year, season.current(), null, null);
     }
 
     private String normalizeSeasonYear(SofaScoreResponseDTO.SeasonDTO season) {
-        if (season.getYear() != null && !season.getYear().isBlank()) {
-            Matcher matcher = SEASON_START_YEAR.matcher(season.getYear());
+        if (season.year() != null && !season.year().isBlank()) {
+            Matcher matcher = SEASON_START_YEAR.matcher(season.year());
             if (matcher.find()) {
                 return matcher.group(1);
             }
         }
-        if (season.getName() == null || season.getName().isBlank()) {
+        if (season.name() == null || season.name().isBlank()) {
             return null;
         }
-        Matcher matcher = SEASON_START_YEAR.matcher(season.getName());
-        return matcher.find() ? matcher.group(1) : season.getName().trim();
+        Matcher matcher = SEASON_START_YEAR.matcher(season.name());
+        return matcher.find() ? matcher.group(1) : season.name().trim();
     }
 }
