@@ -138,6 +138,8 @@ public class AppProperties {
         private Set<Long> tournamentIds = new HashSet<>();
         private int seasonsPerLeague = 3;
         private int maxRounds = 50;
+        /** Maximum SofaScore event pages to read per direction (finished and upcoming). */
+        private int maxEventPages = 20;
     }
 
     /** Select the data source independently for each ingestion resource. */

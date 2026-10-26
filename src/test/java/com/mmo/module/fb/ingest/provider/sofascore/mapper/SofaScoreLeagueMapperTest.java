@@ -44,6 +44,17 @@ class SofaScoreLeagueMapperTest {
     }
 
     @Test
+    void canonicalizesTwoDigitSeasonYearFromSofaScore() {
+        SofaScoreResponseDTO.UniqueTournamentDTO tournament = tournament(17L, "Premier League");
+        SofaScoreResponseDTO.SeasonDTO season = season(900L, "Premier League 26/27", "26/27", true);
+
+        ProviderLeague mapped = mapper.toProviderLeague(tournament, List.of(season));
+
+        assertNotNull(mapped);
+        assertEquals("2026", mapped.seasons().get(0).year());
+    }
+
+    @Test
     void rejectsTournamentWithoutProviderIdentity() {
         assertNull(mapper.toProviderLeague(null, List.of()));
         assertNull(mapper.toProviderLeague(tournament(null, "Premier League"), List.of()));

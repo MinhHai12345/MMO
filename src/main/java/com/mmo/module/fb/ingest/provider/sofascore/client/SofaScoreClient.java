@@ -33,6 +33,13 @@ public interface SofaScoreClient {
     List<SofaScoreResponseDTO.EventDTO> fetchMatchesByRound(Long sofaTournamentId, Long sofaSeasonId, int round, Page page);
 
     /**
+     * Fetch a paginated set of finished or upcoming events for a tournament season.
+     * Direction must be either "last" or "next".
+     */
+    SofaScoreResponseDTO.MatchesResponseDTO fetchSeasonMatchesPage(
+            Long sofaTournamentId, Long sofaSeasonId, String direction, int pageIndex, Page page);
+
+    /**
      * Get match Statistics by match id
      */
     List<SofaScoreResponseDTO.PeriodStatisticsDTO> fetchMatchStatistics(Long sofaMatchId, Page page);

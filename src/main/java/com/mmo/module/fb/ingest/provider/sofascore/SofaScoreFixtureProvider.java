@@ -1,6 +1,6 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
-
+import com.microsoft.playwright.Page;
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
@@ -10,28 +10,26 @@ import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreFixtureMapper;
 import com.mmo.module.fb.ingest.provider.spi.FixtureProvider;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implements FixtureProvider {
-
     private final SofaScoreFixtureMapper mapper;
     private final SofaScoreClient sofaScoreClient;
     private final AppProperties appProperties;
 
     @Override
-    public Provider getProvider() {
-        return Provider.SOFA_SCORE;
-    }
+    public Provider getProvider() { return Provider.SOFA_SCORE; }
 
     @Override
     public List<ProviderFixture> fetchFixtures(FixtureQuery query) {
@@ -39,38 +37,43 @@ public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implemen
         return withPage(page -> {
             List<SofaScoreResponseDTO.SeasonDTO> seasons =
                     sofaScoreClient.fetchSeasonByTournamentId(query.leagueId(), page);
-            if (seasons == null) return List.of();
+            if (seasons == null || seasons.isEmpty())
+                throw new IllegalStateException("SofaScore returned no seasons for tournament " + query.leagueId());
 
-            SofaScoreResponseDTO.SeasonDTO season = seasons.stream()
-                    .filter(Objects::nonNull)
-                    .filter(item -> query.season() == null || query.season().equals(item.year())
-                                    || query.season().equals(item.name()))
-                    .findFirst().orElse(null);
-            if (season == null || season.id() == null) return List.of();
+            SofaScoreResponseDTO.SeasonDTO season = seasons.stream().filter(Objects::nonNull)
+                    .filter(item -> SofaScoreSeasonMatcher.matches(query.season(), item)).findFirst()
+                    .orElseThrow(() -> new IllegalStateException("SofaScore season '" + query.season()
+                            + "' was not found for tournament " + query.leagueId()));
 
-            List<ProviderFixture> fixtures = new ArrayList<>();
-            int emptyRounds = 0;
-            int maxRounds = appProperties.getSync().getMaxRounds() > 0
-                    ? appProperties.getSync().getMaxRounds() : 50;
-            for (int round = 1; round <= maxRounds; round++) {
-                List<SofaScoreResponseDTO.EventDTO> events =
-                        sofaScoreClient.fetchMatchesByRound(query.leagueId(), season.id(), round, page);
-                if (events == null || events.isEmpty()) {
-                    emptyRounds++;
-                    if (emptyRounds >= 4 && round > 10) break;
-                    continue;
-                }
-                emptyRounds = 0;
-                events.stream()
-                        .map(mapper::toProviderFixture)
-                        .filter(Objects::nonNull)
-                        .filter(fixture -> inDateRange(fixture, query.from(), query.to()))
-                        .forEach(fixtures::add);
+            int maxPages = appProperties.getSync().getMaxEventPages() > 0
+                    ? appProperties.getSync().getMaxEventPages() : 20;
+            Map<String, ProviderFixture> fixtures = new LinkedHashMap<>();
+            LocalDate today = LocalDate.now(ZoneOffset.UTC);
+            // Scheduled fixture refreshes should not crawl every historical page.
+            // The separate result-sync job owns recent score/status reconciliation.
+            if (query.from() == null || query.from().isBefore(today)) {
+                fetchDirection(query, season, "last", maxPages, page, fixtures);
             }
-            return fixtures.stream().collect(Collectors.toMap(
-                    ProviderFixture::externalId, fixture -> fixture, (first, ignored) -> first,
-                    LinkedHashMap::new)).values().stream().toList();
+            if (query.to() == null || !query.to().isBefore(today)) {
+                fetchDirection(query, season, "next", maxPages, page, fixtures);
+            }
+            log.info("SofaScore fixtures fetched tournament={} season={} count={} pagesPerDirection={}",
+                    query.leagueId(), season.name(), fixtures.size(), maxPages);
+            return List.copyOf(fixtures.values());
         });
+    }
+
+    private void fetchDirection(FixtureQuery query, SofaScoreResponseDTO.SeasonDTO season,
+                                String direction, int maxPages, Page page,
+                                Map<String, ProviderFixture> fixtures) {
+        for (int pageIndex = 0; pageIndex < maxPages; pageIndex++) {
+            SofaScoreResponseDTO.MatchesResponseDTO response = sofaScoreClient.fetchSeasonMatchesPage(
+                    query.leagueId(), season.id(), direction, pageIndex, page);
+            if (response.events() != null) response.events().stream().map(mapper::toProviderFixture)
+                    .filter(Objects::nonNull).filter(f -> inDateRange(f, query.from(), query.to()))
+                    .forEach(f -> fixtures.putIfAbsent(f.externalId(), f));
+            if (!response.hasNextPage()) break;
+        }
     }
 
     private boolean inDateRange(ProviderFixture fixture, LocalDate from, LocalDate to) {

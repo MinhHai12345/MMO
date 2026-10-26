@@ -82,8 +82,15 @@ app:
         secret: ${STRIPE_WEBHOOK_SECRET:mock}
 
   sofa-score:
-    api: https://api.sofascore.com/api/v1/
-    url: https://www.sofascore.com
+    api: ${SOFASCORE_API_URL:https://api.sofascore.com/api/v1/}
+    url: ${SOFASCORE_WEB_URL:https://www.sofascore.com}
+    tournament-region: ${SOFASCORE_TOURNAMENT_REGION:EN}
+
+  sync:
+    # Use unique tournament IDs to bound the initial SofaScore catalogue import.
+    tournament-ids: ${SOFASCORE_TOURNAMENT_IDS:}
+    max-event-pages: ${SOFASCORE_MAX_EVENT_PAGES:20}
+    max-rounds: ${SOFASCORE_MAX_ROUNDS:50}
 
   ingestion:
     providers:

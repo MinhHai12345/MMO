@@ -23,78 +23,61 @@ public abstract class AbstractSofaScoreClient {
     protected final ObjectMapper objectMapper = new ObjectMapper();
     private final AtomicInteger requestCounter = new AtomicInteger(0);
 
-
-    /**
-     * Hàm Generic xử lý cào dữ liệu an toàn, tự động chống block.
-     *
-     * @param <T>   Kiểu dữ liệu trả về mong muốn
-     * @param page  Đối tượng Playwright Page
-     * @param clazz Class Mock Data để Jackson parse JSON (T.class)
-     * @return Đối tượng đã được parse, hoặc null nếu lỗi
-     */
     protected <T> T safeFetch(String url, Page page, Class<T> clazz) {
         try {
             handleAntiBotDelay(page);
             Response response = page.navigate(url);
-
             if (response == null) {
-                log.warn("⚠️ Response trả về null khi gọi URL: {}", url);
-                return null;
+                throw new SofaScoreFetchException("SofaScore returned no HTTP response for " + url);
             }
+
             int status = response.status();
             if (status == 200) {
                 return objectMapper.readValue(response.text(), clazz);
             }
+            if (status == 404) {
+                // A missing round/page is a normal empty result for some SofaScore endpoints.
+                log.debug("SofaScore resource not found (404): {}", url);
+                return null;
+            }
             if (status == 403 || status == 429) {
-                log.warn("🚨 [Anti-Bot] Bị phát hiện với mã lỗi {} tại URL: {}. Tiến hành reset session...", status, url);
-                if (page.context() != null) {
-                    page.context().clearCookies();
-                }
-                Thread.sleep(60000);
-            } else {
-                log.warn("❌ Lỗi hệ thống HTTP {}: tại URL {}", status, url);
+                throw new SofaScoreFetchException("SofaScore rejected request with HTTP " + status
+                        + " for " + url + ". Check access/rate limits and retry later.");
             }
-
-        } catch (Exception e) {
-            log.error("❌ Lỗi nghiêm trọng khi fetch data từ URL [{}]: {}", url, e.getMessage());
-
-        }
-        return null;
-    }
-
-    /**
-     * Logic delay kết hợp Micro-break tách riêng để code sạch sẽ
-     */
-    private void handleAntiBotDelay(Page page) {
-        int currentCount = requestCounter.incrementAndGet();
-        try {
-            if (currentCount % (25 + random.nextInt(11)) == 0) {
-                long microBreak = 45000 + random.nextInt(30000);
-                log.info("⏳ [Anti-Bot] Đã gửi {} requests. Nghỉ dài {} giây...", currentCount, microBreak / 1000);
-                Thread.sleep(microBreak);
-
-                if (page != null && page.context() != null) {
-                    page.context().clearCookies();
-                    log.info("🧹 [Anti-Bot] Đã tự động dọn dẹp Cookies.");
-                }
-                return;
+            if (status >= 500) {
+                throw new SofaScoreFetchException("SofaScore upstream failure HTTP " + status + " for " + url);
             }
-            long delay = 3000 + random.nextInt(4001);
-            Thread.sleep(delay);
-        } catch (InterruptedException e) {
+            throw new SofaScoreFetchException("Unexpected SofaScore HTTP " + status + " for " + url);
+        } catch (SofaScoreFetchException exception) {
+            throw exception;
+        } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
+            throw new SofaScoreFetchException("Interrupted while waiting to fetch " + url, exception);
+        } catch (Exception exception) {
+            throw new SofaScoreFetchException("Failed to fetch SofaScore resource " + url, exception);
         }
     }
 
-    /**
-     * Hàm safeFetch cải tiến: Tự động lắng nghe nhiều API và parse trực tiếp sang Class tương ứng.
-     *
-     * @param loadPageUrl      URL trang cần navigate tới
-     * @param endpointClassMap Map cấu hình dạng: <Đoạn chuỗi Endpoint, Class mong muốn parse>
-     * @param page             Instance Page của Playwright
-     * @return Đối tượng DynamicFetchResult chứa các Object đã được tự động parse
-     */
-    protected DynamicFetchResult safeFetch(String loadPageUrl, Map<String, Class<?>> endpointClassMap, Page page, Consumer<Page> triggerAction) {
+    private void handleAntiBotDelay(Page page) throws InterruptedException {
+        int currentCount = requestCounter.incrementAndGet();
+        if (currentCount % (25 + random.nextInt(11)) == 0) {
+            long breakMillis = 45000 + random.nextInt(30000);
+            log.info("SofaScore request pacing: {} requests; pausing {} seconds",
+                    currentCount, breakMillis / 1000);
+            Thread.sleep(breakMillis);
+            if (page != null && page.context() != null) {
+                page.context().clearCookies();
+            }
+            return;
+        }
+        Thread.sleep(3000 + random.nextInt(4001));
+    }
+
+    protected DynamicFetchResult safeFetch(
+            String loadPageUrl,
+            Map<String, Class<?>> endpointClassMap,
+            Page page,
+            Consumer<Page> triggerAction) {
         DynamicFetchResult fetchResult = new DynamicFetchResult();
         if (MapUtils.isEmpty(endpointClassMap)) {
             return fetchResult;
@@ -114,10 +97,11 @@ public abstract class AbstractSofaScoreClient {
                         }
                     }
                 }
-            } catch (Exception ignored) {
-                // Tránh làm gián đoạn luồng nội bộ của Playwright
+            } catch (Exception exception) {
+                log.debug("Could not read intercepted SofaScore response: {}", exception.getMessage());
             }
         };
+
         page.onResponse(responseHandler);
         try {
             page.navigate(loadPageUrl, new Page.NavigateOptions()
@@ -127,21 +111,18 @@ public abstract class AbstractSofaScoreClient {
             if (triggerAction != null) {
                 page.waitForTimeout(8000);
                 try {
-                    log.info("⚡ [Pipeline] Kích nổ hành động Trigger...");
                     triggerAction.accept(page);
                     page.waitForTimeout(10000);
-                } catch (Exception ex) {
-                    log.error("❌ Lỗi xảy ra khi thực thi Trigger Action: {}", ex.getMessage());
+                } catch (Exception exception) {
+                    log.warn("SofaScore trigger action failed: {}", exception.getMessage());
                 }
             }
-            // 5. Đợi toàn bộ các API trả về kết quả hoặc chạm ngưỡng giới hạn thời gian (Timeout)
             CompletableFuture<?>[] futuresArray = futuresMap.values().toArray(new CompletableFuture[0]);
             CompletableFuture.allOf(futuresArray).get(20, TimeUnit.SECONDS);
-
-        } catch (TimeoutException e) {
-            log.warn("⏳ Hết thời gian chờ. Một số API phản hồi chậm, hệ thống sẽ tiến hành parse những dữ liệu đã kịp về.");
-        } catch (Exception e) {
-            log.error("❌ Lỗi nghiêm trọng khi thực hiện safeFetch đa API cho URL [{}]: {}", loadPageUrl, e.getMessage(), e);
+        } catch (TimeoutException exception) {
+            log.warn("Timed out waiting for all intercepted SofaScore endpoints; parsing available responses");
+        } catch (Exception exception) {
+            log.warn("Failed while loading SofaScore page {}: {}", loadPageUrl, exception.getMessage());
         } finally {
             page.offResponse(responseHandler);
         }
@@ -151,15 +132,13 @@ public abstract class AbstractSofaScoreClient {
                 try {
                     String json = future.getNow(null);
                     if (json != null && !json.isEmpty()) {
-                        Class<?> targetClass = endpointClassMap.get(endpoint);
-                        Object parsedObject = objectMapper.readValue(json, targetClass);
-                        fetchResult.put(endpoint, parsedObject);
+                        fetchResult.put(endpoint, objectMapper.readValue(json, endpointClassMap.get(endpoint)));
                     }
-                } catch (Exception ex) {
-                    log.error("❌ Lỗi xảy ra khi tự động ép kiểu Json cho endpoint [{}]: {}", endpoint, ex.getMessage());
+                } catch (Exception exception) {
+                    throw new SofaScoreFetchException("Could not parse SofaScore endpoint " + endpoint, exception);
                 }
             } else {
-                log.warn("⚠️ Bỏ sót hoặc không bắt được dữ liệu từ API: {}", endpoint);
+                log.warn("SofaScore endpoint was not captured: {}", endpoint);
             }
         });
         return fetchResult;
