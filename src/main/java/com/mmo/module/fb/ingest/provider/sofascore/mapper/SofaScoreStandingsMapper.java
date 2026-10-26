@@ -15,15 +15,15 @@ public class SofaScoreStandingsMapper {
         if (groups == null) return List.of();
         return groups.stream()
                 .filter(Objects::nonNull)
-                .filter(group -> group.getRows() != null)
-                .flatMap(group -> group.getRows().stream()
+                .filter(group -> group.rows() != null)
+                .flatMap(group -> group.rows().stream()
                         .filter(Objects::nonNull)
                         .map(row -> new ProviderStanding(
-                                row.getTeam() == null || row.getTeam().getId() == null
-                                        ? null : row.getTeam().getId().toString(),
-                                row.getPosition(), row.getPoints(), parseGoalDifference(row.getScoreDiffFormatted()),
-                                null, group.getName(), row.getMatches(), row.getWins(), row.getDraws(),
-                                row.getLosses(), row.getScoresFor(), row.getScoresAgainst())))
+                                row.team() == null || row.team().id() == null
+                                        ? null : row.team().id().toString(),
+                                row.position(), row.points(), parseGoalDifference(row.scoreDiffFormatted()),
+                                null, group.name(), row.matches(), row.wins(), row.draws(),
+                                row.losses(), row.scoresFor(), row.scoresAgainst())))
                 .filter(standing -> standing.teamExternalId() != null)
                 .toList();
     }
