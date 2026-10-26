@@ -189,10 +189,9 @@ public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
                             .build();
                     season = seasonRepository.save(season);
                 } else if (dto.isCurrent() && !season.isCurrent()) {
-                    seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull().stream()
-                            .filter(current -> current.getLeague() != null
-                                    && current.getLeague().getId().equals(league.getId())
-                                    && !current.getId().equals(season.getId()))
+                    Long targetSeasonId = season.getId();
+                    seasonRepository.findByLeague_IdAndIsCurrentTrue(league.getId()).stream()
+                            .filter(current -> !current.getId().equals(targetSeasonId))
                             .forEach(current -> {
                                 current.setCurrent(false);
                                 seasonRepository.save(current);
