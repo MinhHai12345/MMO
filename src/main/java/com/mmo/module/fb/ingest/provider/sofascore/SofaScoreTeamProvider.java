@@ -1,6 +1,5 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
-import com.microsoft.playwright.Page;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.provider.model.TeamQuery;
@@ -31,14 +30,22 @@ public class SofaScoreTeamProvider extends AbstractSofaScoreProvider implements 
 
     @Override
     public List<ProviderTeam> fetchTeams(TeamQuery query) {
-        if (query == null || query.leagueId() == null) return List.of();
+        if (query == null || query.leagueId() == null) {
+            return List.of();
+        }
         return withPage(page -> {
             SeasonDTO season = findSeason(query.leagueId(), query.season(), page);
-            if (season == null || season.id() == null) return List.of();
+            if (season == null || season.id() == null) {
+                throw new IllegalStateException("SofaScore season '" + query.season()
+                        + "' was not found for tournament " + query.leagueId());
+            }
 
             List<StandingGroupDTO> groups =
                     sofaScoreClient.fetchStandingTotal(query.leagueId(), season.id(), page);
-            if (groups == null) return List.of();
+            if (groups == null || groups.isEmpty()) {
+                throw new IllegalStateException("SofaScore returned no standings for tournament "
+                        + query.leagueId() + " season " + season.id());
+            }
 
             return groups.stream()
                     .filter(Objects::nonNull)
@@ -54,13 +61,14 @@ public class SofaScoreTeamProvider extends AbstractSofaScoreProvider implements 
         });
     }
 
-    private SeasonDTO findSeason(Long tournamentId, String year, Page page) {
-        List<SeasonDTO> seasons =
-                sofaScoreClient.fetchSeasonByTournamentId(tournamentId, page);
-        if (seasons == null) return null;
+    private SeasonDTO findSeason(Long tournamentId, String year, com.microsoft.playwright.Page page) {
+        List<SeasonDTO> seasons = sofaScoreClient.fetchSeasonByTournamentId(tournamentId, page);
+        if (seasons == null) {
+            throw new IllegalStateException("SofaScore season request failed for tournament " + tournamentId);
+        }
         return seasons.stream()
                 .filter(Objects::nonNull)
-                .filter(season -> year == null || year.equals(season.year()) || year.equals(season.name()))
+                .filter(season -> SofaScoreSeasonMatcher.matches(year, season))
                 .findFirst().orElse(null);
     }
 }
