@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.sofascore;
+package com.mmo.module.fb.ingest.provider.sofascore.client;
 
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;

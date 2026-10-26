@@ -5,8 +5,10 @@ import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
+import com.mmo.module.fb.ingest.provider.sofascore.client.AbstractSofaScoreProvider;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.MatchesResponseDTO;
+import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.SeasonDTO;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreFixtureMapper;
 import com.mmo.module.fb.ingest.provider.spi.FixtureProvider;
 import lombok.RequiredArgsConstructor;
@@ -29,21 +31,23 @@ public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implemen
     private final AppProperties appProperties;
 
     @Override
-    public Provider getProvider() { return Provider.SOFA_SCORE; }
+    public Provider getProvider() {
+        return Provider.SOFA_SCORE;
+    }
 
     @Override
     public List<ProviderFixture> fetchFixtures(FixtureQuery query) {
         if (query == null || query.leagueId() == null) return List.of();
         return withPage(page -> {
-            List<SofaScoreResponseDTO.SeasonDTO> seasons =
+            List<SeasonDTO> seasons =
                     sofaScoreClient.fetchSeasonByTournamentId(query.leagueId(), page);
             if (seasons == null || seasons.isEmpty())
                 throw new IllegalStateException("SofaScore returned no seasons for tournament " + query.leagueId());
 
-            SofaScoreResponseDTO.SeasonDTO season = seasons.stream().filter(Objects::nonNull)
+            SeasonDTO season = seasons.stream().filter(Objects::nonNull)
                     .filter(item -> SofaScoreSeasonMatcher.matches(query.season(), item)).findFirst()
                     .orElseThrow(() -> new IllegalStateException("SofaScore season '" + query.season()
-                            + "' was not found for tournament " + query.leagueId()));
+                                                                 + "' was not found for tournament " + query.leagueId()));
 
             int maxPages = appProperties.getSync().getMaxEventPages() > 0
                     ? appProperties.getSync().getMaxEventPages() : 20;
@@ -63,11 +67,11 @@ public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implemen
         });
     }
 
-    private void fetchDirection(FixtureQuery query, SofaScoreResponseDTO.SeasonDTO season,
+    private void fetchDirection(FixtureQuery query, SeasonDTO season,
                                 String direction, int maxPages, Page page,
                                 Map<String, ProviderFixture> fixtures) {
         for (int pageIndex = 0; pageIndex < maxPages; pageIndex++) {
-            SofaScoreResponseDTO.MatchesResponseDTO response = sofaScoreClient.fetchSeasonMatchesPage(
+            MatchesResponseDTO response = sofaScoreClient.fetchSeasonMatchesPage(
                     query.leagueId(), season.id(), direction, pageIndex, page);
             if (response.events() != null) response.events().stream().map(mapper::toProviderFixture)
                     .filter(Objects::nonNull).filter(f -> inDateRange(f, query.from(), query.to()))

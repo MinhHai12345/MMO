@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.provider.sofascore.client.AbstractSofaScoreProvider;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.GroupDTO;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.PeriodStatisticsDTO;

@@ -1,9 +1,9 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
-import com.microsoft.playwright.Page;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
 import com.mmo.module.fb.ingest.provider.model.StandingsQuery;
+import com.mmo.module.fb.ingest.provider.sofascore.client.AbstractSofaScoreProvider;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.SeasonDTO;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.StandingGroupDTO;
@@ -33,8 +33,7 @@ public class SofaScoreStandingsProvider extends AbstractSofaScoreProvider implem
             return List.of();
         }
         return withPage(page -> {
-            List<SeasonDTO> seasons =
-                    sofaScoreClient.fetchSeasonByTournamentId(query.leagueId(), page);
+            List<SeasonDTO> seasons = sofaScoreClient.fetchSeasonByTournamentId(query.leagueId(), page);
             if (seasons == null || seasons.isEmpty()) {
                 throw new IllegalStateException("SofaScore returned no seasons for tournament " + query.leagueId());
             }
