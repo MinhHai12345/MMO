@@ -113,7 +113,8 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
         String url = String.format(FETCH_SEASON_MATCHES_PAGE_URI, appProperties.getSofaScore().getApi(),
                 tournamentId, seasonId, direction, pageIndex);
         // A 404 means that the selected direction has no more events for this season.
-        return safeFetch(url, page, MatchesResponseDTO.class);
+        MatchesResponseDTO response = safeFetch(url, page, MatchesResponseDTO.class);
+        return response == null ? new MatchesResponseDTO(Collections.emptyList(), false) : response;
     }
 
     @Override
