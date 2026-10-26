@@ -50,7 +50,11 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
             return;
         }
 
-        leagueIngestionService.syncLeaguesForProvider(selectedProvider);
+        // Team sync can run independently on a cold start, but should not refetch every
+        // tournament and all season metadata when provider mappings already exist.
+        if (leagueExternalIdRepository.findAllByProvider(selectedProvider).isEmpty()) {
+            leagueIngestionService.syncLeaguesForProvider(selectedProvider);
+        }
         ensureConfiguredFootballDataSeasons(selectedProvider);
 
         Map<Long, String> externalLeagueIdsByLeagueId = new HashMap<>();

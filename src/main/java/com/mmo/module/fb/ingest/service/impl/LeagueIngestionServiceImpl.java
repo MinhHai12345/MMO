@@ -36,7 +36,10 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
         List<Long> configuredIds = selectedProvider == Provider.API_FOOTBALL
                 ? appProperties.getApiFootball().getLeagueIds()
                 : selectedProvider == Provider.FOOTBALL_DATA
-                    ? appProperties.getFootballData().getCompetitionIds() : List.of();
+                    ? appProperties.getFootballData().getCompetitionIds()
+                    : selectedProvider == Provider.SOFA_SCORE
+                        ? appProperties.getSync().getTournamentIds().stream().sorted().toList()
+                        : List.of();
         if ((selectedProvider == Provider.API_FOOTBALL || selectedProvider == Provider.FOOTBALL_DATA)
                 && (configuredIds == null || configuredIds.isEmpty())) {
             log.warn("No competition IDs configured for provider {}; configure its league/competition ID list.", selectedProvider);

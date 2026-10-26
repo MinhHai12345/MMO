@@ -127,9 +127,12 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
 
     @Query("""
             SELECT DISTINCT m FROM Match m
+            JOIN FETCH m.season season
+            JOIN FETCH m.homeTeam
+            JOIN FETCH m.awayTeam
             JOIN m.externalIds externalId
             WHERE m.status = :status
-              AND m.season.isCurrent = true
+              AND season.isCurrent = true
               AND externalId.provider = :provider
               AND (m.statisticsLastAttemptAt IS NULL OR m.statisticsLastAttemptAt < :retryBefore)
               AND (
