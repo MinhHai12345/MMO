@@ -103,11 +103,8 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
         String url = String.format(FETCH_SEASON_MATCHES_PAGE_URI, appProperties.getSofaScore().getApi(),
                 tournamentId, seasonId, direction, pageIndex);
         MatchesResponseDTO response = safeFetch(url, page, MatchesResponseDTO.class);
-        if (response == null) {
-            throw new SofaScoreFetchException("SofaScore fixture page request failed for tournament "
-                    + tournamentId + " season " + seasonId + " direction " + direction + " page " + pageIndex);
-        }
-        return response;
+        // Some competitions have no events in one direction; the direct client treats HTTP 404 as an empty page.
+        return response == null ? new MatchesResponseDTO(Collections.emptyList(), false) : response;
     }
 
     @Override
