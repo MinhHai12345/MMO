@@ -1,7 +1,7 @@
 package com.mmo;
 
-import jakarta.validation.constraints.NotBlank;
 import com.mmo.module.fb.ingest.enums.Provider;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -14,6 +14,9 @@ import java.util.Set;
 
 /**
  * Strongly typed access to application-specific configuration under the {@code app} prefix.
+ *
+ * <p>Framework configuration (Spring, datasource, Hibernate, Quartz and server) stays in
+ * {@code application.yml}; this class contains only application-owned settings.</p>
  */
 @Getter
 @Setter
@@ -21,6 +24,7 @@ import java.util.Set;
 @ConfigurationProperties(prefix = "app")
 public class AppProperties {
 
+    private Content content = new Content();
     private InitialData initialData = new InitialData();
     private Telegram telegram = new Telegram();
     private Twitter twitter = new Twitter();
@@ -28,10 +32,23 @@ public class AppProperties {
     private Stripe stripe = new Stripe();
     private SofaScore sofaScore = new SofaScore();
     private Sync sync = new Sync();
+    private Ingestion ingestion = new Ingestion();
     private ApiFootball apiFootball = new ApiFootball();
     private FootballData footballData = new FootballData();
-    private Ingestion ingestion = new Ingestion();
     private Understats understats = new Understats();
+
+    @Getter
+    @Setter
+    public static class Content {
+        private Publishing publishing = new Publishing();
+
+        @Getter
+        @Setter
+        public static class Publishing {
+            /** Shared API key for the content-publishing endpoint; never use it as a social provider token. */
+            private String apiKey = "haivo";
+        }
+    }
 
     @Getter
     @Setter
@@ -127,7 +144,7 @@ public class AppProperties {
         private String api = "https://api.sofascore.com/api/v1/";
         @NotBlank
         private String url = "https://www.sofascore.com";
-        /** SofaScore's default tournament catalogue region/language, e.g. EN or VN. */
+        /** Default tournament catalogue region/language, for example EN or VN. */
         private String tournamentRegion = "EN";
     }
 
@@ -135,6 +152,7 @@ public class AppProperties {
     @Setter
     public static class Sync {
         private boolean bootstrapOnStart = true;
+        /** Optional allow-list of SofaScore unique tournament IDs for bounded catalogue sync. */
         private Set<Long> tournamentIds = new HashSet<>();
         private int seasonsPerLeague = 3;
         private int maxRounds = 50;
@@ -163,21 +181,21 @@ public class AppProperties {
     @Setter
     public static class ApiFootball {
         private boolean enabled = true;
-        private String baseUrl;
-        private String apiKey;
-        /** API-Football league IDs to sync. Required for a bounded initial import; empty disables league ingestion. */
+        private String baseUrl = "https://v3.football.api-sports.io";
+        private String apiKey = "mock";
+        /** API-Football league IDs to sync; an empty list intentionally prevents league ingestion. */
         private List<Long> leagueIds = new ArrayList<>();
     }
 
     @Getter
     @Setter
     public static class FootballData {
-        private boolean enabled = false;
-        private String baseUrl;
-        private String apiKey;
-        /** Numeric football-data.org competition IDs, e.g. 2021 (Premier League) or 2001 (UEFA Champions League). */
+        private boolean enabled = true;
+        private String baseUrl = "https://api.football-data.org/v4";
+        private String apiKey = "mock";
+        /** Numeric football-data.org competition IDs, e.g. 2021 (Premier League). */
         private List<Long> competitionIds = new ArrayList<>();
-        /** Season start years to backfill, e.g. [2021, 2022, 2023, 2024, 2025, 2026]. Empty means current seasons only. */
+        /** Season start years to backfill; an empty list means current seasons only. */
         private List<String> seasons = new ArrayList<>();
     }
 
