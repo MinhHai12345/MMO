@@ -127,6 +127,8 @@ public class AppProperties {
         private String api = "https://api.sofascore.com/api/v1/";
         @NotBlank
         private String url = "https://www.sofascore.com";
+        /** SofaScore's default tournament catalogue region/language, e.g. EN or VN. */
+        private String tournamentRegion = "EN";
     }
 
     @Getter

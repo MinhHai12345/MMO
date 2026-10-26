@@ -43,6 +43,9 @@ public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implement
                         return mapper.toProviderLeague(tournament, seasons);
                     })
                     .filter(Objects::nonNull)
+                    // Do not persist catalogue entries that cannot provide season identity;
+                    // downstream team and fixture ingestion cannot process them safely.
+                    .filter(league -> league.seasons() != null && !league.seasons().isEmpty())
                     .toList();
         });
     }

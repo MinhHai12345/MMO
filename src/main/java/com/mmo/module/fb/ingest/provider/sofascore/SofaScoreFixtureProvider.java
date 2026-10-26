@@ -1,5 +1,6 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
+import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
@@ -25,6 +26,7 @@ public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implemen
 
     private final SofaScoreFixtureMapper mapper;
     private final SofaCrawlerService sofaCrawlerService;
+    private final AppProperties appProperties;
 
     @Override
     public Provider getProvider() {
@@ -47,7 +49,9 @@ public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implemen
 
             List<ProviderFixture> fixtures = new ArrayList<>();
             int emptyRounds = 0;
-            for (int round = 1; round <= 50; round++) {
+            int maxRounds = appProperties.getSync().getMaxRounds() > 0
+                    ? appProperties.getSync().getMaxRounds() : 50;
+            for (int round = 1; round <= maxRounds; round++) {
                 List<SofaMatchesData.SofaEventDTO> events =
                         sofaCrawlerService.fetchMatchesByRound(query.leagueId(), season.getId(), round, page);
                 if (events == null || events.isEmpty()) {
