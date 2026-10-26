@@ -36,59 +36,59 @@ public class AppProperties {
      * Backward-compatible accessors keep existing integrations source-compatible while the
      * configuration tree is organized under {@code app.social} and {@code app.ingestion}.
      */
-    public Social.Telegram getTelegram() {
+    public Telegram getTelegram() {
         return social.getTelegram();
     }
 
-    public void setTelegram(Social.Telegram telegram) {
+    public void setTelegram(Telegram telegram) {
         social.setTelegram(telegram);
     }
 
-    public Social.Twitter getTwitter() {
+    public Twitter getTwitter() {
         return social.getTwitter();
     }
 
-    public void setTwitter(Social.Twitter twitter) {
+    public void setTwitter(Twitter twitter) {
         social.setTwitter(twitter);
     }
 
-    public Social.Facebook getFacebook() {
+    public Facebook getFacebook() {
         return social.getFacebook();
     }
 
-    public void setFacebook(Social.Facebook facebook) {
+    public void setFacebook(Facebook facebook) {
         social.setFacebook(facebook);
     }
 
-    public Ingestion.SofaScore getSofaScore() {
+    public SofaScore getSofaScore() {
         return ingestion.getSofaScore();
     }
 
-    public void setSofaScore(Ingestion.SofaScore sofaScore) {
+    public void setSofaScore(SofaScore sofaScore) {
         ingestion.setSofaScore(sofaScore);
     }
 
-    public Ingestion.ApiFootball getApiFootball() {
+    public ApiFootball getApiFootball() {
         return ingestion.getApiFootball();
     }
 
-    public void setApiFootball(Ingestion.ApiFootball apiFootball) {
+    public void setApiFootball(ApiFootball apiFootball) {
         ingestion.setApiFootball(apiFootball);
     }
 
-    public Ingestion.FootballData getFootballData() {
+    public FootballData getFootballData() {
         return ingestion.getFootballData();
     }
 
-    public void setFootballData(Ingestion.FootballData footballData) {
+    public void setFootballData(FootballData footballData) {
         ingestion.setFootballData(footballData);
     }
 
-    public Ingestion.Understats getUnderstats() {
+    public Understats getUnderstats() {
         return ingestion.getUnderstats();
     }
 
-    public void setUnderstats(Ingestion.Understats understats) {
+    public void setUnderstats(Understats understats) {
         ingestion.setUnderstats(understats);
     }
 
@@ -115,71 +115,11 @@ public class AppProperties {
     @Getter
     @Setter
     public static class Social {
-        private Telegram telegram = new Telegram();
-        private Twitter twitter = new Twitter();
-        private Facebook facebook = new Facebook();
+        private AppProperties.Telegram telegram = new AppProperties.Telegram();
+        private AppProperties.Twitter twitter = new AppProperties.Twitter();
+        private AppProperties.Facebook facebook = new AppProperties.Facebook();
 
-        @Getter
-        @Setter
-        public static class Telegram {
-            private Bot bot = new Bot();
-            private Channel channel = new Channel();
 
-            @Getter
-            @Setter
-            public static class Bot {
-                private String token = "mock";
-                private String username = "H2_FB_Bot";
-            }
-
-            @Getter
-            @Setter
-            public static class Channel {
-                private String id = "mock";
-                private String free = "mock";
-                private String premium = "mock";
-            }
-        }
-
-        @Getter
-        @Setter
-        public static class Twitter {
-            private Consumer consumer = new Consumer();
-            private Access access = new Access();
-
-            @Getter
-            @Setter
-            public static class Consumer {
-                private String key = "mock";
-                private String secret = "mock";
-            }
-
-            @Getter
-            @Setter
-            public static class Access {
-                private String token = "mock";
-                private String secret = "mock";
-            }
-        }
-
-        @Getter
-        @Setter
-        public static class Facebook {
-            private Page page = new Page();
-            private Access access = new Access();
-
-            @Getter
-            @Setter
-            public static class Page {
-                private String id = "mock";
-            }
-
-            @Getter
-            @Setter
-            public static class Access {
-                private String token = "mock";
-            }
-        }
     }
 
     @Getter
@@ -217,10 +157,10 @@ public class AppProperties {
     @Setter
     public static class Ingestion {
         private Providers providers = new Providers();
-        private SofaScore sofaScore = new SofaScore();
-        private ApiFootball apiFootball = new ApiFootball();
-        private FootballData footballData = new FootballData();
-        private Understats understats = new Understats();
+        private AppProperties.SofaScore sofaScore = new AppProperties.SofaScore();
+        private AppProperties.ApiFootball apiFootball = new AppProperties.ApiFootball();
+        private AppProperties.FootballData footballData = new AppProperties.FootballData();
+        private AppProperties.Understats understats = new AppProperties.Understats();
     }
 
     @Getter
@@ -233,6 +173,7 @@ public class AppProperties {
         private Provider odds = Provider.API_FOOTBALL;
     }
 
+    /** Legacy nested types remain source-compatible; settings are bound under app.ingestion. */
     @Getter
     @Setter
     public static class SofaScore {
@@ -266,5 +207,55 @@ public class AppProperties {
     @Setter
     public static class Understats {
         private String baseUrl = "https://understat.com";
+    }
+
+    @Getter
+    @Setter
+    public static class Telegram {
+        private Bot bot = new Bot();
+        private Channel channel = new Channel();
+        @Getter @Setter
+        public static class Bot {
+            private String token = "mock";
+            private String username = "H2_FB_Bot";
+        }
+        @Getter @Setter
+        public static class Channel {
+            private String id = "mock";
+            private String free = "mock";
+            private String premium = "mock";
+        }
+    }
+
+    @Getter
+    @Setter
+    public static class Twitter {
+        private Consumer consumer = new Consumer();
+        private Access access = new Access();
+        @Getter @Setter
+        public static class Consumer {
+            private String key = "mock";
+            private String secret = "mock";
+        }
+        @Getter @Setter
+        public static class Access {
+            private String token = "mock";
+            private String secret = "mock";
+        }
+    }
+
+    @Getter
+    @Setter
+    public static class Facebook {
+        private Page page = new Page();
+        private Access access = new Access();
+        @Getter @Setter
+        public static class Page {
+            private String id = "mock";
+        }
+        @Getter @Setter
+        public static class Access {
+            private String token = "mock";
+        }
     }
 }
