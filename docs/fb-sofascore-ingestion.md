@@ -4,7 +4,7 @@
 
 SofaScore core data uses the same provider-neutral pipeline as the other sources:
 
-1. `SofaScoreCrawlerServiceImpl` fetches typed SofaScore DTOs through Playwright.
+1. `sofascore.client.SofaScoreClientImpl` owns outbound SofaScore requests and parses typed SofaScore DTOs through Playwright. The `SofaScoreClient` interface isolates provider adapters from transport details; browser lifecycle and fetch helpers live beside the client.
 2. `SofaScoreLeagueProvider`, `SofaScoreTeamProvider`, and `SofaScoreFixtureProvider` map source DTOs into `ProviderLeague`, `ProviderTeam`, and `ProviderFixture`.
 3. `ProviderRegistry` resolves the selected source.
 4. Existing ingestion and persistence services upsert canonical `League`, `Season`, `Team`, and `Match` records and register provider IDs through `ExternalIdMappingService`.
