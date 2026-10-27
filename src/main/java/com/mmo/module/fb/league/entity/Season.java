@@ -42,7 +42,7 @@ public class Season extends AbstractEntity {
      * Controls whether detailed ingestion (teams, fixtures and standings) should run for this season.
      * Kept separate from isCurrent because historical seasons can also be explicitly enabled.
      */
-    @Column(name = "is_active", nullable = false)
+    @Column(name = "is_active", nullable = false, columnDefinition = "boolean default false")
     @Builder.Default
     private boolean isActive = false;
 
