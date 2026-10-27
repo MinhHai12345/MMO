@@ -188,6 +188,7 @@ public class AppProperties {
             ProviderConfig config = providerConfig.get(Provider.SOFA_SCORE);
             if (config == null) return sofaScore;
             SofaScore result = new SofaScore();
+            result.setEnabled(config.isEnabled());
             result.setApi(config.getBaseUrl());
             result.setUrl(config.getWebUrl());
             result.setTournamentRegion(config.getOption("tournament-region"));
@@ -222,7 +223,10 @@ public class AppProperties {
             ProviderConfig config = providerConfig.get(Provider.UNDER_STATS);
             if (config == null) return understats;
             Understats result = new Understats();
+            result.setEnabled(config.isEnabled());
             result.setBaseUrl(config.getBaseUrl());
+            result.setLeagueIds(config.getLeagueIds());
+            result.setSeasons(config.getSeasons());
             return result;
         }
     }
@@ -258,6 +262,7 @@ public class AppProperties {
     @Getter
     @Setter
     public static class SofaScore {
+        private boolean enabled = true;
         @NotBlank
         private String api;
         @NotBlank
@@ -272,6 +277,7 @@ public class AppProperties {
         private String baseUrl;
         private String apiKey;
         private List<Long> leagueIds = new ArrayList<>();
+        private List<String> seasons = new ArrayList<>();
     }
 
     @Getter
@@ -287,7 +293,10 @@ public class AppProperties {
     @Getter
     @Setter
     public static class Understats {
+        private boolean enabled;
         private String baseUrl;
+        private List<Long> leagueIds = new ArrayList<>();
+        private List<String> seasons = new ArrayList<>();
     }
 
     @Getter
