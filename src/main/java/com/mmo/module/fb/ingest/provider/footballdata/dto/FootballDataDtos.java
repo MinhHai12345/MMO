@@ -21,13 +21,13 @@ public final class FootballDataDtos {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record CompetitionDto(Long id, String name, String code, String type,
-                                 AreaDto area, String emblem, SeasonDto currentSeason) {
+                                 AreaDto area, String emblem, SeasonDto currentSeason,
+                                 List<SeasonDto> seasons) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record CompetitionListDto(Integer count, List<CompetitionDto> competitions) {
     }
-
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record TeamDto(Long id, String name, String shortName, String tla, String crest,
