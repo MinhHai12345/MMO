@@ -35,7 +35,7 @@ public class IngestionServiceSupport {
                     && properties.getFootballData().isEnabled();
             case API_FOOTBALL -> properties.getApiFootball() != null
                     && properties.getApiFootball().isEnabled();
-            case SOFA_SCORE -> true; // SofaScore availability is controlled by its client/crawler configuration.
+            case SOFA_SCORE, UNDER_STATS -> true; // Provider availability is ultimately checked by ProviderRegistry.
         };
 
         if (!enabled) {
@@ -53,6 +53,7 @@ public class IngestionServiceSupport {
                     ? List.of() : properties.getFootballData().getCompetitionIds();
             case SOFA_SCORE -> properties.getSync() == null || properties.getSync().getTournamentIds() == null
                     ? List.of() : properties.getSync().getTournamentIds().stream().sorted().toList();
+            case UNDER_STATS -> List.of();
         };
     }
 
@@ -87,6 +88,13 @@ public class IngestionServiceSupport {
             return seasonRepository.findByYearInAndLeagueIsNotNullAndYearIsNotNull(years);
         }
         return seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
+    }
+
+    public List<Season> standingsSeasonsToSync(Provider provider) {
+        List<String> years = configuredSeasonYears(provider);
+        return years.isEmpty()
+                ? seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull()
+                : seasonRepository.findByYearInAndLeagueIsNotNullAndYearIsNotNull(years);
     }
 
     public static Long parseExternalId(String value) {
