@@ -45,13 +45,18 @@ public class IngestionServiceSupport {
         return properties.getIngestion().getProviderConfig().get(provider);
     }
 
+    /**
+     * Only seasons explicitly activated under active leagues are eligible for detailed ingestion.
+     * Provider-specific mapping is still required for SofaScore.
+     */
     public List<Season> seasonsToSync(Provider provider) {
         if (provider == Provider.SOFA_SCORE) {
             Map<Long, Season> mapped = new LinkedHashMap<>();
             for (SeasonExternalId mapping : seasonExternalIdRepository.findAllByProvider(provider)) {
                 Season season = mapping.getSeason();
                 if (season != null && season.getId() != null && season.getLeague() != null
-                        && Boolean.TRUE.equals(season.getLeague().getIsActive()) && season.getYear() != null) {
+                        && Boolean.TRUE.equals(season.getLeague().getIsActive())
+                        && season.isActive() && season.getYear() != null) {
                     mapped.putIfAbsent(season.getId(), season);
                 }
             }
@@ -61,7 +66,7 @@ public class IngestionServiceSupport {
     }
 
     public List<Season> standingsSeasonsToSync(Provider provider) {
-        return seasonRepository.findAllForActiveLeagues();
+        return seasonsToSync(provider);
     }
 
     public static Long parseExternalId(String value) {
