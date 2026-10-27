@@ -58,7 +58,7 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
                             selectedProvider, source.externalId(), source.name());
                     continue;
                 }
-                if (candidates.isEmpty() && selectedProvider == Provider.SOFA_SCORE) {
+                if (candidates.isEmpty() && selectedProvider != Provider.FOOTBALL_DATA) {
                     log.info("Skipping SofaScore team '{}' (external ID {}) because no existing canonical team matched; SofaScore mapping sync does not create core entities.",
                             source.name(), source.externalId());
                     continue;
@@ -73,7 +73,7 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
                 continue;
             }
 
-            if (selectedProvider != Provider.SOFA_SCORE) {
+            if (selectedProvider == Provider.FOOTBALL_DATA) {
                 if (team.getName() == null || team.getName().isBlank()) team.setName(source.name());
                 if (team.getShortName() == null || team.getShortName().isBlank()) team.setShortName(source.shortName());
                 if (team.getSlug() == null || team.getSlug().isBlank()) {
