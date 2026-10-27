@@ -51,6 +51,10 @@ public class Match extends AbstractEntity {
     @Column(name = "statistics_last_attempt_at")
     private Instant statisticsLastAttemptAt;
 
+    /** Independent throttle so player-lineup retries do not block team-level match statistics. */
+    @Column(name = "player_statistics_last_attempt_at")
+    private Instant playerStatisticsLastAttemptAt;
+
     @Column(name = "round_info", length = 160)
     private String roundInfo;
 
