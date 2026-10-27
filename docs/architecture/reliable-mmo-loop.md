@@ -73,7 +73,7 @@ Endpoints:
 
 ### Remaining integration gate
 
-This PR adds the durable event ledger, campaign-filtered report, and signature-verified Stripe webhook for payment_intent.succeeded and refund.created. It does not add a social-platform click analytics importer or change the existing payment checkout flow. Reports show only verified events actually received; they must not be presented as complete business revenue until Stripe checkout emits campaign metadata and tracked CTA links/analytics importers emit click and lead events. Next integration should connect outbound content campaign links to the ledger, then compare campaign clicks → leads → confirmed payments → refunds.
+This PR adds the durable event ledger, campaign-filtered report, and signature-verified Stripe webhook for payment_intent.succeeded, invoice.paid (initial paid subscriptions), and refund.created. It does not add a social-platform click analytics importer or change the existing payment checkout flow. Reports show only verified events actually received; they must not be presented as complete business revenue until Stripe checkout emits campaign metadata and tracked CTA links/analytics importers emit click and lead events. Next integration should connect outbound content campaign links to the ledger, then compare campaign clicks → leads → confirmed payments → refunds.
 
 ## Validation
 
