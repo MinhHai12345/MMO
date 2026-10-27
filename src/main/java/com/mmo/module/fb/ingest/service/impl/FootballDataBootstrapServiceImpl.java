@@ -45,10 +45,10 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         Provider fixtureProvider = overrides.fixture() != null ? overrides.fixture() : defaults.getFixture();
         Provider standingsProvider = overrides.standings() != null ? overrides.standings() : defaults.getStandings();
 
-        validateProvider(leagueProvider, true);
-        validateProvider(teamProvider, false);
-        validateProvider(fixtureProvider, false);
-        validateProvider(standingsProvider, false);
+        validateProvider(leagueProvider);
+        validateProvider(teamProvider);
+        validateProvider(fixtureProvider);
+        validateProvider(standingsProvider);
 
         log.info("Starting core-data bootstrap: league={}, team={}, fixture={}, standings={}",
                 leagueProvider, teamProvider, fixtureProvider, standingsProvider);
@@ -86,7 +86,7 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         });
 
         for (Provider provider : ordered) {
-            validateProvider(provider, true);
+            validateProvider(provider);
         }
 
         log.info("Starting multi-provider core ingestion. Canonical provider first; providers={}", ordered);
@@ -122,7 +122,7 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         }
     }
 
-    private void validateProvider(Provider provider, boolean leagueResource) {
+    private void validateProvider(Provider provider) {
         ingestionSupport.requireProviderEnabled(provider, "bootstrap");
 
         if (provider == Provider.API_FOOTBALL) {

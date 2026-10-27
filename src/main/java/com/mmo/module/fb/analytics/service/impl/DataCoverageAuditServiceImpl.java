@@ -1,5 +1,6 @@
 package com.mmo.module.fb.analytics.service.impl;
 
+import com.mmo.AppProperties;
 import com.mmo.module.fb.analytics.service.DataCoverageAuditService;
 import com.mmo.module.fb.analytics.service.DataCoverageAuditService.*;
 import com.mmo.module.fb.match.enums.MatchStatus;
@@ -16,6 +17,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
     private final EntityManager entityManager;
+    private final AppProperties properties;
 
     @Override
     @Transactional(readOnly = true)
@@ -46,10 +48,10 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
                 """, Long.class).getResultList();
         long duplicateExcess = duplicateGroups.stream().mapToLong(n -> n - 1).sum();
 
-        Provider lp = Provider.FOOTBALL_DATA;
-        Provider tp = Provider.FOOTBALL_DATA;
-        Provider fp = Provider.FOOTBALL_DATA;
-        Provider sp = Provider.FOOTBALL_DATA;
+        Provider lp = properties.getIngestion().getProviders().getLeague();
+        Provider tp = properties.getIngestion().getProviders().getTeam();
+        Provider fp = properties.getIngestion().getProviders().getFixture();
+        Provider sp = properties.getIngestion().getProviders().getStandings();
         Map<String, MappingCoverage> mapping = new LinkedHashMap<>();
         addMapping(mapping, "league", "League", "LeagueExternalId", "league", lp);
         addMapping(mapping, "team", "Team", "TeamExternalId", "team", tp);

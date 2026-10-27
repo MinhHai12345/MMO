@@ -40,7 +40,7 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
     @Transactional
     public void persistLeagues(Provider selectedProvider, List<ProviderLeague> sources) {
         int synced = 0;
-        List<League> knownActiveLeagues = new ArrayList<>(leagueRepository.findAll());
+        List<League> knownLeagues = new ArrayList<>(leagueRepository.findAll());
         for (ProviderLeague source : sources) {
             if (source == null || source.externalId() == null || source.externalId().isBlank()
                     || source.name() == null || source.name().isBlank()) {
