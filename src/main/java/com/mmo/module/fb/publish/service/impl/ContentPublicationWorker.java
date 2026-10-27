@@ -1,5 +1,6 @@
 package com.mmo.module.fb.publish.service.impl;
 
+import com.mmo.AppProperties;
 import com.mmo.module.fb.publish.domain.PublicationPlatform;
 import com.mmo.module.fb.publish.domain.PublicationStateMachine;
 import com.mmo.module.fb.publish.provider.telegram.TelegramLivePublishingService;
@@ -29,12 +30,14 @@ public class ContentPublicationWorker {
 
     private final ContentPublicationRepository publicationRepository;
     private final TelegramLivePublishingService telegramLivePublishingService;
+    private final AppProperties appProperties;
 
     public void processDuePublications() {
         Instant now = Instant.now();
-        int configuredBatchSize = 10;
-        int configuredMaxAttempts = 5;
-        long configuredRetryDelayMillis = 300_000L;
+        AppProperties.Publication.Worker configuration = appProperties.getPublication().getWorker();
+        int configuredBatchSize = Math.max(1, configuration.getBatchSize());
+        int configuredMaxAttempts = Math.max(1, configuration.getMaxAttempts());
+        long configuredRetryDelayMillis = Math.max(0L, configuration.getRetryDelayMillis());
 
         List<Long> dueIds = publicationRepository.findDuePublicationIds(
                 PublicationPlatform.TELEGRAM,
