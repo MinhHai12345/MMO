@@ -28,7 +28,7 @@ public class TelegramBotApiPublisher {
     public TelegramPublishResult publish(String title, String body, String mediaReference) {
         String chatId = properties.getTelegram().getChannel().getId();
         if (isUnconfigured(properties.getTelegram().getBot().getToken()) || isUnconfigured(chatId)) {
-            throw new IllegalStateException("Telegram bot token and channel ID must be configured");
+            throw new TelegramConfigurationException("Telegram bot token and channel ID must be configured");
         }
 
         String text = (title == null || title.isBlank())
@@ -83,5 +83,9 @@ public class TelegramBotApiPublisher {
     public static class TelegramPublishingException extends RuntimeException {
         public TelegramPublishingException(String message) { super(message); }
         public TelegramPublishingException(String message, Throwable cause) { super(message, cause); }
+    }
+
+    public static class TelegramConfigurationException extends RuntimeException {
+        public TelegramConfigurationException(String message) { super(message); }
     }
 }
