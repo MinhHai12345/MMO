@@ -108,13 +108,11 @@ public class CronJobServiceImpl implements CronJobService {
         }
     }
 
-    @Transactional
     @Override
     public CronJob startJobNow(final Long jobId) {
         return startJobNow(jobId, Map.of());
     }
 
-    @Transactional
     @Override
     public CronJob startJobNow(final Long jobId, Map<String, String> parameters) {
         final CronJob cronJob = cronJobRepository.findById(jobId)
