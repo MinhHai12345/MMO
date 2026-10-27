@@ -13,11 +13,18 @@ public interface ConversionEventRepository extends JpaRepository<ConversionEvent
     Optional<ConversionEventEntity> findByIdempotencyKey(String idempotencyKey);
     Optional<ConversionEventEntity> findByEventSourceAndExternalEventId(String eventSource, String externalEventId);
 
-    long countByEventTypeAndCurrencyAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
-            String eventType, String currency, Instant from, Instant to);
-
-    long countByEventTypeAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
-            String eventType, Instant from, Instant to);
+    @Query("""
+            select count(event)
+            from ConversionEventEntity event
+            where event.eventType = :eventType
+              and event.occurredAt >= :from
+              and event.occurredAt < :to
+              and (:campaignCode is null or event.campaignCode = :campaignCode)
+            """)
+    long countEvents(@Param("eventType") String eventType,
+                     @Param("from") Instant from,
+                     @Param("to") Instant to,
+                     @Param("campaignCode") String campaignCode);
 
     @Query("""
             select sum(event.amount)
@@ -26,9 +33,11 @@ public interface ConversionEventRepository extends JpaRepository<ConversionEvent
               and event.currency = :currency
               and event.occurredAt >= :from
               and event.occurredAt < :to
+              and (:campaignCode is null or event.campaignCode = :campaignCode)
             """)
     BigDecimal sumAmount(@Param("eventType") String eventType,
                          @Param("currency") String currency,
                          @Param("from") Instant from,
-                         @Param("to") Instant to);
+                         @Param("to") Instant to,
+                         @Param("campaignCode") String campaignCode);
 }
