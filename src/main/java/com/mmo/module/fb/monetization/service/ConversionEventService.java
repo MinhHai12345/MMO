@@ -121,12 +121,17 @@ public class ConversionEventService {
                 || !existing.getEventType().equals(requestedType)
                 || !java.util.Objects.equals(existing.getPublicationId(), command.publicationId())
                 || !java.util.Objects.equals(existing.getSubscriberId(), command.subscriberId())
-                || !java.util.Objects.equals(existing.getAmount(), command.amount())
+                || !java.util.Objects.equals(existing.getCampaignCode(), blankToNull(command.campaignCode()))
+                || !sameAmount(existing.getAmount(), command.amount())
                 || !java.util.Objects.equals(existing.getCurrency(),
                     command.currency() == null ? null : command.currency().strip().toUpperCase(Locale.ROOT))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Idempotency key or external event ID was reused with different event data");
         }
+    }
+
+    private static boolean sameAmount(BigDecimal left, BigDecimal right) {
+        return left == null ? right == null : right != null && left.compareTo(right) == 0;
     }
 
     private static String blankToNull(String value) { return value == null || value.isBlank() ? null : value.strip(); }
