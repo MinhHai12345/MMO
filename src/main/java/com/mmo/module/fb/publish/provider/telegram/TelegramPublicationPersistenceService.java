@@ -1,5 +1,6 @@
 package com.mmo.module.fb.publish.provider.telegram;
 
+import com.mmo.AppProperties;
 import com.mmo.module.fb.publish.domain.PublicationPlatform;
 import com.mmo.module.fb.publish.domain.PublicationStateMachine;
 import com.mmo.module.fb.publish.entity.ContentPublicationAttemptEntity;
@@ -24,6 +25,7 @@ public class TelegramPublicationPersistenceService {
     private static final Duration STALE_DELIVERY_THRESHOLD = Duration.ofMinutes(10);
     private final ContentPublicationRepository publicationRepository;
     private final ContentPublicationAttemptRepository attemptRepository;
+    private final AppProperties appProperties;
 
     @Transactional
     public Claim claim(Long publicationId, String requestedBy) {
@@ -47,6 +49,11 @@ public class TelegramPublicationPersistenceService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Publication is scheduled for a future time");
         }
         PublicationStateMachine.State state = publication.getState();
+        int maxAttempts = Math.max(1, appProperties.getPublication().getWorker().getMaxAttempts());
+        if (publication.getAttemptCount() >= maxAttempts) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Publication reached the configured maximum attempt count: " + maxAttempts);
+        }
         if (state != PublicationStateMachine.State.APPROVED
                 && state != PublicationStateMachine.State.SCHEDULED
                 && state != PublicationStateMachine.State.FAILED) {
@@ -107,6 +114,46 @@ public class TelegramPublicationPersistenceService {
     public void markDeliveryUnknown(Claim claim, RuntimeException failure) {
         finishAttempt(claim, PublicationStateMachine.State.DELIVERY_UNKNOWN,
                 "DELIVERY_UNKNOWN", safeMessage(failure));
+    }
+
+    @Transactional
+    public void reconcileDeliveryUnknown(Long publicationId, boolean delivered, String externalPostId, String actor) {
+        if (actor == null || actor.isBlank() || actor.strip().length() > 120) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A reconciliation actor is required");
+        }
+        ContentPublicationEntity publication = publicationRepository.findByIdForUpdate(publicationId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Publication not found"));
+        if (publication.getState() != PublicationStateMachine.State.DELIVERY_UNKNOWN) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only DELIVERY_UNKNOWN publications can be reconciled");
+        }
+        Instant now = Instant.now();
+        if (delivered) {
+            if (externalPostId == null || externalPostId.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "externalPostId is required when delivery is confirmed");
+            }
+            publication.setState(PublicationStateMachine.transition(
+                    PublicationStateMachine.State.DELIVERY_UNKNOWN, PublicationStateMachine.State.PUBLISHED));
+            publication.setExternalPostId(externalPostId.strip());
+            publication.setPublishedAt(now);
+            publication.setLastAttemptStatus("PUBLISHED_RECONCILED");
+            publication.setLastAttemptMessage("Delivery confirmed manually by " + actor.strip());
+        } else {
+            publication.setState(PublicationStateMachine.transition(
+                    PublicationStateMachine.State.DELIVERY_UNKNOWN, PublicationStateMachine.State.FAILED));
+            publication.setLastAttemptStatus("NOT_DELIVERED_RECONCILED");
+            publication.setLastAttemptMessage("Channel history checked; delivery not found. Reconciled by " + actor.strip());
+        }
+        publication.setLastAttemptAt(now);
+        publication.setUpdatedAtSnapshot(now);
+        publicationRepository.save(publication);
+        attemptRepository.findByPublicationIdAndAttemptNumber(publication.getId(), publication.getAttemptCount())
+                .ifPresent(attempt -> {
+                    attempt.setStatus(delivered ? "PUBLISHED_RECONCILED" : "NOT_DELIVERED_RECONCILED");
+                    attempt.setResponseSummary(publication.getLastAttemptMessage());
+                    attempt.setCompletedAt(now);
+                    attemptRepository.save(attempt);
+                });
     }
 
     @Transactional
