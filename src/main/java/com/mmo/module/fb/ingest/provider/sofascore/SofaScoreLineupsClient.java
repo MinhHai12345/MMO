@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Response;
 import com.mmo.AppProperties;
+import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.sofascore.client.AbstractSofaScoreProvider;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreLineupsResponseDTO;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +25,9 @@ public class SofaScoreLineupsClient extends AbstractSofaScoreProvider {
 
     private SofaScoreLineupsResponseDTO fetchLineups(Long externalMatchId, Page page) {
         try {
-            String base = properties.getSofaScore().getApi();
+            AppProperties.ProviderConfig config = properties.getIngestion().getProviderConfig().get(Provider.SOFA_SCORE);
+            if (config == null || !config.isEnabled()) throw new IllegalStateException("SofaScore provider is disabled or not configured");
+            String base = config.getBaseUrl();
             String separator = base.endsWith("/") ? "" : "/";
             String url = base + separator + "event/" + externalMatchId + "/lineups";
             page.waitForTimeout(3000);

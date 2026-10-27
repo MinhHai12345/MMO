@@ -47,7 +47,6 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
         if (leagueExternalIdRepository.findAllByProvider(selectedProvider).isEmpty()) {
             leagueIngestionService.syncLeaguesForProvider(selectedProvider);
         }
-        ensureConfiguredFootballDataSeasons(selectedProvider);
 
         Map<Long, String> externalLeagueIdsByLeagueId = new HashMap<>();
         leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
@@ -97,26 +96,5 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
     }
 
 
-    private void ensureConfiguredFootballDataSeasons(Provider selectedProvider) {
-        // Only the canonical provider may create canonical season rows. Secondary providers
-        // can filter/map existing seasons but must never synthesize core season entities.
-        if (selectedProvider != Provider.FOOTBALL_DATA) return;
-
-        List<String> years = ingestionSupport.configuredSeasonYears(selectedProvider);
-        if (years.isEmpty()) return;
-
-        leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping -> {
-            for (String year : years) {
-                seasonRepository.findByLeague_IdAndYear(mapping.getLeague().getId(), year)
-                        .orElseGet(() -> {
-                            Season season = new Season();
-                            season.setLeague(mapping.getLeague());
-                            season.setYear(year);
-                            season.setCurrent(false);
-                            return seasonRepository.save(season);
-                        });
-            }
-        });
-    }
 
 }

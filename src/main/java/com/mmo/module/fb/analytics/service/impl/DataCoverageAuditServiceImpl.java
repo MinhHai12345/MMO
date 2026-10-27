@@ -49,6 +49,7 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
         Provider lp = Provider.FOOTBALL_DATA;
         Provider tp = Provider.FOOTBALL_DATA;
         Provider fp = Provider.FOOTBALL_DATA;
+        Provider sp = Provider.FOOTBALL_DATA;
         Map<String, MappingCoverage> mapping = new LinkedHashMap<>();
         addMapping(mapping, "league", "League", "LeagueExternalId", "league", lp);
         addMapping(mapping, "team", "Team", "TeamExternalId", "team", tp);

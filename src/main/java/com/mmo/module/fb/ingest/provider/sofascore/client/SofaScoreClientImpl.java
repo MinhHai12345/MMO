@@ -77,7 +77,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
 
     @Override
     public List<SeasonDTO> fetchSeasonByTournamentId(Long sofaTournamentId, Page page) {
-        String url = String.format(FETCH_SEASON_BY_TOURNAMENT_URI, appProperties.getSofaScore().getApi(), sofaTournamentId);
+        String url = String.format(FETCH_SEASON_BY_TOURNAMENT_URI, sofaScoreConfig().getBaseUrl(), sofaTournamentId);
         SeasonsResponseDTO seasonData = safeFetch(url, page, SeasonsResponseDTO.class);
         if (seasonData == null) {
             throw new SofaScoreFetchException("SofaScore season request failed for tournament " + sofaTournamentId);
@@ -88,7 +88,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
     @Override
     public List<StandingGroupDTO> fetchStandingTotal(Long sofaTournamentId, Long sofaSeasonId, Page page) {
         String url = String.format(FETCH_STANDINGS_TOTAL_BY_TOURNAMENT_AND_SEASON_URI,
-                appProperties.getSofaScore().getApi(), sofaTournamentId, sofaSeasonId);
+                sofaScoreConfig().getBaseUrl(), sofaTournamentId, sofaSeasonId);
         StandingsResponseDTO sofaStandingsData = safeFetch(url, page, StandingsResponseDTO.class);
         if (sofaStandingsData == null) {
             throw new SofaScoreFetchException("SofaScore standings request failed for tournament "
@@ -100,7 +100,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
 
     @Override
     public List<EventDTO> fetchMatchesByRound(Long sofaTournamentId, Long sofaSeasonId, int round, Page page) {
-        String url = String.format(FETCH_MATCH_BY_ROUND_URI, appProperties.getSofaScore().getApi(),
+        String url = String.format(FETCH_MATCH_BY_ROUND_URI, sofaScoreConfig().getBaseUrl(),
                 sofaTournamentId, sofaSeasonId, round);
         MatchesResponseDTO matchData = safeFetch(url, page, MatchesResponseDTO.class);
         // A missing round is a valid empty result; access/rate-limit errors are thrown by safeFetch.
@@ -114,7 +114,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
         if (!"last".equals(direction) && !"next".equals(direction)) {
             throw new IllegalArgumentException("SofaScore event direction must be 'last' or 'next'");
         }
-        String url = String.format(FETCH_SEASON_MATCHES_PAGE_URI, appProperties.getSofaScore().getApi(),
+        String url = String.format(FETCH_SEASON_MATCHES_PAGE_URI, sofaScoreConfig().getBaseUrl(),
                 tournamentId, seasonId, direction, pageIndex);
         // A 404 means that the selected direction has no more events for this season.
         MatchesResponseDTO response = safeFetch(url, page, MatchesResponseDTO.class);
@@ -123,7 +123,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
 
     @Override
     public List<PeriodStatisticsDTO> fetchMatchStatistics(Long sofaMatchId, Page page) {
-        String url = String.format(FETCH_MATCH_STATISTICS_URI, appProperties.getSofaScore().getApi(), sofaMatchId);
+        String url = String.format(FETCH_MATCH_STATISTICS_URI, sofaScoreConfig().getBaseUrl(), sofaMatchId);
         StatisticsResponseDTO matchData = safeFetch(url, page, StatisticsResponseDTO.class);
         if (matchData == null) {
             throw new SofaScoreFetchException("SofaScore statistics request failed for event " + sofaMatchId);
@@ -135,7 +135,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
     public Map<Long, MatchOddDetailDTO> fetchDailyMatchOdds(Page page) {
         String endpoint = String.format(FETCH_DAILY_ALL_MATCH_ODDS_URI, DateTimeUtils.today());
         DynamicFetchResult result = safeFetch(
-                appProperties.getSofaScore().getUrl(),
+                sofaScoreConfig().getWebUrl(),
                 Map.of(endpoint, OddsResponseDTO.class),
                 page,
                 this::triggerOdds);
@@ -172,7 +172,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
         String endpoint = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI,
                 sofaTournamentId, DateTimeUtils.today());
         DynamicFetchResult result = safeFetch(
-                appProperties.getSofaScore().getUrl(),
+                sofaScoreConfig().getWebUrl(),
                 Map.of(endpoint, MatchesResponseDTO.class),
                 page,
                 null);
@@ -195,7 +195,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
             return Collections.emptyList();
         }
         String sofaTeamId = teamExternalId.getExternalId();
-        String loadPageUrl = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_PAGE, appProperties.getSofaScore().getUrl(),
+        String loadPageUrl = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_PAGE, sofaScoreConfig().getWebUrl(),
                 team.getSlug(), sofaTeamId);
         String historiesEndpoint = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_URI, sofaTeamId, index);
         Map<String, Class<?>> configMap = Map.of(historiesEndpoint, MatchesResponseDTO.class);
@@ -212,14 +212,14 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
 
     @Override
     public EventDTO fetchMatchById(Long sofaMatchId, Page page) {
-        String url = String.format(FETCH_MATCH_BY_ID_URI, appProperties.getSofaScore().getApi(), sofaMatchId);
+        String url = String.format(FETCH_MATCH_BY_ID_URI, sofaScoreConfig().getBaseUrl(), sofaMatchId);
         MatchResponseDTO matchData = safeFetch(url, page, MatchResponseDTO.class);
         return matchData != null ? matchData.event() : null;
     }
 
     @Override
     public SofaDailyMatchWrapper fetchMatchesDaily(Long sofaTournamentId, Page page) {
-        String loadPageUrl = appProperties.getSofaScore().getUrl();
+        String loadPageUrl = sofaScoreConfig().getWebUrl();
         String matchEndpoint = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI, sofaTournamentId, DateTimeUtils.today());
         String oddsEndpoint = String.format(FETCH_DAILY_ALL_MATCH_ODDS_URI, DateTimeUtils.today());
         Map<String, Class<?>> configMap = Map.of(matchEndpoint, MatchesResponseDTO.class, oddsEndpoint, OddsResponseDTO.class);
