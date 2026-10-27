@@ -64,7 +64,7 @@ public class ConversionEventService {
     }
 
     @Transactional(readOnly = true)
-    public RevenueReport revenue(Instant from, Instant to, String currency) {
+    public RevenueReport revenue(Instant from, Instant to, String currency, String campaignCode) {
         if (from == null || to == null || !from.isBefore(to)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "from must be before to");
         }
@@ -73,19 +73,15 @@ public class ConversionEventService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "currency must be a 3-letter ISO code");
         }
 
-        BigDecimal payments = zero(repository.sumAmount("PAYMENT_CONFIRMED", normalizedCurrency, from, to));
-        BigDecimal refunds = zero(repository.sumAmount("REFUND_CONFIRMED", normalizedCurrency, from, to));
-        return new RevenueReport(from, to, normalizedCurrency,
-                repository.countByEventTypeAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
-                        "CLICK", from, to),
-                repository.countByEventTypeAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
-                        "LEAD", from, to),
-                repository.countByEventTypeAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
-                        "SUBSCRIPTION_CONFIRMED", from, to),
-                repository.countByEventTypeAndCurrencyAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
-                        "PAYMENT_CONFIRMED", normalizedCurrency, from, to),
-                repository.countByEventTypeAndCurrencyAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
-                        "REFUND_CONFIRMED", normalizedCurrency, from, to),
+        String normalizedCampaign = campaignCode == null || campaignCode.isBlank() ? null : campaignCode.strip();
+        BigDecimal payments = zero(repository.sumAmount("PAYMENT_CONFIRMED", normalizedCurrency, from, to, normalizedCampaign));
+        BigDecimal refunds = zero(repository.sumAmount("REFUND_CONFIRMED", normalizedCurrency, from, to, normalizedCampaign));
+        return new RevenueReport(from, to, normalizedCurrency, normalizedCampaign,
+                repository.countEvents("CLICK", from, to, normalizedCampaign),
+                repository.countEvents("LEAD", from, to, normalizedCampaign),
+                repository.countEvents("SUBSCRIPTION_CONFIRMED", from, to, normalizedCampaign),
+                repository.countEvents("PAYMENT_CONFIRMED", from, to, normalizedCampaign),
+                repository.countEvents("REFUND_CONFIRMED", from, to, normalizedCampaign),
                 payments, refunds, payments.subtract(refunds));
     }
 
@@ -140,7 +136,7 @@ public class ConversionEventService {
     public record RecordCommand(String idempotencyKey, String eventSource, String externalEventId,
                                 String eventType, Long publicationId, Long subscriberId, String campaignCode,
                                 BigDecimal amount, String currency, Instant occurredAt) {}
-    public record RevenueReport(Instant from, Instant to, String currency, long clicks, long leads,
+    public record RevenueReport(Instant from, Instant to, String currency, String campaignCode, long clicks, long leads,
                                 long subscriptions, long confirmedPayments, long confirmedRefunds,
                                 BigDecimal grossRevenue, BigDecimal refunds, BigDecimal netRevenue) {}
 }
