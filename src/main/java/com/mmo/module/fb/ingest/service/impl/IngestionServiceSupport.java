@@ -36,7 +36,8 @@ public class IngestionServiceSupport {
                     && properties.getFootballData().isEnabled();
             case API_FOOTBALL -> properties.getApiFootball() != null
                     && properties.getApiFootball().isEnabled();
-            case SOFA_SCORE, UNDER_STATS -> true;
+            case SOFA_SCORE -> properties.getSofaScore() != null && properties.getSofaScore().isEnabled();
+            case UNDER_STATS -> properties.getUnderstats() != null && properties.getUnderstats().isEnabled();
         };
 
         if (!enabled) {
@@ -49,10 +50,7 @@ public class IngestionServiceSupport {
         if (config != null && config.getLeagueIds() != null && !config.getLeagueIds().isEmpty()) {
             return config.getLeagueIds().stream().filter(id -> id != null).distinct().toList();
         }
-        if (provider == Provider.SOFA_SCORE && properties.getSync() != null
-                && properties.getSync().getTournamentIds() != null) {
-            return properties.getSync().getTournamentIds().stream().sorted().toList();
-        }
+
         return switch (provider) {
             case API_FOOTBALL -> properties.getApiFootball() == null
                     || properties.getApiFootball().getLeagueIds() == null
@@ -72,10 +70,15 @@ public class IngestionServiceSupport {
         AppProperties.ProviderConfig config = providerConfig(provider);
         List<String> configured = config == null ? null : config.getSeasons();
         if (configured == null || configured.isEmpty()) {
-            if (provider != Provider.FOOTBALL_DATA || properties.getFootballData() == null) {
-                return List.of();
-            }
-            configured = properties.getFootballData().getSeasons();
+            configured = switch (provider) {
+                case FOOTBALL_DATA -> properties.getFootballData() == null
+                        ? List.of() : properties.getFootballData().getSeasons();
+                case API_FOOTBALL -> properties.getApiFootball() == null
+                        ? List.of() : properties.getApiFootball().getSeasons();
+                case UNDER_STATS -> properties.getUnderstats() == null
+                        ? List.of() : properties.getUnderstats().getSeasons();
+                case SOFA_SCORE -> List.of();
+            };
         }
         if (configured == null) return List.of();
         return configured.stream()
