@@ -7,7 +7,6 @@ import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestric
 import com.mmo.module.fb.team.entity.TeamExternalId;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
-import com.mmo.module.fb.league.repository.SeasonRepository;
 import com.mmo.module.fb.team.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
 import com.mmo.module.fb.ingest.provider.model.StandingsQuery;
@@ -23,7 +22,6 @@ import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 @Slf4j
 @Service
@@ -32,8 +30,8 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
 
     private final ProviderRegistry providerRegistry;
     private final AppProperties appProperties;
+    private final IngestionServiceSupport ingestionSupport;
     private final TeamIngestionService teamIngestionService;
-    private final SeasonRepository seasonRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;
     private final StandingsPersistenceService standingsPersistenceService;
@@ -49,14 +47,7 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
      */
     @Override
     public void syncStandingsForProvider(Provider selectedProvider) {
-        if (selectedProvider == Provider.FOOTBALL_DATA
-                && (appProperties.getFootballData() == null || !appProperties.getFootballData().isEnabled())) {
-            throw new IllegalStateException("football-data.org is disabled but was selected for standings ingestion");
-        }
-        if (selectedProvider == Provider.API_FOOTBALL
-                && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
-            throw new IllegalStateException("API-Football is disabled but was selected for standings ingestion");
-        }
+        ingestionSupport.requireProviderEnabled(selectedProvider, "standings");
 
         // Allow standalone scheduled runs to bootstrap missing team mappings without repeating
         // the full teams endpoint on every standings refresh.
@@ -77,32 +68,11 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
         int saved = 0;
         int skipped = 0;
         boolean rateLimitInterrupted = false;
-        // For football-data.org, an explicit app.football-data.seasons list controls
-        // both current and historical standings. Other providers retain current-season behavior.
-        List<String> configuredSeasons = selectedProvider == Provider.FOOTBALL_DATA
-                && appProperties.getFootballData() != null
-                && appProperties.getFootballData().getSeasons() != null
-                ? appProperties.getFootballData().getSeasons().stream()
-                    .filter(Objects::nonNull)
-                    .map(String::trim)
-                    .filter(year -> !year.isEmpty())
-                    .distinct()
-                    .toList()
-                : List.of();
-
-        List<Season> seasons;
-        if (!configuredSeasons.isEmpty()) {
-            seasons = seasonRepository.findByYearInAndLeagueIsNotNullAndYearIsNotNull(configuredSeasons);
-            log.info("Fetching standings for configured seasons {} ({} season records found)",
-                    configuredSeasons, seasons.size());
-        } else {
-            seasons = seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
-            log.info("No historical seasons configured for provider {}; fetching current seasons only ({} season records found)",
-                    selectedProvider, seasons.size());
-        }
+        List<Season> seasons = ingestionSupport.standingsSeasonsToSync(selectedProvider);
+        log.info("Fetching standings for {} season records via {}", seasons.size(), selectedProvider);
         for (Season season : seasons) {
             if (season.getLeague() == null || season.getYear() == null) continue;
-            Long externalLeagueId = parseLong(leagueExternalIdsByLeagueId.get(season.getLeague().getId()));
+            Long externalLeagueId = IngestionServiceSupport.parseExternalId(leagueExternalIdsByLeagueId.get(season.getLeague().getId()));
             if (externalLeagueId == null) {
                 skipped++;
                 continue;
@@ -155,11 +125,5 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
         }
     }
 
-    private static Long parseLong(String value) {
-        try {
-            return Long.valueOf(value);
-        } catch (RuntimeException ignored) {
-            return null;
-        }
-    }
+
 }

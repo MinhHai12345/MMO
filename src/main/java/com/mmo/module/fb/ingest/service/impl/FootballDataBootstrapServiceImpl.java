@@ -25,6 +25,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapService {
     private final AppProperties appProperties;
+    private final IngestionServiceSupport ingestionSupport;
     private final LeagueIngestionService leagueIngestionService;
     private final TeamIngestionService teamIngestionService;
     private final FixtureIngestionService fixtureIngestionService;
@@ -133,22 +134,16 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
     }
 
     private void validateProvider(Provider provider, boolean leagueResource) {
-        if (provider == null) throw new IllegalStateException("An ingestion provider is not configured.");
+        ingestionSupport.requireProviderEnabled(provider, "bootstrap");
 
         if (provider == Provider.API_FOOTBALL) {
             AppProperties.ApiFootball config = appProperties.getApiFootball();
-            if (config == null || !config.isEnabled()) {
-                throw new IllegalStateException("API-Football ingestion is disabled. Set app.ingestion.api-football.enabled=true.");
-            }
             requireToken(config.getApiKey(), "API_FOOTBALL_API_KEY");
             if (leagueResource && (config.getLeagueIds() == null || config.getLeagueIds().isEmpty())) {
                 throw new IllegalStateException("Set app.ingestion.api-football.league-ids to a comma-separated list of API-Football league IDs.");
             }
         } else if (provider == Provider.FOOTBALL_DATA) {
             AppProperties.FootballData config = appProperties.getFootballData();
-            if (config == null || !config.isEnabled()) {
-                throw new IllegalStateException("football-data.org ingestion is disabled. Set app.ingestion.football-data.enabled=true.");
-            }
             requireToken(config.getApiKey(), "FOOTBALL_DATA_API_KEY");
             if (leagueResource && (config.getCompetitionIds() == null || config.getCompetitionIds().isEmpty())) {
                 throw new IllegalStateException("Set app.ingestion.football-data.competition-ids to numeric football-data.org competition IDs.");
@@ -161,4 +156,5 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
             throw new IllegalStateException("Provider API token is not configured. Set " + variableName + ".");
         }
     }
+
 }
