@@ -4,6 +4,7 @@ import com.mmo.module.fb.monetization.service.ConversionEventService;
 import com.mmo.module.fb.monetization.service.ConversionEventService.RecordCommand;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
+import com.stripe.model.Invoice;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Refund;
 import com.stripe.model.StripeObject;
@@ -69,6 +70,17 @@ public class StripeRevenueWebhookController {
                     longMetadata(metadata, "subscriber_id"), metadataValue(metadata, "campaign_code"),
                     fromMinorUnits(amountReceived, currency), currency, Instant.ofEpochSecond(event.getCreated())));
             return new WebhookResponse(true, true, event.getId(), "Confirmed payment recorded idempotently");
+        }
+
+        if ("invoice.paid".equals(type) && object instanceof Invoice invoice
+                && "subscription_create".equals(invoice.getBillingReason())
+                && invoice.getAmountPaid() != null && invoice.getAmountPaid() > 0) {
+            Map<String, String> metadata = invoice.getMetadata();
+            eventService.record(new RecordCommand(event.getId(), "stripe", event.getId(),
+                    "SUBSCRIPTION_CONFIRMED", longMetadata(metadata, "publication_id"),
+                    longMetadata(metadata, "subscriber_id"), metadataValue(metadata, "campaign_code"),
+                    null, null, Instant.ofEpochSecond(event.getCreated())));
+            return new WebhookResponse(true, true, event.getId(), "New paid subscription recorded idempotently");
         }
 
         if ("refund.created".equals(type) && object instanceof Refund refund) {
