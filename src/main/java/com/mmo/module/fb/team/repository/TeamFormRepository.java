@@ -10,4 +10,6 @@ import java.util.Optional;
 public interface TeamFormRepository extends JpaRepository<TeamForm, Long> {
     
     Optional<TeamForm> findByTeamIdAndSeasonIdAndFormType(Long teamId, Long seasonId, String formType);
+    List<TeamForm> findBySeasonIdAndFormType(Long seasonId, String formType);
+
 }
