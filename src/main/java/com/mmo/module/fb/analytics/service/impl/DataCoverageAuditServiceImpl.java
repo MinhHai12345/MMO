@@ -59,8 +59,10 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
         addMapping(mapping, "match", "Match", "MatchExternalId", "match", fp);
 
         List<SeasonCoverage> seasonCoverage = new ArrayList<>();
-        List<String> configuredSeasons = properties.getFootballData() == null
-                ? List.of() : properties.getFootballData().getSeasons();
+        AppProperties.ProviderConfig footballDataConfig = properties.getIngestion().getProviderConfig()
+                .get(Provider.FOOTBALL_DATA);
+        List<String> configuredSeasons = footballDataConfig == null || footballDataConfig.getSeasons() == null
+                ? List.of() : footballDataConfig.getSeasons();
         List<Object[]> seasonRows;
         if (configuredSeasons != null && !configuredSeasons.isEmpty()) {
             seasonRows = entityManager.createQuery("""
