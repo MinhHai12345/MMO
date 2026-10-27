@@ -4,7 +4,6 @@ import com.mmo.AppProperties;
 import com.mmo.module.fb.league.entity.Season;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
-import com.mmo.module.fb.league.repository.SeasonRepository;
 import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballPlanRestrictionException;
 import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
@@ -29,7 +28,6 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
     private final LeagueIngestionService leagueIngestionService;
-    private final SeasonRepository seasonRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final TeamPersistenceService teamPersistenceService;
 
@@ -47,7 +45,6 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
         if (leagueExternalIdRepository.findAllByProvider(selectedProvider).isEmpty()) {
             leagueIngestionService.syncLeaguesForProvider(selectedProvider);
         }
-        ensureConfiguredFootballDataSeasons(selectedProvider);
 
         Map<Long, String> externalLeagueIdsByLeagueId = new HashMap<>();
         leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
@@ -97,26 +94,5 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
     }
 
 
-    private void ensureConfiguredFootballDataSeasons(Provider selectedProvider) {
-        // Only the canonical provider may create canonical season rows. Secondary providers
-        // can filter/map existing seasons but must never synthesize core season entities.
-        if (selectedProvider != Provider.FOOTBALL_DATA) return;
-
-        List<String> years = ingestionSupport.configuredSeasonYears(selectedProvider);
-        if (years.isEmpty()) return;
-
-        leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping -> {
-            for (String year : years) {
-                seasonRepository.findByLeague_IdAndYear(mapping.getLeague().getId(), year)
-                        .orElseGet(() -> {
-                            Season season = new Season();
-                            season.setLeague(mapping.getLeague());
-                            season.setYear(year);
-                            season.setCurrent(false);
-                            return seasonRepository.save(season);
-                        });
-            }
-        });
-    }
 
 }

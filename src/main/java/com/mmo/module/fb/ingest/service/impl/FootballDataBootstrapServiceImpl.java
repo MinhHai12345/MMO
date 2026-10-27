@@ -45,28 +45,17 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         Provider fixtureProvider = overrides.fixture() != null ? overrides.fixture() : defaults.getFixture();
         Provider standingsProvider = overrides.standings() != null ? overrides.standings() : defaults.getStandings();
 
-        validateProvider(leagueProvider, true);
-        validateProvider(teamProvider, false);
-        validateProvider(fixtureProvider, false);
-        validateProvider(standingsProvider, false);
+        validateProvider(leagueProvider);
+        validateProvider(teamProvider);
+        validateProvider(fixtureProvider);
+        validateProvider(standingsProvider);
 
-        AppProperties.FootballData footballData = appProperties.getFootballData();
-        if (fixtureProvider == Provider.FOOTBALL_DATA && footballData != null
-                && footballData.getSeasons() != null && !footballData.getSeasons().isEmpty()) {
-            log.info("Historical fixture backfill enabled for football-data.org seasons={}. "
-                            + "Requests are paced by FootballDataClient; seasons unavailable to the subscription "
-                            + "will be reported as restricted/skipped and must not be treated as successfully backfilled.",
-                    footballData.getSeasons());
-        } else {
-            log.info("No explicit historical fixture backfill configured; fixture sync uses current seasons.");
-        }
         log.info("Starting core-data bootstrap: league={}, team={}, fixture={}, standings={}",
                 leagueProvider, teamProvider, fixtureProvider, standingsProvider);
 
         runStage("leagues", () -> leagueIngestionService.syncLeaguesForProvider(leagueProvider));
         runStage("teams", () -> teamIngestionService.syncTeamsForProvider(teamProvider));
-        // Null date bounds import all fixtures for current seasons, or every configured season
-        // when app.football-data.seasons is set. Persistence is idempotent via provider fixture IDs.
+        // Catalogue initialization stores all returned seasons; downstream fetching only processes active leagues.
         runStage("fixtures", () -> fixtureIngestionService.syncFixturesForProvider(fixtureProvider, null, null));
         runStage("standings", () -> standingsIngestionService.syncStandingsForProvider(standingsProvider));
 
@@ -97,7 +86,7 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         });
 
         for (Provider provider : ordered) {
-            validateProvider(provider, true);
+            validateProvider(provider);
         }
 
         log.info("Starting multi-provider core ingestion. Canonical provider first; providers={}", ordered);
@@ -133,21 +122,17 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         }
     }
 
-    private void validateProvider(Provider provider, boolean leagueResource) {
+    private void validateProvider(Provider provider) {
         ingestionSupport.requireProviderEnabled(provider, "bootstrap");
 
         if (provider == Provider.API_FOOTBALL) {
-            AppProperties.ApiFootball config = appProperties.getApiFootball();
-            requireToken(config.getApiKey(), "API_FOOTBALL_API_KEY");
-            if (leagueResource && (config.getLeagueIds() == null || config.getLeagueIds().isEmpty())) {
-                throw new IllegalStateException("Set app.ingestion.api-football.league-ids to a comma-separated list of API-Football league IDs.");
-            }
+            AppProperties.ProviderConfig config = appProperties.getIngestion().getProviderConfig()
+                    .get(Provider.API_FOOTBALL);
+            requireToken(config == null ? null : config.getApiKey(), "API_FOOTBALL_API_KEY");
         } else if (provider == Provider.FOOTBALL_DATA) {
-            AppProperties.FootballData config = appProperties.getFootballData();
-            requireToken(config.getApiKey(), "FOOTBALL_DATA_API_KEY");
-            if (leagueResource && (config.getCompetitionIds() == null || config.getCompetitionIds().isEmpty())) {
-                throw new IllegalStateException("Set app.ingestion.football-data.competition-ids to numeric football-data.org competition IDs.");
-            }
+            AppProperties.ProviderConfig config = appProperties.getIngestion().getProviderConfig()
+                    .get(Provider.FOOTBALL_DATA);
+            requireToken(config == null ? null : config.getApiKey(), "FOOTBALL_DATA_API_KEY");
         }
     }
 

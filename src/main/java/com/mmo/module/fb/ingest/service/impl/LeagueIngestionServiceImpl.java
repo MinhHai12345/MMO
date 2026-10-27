@@ -31,15 +31,9 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
     @Override
     public void syncLeaguesForProvider(Provider selectedProvider) {
         ingestionSupport.requireProviderEnabled(selectedProvider, "league");
-        List<Long> configuredIds = ingestionSupport.configuredLeagueIds(selectedProvider);
-        if ((selectedProvider == Provider.API_FOOTBALL || selectedProvider == Provider.FOOTBALL_DATA)
-                && (configuredIds == null || configuredIds.isEmpty())) {
-            log.warn("No competition IDs configured for provider {}; configure its league/competition ID list.", selectedProvider);
-            return;
-        }
         List<ProviderLeague> leagues;
         try {
-            leagues = providerRegistry.league(selectedProvider).fetchLeagues(configuredIds);
+            leagues = providerRegistry.league(selectedProvider).fetchLeagues(List.of());
         } catch (FootballDataRestrictedResourceException ex) {
             if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
             var existingMappings = leagueExternalIdRepository.findAllByProvider(selectedProvider);
