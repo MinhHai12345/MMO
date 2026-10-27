@@ -123,6 +123,7 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                             selectedProvider, sourceSeason.externalId());
                     continue;
                 }
+                boolean newSeason = false;
                 if (season == null) {
                     season = seasonRepository.findByLeague_IdAndYear(savedLeague.getId(), sourceSeason.year())
                             .orElse(null);
@@ -132,7 +133,14 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                         continue;
                     }
                     if (season == null) {
-                        season = Season.builder().league(savedLeague).year(sourceSeason.year()).build();
+                        // Preserve the existing default workflow: newly discovered current seasons
+                        // are active; historical seasons require explicit activation.
+                        season = Season.builder()
+                                .league(savedLeague)
+                                .year(sourceSeason.year())
+                                .isActive(sourceSeason.current())
+                                .build();
+                        newSeason = true;
                     }
                 }
                 SeasonExternalId existingSeasonMapping = season.getId() == null ? null
@@ -146,6 +154,10 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
 
                 if (selectedProvider == Provider.FOOTBALL_DATA) {
                     season.setCurrent(sourceSeason.current());
+                    // Do not overwrite a user's active/inactive choice during catalogue refresh.
+                    if (newSeason) {
+                        season.setActive(sourceSeason.current());
+                    }
                     season.setStartDate(sourceSeason.startDate());
                     season.setEndDate(sourceSeason.endDate());
                     season = seasonRepository.save(season);
