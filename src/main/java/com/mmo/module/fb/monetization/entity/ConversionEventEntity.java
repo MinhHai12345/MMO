@@ -32,7 +32,7 @@ import java.time.Instant;
 @Setter
 @NoArgsConstructor
 public class ConversionEventEntity extends AbstractEntity {
-    @Column(name = "idempotency_key", nullable = false, unique = true, length = 128)
+    @Column(name = "idempotency_key", nullable = false, length = 128)
     private String idempotencyKey;
 
     @Column(name = "event_source", nullable = false, length = 64)
