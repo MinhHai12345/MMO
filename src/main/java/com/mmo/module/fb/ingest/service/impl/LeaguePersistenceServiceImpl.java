@@ -54,7 +54,7 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                     .orElse(null);
 
             if (league == null) {
-                List<League> candidates = knownActiveLeagues.stream()
+                List<League> candidates = knownLeagues.stream()
                         .filter(existing -> normalizeName(existing.getName()).equals(normalizeName(source.name())))
                         .toList();
                 if (candidates.size() > 1 && source.country() != null && !source.country().isBlank()) {
@@ -96,9 +96,9 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                 if (source.logoUrl() != null && !source.logoUrl().isBlank()) league.setLogoUrl(source.logoUrl());
                 league = leagueRepository.save(league);
                 Long savedLeagueId = league.getId();
-                if (knownActiveLeagues.stream().noneMatch(existing -> existing.getId() != null
+                if (knownLeagues.stream().noneMatch(existing -> existing.getId() != null
                         && existing.getId().equals(savedLeagueId))) {
-                    knownActiveLeagues.add(league);
+                    knownLeagues.add(league);
                 }
             }
             League savedLeague = league;
