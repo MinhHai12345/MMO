@@ -65,6 +65,46 @@ public class AppProperties {
     }
 
     public SofaScore getSofaScore() {
+        ProviderConfig config = ingestion.getProviderConfig().get(Provider.SOFA_SCORE);
+        if (config == null) return new SofaScore();
+        SofaScore result = new SofaScore();
+        result.setEnabled(config.isEnabled());
+        result.setApi(config.getBaseUrl());
+        result.setUrl(config.getWebUrl());
+        result.setTournamentRegion(config.getOption("tournament-region"));
+        return result;
+    }
+
+    public ApiFootball getApiFootball() {
+        ProviderConfig config = ingestion.getProviderConfig().get(Provider.API_FOOTBALL);
+        if (config == null) return new ApiFootball();
+        ApiFootball result = new ApiFootball();
+        result.setEnabled(config.isEnabled());
+        result.setBaseUrl(config.getBaseUrl());
+        result.setApiKey(config.getApiKey());
+        return result;
+    }
+
+    public FootballData getFootballData() {
+        ProviderConfig config = ingestion.getProviderConfig().get(Provider.FOOTBALL_DATA);
+        if (config == null) return new FootballData();
+        FootballData result = new FootballData();
+        result.setEnabled(config.isEnabled());
+        result.setBaseUrl(config.getBaseUrl());
+        result.setApiKey(config.getApiKey());
+        return result;
+    }
+
+    public Understats getUnderstats() {
+        ProviderConfig config = ingestion.getProviderConfig().get(Provider.UNDER_STATS);
+        if (config == null) return new Understats();
+        Understats result = new Understats();
+        result.setEnabled(config.isEnabled());
+        result.setBaseUrl(config.getBaseUrl());
+        return result;
+    }
+
+    public SofaScore getSofaScore() {
         return ingestion.resolveSofaScore();
     }
 
@@ -297,6 +337,41 @@ public class AppProperties {
         private String baseUrl;
         private List<Long> leagueIds = new ArrayList<>();
         private List<String> seasons = new ArrayList<>();
+    }
+
+    /** Legacy client-facing DTOs only; these are not independently bound from YAML. */
+    @Getter
+    @Setter
+    public static class SofaScore {
+        private boolean enabled;
+        @NotBlank
+        private String api;
+        @NotBlank
+        private String url;
+        private String tournamentRegion;
+    }
+
+    @Getter
+    @Setter
+    public static class ApiFootball {
+        private boolean enabled;
+        private String baseUrl;
+        private String apiKey;
+    }
+
+    @Getter
+    @Setter
+    public static class FootballData {
+        private boolean enabled;
+        private String baseUrl;
+        private String apiKey;
+    }
+
+    @Getter
+    @Setter
+    public static class Understats {
+        private boolean enabled;
+        private String baseUrl;
     }
 
     @Getter
