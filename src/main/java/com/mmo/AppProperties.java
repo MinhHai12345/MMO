@@ -202,6 +202,7 @@ public class AppProperties {
             result.setBaseUrl(config.getBaseUrl());
             result.setApiKey(config.getApiKey());
             result.setLeagueIds(config.getLeagueIds());
+            result.setSeasons(config.getSeasons());
             return result;
         }
 
