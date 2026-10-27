@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionContext;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -23,6 +24,7 @@ public class SubscriptionExpiryCheckJob extends AbstractJob<CronJob> {
     private static final String ACTIVE_STATUS = "ACTIVE";
     private static final String EXPIRED_STATUS = "EXPIRED";
     private static final int EXPIRY_WARNING_DAYS = 3;
+    private static final int BATCH_SIZE = 500;
 
     private final SubscriberRepository subscriberRepository;
 
@@ -30,38 +32,61 @@ public class SubscriptionExpiryCheckJob extends AbstractJob<CronJob> {
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
         Instant now = Instant.now();
         Instant warningThreshold = now.plus(EXPIRY_WARNING_DAYS, ChronoUnit.DAYS);
-        List<Subscriber> subscribers = subscriberRepository.findBySubscriptionStatus(ACTIVE_STATUS);
-
-        if (subscribers.isEmpty()) {
-            log.debug("Subscription expiry check skipped: no active subscribers");
-            return;
-        }
-
+        Long cursor = 0L;
+        int scanned = 0;
         int expiringSoon = 0;
         int expired = 0;
+        int failed = 0;
 
-        for (Subscriber subscriber : subscribers) {
-            try {
+        log.info("Subscription expiry scan started: warningDays={}, batchSize={}",
+                EXPIRY_WARNING_DAYS, BATCH_SIZE);
+
+        while (!shouldStop()) {
+            List<Subscriber> batch = subscriberRepository
+                    .findBySubscriptionStatusAndIdGreaterThanOrderByIdAsc(
+                            ACTIVE_STATUS, cursor, PageRequest.of(0, BATCH_SIZE));
+            if (batch.isEmpty()) {
+                break;
+            }
+
+            for (Subscriber subscriber : batch) {
+                cursor = subscriber.getId();
+                scanned++;
+
+                if (shouldStop()) {
+                    break;
+                }
+
                 Instant endDate = subscriber.getEndDate();
                 if (endDate == null) {
+                    log.warn("Active subscription has no endDate; subscriberId={}", subscriber.getId());
                     continue;
                 }
 
-                if (endDate.isBefore(now)) {
-                    subscriber.setSubscriptionStatus(EXPIRED_STATUS);
-                    subscriber.setAutoRenew(false);
-                    subscriberRepository.save(subscriber);
-                    expired++;
-                } else if (endDate.isBefore(warningThreshold)) {
+                if (!endDate.isAfter(now)) {
+                    try {
+                        subscriber.setSubscriptionStatus(EXPIRED_STATUS);
+                        subscriber.setAutoRenew(false);
+                        subscriberRepository.save(subscriber);
+                        expired++;
+                    } catch (RuntimeException exception) {
+                        failed++;
+                        log.error("Failed to expire subscription subscriberId={}", subscriber.getId(), exception);
+                    }
+                } else if (!endDate.isAfter(warningThreshold)) {
                     expiringSoon++;
                 }
-            } catch (Exception e) {
-                log.error("Failed to process subscription for userId={}",
-                        subscriber.getUserId(), e);
+            }
+
+            if (batch.size() < BATCH_SIZE || shouldStop()) {
+                break;
             }
         }
 
-        log.info("Subscription expiry check completed: expiringSoon={}, expired={}",
-                expiringSoon, expired);
+        log.info("Subscription expiry scan finished: scanned={}, expiringSoon={}, expired={}, failed={}, stopped={}",
+                scanned, expiringSoon, expired, failed, shouldStop());
+        if (failed > 0) {
+            log.warn("Subscription expiry scan completed with {} failed record(s)", failed);
+        }
     }
 }

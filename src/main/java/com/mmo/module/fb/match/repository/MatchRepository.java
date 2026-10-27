@@ -276,4 +276,55 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
                                             @Param("leagueId") Long leagueId,
                                             Pageable pageable);
 
+
+    /**
+     * Bounded, deterministic candidate query for prediction processing.
+     * Fetches the to-one associations used by prediction engines to avoid lazy-load N+1 queries.
+     */
+    @Query("""
+            SELECT m FROM Match m
+            JOIN FETCH m.season season
+            JOIN FETCH season.league
+            JOIN FETCH m.homeTeam
+            JOIN FETCH m.awayTeam
+            WHERE m.status = :status
+              AND m.matchTime >= :startTime
+              AND m.matchTime < :endTime
+            ORDER BY m.matchTime ASC, m.id ASC
+            """)
+    List<Match> findPredictionCandidates(@Param("startTime") Instant startTime,
+                                         @Param("endTime") Instant endTime,
+                                         @Param("status") MatchStatus status,
+                                         Pageable pageable);
+
+    /**
+     * Scored finished matches in stable ID order. Pageable access lets metric jobs
+     * aggregate historical H2H data without loading every Match entity at once.
+     */
+    @Query("""
+            SELECT m FROM Match m
+            JOIN FETCH m.homeTeam
+            JOIN FETCH m.awayTeam
+            WHERE m.status = :status
+              AND m.homeScore IS NOT NULL
+              AND m.awayScore IS NOT NULL
+            ORDER BY m.id ASC
+            """)
+    List<Match> findFinishedScoredMatches(@Param("status") MatchStatus status, Pageable pageable);
+
+
+    /** All scored finished matches for one season, newest first, for one-pass team-form aggregation. */
+    @Query("""
+            SELECT m FROM Match m
+            JOIN FETCH m.homeTeam
+            JOIN FETCH m.awayTeam
+            WHERE m.season.id = :seasonId
+              AND m.status = :status
+              AND m.homeScore IS NOT NULL
+              AND m.awayScore IS NOT NULL
+            ORDER BY m.matchTime DESC, m.id DESC
+            """)
+    List<Match> findFinishedScoredMatchesForSeason(@Param("seasonId") Long seasonId,
+                                                   @Param("status") MatchStatus status);
+
 }
