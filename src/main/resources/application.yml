@@ -43,7 +43,7 @@ spring:
       max-file-size: 10MB
 
 server:
-  port: ${SERVER_PORT}
+  port: 8188
 
 # Framework settings stay under spring.* / server.*.
 # Application settings are bound by com.mmo.AppProperties.
@@ -122,7 +122,7 @@ app:
 
       SOFA_SCORE:
         enabled: ${SOFA_SCORE_ENABLED:true}
-        base-url: ${SOFA_SCORE_API_URL:${SOFASCORE_API_URL:https://www.sofascore.com/api/v1/}}
+        base-url: ${SOFA_SCORE_API_URL:${SOFASCORE_API_URL:https://api.sofascore.com/api/v1/}}
         web-url: ${SOFA_SCORE_WEB_URL:https://www.sofascore.com}
         league-ids: ${SOFASCORE_TOURNAMENT_IDS:}
         options:
@@ -135,9 +135,7 @@ app:
         seasons: ${UNDER_STATS_SEASONS:}
 
   sync:
-    bootstrap-on-start: ${APP_SYNC_BOOTSTRAP_ON_START}
-    seasons-per-league: ${APP_SYNC_SEASONS_PER_LEAGUE}
-    # Comma-separated SofaScore unique tournament IDs; empty enables provider discovery/default behavior.
-    tournament-ids: ${SOFA_SCORE_TOURNAMENT_IDS}
-    max-event-pages: ${SOFA_SCORE_MAX_EVENT_PAGES}
-    max-rounds: ${SOFA_SCORE_MAX_ROUNDS}
+    bootstrap-on-start: ${APP_SYNC_BOOTSTRAP_ON_START:true}
+    seasons-per-league: ${APP_SYNC_SEASONS_PER_LEAGUE:3}
+    max-event-pages: ${SOFA_SCORE_MAX_EVENT_PAGES:20}
+    max-rounds: ${SOFA_SCORE_MAX_ROUNDS:50}
