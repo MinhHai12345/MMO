@@ -66,7 +66,7 @@ Each event has an eventSource, provider/external event ID, idempotency key, opti
 
 Enable ingestion by setting FB_MONETIZATION_EVENTS_API_KEY. Send X-Monetization-Event-Key on ingestion/report requests. Payment/refund events must be emitted only after the upstream payment provider's webhook signature and payment state have been verified. Never accept a browser redirect or client claim as proof of payment.
 
-Campaign click attribution is supported by a controlled redirect link. Create a campaign link with the authenticated campaign endpoint, put the resulting /r/{campaignCode} URL in the content CTA, and the redirect records a deduplicated CLICK event before returning a 302 to the configured HTTPS destination. Only authenticated operators can create or disable links; arbitrary HTTP destinations and embedded URL credentials are rejected.
+Campaign click attribution is supported by a controlled redirect link. Click counts represent raw redirect requests, not deduplicated human visitors; messaging-app previews, bots, and repeated visits may be included, and no invasive fingerprinting is collected. Create a campaign link with the authenticated campaign endpoint, put the resulting /r/{campaignCode} URL in the content CTA, and the redirect records a deduplicated CLICK event before returning a 302 to the configured HTTPS destination. Only authenticated operators can create or disable links; arbitrary HTTP destinations and embedded URL credentials are rejected.
 
 Endpoints:
 
