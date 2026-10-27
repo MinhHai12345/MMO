@@ -36,7 +36,7 @@ public class FootballDataClient {
     private final FootballDataHttpErrorClassifier errorClassifier = new FootballDataHttpErrorClassifier();
 
     public synchronized <T> T get(String path, Class<T> responseType, Object... uriVariables) {
-        AppProperties.FootballData properties = appProperties.getFootballData();
+        AppProperties.ProviderConfig properties = appProperties.getIngestion().getProviderConfig().get(com.mmo.module.fb.ingest.enums.Provider.FOOTBALL_DATA);
         if (properties == null || !properties.isEnabled()) {
             throw new IllegalStateException("football-data.org integration is disabled. Set FOOTBALL_DATA_ENABLED=true.");
         }

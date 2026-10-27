@@ -53,13 +53,19 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
     private static final String FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_PAGE = "%s/football/team/%s/%s";
     private static final String FETCH_MATCH_BY_ID_URI = "%sevent/%d";
 
+    private AppProperties.ProviderConfig sofaScoreConfig() {
+        AppProperties.ProviderConfig config = appProperties.getIngestion().getProviderConfig().get(Provider.SOFA_SCORE);
+        if (config == null || !config.isEnabled()) throw new IllegalStateException("SofaScore provider is disabled or not configured");
+        return config;
+    }
+
     @Override
     public List<UniqueTournamentDTO> fetchLeagues(Page page) {
-        String region = appProperties.getSofaScore().getTournamentRegion();
+        String region = sofaScoreConfig().getOption("tournament-region");
         if (region == null || !region.matches("[A-Za-z]{2}")) {
             region = "EN";
         }
-        String url = appProperties.getSofaScore().getApi()
+        String url = sofaScoreConfig().getBaseUrl()
                 .concat(String.format(FETCH_ALL_UNIQUE_TOURNAMENTS_URI, region.toUpperCase(java.util.Locale.ROOT)));
         TournamentsResponseDTO tournamentsResponse = safeFetch(url, page, TournamentsResponseDTO.class);
         if (tournamentsResponse == null) {

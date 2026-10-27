@@ -1,18 +1,15 @@
 package com.mmo;
 
 import com.mmo.module.fb.ingest.enums.Provider;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -63,47 +60,6 @@ public class AppProperties {
     public void setFacebook(Facebook facebook) {
         social.setFacebook(facebook);
     }
-
-    public SofaScore getSofaScore() {
-        ProviderConfig config = ingestion.getProviderConfig().get(Provider.SOFA_SCORE);
-        if (config == null) return new SofaScore();
-        SofaScore result = new SofaScore();
-        result.setEnabled(config.isEnabled());
-        result.setApi(config.getBaseUrl());
-        result.setUrl(config.getWebUrl());
-        result.setTournamentRegion(config.getOption("tournament-region"));
-        return result;
-    }
-
-    public ApiFootball getApiFootball() {
-        ProviderConfig config = ingestion.getProviderConfig().get(Provider.API_FOOTBALL);
-        if (config == null) return new ApiFootball();
-        ApiFootball result = new ApiFootball();
-        result.setEnabled(config.isEnabled());
-        result.setBaseUrl(config.getBaseUrl());
-        result.setApiKey(config.getApiKey());
-        return result;
-    }
-
-    public FootballData getFootballData() {
-        ProviderConfig config = ingestion.getProviderConfig().get(Provider.FOOTBALL_DATA);
-        if (config == null) return new FootballData();
-        FootballData result = new FootballData();
-        result.setEnabled(config.isEnabled());
-        result.setBaseUrl(config.getBaseUrl());
-        result.setApiKey(config.getApiKey());
-        return result;
-    }
-
-    public Understats getUnderstats() {
-        ProviderConfig config = ingestion.getProviderConfig().get(Provider.UNDER_STATS);
-        if (config == null) return new Understats();
-        Understats result = new Understats();
-        result.setEnabled(config.isEnabled());
-        result.setBaseUrl(config.getBaseUrl());
-        return result;
-    }
-
 
     @Getter
     @Setter
@@ -198,8 +154,6 @@ public class AppProperties {
         private String baseUrl;
         private String webUrl;
         private String apiKey;
-        private List<Long> leagueIds = new ArrayList<>();
-        private List<String> seasons = new ArrayList<>();
         private Map<String, String> options = new HashMap<>();
 
         public String getOption(String key) {
@@ -215,41 +169,6 @@ public class AppProperties {
         private Provider fixture = Provider.FOOTBALL_DATA;
         private Provider standings = Provider.FOOTBALL_DATA;
         private Provider odds = Provider.API_FOOTBALL;
-    }
-
-    /** Legacy client-facing DTOs only; these are not independently bound from YAML. */
-    @Getter
-    @Setter
-    public static class SofaScore {
-        private boolean enabled;
-        @NotBlank
-        private String api;
-        @NotBlank
-        private String url;
-        private String tournamentRegion;
-    }
-
-    @Getter
-    @Setter
-    public static class ApiFootball {
-        private boolean enabled;
-        private String baseUrl;
-        private String apiKey;
-    }
-
-    @Getter
-    @Setter
-    public static class FootballData {
-        private boolean enabled;
-        private String baseUrl;
-        private String apiKey;
-    }
-
-    @Getter
-    @Setter
-    public static class Understats {
-        private boolean enabled;
-        private String baseUrl;
     }
 
     @Getter

@@ -31,7 +31,7 @@ public class ApiFootballClient {
             Map<String, ?> queryParams,
             TypeReference<ApiFootballResponse<T>> responseType
     ) {
-        AppProperties.ApiFootball properties = appProperties.getApiFootball();
+        AppProperties.ProviderConfig properties = appProperties.getIngestion().getProviderConfig().get(com.mmo.module.fb.ingest.enums.Provider.API_FOOTBALL);
         if (properties == null || !StringUtils.hasText(properties.getApiKey())
                 || PLACEHOLDER_API_KEY.equalsIgnoreCase(properties.getApiKey().trim())) {
             throw new IllegalStateException(
