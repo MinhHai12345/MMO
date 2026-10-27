@@ -54,4 +54,7 @@ public interface ContentPublicationRepository extends JpaRepository<ContentPubli
             @Param("retryBefore") Instant retryBefore,
             @Param("maxAttempts") int maxAttempts,
             Pageable pageable);
+
+    List<ContentPublicationEntity> findByStateAndLastAttemptAtBefore(
+            PublicationStateMachine.State state, Instant cutoff);
 }
