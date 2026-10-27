@@ -33,8 +33,24 @@ public class ApiFootballLeagueProvider implements LeagueProvider {
 
     @Override
     public List<ProviderLeague> fetchLeagues(List<Long> externalLeagueIds) {
-        if (externalLeagueIds == null || externalLeagueIds.isEmpty()) return List.of();
         List<ProviderLeague> result = new ArrayList<>();
+        if (externalLeagueIds == null || externalLeagueIds.isEmpty()) {
+            int page = 1;
+            int totalPages = 1;
+            do {
+                ApiFootballResponse<LeagueItem> response = client.get(
+                        "/leagues", Map.of("page", page), RESPONSE_TYPE);
+                if (response.response() != null) {
+                    response.response().stream().map(mapper::toModel)
+                            .filter(Objects::nonNull).forEach(result::add);
+                }
+                if (response.paging() != null && response.paging().total() != null) {
+                    totalPages = Math.max(totalPages, response.paging().total());
+                }
+                page++;
+            } while (page <= totalPages);
+            return result;
+        }
         for (Long externalLeagueId : externalLeagueIds) {
             if (externalLeagueId == null) continue;
             ApiFootballResponse<LeagueItem> response = client.get(
