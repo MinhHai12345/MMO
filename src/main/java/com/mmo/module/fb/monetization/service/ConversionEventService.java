@@ -55,12 +55,11 @@ public class ConversionEventService {
         try {
             return repository.saveAndFlush(event);
         } catch (DataIntegrityViolationException duplicateRace) {
-            ConversionEventEntity existing = repository.findByIdempotencyKey(key)
-                    .or(() -> repository.findByEventSourceAndExternalEventId(
-                            command.eventSource().strip(), command.externalEventId().strip()))
-                    .orElseThrow(() -> duplicateRace);
-            assertSameEvent(existing, command);
-            return existing;
+            // The current transaction may already be rollback-only. Let the caller retry;
+            // the next request will resolve to the committed idempotent event if one won the race.
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Duplicate event was recorded concurrently; retry with the same Idempotency-Key",
+                    duplicateRace);
         }
     }
 
@@ -97,7 +96,11 @@ public class ConversionEventService {
         }
         if (blank(command.eventSource()) || command.eventSource().strip().length() > 64
                 || blank(command.externalEventId()) || command.externalEventId().strip().length() > 160) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "eventSource and externalEventId are required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "eventSource (max 64) and externalEventId (max 160) are required");
+        }
+        if (command.campaignCode() != null && command.campaignCode().strip().length() > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "campaignCode must not exceed 100 characters");
         }
         String type = command.eventType() == null ? "" : command.eventType().strip().toUpperCase(Locale.ROOT);
         if (!EVENT_TYPES.contains(type)) {
