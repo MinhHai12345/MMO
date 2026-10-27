@@ -30,12 +30,13 @@ public class IngestionServiceSupport {
             throw new IllegalArgumentException("Provider must not be null for " + resource + " ingestion");
         }
 
-        boolean enabled = switch (provider) {
+        AppProperties.ProviderConfig config = providerConfig(provider);
+        boolean enabled = config != null ? config.isEnabled() : switch (provider) {
             case FOOTBALL_DATA -> properties.getFootballData() != null
                     && properties.getFootballData().isEnabled();
             case API_FOOTBALL -> properties.getApiFootball() != null
                     && properties.getApiFootball().isEnabled();
-            case SOFA_SCORE, UNDER_STATS -> true; // Provider availability is ultimately checked by ProviderRegistry.
+            case SOFA_SCORE, UNDER_STATS -> true;
         };
 
         if (!enabled) {
@@ -44,6 +45,14 @@ public class IngestionServiceSupport {
     }
 
     public List<Long> configuredLeagueIds(Provider provider) {
+        AppProperties.ProviderConfig config = providerConfig(provider);
+        if (config != null && config.getLeagueIds() != null && !config.getLeagueIds().isEmpty()) {
+            return config.getLeagueIds().stream().filter(id -> id != null).distinct().toList();
+        }
+        if (provider == Provider.SOFA_SCORE && properties.getSync() != null
+                && properties.getSync().getTournamentIds() != null) {
+            return properties.getSync().getTournamentIds().stream().sorted().toList();
+        }
         return switch (provider) {
             case API_FOOTBALL -> properties.getApiFootball() == null
                     || properties.getApiFootball().getLeagueIds() == null
@@ -51,23 +60,37 @@ public class IngestionServiceSupport {
             case FOOTBALL_DATA -> properties.getFootballData() == null
                     || properties.getFootballData().getCompetitionIds() == null
                     ? List.of() : properties.getFootballData().getCompetitionIds();
-            case SOFA_SCORE -> properties.getSync() == null || properties.getSync().getTournamentIds() == null
-                    ? List.of() : properties.getSync().getTournamentIds().stream().sorted().toList();
-            case UNDER_STATS -> List.of();
+            case SOFA_SCORE, UNDER_STATS -> List.of();
         };
     }
 
     public List<String> configuredSeasonYears(Provider provider) {
-        if (provider != Provider.FOOTBALL_DATA || properties.getFootballData() == null
-                || properties.getFootballData().getSeasons() == null) {
-            return List.of();
-        }
+        // SofaScore seasons are external IDs, not calendar-year values. Use the existing
+        // external-season mapping path for SofaScore rather than interpreting IDs as years.
+        if (provider == Provider.SOFA_SCORE) return List.of();
 
-        return properties.getFootballData().getSeasons().stream()
+        AppProperties.ProviderConfig config = providerConfig(provider);
+        List<String> configured = config == null ? null : config.getSeasons();
+        if (configured == null || configured.isEmpty()) {
+            if (provider != Provider.FOOTBALL_DATA || properties.getFootballData() == null) {
+                return List.of();
+            }
+            configured = properties.getFootballData().getSeasons();
+        }
+        if (configured == null) return List.of();
+        return configured.stream()
                 .filter(year -> year != null && !year.isBlank())
                 .map(String::trim)
                 .distinct()
                 .toList();
+    }
+
+    private AppProperties.ProviderConfig providerConfig(Provider provider) {
+        if (provider == null || properties.getIngestion() == null
+                || properties.getIngestion().getProviderConfig() == null) {
+            return null;
+        }
+        return properties.getIngestion().getProviderConfig().get(provider);
     }
 
     public List<Season> seasonsToSync(Provider provider) {
