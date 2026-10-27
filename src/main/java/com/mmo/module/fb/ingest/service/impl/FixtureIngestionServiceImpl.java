@@ -4,9 +4,6 @@ import com.mmo.AppProperties;
 import com.mmo.module.fb.league.entity.Season;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
-import com.mmo.module.fb.league.repository.SeasonRepository;
-import com.mmo.module.fb.league.entity.SeasonExternalId;
-import com.mmo.module.fb.league.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.team.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballPlanRestrictionException;
 import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
@@ -32,9 +29,8 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
 
     private final ProviderRegistry providerRegistry;
     private final AppProperties appProperties;
+    private final IngestionServiceSupport ingestionSupport;
     private final TeamIngestionService teamIngestionService;
-    private final SeasonRepository seasonRepository;
-    private final SeasonExternalIdRepository seasonExternalIdRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;
     private final FixturePersistenceService fixturePersistenceService;
@@ -50,14 +46,7 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
      */
     @Override
     public void syncFixturesForProvider(Provider selectedProvider, LocalDate from, LocalDate to) {
-        if (selectedProvider == Provider.FOOTBALL_DATA
-                && (appProperties.getFootballData() == null || !appProperties.getFootballData().isEnabled())) {
-            throw new IllegalStateException("football-data.org is disabled but was selected for fixture ingestion");
-        }
-        if (selectedProvider == Provider.API_FOOTBALL
-                && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
-            throw new IllegalStateException("API-Football is disabled but was selected for fixture ingestion");
-        }
+        ingestionSupport.requireProviderEnabled(selectedProvider, "fixture");
         if (from != null && to != null && from.isAfter(to)) {
             throw new IllegalArgumentException("'from' must be before or equal to 'to'");
         }
@@ -67,7 +56,7 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
             teamIngestionService.syncTeamsForProvider(selectedProvider);
         }
 
-        List<Season> seasons = seasonsToSync(selectedProvider);
+        List<Season> seasons = ingestionSupport.seasonsToSync(selectedProvider);
         Map<Long, String> leagueExternalIdsByLeagueId = new HashMap<>();
         leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
                 leagueExternalIdsByLeagueId.put(mapping.getLeague().getId(), mapping.getExternalId()));
@@ -80,7 +69,7 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
         int failed = 0;
         int fetched = 0;
         for (Season season : seasons) {
-            Long externalLeagueId = parseLong(leagueExternalIdsByLeagueId.get(season.getLeague().getId()));
+            Long externalLeagueId = IngestionServiceSupport.parseExternalId(leagueExternalIdsByLeagueId.get(season.getLeague().getId()));
             if (externalLeagueId == null) {
                 log.warn("Skipping season {} for league {} because provider {} has no league ID mapping",
                         season.getYear(), season.getLeague().getId(), selectedProvider);
@@ -141,42 +130,5 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
                 selectedProvider, fetched, saved, skipped, failed, from, to);
     }
 
-    private List<Season> seasonsToSync(Provider selectedProvider) {
-        if (selectedProvider == Provider.SOFA_SCORE) {
-            Map<Long, Season> mappedSeasons = new java.util.LinkedHashMap<>();
-            for (SeasonExternalId mapping : seasonExternalIdRepository.findAllByProvider(selectedProvider)) {
-                Season season = mapping.getSeason();
-                if (season != null && season.getId() != null && season.getLeague() != null) {
-                    mappedSeasons.putIfAbsent(season.getId(), season);
-                }
-            }
-            return List.copyOf(mappedSeasons.values());
-        }
-        List<String> years = configuredSeasonYears(selectedProvider);
-        if (!years.isEmpty()) {
-            return seasonRepository.findAll().stream()
-                    .filter(season -> season.getLeague() != null && season.getYear() != null
-                            && years.contains(season.getYear()))
-                    .toList();
-        }
-        return seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
-    }
 
-    private List<String> configuredSeasonYears(Provider selectedProvider) {
-        if (selectedProvider != Provider.FOOTBALL_DATA || appProperties.getFootballData() == null
-                || appProperties.getFootballData().getSeasons() == null) {
-            return List.of();
-        }
-        return appProperties.getFootballData().getSeasons().stream()
-                .filter(year -> year != null && !year.isBlank())
-                .map(String::trim).distinct().toList();
-    }
-
-    private static Long parseLong(String value) {
-        try {
-            return Long.valueOf(value);
-        } catch (RuntimeException ignored) {
-            return null;
-        }
-    }
 }
