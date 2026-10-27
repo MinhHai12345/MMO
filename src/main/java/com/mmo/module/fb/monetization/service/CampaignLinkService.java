@@ -4,6 +4,7 @@ import com.mmo.module.fb.monetization.entity.CampaignLinkEntity;
 import com.mmo.module.fb.monetization.repository.CampaignLinkRepository;
 import com.mmo.module.fb.monetization.service.ConversionEventService.RecordCommand;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class CampaignLinkService {
     private final CampaignLinkRepository campaignRepository;
@@ -70,8 +72,13 @@ public class CampaignLinkService {
     public URI recordClickAndGetDestination(String code) {
         CampaignLinkEntity link = findActive(code);
         String clickId = UUID.randomUUID().toString();
-        eventService.record(new RecordCommand(clickId, "mmo-campaign-redirect", clickId,
-                "CLICK", link.getPublicationId(), null, link.getCampaignCode(), null, null, Instant.now()));
+        try {
+            eventService.record(new RecordCommand(clickId, "mmo-campaign-redirect", clickId,
+                    "CLICK", link.getPublicationId(), null, link.getCampaignCode(), null, null, Instant.now()));
+        } catch (RuntimeException trackingFailure) {
+            // Analytics must not break a valid CTA redirect; record the failure for operations.
+            log.error("Failed to record campaign click campaignCode={}", link.getCampaignCode(), trackingFailure);
+        }
         return URI.create(link.getDestinationUrl());
     }
 
