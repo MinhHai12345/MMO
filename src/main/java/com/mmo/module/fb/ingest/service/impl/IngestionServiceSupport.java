@@ -58,7 +58,11 @@ public class IngestionServiceSupport {
             case FOOTBALL_DATA -> properties.getFootballData() == null
                     || properties.getFootballData().getCompetitionIds() == null
                     ? List.of() : properties.getFootballData().getCompetitionIds();
-            case SOFA_SCORE, UNDER_STATS -> List.of();
+            case SOFA_SCORE -> properties.getSync() == null || properties.getSync().getTournamentIds() == null
+                    ? List.of() : properties.getSync().getTournamentIds().stream().sorted().toList();
+            case UNDER_STATS -> properties.getUnderstats() == null
+                    || properties.getUnderstats().getLeagueIds() == null
+                    ? List.of() : properties.getUnderstats().getLeagueIds();
         };
     }
 
