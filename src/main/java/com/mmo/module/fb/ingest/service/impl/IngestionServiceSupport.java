@@ -31,61 +31,29 @@ public class IngestionServiceSupport {
         }
 
         AppProperties.ProviderConfig config = providerConfig(provider);
-        boolean enabled = config != null ? config.isEnabled() : switch (provider) {
-            case FOOTBALL_DATA -> properties.getFootballData() != null
-                    && properties.getFootballData().isEnabled();
-            case API_FOOTBALL -> properties.getApiFootball() != null
-                    && properties.getApiFootball().isEnabled();
-            case SOFA_SCORE -> properties.getSofaScore() != null && properties.getSofaScore().isEnabled();
-            case UNDER_STATS -> properties.getUnderstats() != null && properties.getUnderstats().isEnabled();
-        };
-
-        if (!enabled) {
-            throw new IllegalStateException(provider + " is disabled but was selected for " + resource + " ingestion");
+        if (config == null || !config.isEnabled()) {
+            throw new IllegalStateException(provider + " is disabled or not configured but was selected for "
+                    + resource + " ingestion");
         }
     }
 
     public List<Long> configuredLeagueIds(Provider provider) {
         AppProperties.ProviderConfig config = providerConfig(provider);
-        if (config != null && config.getLeagueIds() != null && !config.getLeagueIds().isEmpty()) {
-            return config.getLeagueIds().stream().filter(id -> id != null).distinct().toList();
-        }
-
-        return switch (provider) {
-            case API_FOOTBALL -> properties.getApiFootball() == null
-                    || properties.getApiFootball().getLeagueIds() == null
-                    ? List.of() : properties.getApiFootball().getLeagueIds();
-            case FOOTBALL_DATA -> properties.getFootballData() == null
-                    || properties.getFootballData().getCompetitionIds() == null
-                    ? List.of() : properties.getFootballData().getCompetitionIds();
-            case SOFA_SCORE -> properties.getSync() == null || properties.getSync().getTournamentIds() == null
-                    ? List.of() : properties.getSync().getTournamentIds().stream().sorted().toList();
-            case UNDER_STATS -> properties.getUnderstats() == null
-                    || properties.getUnderstats().getLeagueIds() == null
-                    ? List.of() : properties.getUnderstats().getLeagueIds();
-        };
+        if (config == null || config.getLeagueIds() == null) return List.of();
+        return config.getLeagueIds().stream()
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
     }
 
     public List<String> configuredSeasonYears(Provider provider) {
-        // SofaScore seasons are external IDs, not calendar-year values. Use the existing
-        // external-season mapping path for SofaScore rather than interpreting IDs as years.
+        // SofaScore seasons are external IDs and must be resolved through SeasonExternalId.
         if (provider == Provider.SOFA_SCORE) return List.of();
 
         AppProperties.ProviderConfig config = providerConfig(provider);
-        List<String> configured = config == null ? null : config.getSeasons();
-        if (configured == null || configured.isEmpty()) {
-            configured = switch (provider) {
-                case FOOTBALL_DATA -> properties.getFootballData() == null
-                        ? List.of() : properties.getFootballData().getSeasons();
-                case API_FOOTBALL -> properties.getApiFootball() == null
-                        ? List.of() : properties.getApiFootball().getSeasons();
-                case UNDER_STATS -> properties.getUnderstats() == null
-                        ? List.of() : properties.getUnderstats().getSeasons();
-                case SOFA_SCORE -> List.of();
-            };
-        }
-        if (configured == null) return List.of();
-        return configured.stream()
+        if (config == null || config.getSeasons() == null) return List.of();
+
+        return config.getSeasons().stream()
                 .filter(year -> year != null && !year.isBlank())
                 .map(String::trim)
                 .distinct()
