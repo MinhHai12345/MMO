@@ -36,6 +36,7 @@ public class OddsIngestionServiceImpl implements OddsIngestionService {
 
     private final ProviderRegistry providerRegistry;
     private final AppProperties appProperties;
+    private final IngestionServiceSupport ingestionSupport;
     private final FixtureIngestionService fixtureIngestionService;
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
@@ -52,13 +53,7 @@ public class OddsIngestionServiceImpl implements OddsIngestionService {
 
     @Override
     public void syncUpcomingOdds(Provider selectedProvider) {
-        if (selectedProvider == null) {
-            throw new IllegalArgumentException("Odds provider must not be null");
-        }
-        if (selectedProvider == Provider.API_FOOTBALL
-                && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
-            throw new IllegalStateException("API-Football is disabled but was selected for odds ingestion");
-        }
+        ingestionSupport.requireProviderEnabled(selectedProvider, "odds");
 
         Instant now = Instant.now();
         Instant until = now.plus(72, ChronoUnit.HOURS);
