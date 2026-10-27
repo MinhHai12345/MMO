@@ -98,6 +98,10 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
 
 
     private void ensureConfiguredFootballDataSeasons(Provider selectedProvider) {
+        // Only the canonical provider may create canonical season rows. Secondary providers
+        // can filter/map existing seasons but must never synthesize core season entities.
+        if (selectedProvider != Provider.FOOTBALL_DATA) return;
+
         List<String> years = ingestionSupport.configuredSeasonYears(selectedProvider);
         if (years.isEmpty()) return;
 
