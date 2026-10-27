@@ -43,6 +43,19 @@ public class IngestionServiceSupport {
         }
     }
 
+    public List<Long> configuredLeagueIds(Provider provider) {
+        return switch (provider) {
+            case API_FOOTBALL -> properties.getApiFootball() == null
+                    || properties.getApiFootball().getLeagueIds() == null
+                    ? List.of() : properties.getApiFootball().getLeagueIds();
+            case FOOTBALL_DATA -> properties.getFootballData() == null
+                    || properties.getFootballData().getCompetitionIds() == null
+                    ? List.of() : properties.getFootballData().getCompetitionIds();
+            case SOFA_SCORE -> properties.getSync() == null || properties.getSync().getTournamentIds() == null
+                    ? List.of() : properties.getSync().getTournamentIds().stream().sorted().toList();
+        };
+    }
+
     public List<String> configuredSeasonYears(Provider provider) {
         if (provider != Provider.FOOTBALL_DATA || properties.getFootballData() == null
                 || properties.getFootballData().getSeasons() == null) {
