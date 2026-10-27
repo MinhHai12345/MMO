@@ -312,4 +312,19 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             """)
     List<Match> findFinishedScoredMatches(@Param("status") MatchStatus status, Pageable pageable);
 
+
+    /** All scored finished matches for one season, newest first, for one-pass team-form aggregation. */
+    @Query("""
+            SELECT m FROM Match m
+            JOIN FETCH m.homeTeam
+            JOIN FETCH m.awayTeam
+            WHERE m.season.id = :seasonId
+              AND m.status = :status
+              AND m.homeScore IS NOT NULL
+              AND m.awayScore IS NOT NULL
+            ORDER BY m.matchTime DESC, m.id DESC
+            """)
+    List<Match> findFinishedScoredMatchesForSeason(@Param("seasonId") Long seasonId,
+                                                   @Param("status") MatchStatus status);
+
 }
