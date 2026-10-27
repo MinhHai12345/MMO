@@ -80,8 +80,8 @@ public class ConversionEventService {
                 repository.countEvents("CLICK", from, to, normalizedCampaign),
                 repository.countEvents("LEAD", from, to, normalizedCampaign),
                 repository.countEvents("SUBSCRIPTION_CONFIRMED", from, to, normalizedCampaign),
-                repository.countEvents("PAYMENT_CONFIRMED", from, to, normalizedCampaign),
-                repository.countEvents("REFUND_CONFIRMED", from, to, normalizedCampaign),
+                repository.countFinancialEvents("PAYMENT_CONFIRMED", normalizedCurrency, from, to, normalizedCampaign),
+                repository.countFinancialEvents("REFUND_CONFIRMED", normalizedCurrency, from, to, normalizedCampaign),
                 payments, refunds, payments.subtract(refunds));
     }
 
