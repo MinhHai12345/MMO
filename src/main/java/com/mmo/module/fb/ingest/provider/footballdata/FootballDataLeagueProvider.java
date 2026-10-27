@@ -25,8 +25,12 @@ public class FootballDataLeagueProvider implements LeagueProvider {
 
     @Override
     public List<ProviderLeague> fetchLeagues(List<Long> externalLeagueIds) {
+        AppProperties.ProviderConfig config = properties.getIngestion().getProviderConfig()
+                .get(Provider.FOOTBALL_DATA);
+        List<Long> configuredIds = config == null || config.getLeagueIds() == null
+                ? List.of() : config.getLeagueIds();
         List<Long> ids = externalLeagueIds == null || externalLeagueIds.isEmpty()
-                ? properties.getFootballData().getCompetitionIds() : externalLeagueIds;
+                ? configuredIds : externalLeagueIds;
         if (ids == null || ids.isEmpty()) return List.of();
         List<ProviderLeague> result = new ArrayList<>();
         for (Long id : ids) {
