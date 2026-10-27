@@ -25,10 +25,11 @@ public class FootballDataMapper {
         SeasonDto currentSeason = competition.currentSeason();
         String currentYear = seasonYear(currentSeason);
 
-        List<String> configuredYears = appProperties.getFootballData() == null
-                || appProperties.getFootballData().getSeasons() == null
+        AppProperties.ProviderConfig footballDataConfig = appProperties.getIngestion().getProviderConfig()
+                .get(com.mmo.module.fb.ingest.enums.Provider.FOOTBALL_DATA);
+        List<String> configuredYears = footballDataConfig == null || footballDataConfig.getSeasons() == null
                 ? List.of()
-                : appProperties.getFootballData().getSeasons().stream()
+                : footballDataConfig.getSeasons().stream()
                     .filter(year -> year != null && !year.isBlank())
                     .map(String::trim)
                     .distinct()
