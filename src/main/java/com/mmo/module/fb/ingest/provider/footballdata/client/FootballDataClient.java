@@ -3,6 +3,7 @@ package com.mmo.module.fb.ingest.provider.footballdata.client;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mmo.AppProperties;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -13,7 +14,9 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import java.time.Duration;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.concurrent.TimeoutException;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class FootballDataClient {
@@ -94,12 +97,40 @@ public class FootballDataClient {
                         "Network failure calling football-data.org endpoint " + path
                                 + " after " + (attempt + 1) + " attempts.", ex);
             } catch (Exception ex) {
+                // Mono.block(Duration) reports its timeout as an IllegalStateException whose
+                // cause is TimeoutException. Handle it here so it follows the same bounded
+                // retry policy as connection-level transport failures.
+                if (isTimeoutFailure(ex)) {
+                    if (retryPolicy.shouldRetryTransportFailure(attempt)) {
+                        long delayMillis = retryPolicy.backoffMillis(attempt);
+                        log.warn("Timed out after {} waiting for football-data.org endpoint {} "
+                                        + "(attempt {}/{}); retrying after {} ms",
+                                REQUEST_TIMEOUT.toSeconds(), path, attempt + 1,
+                                FootballDataRetryPolicy.MAX_ATTEMPTS, delayMillis);
+                        sleepBeforeRetry(delayMillis, path);
+                        continue;
+                    }
+                    throw new IllegalStateException(
+                            "Timed out waiting for football-data.org endpoint " + path
+                                    + " after " + (attempt + 1) + " attempts"
+                                    + " (request timeout " + REQUEST_TIMEOUT.toSeconds() + " seconds).",
+                            ex);
+                }
                 if (ex instanceof IllegalStateException stateException) throw stateException;
                 throw new IllegalStateException("Failed to call football-data.org endpoint " + path, ex);
             }
         }
 
         throw new IllegalStateException("football-data.org request exhausted retry attempts for " + path);
+    }
+
+    private boolean isTimeoutFailure(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            if (current instanceof TimeoutException) return true;
+            current = current.getCause();
+        }
+        return false;
     }
 
     private long determineRetryDelaySeconds(WebClientResponseException ex) {
