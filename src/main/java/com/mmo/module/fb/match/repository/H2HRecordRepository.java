@@ -1,7 +1,6 @@
 package com.mmo.module.fb.match.repository;
 
 import com.mmo.module.fb.match.entity.H2HRecord;
-import com.mmo.module.fb.match.entity.H2HRecord;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
