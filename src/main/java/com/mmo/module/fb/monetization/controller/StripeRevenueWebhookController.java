@@ -26,7 +26,7 @@ import java.util.Map;
 public class StripeRevenueWebhookController {
     private static final List<String> ZERO_DECIMAL_CURRENCIES = List.of(
             "BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", "RWF",
-            "UGX", "VND", "VUV", "XAF", "XOF", "XPF");
+            "VND", "VUV", "XAF", "XOF", "XPF");
     private static final List<String> THREE_DECIMAL_CURRENCIES = List.of("BHD", "JOD", "KWD", "OMR", "TND");
 
     private final ConversionEventService eventService;
