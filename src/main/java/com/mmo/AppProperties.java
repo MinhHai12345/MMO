@@ -8,9 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Strongly typed access to application-owned configuration under {@code app}.
@@ -130,8 +128,6 @@ public class AppProperties {
     @Setter
     public static class Sync {
         private boolean bootstrapOnStart = true;
-        private Set<Long> tournamentIds = new HashSet<>();
-        private int seasonsPerLeague = 3;
         private int maxRounds = 50;
         private int maxEventPages = 20;
     }

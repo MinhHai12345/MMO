@@ -129,6 +129,5 @@ app:
 
   sync:
     bootstrap-on-start: ${APP_SYNC_BOOTSTRAP_ON_START:true}
-    seasons-per-league: ${APP_SYNC_SEASONS_PER_LEAGUE:3}
     max-event-pages: ${SOFA_SCORE_MAX_EVENT_PAGES:20}
     max-rounds: ${SOFA_SCORE_MAX_ROUNDS:50}

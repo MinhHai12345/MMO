@@ -19,7 +19,6 @@ import java.util.List;
 public class LeagueIngestionServiceImpl implements LeagueIngestionService {
     private final ProviderRegistry providerRegistry;
     private final AppProperties appProperties;
-    private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
     private final LeaguePersistenceService leaguePersistenceService;
     private final LeagueExternalIdRepository leagueExternalIdRepository;

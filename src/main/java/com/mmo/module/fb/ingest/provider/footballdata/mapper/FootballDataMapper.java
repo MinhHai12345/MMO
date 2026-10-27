@@ -21,8 +21,7 @@ public class FootballDataMapper {
         String currentYear = seasonYear(currentSeason);
 
         // football-data.org returns the season catalogue on the competition resource.
-        // Keep its real season IDs and dates; synthesizing IDs for every configured year
-        // creates false external mappings for seasons the provider did not actually return.
+        // Keep the real season IDs and dates; never synthesize mappings for seasons absent from the provider catalogue.
         Map<String, SeasonDto> availableSeasonsByYear = new LinkedHashMap<>();
         if (competition.seasons() != null) {
             for (SeasonDto season : competition.seasons()) {
