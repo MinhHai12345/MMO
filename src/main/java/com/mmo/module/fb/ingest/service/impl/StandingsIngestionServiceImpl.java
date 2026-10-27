@@ -68,7 +68,7 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
         int saved = 0;
         int skipped = 0;
         boolean rateLimitInterrupted = false;
-        List<Season> seasons = ingestionSupport.seasonsToSync(selectedProvider);
+        List<Season> seasons = ingestionSupport.standingsSeasonsToSync(selectedProvider);
         log.info("Fetching standings for {} season records via {}", seasons.size(), selectedProvider);
         for (Season season : seasons) {
             if (season.getLeague() == null || season.getYear() == null) continue;
