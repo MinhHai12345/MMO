@@ -77,12 +77,12 @@ public class ConversionEventService {
         BigDecimal payments = zero(repository.sumAmount("PAYMENT_CONFIRMED", normalizedCurrency, from, to));
         BigDecimal refunds = zero(repository.sumAmount("REFUND_CONFIRMED", normalizedCurrency, from, to));
         return new RevenueReport(from, to, normalizedCurrency,
-                repository.countByEventTypeAndCurrencyAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
-                        "CLICK", normalizedCurrency, from, to),
-                repository.countByEventTypeAndCurrencyAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
-                        "LEAD", normalizedCurrency, from, to),
-                repository.countByEventTypeAndCurrencyAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
-                        "SUBSCRIPTION_CONFIRMED", normalizedCurrency, from, to),
+                repository.countByEventTypeAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
+                        "CLICK", from, to),
+                repository.countByEventTypeAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
+                        "LEAD", from, to),
+                repository.countByEventTypeAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
+                        "SUBSCRIPTION_CONFIRMED", from, to),
                 repository.countByEventTypeAndCurrencyAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
                         "PAYMENT_CONFIRMED", normalizedCurrency, from, to),
                 repository.countByEventTypeAndCurrencyAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
@@ -117,7 +117,9 @@ public class ConversionEventService {
 
     private static void assertSameEvent(ConversionEventEntity existing, RecordCommand command) {
         String requestedType = command.eventType().strip().toUpperCase(Locale.ROOT);
-        if (!existing.getEventType().equals(requestedType)
+        if (!existing.getEventSource().equals(command.eventSource().strip())
+                || !existing.getExternalEventId().equals(command.externalEventId().strip())
+                || !existing.getEventType().equals(requestedType)
                 || !java.util.Objects.equals(existing.getPublicationId(), command.publicationId())
                 || !java.util.Objects.equals(existing.getSubscriberId(), command.subscriberId())
                 || !java.util.Objects.equals(existing.getAmount(), command.amount())
