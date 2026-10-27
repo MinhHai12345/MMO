@@ -14,7 +14,7 @@ class AppPropertiesProviderConfigTest {
         AppProperties properties = new AppProperties();
         AppProperties.ProviderConfig config = new AppProperties.ProviderConfig();
         config.setEnabled(true);
-        config.setBaseUrl("https://api.football-data.org/v4");
+        config.setUri("https://api.football-data.org/v4");
         config.setApiKey("test-token");
         config.setOptions(Map.of("catalogue-endpoint", "/competitions"));
         properties.getIngestion().getProviderConfig().put(Provider.FOOTBALL_DATA, config);
@@ -22,7 +22,7 @@ class AppPropertiesProviderConfigTest {
         AppProperties.ProviderConfig actual =
                 properties.getIngestion().getProviderConfig().get(Provider.FOOTBALL_DATA);
         assertThat(actual.isEnabled()).isTrue();
-        assertThat(actual.getBaseUrl()).isEqualTo("https://api.football-data.org/v4");
+        assertThat(actual.getUri()).isEqualTo("https://api.football-data.org/v4");
         assertThat(actual.getApiKey()).isEqualTo("test-token");
         assertThat(actual.getOptions()).containsEntry("catalogue-endpoint", "/competitions");
     }

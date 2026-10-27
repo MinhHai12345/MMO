@@ -41,14 +41,14 @@ public class ApiFootballClient {
             throw new IllegalStateException(
                     "API-Football integration is disabled. Set API_FOOTBALL_ENABLED=true to enable it.");
         }
-        if (!StringUtils.hasText(properties.getBaseUrl())) {
+        if (!StringUtils.hasText(properties.getUri())) {
             throw new IllegalStateException(
                     "API-Football base URL is missing. Set API_FOOTBALL_BASE_URL.");
         }
 
         try {
             String json = webClientBuilder
-                    .baseUrl(properties.getBaseUrl())
+                    .baseUrl(properties.getUri())
                     .defaultHeader("x-apisports-key", properties.getApiKey())
                     .defaultHeader(HttpHeaders.ACCEPT, "application/json")
                     .build()

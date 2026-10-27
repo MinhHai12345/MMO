@@ -107,25 +107,25 @@ app:
 
     provider-config:
       FOOTBALL_DATA:
-        enabled: ${FOOTBALL_DATA_ENABLED:true}
-        base-url: ${FOOTBALL_DATA_BASE_URL:https://api.football-data.org/v4}
-        api-key: ${FOOTBALL_DATA_API_KEY:}
+        enabled: ${FOOTBALL_DATA_ENABLED}
+        uri: ${FOOTBALL_DATA_URI}
+        api-key: ${FOOTBALL_DATA_API_KEY}
 
       API_FOOTBALL:
-        enabled: ${API_FOOTBALL_ENABLED:true}
-        base-url: ${API_FOOTBALL_BASE_URL:https://v3.football.api-sports.io}
-        api-key: ${API_FOOTBALL_API_KEY:}
+        enabled: ${API_FOOTBALL_ENABLED}
+        uri: ${API_FOOTBALL_URI}
+        api-key: ${API_FOOTBALL_API_KEY}
 
       SOFA_SCORE:
-        enabled: ${SOFA_SCORE_ENABLED:true}
-        base-url: ${SOFA_SCORE_API_URL:${SOFASCORE_API_URL:https://api.sofascore.com/api/v1/}}
-        web-url: ${SOFA_SCORE_WEB_URL:https://www.sofascore.com}
+        enabled: ${SOFA_SCORE_ENABLED}
+        uri: ${SOFA_SCORE_URI}
+        web-url: ${SOFA_SCORE_WEB_URL}
         options:
-          tournament-region: ${SOFASCORE_TOURNAMENT_REGION:EN}
+          tournament-region: ${SOFA_SCORE_TOURNAMENT_REGION:EN}
 
       UNDER_STATS:
-        enabled: ${UNDER_STATS_ENABLED:false}
-        base-url: ${UNDER_STAT_BASE_URL:${UNDERSTAT_BASE_URL:https://understat.com}}
+        enabled: ${UNDER_STATS_ENABLED}
+        uri: ${UNDER_STAT_BASE_URL}
 
   sync:
     bootstrap-on-start: ${APP_SYNC_BOOTSTRAP_ON_START:true}

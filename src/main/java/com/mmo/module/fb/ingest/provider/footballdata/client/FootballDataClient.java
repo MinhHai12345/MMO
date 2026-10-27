@@ -44,7 +44,7 @@ public class FootballDataClient {
                 || PLACEHOLDER_API_KEY.equalsIgnoreCase(properties.getApiKey().trim())) {
             throw new IllegalStateException("football-data.org API token is not configured. Set FOOTBALL_DATA_API_KEY.");
         }
-        if (!StringUtils.hasText(properties.getBaseUrl())) {
+        if (!StringUtils.hasText(properties.getUri())) {
             throw new IllegalStateException("football-data.org base URL is missing.");
         }
 
@@ -52,7 +52,7 @@ public class FootballDataClient {
             awaitRequestSlot();
             try {
                 String json = webClientBuilder.clone()
-                        .baseUrl(properties.getBaseUrl())
+                        .baseUrl(properties.getUri())
                         .defaultHeader("X-Auth-Token", properties.getApiKey())
                         .defaultHeader(HttpHeaders.ACCEPT, "application/json")
                         .codecs(codecs -> codecs.defaultCodecs().maxInMemorySize(MAX_IN_MEMORY_SIZE_BYTES))

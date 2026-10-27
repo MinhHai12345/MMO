@@ -68,7 +68,7 @@ public class AppProperties {
         @Setter
         public static class Publishing {
             /** Shared API key for the content-publishing endpoint, not a social provider token. */
-            private String apiKey = "haivo";
+            private String apiKey;
         }
     }
 
@@ -138,8 +138,6 @@ public class AppProperties {
     public static class Ingestion {
         private Providers providers = new Providers();
         private Map<Provider, ProviderConfig> providerConfig = new EnumMap<>(Provider.class);
-
-
     }
 
     /** Common configuration shared by all data providers; provider-specific values live in options. */
@@ -147,7 +145,7 @@ public class AppProperties {
     @Setter
     public static class ProviderConfig {
         private boolean enabled;
-        private String baseUrl;
+        private String uri;
         private String webUrl;
         private String apiKey;
         private Map<String, String> options = new HashMap<>();

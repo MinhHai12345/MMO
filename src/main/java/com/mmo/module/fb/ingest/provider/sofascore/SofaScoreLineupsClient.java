@@ -27,7 +27,7 @@ public class SofaScoreLineupsClient extends AbstractSofaScoreProvider {
         try {
             AppProperties.ProviderConfig config = properties.getIngestion().getProviderConfig().get(Provider.SOFA_SCORE);
             if (config == null || !config.isEnabled()) throw new IllegalStateException("SofaScore provider is disabled or not configured");
-            String base = config.getBaseUrl();
+            String base = config.getUri();
             String separator = base.endsWith("/") ? "" : "/";
             String url = base + separator + "event/" + externalMatchId + "/lineups";
             page.waitForTimeout(3000);
