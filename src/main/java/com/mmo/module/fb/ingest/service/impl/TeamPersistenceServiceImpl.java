@@ -58,6 +58,11 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
                             selectedProvider, source.externalId(), source.name());
                     continue;
                 }
+                if (candidates.isEmpty() && selectedProvider == Provider.SOFA_SCORE) {
+                    log.info("Skipping SofaScore team '{}' (external ID {}) because no existing canonical team matched; SofaScore mapping sync does not create core entities.",
+                            source.name(), source.externalId());
+                    continue;
+                }
                 team = candidates.isEmpty() ? new Team() : candidates.get(0);
             }
 
@@ -68,20 +73,22 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
                 continue;
             }
 
-            if (team.getName() == null || team.getName().isBlank()) team.setName(source.name());
-            if (team.getShortName() == null || team.getShortName().isBlank()) team.setShortName(source.shortName());
-            if (team.getSlug() == null || team.getSlug().isBlank()) {
-                team.setSlug(slug(source.name()) + "-" + selectedProvider.name().toLowerCase()
-                        + "-" + source.externalId());
+            if (selectedProvider != Provider.SOFA_SCORE) {
+                if (team.getName() == null || team.getName().isBlank()) team.setName(source.name());
+                if (team.getShortName() == null || team.getShortName().isBlank()) team.setShortName(source.shortName());
+                if (team.getSlug() == null || team.getSlug().isBlank()) {
+                    team.setSlug(slug(source.name()) + "-" + selectedProvider.name().toLowerCase()
+                            + "-" + source.externalId());
+                }
+                team.setLogoUrl(source.logoUrl());
+                team.setFoundedYear(source.foundedYear());
+                team.setIsActive(true);
+                if (source.stadiumName() != null || source.stadiumCapacity() != null) {
+                    team.setStadiumName(source.stadiumName());
+                    team.setStadiumCapacity(source.stadiumCapacity());
+                }
+                team = teamRepository.save(team);
             }
-            team.setLogoUrl(source.logoUrl());
-            team.setFoundedYear(source.foundedYear());
-            team.setIsActive(true);
-            if (source.stadiumName() != null || source.stadiumCapacity() != null) {
-                team.setStadiumName(source.stadiumName());
-                team.setStadiumCapacity(source.stadiumCapacity());
-            }
-            team = teamRepository.save(team);
 
             Team savedTeam = team;
             externalIdMappingService.registerTeam(savedTeam, selectedProvider, source.externalId());

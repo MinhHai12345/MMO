@@ -69,6 +69,11 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                             selectedProvider, source.externalId(), source.name());
                     continue;
                 }
+                if (candidates.isEmpty() && selectedProvider == Provider.SOFA_SCORE) {
+                    log.info("Skipping SofaScore tournament '{}' (external ID {}) because no existing canonical league matched; SofaScore mapping sync does not create core entities.",
+                            source.name(), source.externalId());
+                    continue;
+                }
                 league = candidates.isEmpty() ? new League() : candidates.get(0);
             }
 
@@ -80,21 +85,23 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                 continue;
             }
 
-            if (league.getName() == null || league.getName().isBlank()) league.setName(source.name());
-            if (league.getSlug() == null || league.getSlug().isBlank()) {
-                league.setSlug(slug(source.name()) + "-" + selectedProvider.name().toLowerCase()
-                        + "-" + source.externalId());
+            if (selectedProvider != Provider.SOFA_SCORE) {
+                if (league.getName() == null || league.getName().isBlank()) league.setName(source.name());
+                if (league.getSlug() == null || league.getSlug().isBlank()) {
+                    league.setSlug(slug(source.name()) + "-" + selectedProvider.name().toLowerCase()
+                            + "-" + source.externalId());
+                }
+                if (source.country() != null && !source.country().isBlank()) league.setCountry(source.country());
+                if (source.logoUrl() != null && !source.logoUrl().isBlank()) league.setLogoUrl(source.logoUrl());
+                league.setIsActive(true);
+                league = leagueRepository.save(league);
+                Long savedLeagueId = league.getId();
+                if (knownActiveLeagues.stream().noneMatch(existing -> existing.getId() != null
+                        && existing.getId().equals(savedLeagueId))) {
+                    knownActiveLeagues.add(league);
+                }
             }
-            if (source.country() != null && !source.country().isBlank()) league.setCountry(source.country());
-            if (source.logoUrl() != null && !source.logoUrl().isBlank()) league.setLogoUrl(source.logoUrl());
-            league.setIsActive(true);
-            league = leagueRepository.save(league);
             League savedLeague = league;
-            Long savedLeagueId = savedLeague.getId();
-            if (knownActiveLeagues.stream().noneMatch(existing -> existing.getId() != null
-                    && existing.getId().equals(savedLeagueId))) {
-                knownActiveLeagues.add(savedLeague);
-            }
             externalIdMappingService.registerLeague(savedLeague, selectedProvider, source.externalId());
 
             for (ProviderSeason sourceSeason : source.seasons() == null ? List.<ProviderSeason>of() : source.seasons()) {
@@ -118,7 +125,15 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                 }
                 if (season == null) {
                     season = seasonRepository.findByLeague_IdAndYear(savedLeague.getId(), sourceSeason.year())
-                            .orElseGet(() -> Season.builder().league(savedLeague).year(sourceSeason.year()).build());
+                            .orElse(null);
+                    if (season == null && selectedProvider == Provider.SOFA_SCORE) {
+                        log.debug("Skipping SofaScore season {} for canonical league {} because no core season exists",
+                                sourceSeason.year(), savedLeague.getId());
+                        continue;
+                    }
+                    if (season == null) {
+                        season = Season.builder().league(savedLeague).year(sourceSeason.year()).build();
+                    }
                 }
                 SeasonExternalId existingSeasonMapping = season.getId() == null ? null
                         : seasonExternalIdRepository.findBySeasonIdAndProvider(season.getId(), selectedProvider).orElse(null);
@@ -129,10 +144,12 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                     continue;
                 }
 
-                season.setCurrent(sourceSeason.current());
-                season.setStartDate(sourceSeason.startDate());
-                season.setEndDate(sourceSeason.endDate());
-                season = seasonRepository.save(season);
+                if (selectedProvider != Provider.SOFA_SCORE) {
+                    season.setCurrent(sourceSeason.current());
+                    season.setStartDate(sourceSeason.startDate());
+                    season.setEndDate(sourceSeason.endDate());
+                    season = seasonRepository.save(season);
+                }
                 externalIdMappingService.registerSeason(season, selectedProvider, sourceSeason.externalId());
             }
             synced++;

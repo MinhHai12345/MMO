@@ -5,6 +5,8 @@ import com.mmo.module.fb.league.entity.Season;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.league.repository.SeasonRepository;
+import com.mmo.module.fb.league.entity.SeasonExternalId;
+import com.mmo.module.fb.league.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballPlanRestrictionException;
 import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
@@ -29,6 +31,7 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
     private final AppProperties appProperties;
     private final LeagueIngestionService leagueIngestionService;
     private final SeasonRepository seasonRepository;
+    private final SeasonExternalIdRepository seasonExternalIdRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final TeamPersistenceService teamPersistenceService;
 
@@ -129,6 +132,16 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
     }
 
     private List<Season> seasonsToSync(Provider selectedProvider) {
+        if (selectedProvider == Provider.SOFA_SCORE) {
+            Map<Long, Season> mappedSeasons = new java.util.LinkedHashMap<>();
+            for (SeasonExternalId mapping : seasonExternalIdRepository.findAllByProvider(selectedProvider)) {
+                Season season = mapping.getSeason();
+                if (season != null && season.getId() != null && season.getLeague() != null) {
+                    mappedSeasons.putIfAbsent(season.getId(), season);
+                }
+            }
+            return List.copyOf(mappedSeasons.values());
+        }
         List<String> years = configuredSeasonYears(selectedProvider);
         if (!years.isEmpty()) {
             return seasonRepository.findAll().stream()
