@@ -9,7 +9,9 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -21,8 +23,7 @@ public class FootballDataMapper {
         if (competition == null || competition.id() == null) return null;
 
         SeasonDto currentSeason = competition.currentSeason();
-        String currentYear = currentSeason == null || currentSeason.startDate() == null
-                ? null : Integer.toString(currentSeason.startDate().getYear());
+        String currentYear = seasonYear(currentSeason);
 
         List<String> configuredYears = appProperties.getFootballData() == null
                 || appProperties.getFootballData().getSeasons() == null
@@ -33,31 +34,45 @@ public class FootballDataMapper {
                     .distinct()
                     .toList();
 
-        List<ProviderSeason> seasons = new ArrayList<>();
-        if (!configuredYears.isEmpty()) {
-            for (String year : configuredYears) {
-                boolean isCurrent = year.equals(currentYear);
-                boolean hasCurrentMetadata = isCurrent && currentSeason != null;
-                seasons.add(new ProviderSeason(
-                        competition.id() + ":" + year,
-                        year,
-                        isCurrent,
-                        hasCurrentMetadata ? currentSeason.startDate() : null,
-                        hasCurrentMetadata ? currentSeason.endDate() : null));
+        // football-data.org returns the season catalogue on the competition resource.
+        // Keep its real season IDs and dates; synthesizing IDs for every configured year
+        // creates false external mappings for seasons the provider did not actually return.
+        Map<String, SeasonDto> availableSeasonsByYear = new LinkedHashMap<>();
+        if (competition.seasons() != null) {
+            for (SeasonDto season : competition.seasons()) {
+                String year = seasonYear(season);
+                if (year != null) availableSeasonsByYear.putIfAbsent(year, season);
             }
-        } else if (currentYear != null) {
-            seasons.add(new ProviderSeason(
-                    competition.id() + ":" + currentYear,
-                    currentYear,
-                    true,
-                    currentSeason.startDate(),
-                    currentSeason.endDate()));
+        }
+        if (currentSeason != null && currentYear != null) {
+            availableSeasonsByYear.putIfAbsent(currentYear, currentSeason);
+        }
+
+        List<ProviderSeason> seasons = new ArrayList<>();
+        for (Map.Entry<String, SeasonDto> entry : availableSeasonsByYear.entrySet()) {
+            String year = entry.getKey();
+            SeasonDto season = entry.getValue();
+            if (!configuredYears.isEmpty() && !configuredYears.contains(year)) continue;
+            // Without an explicit backfill configuration, retain the existing current-season
+            // default. With one, only map seasons actually present in the provider catalogue.
+            if (configuredYears.isEmpty() && !year.equals(currentYear)) continue;
+
+            String externalSeasonId = season.id() == null
+                    ? competition.id() + ":" + year
+                    : season.id().toString();
+            seasons.add(new ProviderSeason(externalSeasonId, year, year.equals(currentYear),
+                    season.startDate(), season.endDate()));
         }
 
         return new ProviderLeague(
                 competition.id().toString(), competition.name(),
                 competition.area() == null ? null : competition.area().name(),
                 competition.emblem(), seasons);
+    }
+
+    private static String seasonYear(SeasonDto season) {
+        return season == null || season.startDate() == null
+                ? null : Integer.toString(season.startDate().getYear());
     }
 
     public ProviderTeam toTeam(TeamDto team) {
@@ -74,9 +89,9 @@ public class FootballDataMapper {
         Instant kickoff = match.utcDate() == null ? null : match.utcDate().toInstant();
         ScorePairDto score = match.score() == null ? null
                 : (match.score().fullTime() != null ? match.score().fullTime() : match.score().regularTime());
+        String round = match.matchday() == null ? match.stage() : "Matchday " + match.matchday();
         return new ProviderFixture(match.id().toString(), match.homeTeam().id().toString(),
-                match.awayTeam().id().toString(), kickoff,
-                match.matchday() == null ? match.stage() : "Matchday " + match.matchday(),
+                match.awayTeam().id().toString(), kickoff, round,
                 match.venue(), null, match.status(),
                 score == null ? null : score.home(), score == null ? null : score.away());
     }
