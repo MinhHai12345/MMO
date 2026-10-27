@@ -44,9 +44,10 @@ public class ConversionEventController {
             @RequestHeader(value = "X-Monetization-Event-Key", required = false) String suppliedKey,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
-            @RequestParam String currency) {
+            @RequestParam String currency,
+            @RequestParam(required = false) String campaignCode) {
         authorize(suppliedKey);
-        return eventService.revenue(from, to, currency);
+        return eventService.revenue(from, to, currency, campaignCode);
     }
 
     private void authorize(String suppliedKey) {
