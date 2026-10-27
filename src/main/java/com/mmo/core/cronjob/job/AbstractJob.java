@@ -14,14 +14,14 @@ import org.springframework.util.StopWatch;
 public abstract class AbstractJob<T extends CronJob> extends QuartzJobBean implements InterruptableJob {
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractJob.class);
 
-    private boolean stop = false;
+    private volatile boolean stop;
 
     @Resource
     private CronJobService cronJobService;
 
     @Override
     public void interrupt() {
-        this.stop = true;
+        stop = true;
     }
 
     @Override
@@ -29,36 +29,37 @@ public abstract class AbstractJob<T extends CronJob> extends QuartzJobBean imple
     protected final void executeInternal(final JobExecutionContext context) {
         final String jobName = context.getJobDetail().getKey().getName();
         final String jobGroup = context.getJobDetail().getKey().getGroup();
-        final T cronjob = (T) cronJobService.getJob(jobName, jobGroup);
+        final StopWatch stopWatch = new StopWatch(jobName);
+        stop = false;
+
         try {
-            LOGGER.info("Starting [{}]", cronjob.getJobName());
-            final StopWatch stopWatch = new StopWatch();
+            T cronJob = (T) cronJobService.getJob(jobName, jobGroup);
+            LOGGER.info("Starting [{}]", jobName);
             stopWatch.start();
-            executeInternal(context, cronjob);
-            stopWatch.stop();
+            executeInternal(context, cronJob);
             context.setResult(JobCompleteState.SUCCESS);
-            LOGGER.info("Done [{}] in {} ms", cronjob.getJobName(), stopWatch.getTotalTimeMillis());
-        } catch (Exception e) {
+        } catch (Exception exception) {
             context.setResult(JobCompleteState.ERROR);
-            LOGGER.error("Error while executing [{}]", cronjob, e);
+            LOGGER.error("Error while executing job [{}] in group [{}]", jobName, jobGroup, exception);
+        } finally {
+            if (stopWatch.isRunning()) {
+                stopWatch.stop();
+            }
+            if (stopWatch.getTaskCount() > 0) {
+                LOGGER.info("Finished [{}] in {} ms; stopRequested={}",
+                        jobName, stopWatch.getTotalTimeMillis(), stop);
+            }
         }
     }
 
     /**
-     * Execute internally.
-     *
-     * @param context JobExecutionContext
-     * @param cronJob T
+     * Execute the business operation. Exceptions are recorded as ERROR in Quartz
+     * execution context and logged here so the state listener can persist the result.
      */
     protected abstract void executeInternal(JobExecutionContext context, T cronJob);
 
-    /**
-     * If the cronjob is suggested to stop current execution.
-     *
-     * @return boolean
-     */
+    /** Return true after Quartz has requested this execution to stop. */
     protected boolean shouldStop() {
-        return this.stop;
+        return stop;
     }
-
 }
