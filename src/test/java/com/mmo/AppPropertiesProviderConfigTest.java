@@ -43,6 +43,7 @@ class AppPropertiesProviderConfigTest {
 
         AppProperties.SofaScore resolved = properties.getSofaScore();
 
+        assertThat(resolved.isEnabled()).isTrue();
         assertThat(resolved.getApi()).isEqualTo("https://api.sofascore.com/api/v1/");
         assertThat(resolved.getUrl()).isEqualTo("https://www.sofascore.com");
         assertThat(resolved.getTournamentRegion()).isEqualTo("EN");
