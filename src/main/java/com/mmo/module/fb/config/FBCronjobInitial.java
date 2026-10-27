@@ -1,6 +1,7 @@
 package com.mmo.module.fb.config;
 
 import com.mmo.core.cronjob.entity.CronJob;
+import com.mmo.core.cronjob.entity.JobState;
 import com.mmo.core.cronjob.repository.CronJobRepository;
 import com.mmo.core.cronjob.service.CronJobService;
 import com.mmo.core.initialize.DataInitializer;
@@ -8,15 +9,11 @@ import com.mmo.module.fb.analytics.job.AdvancedMetricsJob;
 import com.mmo.module.fb.analytics.job.MatchProcessPredictionJob;
 import com.mmo.module.fb.analytics.job.PredictionEvaluationJob;
 import com.mmo.module.fb.analytics.job.WalkForwardBackTestJob;
-import com.mmo.module.fb.ingest.job.CrawlerHealthCheckJob;
-import com.mmo.module.fb.ingest.job.DataCleanupJob;
 import com.mmo.module.fb.ingest.job.FootballDataBootstrapJob;
 import com.mmo.module.fb.ingest.job.LeagueSyncJob;
 import com.mmo.module.fb.ingest.job.MatchFixtureSyncJob;
-import com.mmo.module.fb.ingest.job.MatchLineupOddsUpdateJob;
 import com.mmo.module.fb.ingest.job.MatchResultSyncJob;
 import com.mmo.module.fb.ingest.job.MatchStatisticsSyncJob;
-import com.mmo.module.fb.ingest.job.MatchStatusTrackerJob;
 import com.mmo.module.fb.ingest.job.TeamSyncJob;
 import com.mmo.module.fb.monetization.job.SubscriptionExpiryCheckJob;
 import com.mmo.module.fb.workflow.job.FootballWorkflowOrchestrationJob;
@@ -36,75 +33,93 @@ public class FBCronjobInitial implements DataInitializer {
 
     @Override
     public void initialize() {
-        log.info("Initializing Football Analytics CronJobs (UTC Timezone)...");
-        createJobIfNotExist(
-                FootballWorkflowOrchestrationJob.class.getSimpleName(),
-                FootballWorkflowOrchestrationJob.class,
-                "0 30 11 * * ?",
-                "End-to-end workflow: run ingestion and analytics jobs in sequence, then generate PRE_MATCH drafts (UTC 11:30)"
-        );
+        log.info("Initializing Football Analytics CronJobs (UTC timezone)...");
 
-        createJobIfNotExist(
-                FootballDataBootstrapJob.class.getSimpleName(),
-                FootballDataBootstrapJob.class,
-                "0 0 1 1 * ?",
-                "Bootstrap leagues, teams, fixtures, scores and standings for configured seasons; "
-                + "FOOTBALL_DATA_SEASONS enables historical backfill (UTC 01:00 / VN 08:00 AM - 1st of month)"
-        );
+        createOrUpdateJob(FootballWorkflowOrchestrationJob.class,
+                "0 30 11 * * ?", "End-to-end workflow: refresh data, calculate analytics and generate PRE_MATCH drafts (daily UTC 11:30)");
 
-        createJobIfNotExist(LeagueSyncJob.class.getSimpleName(), LeagueSyncJob.class,
-                "0 0 2 1 * ?", "Sync League and Season info (UTC 02:00 / VN 09:00 AM - 1st of month)");
-        createJobIfNotExist(TeamSyncJob.class.getSimpleName(), TeamSyncJob.class,
-                "0 0 3 1,15 * ?", "Sync Team metadata (UTC 03:00 / VN 10:00 AM - 1st & 15th of month)");
+        // Bootstrap may backfill multiple seasons. Keep it out of the frequent production path.
+        createOrUpdateJob(FootballDataBootstrapJob.class,
+                "0 0 1 1 * ?", "Bootstrap configured leagues, teams, fixtures and standings (monthly UTC 01:00)");
+        createOrUpdateJob(LeagueSyncJob.class,
+                "0 0 2 1 * ?", "Refresh league and season metadata (monthly UTC 02:00)");
+        createOrUpdateJob(TeamSyncJob.class,
+                "0 0 3 1,15 * ?", "Refresh team metadata (UTC 03:00 on days 1 and 15)");
 
-        createJobIfNotExist(MatchResultSyncJob.class.getSimpleName(), MatchResultSyncJob.class,
-                "0 0 4 * * ?", "Refresh match statuses and scores from the previous 7 days through today (UTC 04:00 / VN 11:00 AM)");
-        createJobIfNotExist(MatchStatisticsSyncJob.class.getSimpleName(), MatchStatisticsSyncJob.class,
-                "0 0 */4 * * ?", "Fetch real SofaScore statistics for finished matches (every 4 hours UTC)");
-        createJobIfNotExist(PredictionEvaluationJob.class.getSimpleName(), PredictionEvaluationJob.class,
-                "0 0/30 * * * ?", "Evaluate completed predictions using actual results and normalized Brier quality (every 30 minutes)");
-        createJobIfNotExist(WalkForwardBackTestJob.class.getSimpleName(), WalkForwardBackTestJob.class,
-                "0 15 6 * * ?", "Run 180-day leakage-safe walk-forward backtest and probability calibration (daily UTC 06:15)");
-        createJobIfNotExist(MatchFixtureSyncJob.class.getSimpleName(), MatchFixtureSyncJob.class,
-                "0 30 5 * * ?", "Refresh fixtures from today through the next 14 days (UTC 05:30 / VN 12:30 PM)");
-        createJobIfNotExist(MatchProcessPredictionJob.class.getSimpleName(), MatchProcessPredictionJob.class,
-                "0 0 10 * * ?", "Calculate expected xG, Win Probs & Confidence Score (UTC 10:00 / VN 17:00 PM)");
+        // Match data has direct value to content freshness; use bounded periodic refreshes.
+        createOrUpdateJob(MatchResultSyncJob.class,
+                "0 0 0/4 * * ?", "Refresh recent results and statuses every 4 hours");
+        createOrUpdateJob(MatchFixtureSyncJob.class,
+                "0 0 0/6 * * ?", "Refresh upcoming fixtures every 6 hours");
+        createOrUpdateJob(MatchStatisticsSyncJob.class,
+                "0 0 0/6 * * ?", "Refresh finished-match statistics every 6 hours");
 
-        createJobIfNotExist(MatchStatusTrackerJob.class.getSimpleName(), MatchStatusTrackerJob.class,
-                "0 0 */3 * * ?", "Track postponed/cancelled matches (Every 3 hours)");
-        createJobIfNotExist(MatchLineupOddsUpdateJob.class.getSimpleName(), MatchLineupOddsUpdateJob.class,
-                "0 0/15 15-21 * * ?", "Update official lineups & odds movement before match (Every 15m UTC 15:00-21:00)");
+        createOrUpdateJob(MatchProcessPredictionJob.class,
+                "0 0 0/3 * * ?", "Recalculate eligible upcoming-match predictions every 3 hours");
+        createOrUpdateJob(AdvancedMetricsJob.class,
+                "0 0 0/6 * * ?", "Recalculate team form and head-to-head metrics every 6 hours");
+        createOrUpdateJob(PredictionEvaluationJob.class,
+                "0 0/30 * * * ?", "Evaluate predictions against newly completed match results every 30 minutes");
 
-        createJobIfNotExist(CrawlerHealthCheckJob.class.getSimpleName(), CrawlerHealthCheckJob.class,
-                "0 30 9 * * ?", "Test crawlers DOM/Selectors health check (UTC 09:30 / VN 16:30 PM)");
-        createJobIfNotExist(DataCleanupJob.class.getSimpleName(), DataCleanupJob.class,
-                "0 0 1 ? * SUN", "Cleanup temp Playwright files and old logs (UTC 01:00 Sun / VN 08:00 AM Sun)");
+        // Walk-forward evaluation is computationally expensive and is not required for every content run.
+        createOrUpdateJob(WalkForwardBackTestJob.class,
+                "0 15 6 ? * SUN", "Run the 180-day walk-forward evaluation weekly on Sunday at 06:15 UTC");
 
-        createJobIfNotExist(AdvancedMetricsJob.class.getSimpleName(), AdvancedMetricsJob.class,
-                "0 */2 * * * ?", "Calculate PPDA, Field Tilt, xG Chain and store advanced metrics (Every 2 hours)");
+        createOrUpdateJob(SubscriptionExpiryCheckJob.class,
+                "0 0 0 * * ?", "Expire subscriptions and identify renewals daily at 00:00 UTC");
 
-        createJobIfNotExist(SubscriptionExpiryCheckJob.class.getSimpleName(), SubscriptionExpiryCheckJob.class,
-                "0 0 0 * * ?", "Check subscription expiry and send warnings (Daily at midnight UTC)");
+        // Polling is cheap, but the worker itself must enforce opt-in, state and retry limits.
+        createOrUpdateJob(PublicationWorkerQuartzJob.class,
+                "0 * * * * ?", "Poll approved, due Telegram publications once per minute; opt-in required");
 
-        createJobIfNotExist(PublicationWorkerQuartzJob.class.getSimpleName(), PublicationWorkerQuartzJob.class,
-                "0/30 * * * * ?",
-                "Poll approved, due Telegram publications; opt-in via CONTENT_PUBLISHING_WORKER_ENABLED"
-        );
+        // These legacy rows may already exist in production DBs. Merely omitting them
+        // from registration would leave their persisted Quartz triggers active.
+        pauseRetiredJob("MatchStatusTrackerJob");
+        pauseRetiredJob("CrawlerHealthCheckJob");
+        pauseRetiredJob("DataCleanupJob");
+        pauseRetiredJob("MatchLineupOddsUpdateJob");
 
-        log.info("CronJobs initialization completed successfully.");
+        log.info("Football CronJob initialization completed.");
     }
 
-    private void createJobIfNotExist(String jobName, Class<?> jobClass, String cronExpression, String description) {
-        if (cronJobRepository.findByJobNameAndJobGroup(jobName, FB_JOB_GROUP).isEmpty()) {
-            CronJob job = new CronJob();
-            job.setJobName(jobName);
-            job.setJobGroup(FB_JOB_GROUP);
-            job.setJobClass(jobClass.getName());
-            job.setCronExpression(cronExpression);
-            job.setDescription(description);
+    /**
+     * Keep persisted schedules aligned with code. The old create-only behavior meant
+     * schedule fixes were silently ignored for installations that already had rows.
+     */
+    private void pauseRetiredJob(String jobName) {
+        cronJobRepository.findByJobNameAndJobGroup(jobName, FB_JOB_GROUP).ifPresent(job -> {
+            if (job.getJobStatus() != JobState.PAUSED) {
+                cronJobService.pauseJob(job.getId());
+                log.warn("Paused retired CronJob [{}]; implementation is empty or not part of the content MVP", jobName);
+            }
+        });
+    }
 
-            cronJobService.saveJob(job);
-            log.info("Created CronJob [{}] with expression: {}", jobName, cronExpression);
+    private void createOrUpdateJob(Class<?> jobClass, String cronExpression, String description) {
+        String jobName = jobClass.getSimpleName();
+        CronJob job = cronJobRepository.findByJobNameAndJobGroup(jobName, FB_JOB_GROUP)
+                .orElseGet(() -> {
+                    CronJob created = new CronJob();
+                    created.setJobName(jobName);
+                    created.setJobGroup(FB_JOB_GROUP);
+                    return created;
+                });
+
+        boolean isNew = job.getId() == null;
+        boolean changed = isNew
+                || !jobClass.getName().equals(job.getJobClass())
+                || !cronExpression.equals(job.getCronExpression())
+                || !description.equals(job.getDescription());
+
+        if (!changed) {
+            return;
         }
+
+        job.setJobClass(jobClass.getName());
+        job.setCronExpression(cronExpression);
+        job.setDescription(description);
+        cronJobService.saveJob(job);
+        log.info("{} CronJob [{}] with expression {}",
+                isNew ? "Created" : "Updated", jobName, cronExpression);
     }
 }
