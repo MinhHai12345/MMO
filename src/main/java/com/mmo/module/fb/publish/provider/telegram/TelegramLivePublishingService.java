@@ -42,6 +42,10 @@ public class TelegramLivePublishingService {
                 sent.messageId(), sent.completedAt(), "Published successfully through Telegram Bot API");
     }
 
+    public void reconcileDeliveryUnknown(Long publicationId, boolean delivered, String externalPostId, String actor) {
+        persistenceService.reconcileDeliveryUnknown(publicationId, delivered, externalPostId, actor);
+    }
+
     private static String safeMessage(RuntimeException failure) {
         String message = failure.getMessage();
         if (message == null || message.isBlank()) return failure.getClass().getSimpleName();
