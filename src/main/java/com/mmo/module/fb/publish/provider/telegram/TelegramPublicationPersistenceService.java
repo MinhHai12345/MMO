@@ -7,6 +7,7 @@ import com.mmo.module.fb.publish.entity.ContentPublicationAttemptEntity;
 import com.mmo.module.fb.publish.entity.ContentPublicationEntity;
 import com.mmo.module.fb.publish.repository.ContentPublicationAttemptRepository;
 import com.mmo.module.fb.publish.repository.ContentPublicationRepository;
+import org.springframework.data.domain.PageRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -159,8 +160,9 @@ public class TelegramPublicationPersistenceService {
     @Transactional
     public int quarantineStaleDeliveries() {
         Instant cutoff = Instant.now().minus(STALE_DELIVERY_THRESHOLD);
+        int batchSize = Math.max(1, appProperties.getPublication().getWorker().getBatchSize());
         List<ContentPublicationEntity> stale = publicationRepository.findByStateAndLastAttemptAtBefore(
-                PublicationStateMachine.State.PUBLISHING, cutoff);
+                PublicationStateMachine.State.PUBLISHING, cutoff, PageRequest.of(0, batchSize));
         List<ContentPublicationEntity> changed = new ArrayList<>();
         Instant now = Instant.now();
         for (ContentPublicationEntity publication : stale) {
