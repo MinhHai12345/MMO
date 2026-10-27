@@ -49,6 +49,35 @@ class AppPropertiesProviderConfigTest {
     }
 
     @Test
+    void resolvesUnderstatConfigurationIncludingEnabledAndSeasonFilters() {
+        AppProperties properties = new AppProperties();
+        AppProperties.ProviderConfig config = new AppProperties.ProviderConfig();
+        config.setEnabled(true);
+        config.setBaseUrl("https://understat.com");
+        config.setLeagueIds(List.of(PL_ID));
+        config.setSeasons(List.of("2024"));
+        properties.getIngestion().getProviderConfig().put(Provider.UNDER_STATS, config);
+
+        AppProperties.Understats resolved = properties.getUnderstats();
+
+        assertThat(resolved.isEnabled()).isTrue();
+        assertThat(resolved.getBaseUrl()).isEqualTo("https://understat.com");
+        assertThat(resolved.getLeagueIds()).containsExactly(PL_ID);
+        assertThat(resolved.getSeasons()).containsExactly("2024");
+    }
+
+    @Test
+    void resolvesApiFootballSeasonFiltersFromSharedProviderConfiguration() {
+        AppProperties properties = new AppProperties();
+        AppProperties.ProviderConfig config = new AppProperties.ProviderConfig();
+        config.setEnabled(true);
+        config.setSeasons(List.of("2023", "2024"));
+        properties.getIngestion().getProviderConfig().put(Provider.API_FOOTBALL, config);
+
+        assertThat(properties.getApiFootball().getSeasons()).containsExactly("2023", "2024");
+    }
+
+    @Test
     void fallsBackToLegacyTypedConfigurationWhenSharedEntryIsAbsent() {
         AppProperties properties = new AppProperties();
         properties.getFootballData().setBaseUrl("https://legacy.example");
