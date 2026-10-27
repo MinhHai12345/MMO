@@ -16,7 +16,10 @@ import java.util.List;
 @Table(name = "fb_seasons",
         uniqueConstraints = @UniqueConstraint(name = "uk_fb_season_league_year",
                 columnNames = {"league_id", "year"}),
-        indexes = @Index(name = "idx_fb_season_current", columnList = "is_current"))
+        indexes = {
+                @Index(name = "idx_fb_season_current", columnList = "is_current"),
+                @Index(name = "idx_fb_season_active", columnList = "is_active")
+        })
 @Getter
 @Setter
 @Builder
@@ -34,6 +37,14 @@ public class Season extends AbstractEntity {
     @Column(name = "is_current", nullable = false)
     @Builder.Default
     private boolean isCurrent = false;
+
+    /**
+     * Controls whether detailed ingestion (teams, fixtures and standings) should run for this season.
+     * Kept separate from isCurrent because historical seasons can also be explicitly enabled.
+     */
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private boolean isActive = false;
 
     @Column(name = "start_date")
     private LocalDate startDate;
