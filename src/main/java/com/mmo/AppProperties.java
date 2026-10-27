@@ -218,57 +218,7 @@ public class AppProperties {
         private Providers providers = new Providers();
         private Map<Provider, ProviderConfig> providerConfig = new EnumMap<>(Provider.class);
 
-        // Deprecated binding fields retained for source compatibility with older integrations.
-        private AppProperties.SofaScore sofaScore = new AppProperties.SofaScore();
-        private AppProperties.ApiFootball apiFootball = new AppProperties.ApiFootball();
-        private AppProperties.FootballData footballData = new AppProperties.FootballData();
-        private AppProperties.Understats understats = new AppProperties.Understats();
 
-        public SofaScore resolveSofaScore() {
-            ProviderConfig config = providerConfig.get(Provider.SOFA_SCORE);
-            if (config == null) return sofaScore;
-            SofaScore result = new SofaScore();
-            result.setEnabled(config.isEnabled());
-            result.setApi(config.getBaseUrl());
-            result.setUrl(config.getWebUrl());
-            result.setTournamentRegion(config.getOption("tournament-region"));
-            return result;
-        }
-
-        public ApiFootball resolveApiFootball() {
-            ProviderConfig config = providerConfig.get(Provider.API_FOOTBALL);
-            if (config == null) return apiFootball;
-            ApiFootball result = new ApiFootball();
-            result.setEnabled(config.isEnabled());
-            result.setBaseUrl(config.getBaseUrl());
-            result.setApiKey(config.getApiKey());
-            result.setLeagueIds(config.getLeagueIds());
-            result.setSeasons(config.getSeasons());
-            return result;
-        }
-
-        public FootballData resolveFootballData() {
-            ProviderConfig config = providerConfig.get(Provider.FOOTBALL_DATA);
-            if (config == null) return footballData;
-            FootballData result = new FootballData();
-            result.setEnabled(config.isEnabled());
-            result.setBaseUrl(config.getBaseUrl());
-            result.setApiKey(config.getApiKey());
-            result.setCompetitionIds(config.getLeagueIds());
-            result.setSeasons(config.getSeasons());
-            return result;
-        }
-
-        public Understats resolveUnderstats() {
-            ProviderConfig config = providerConfig.get(Provider.UNDER_STATS);
-            if (config == null) return understats;
-            Understats result = new Understats();
-            result.setEnabled(config.isEnabled());
-            result.setBaseUrl(config.getBaseUrl());
-            result.setLeagueIds(config.getLeagueIds());
-            result.setSeasons(config.getSeasons());
-            return result;
-        }
     }
 
     /** Common configuration shared by all data providers; provider-specific values live in options. */
@@ -296,47 +246,6 @@ public class AppProperties {
         private Provider fixture = Provider.FOOTBALL_DATA;
         private Provider standings = Provider.FOOTBALL_DATA;
         private Provider odds = Provider.API_FOOTBALL;
-    }
-
-    /** Legacy nested types remain source-compatible; settings are bound under app.ingestion. */
-    @Getter
-    @Setter
-    public static class SofaScore {
-        private boolean enabled = true;
-        @NotBlank
-        private String api;
-        @NotBlank
-        private String url;
-        private String tournamentRegion;
-    }
-
-    @Getter
-    @Setter
-    public static class ApiFootball {
-        private boolean enabled = true;
-        private String baseUrl;
-        private String apiKey;
-        private List<Long> leagueIds = new ArrayList<>();
-        private List<String> seasons = new ArrayList<>();
-    }
-
-    @Getter
-    @Setter
-    public static class FootballData {
-        private boolean enabled = true;
-        private String baseUrl;
-        private String apiKey;
-        private List<Long> competitionIds = new ArrayList<>();
-        private List<String> seasons = new ArrayList<>();
-    }
-
-    @Getter
-    @Setter
-    public static class Understats {
-        private boolean enabled;
-        private String baseUrl;
-        private List<Long> leagueIds = new ArrayList<>();
-        private List<String> seasons = new ArrayList<>();
     }
 
     /** Legacy client-facing DTOs only; these are not independently bound from YAML. */
