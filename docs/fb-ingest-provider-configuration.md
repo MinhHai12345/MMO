@@ -35,7 +35,7 @@ app:
         seasons: ${FOOTBALL_DATA_SEASONS:}
 
       API_FOOTBALL:
-        enabled: ${API_FOOTBALL_ENABLED:false}
+        enabled: ${API_FOOTBALL_ENABLED:true}
         base-url: ${API_FOOTBALL_BASE_URL:https://v3.football.api-sports.io}
         api-key: ${API_FOOTBALL_API_KEY:}
         league-ids: ${API_FOOTBALL_LEAGUE_IDS:}
