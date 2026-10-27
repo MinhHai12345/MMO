@@ -4,11 +4,8 @@ import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.job.AbstractJob;
 import com.mmo.module.fb.monetization.entity.Subscriber;
 import com.mmo.module.fb.monetization.repository.SubscriberRepository;
-//import com.mmo.module.fb.monetization.SubscriptionService;
-import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionContext;
 import org.springframework.stereotype.Component;
@@ -23,52 +20,48 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SubscriptionExpiryCheckJob extends AbstractJob<CronJob> {
 
-    @Resource
-    private SubscriberRepository subscriberRepository;
+    private static final String ACTIVE_STATUS = "ACTIVE";
+    private static final String EXPIRED_STATUS = "EXPIRED";
+    private static final int EXPIRY_WARNING_DAYS = 3;
 
-//    @Resource
-//    private SubscriptionService subscriptionService;
+    private final SubscriberRepository subscriberRepository;
 
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
-        log.info("🔍 Starting subscription expiry check...");
-
         Instant now = Instant.now();
-        Instant warningThreshold = now.plus(3, ChronoUnit.DAYS);
+        Instant warningThreshold = now.plus(EXPIRY_WARNING_DAYS, ChronoUnit.DAYS);
+        List<Subscriber> subscribers = subscriberRepository.findBySubscriptionStatus(ACTIVE_STATUS);
 
-        List<Subscriber> activeSubscribers = subscriberRepository.findBySubscriptionStatus("ACTIVE");
-
-        if (CollectionUtils.isEmpty(activeSubscribers)) {
-            log.info("✅ No active subscribers to check");
+        if (subscribers.isEmpty()) {
+            log.debug("Subscription expiry check skipped: no active subscribers");
             return;
         }
 
-        int expiringSoonCount = 0;
-        int expiredCount = 0;
+        int expiringSoon = 0;
+        int expired = 0;
 
-        for (Subscriber subscriber : activeSubscribers) {
+        for (Subscriber subscriber : subscribers) {
             try {
-                if (subscriber.getEndDate() != null) {
-                    if (subscriber.getEndDate().isBefore(now)) {
-                        subscriber.setSubscriptionStatus("EXPIRED");
-                        subscriber.setAutoRenew(false);
-                        subscriberRepository.save(subscriber);
-                        expiredCount++;
-                        log.warn("⚠️ Subscription expired for user: {}", subscriber.getUserId());
-                    } else if (subscriber.getEndDate().isBefore(warningThreshold)) {
-                        expiringSoonCount++;
-                        log.info("📢 Subscription expiring soon for user: {} (expires: {})", 
-                                subscriber.getUserId(), subscriber.getEndDate());
-                        // TODO: Send notification to user about upcoming expiry
-                    }
+                Instant endDate = subscriber.getEndDate();
+                if (endDate == null) {
+                    continue;
+                }
+
+                if (endDate.isBefore(now)) {
+                    subscriber.setSubscriptionStatus(EXPIRED_STATUS);
+                    subscriber.setAutoRenew(false);
+                    subscriberRepository.save(subscriber);
+                    expired++;
+                } else if (endDate.isBefore(warningThreshold)) {
+                    expiringSoon++;
                 }
             } catch (Exception e) {
-                log.error("❌ Error checking subscription for user {}: {}", 
-                        subscriber.getUserId(), e.getMessage());
+                log.error("Failed to process subscription for userId={}",
+                        subscriber.getUserId(), e);
             }
         }
 
-        log.info("✅ Subscription expiry check completed. Expiring soon: {}, Expired: {}", 
-                expiringSoonCount, expiredCount);
+        log.info("Subscription expiry check completed: expiringSoon={}, expired={}",
+                expiringSoon, expired);
     }
 }
