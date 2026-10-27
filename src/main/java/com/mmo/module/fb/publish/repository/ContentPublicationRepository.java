@@ -58,5 +58,5 @@ public interface ContentPublicationRepository extends JpaRepository<ContentPubli
             Pageable pageable);
 
     List<ContentPublicationEntity> findByStateAndLastAttemptAtBefore(
-            PublicationStateMachine.State state, Instant cutoff);
+            PublicationStateMachine.State state, Instant cutoff, Pageable pageable);
 }
