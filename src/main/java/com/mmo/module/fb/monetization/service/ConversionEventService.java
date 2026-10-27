@@ -123,6 +123,7 @@ public class ConversionEventService {
                 || !java.util.Objects.equals(existing.getSubscriberId(), command.subscriberId())
                 || !java.util.Objects.equals(existing.getCampaignCode(), blankToNull(command.campaignCode()))
                 || !sameAmount(existing.getAmount(), command.amount())
+                || (command.occurredAt() != null && !java.util.Objects.equals(existing.getOccurredAt(), command.occurredAt()))
                 || !java.util.Objects.equals(existing.getCurrency(),
                     command.currency() == null ? null : command.currency().strip().toUpperCase(Locale.ROOT))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
