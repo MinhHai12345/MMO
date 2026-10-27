@@ -15,8 +15,11 @@ public interface SeasonRepository extends JpaRepository<Season, Long> {
 
     List<Season> findByYearInAndLeagueIsNotNullAndYearIsNotNull(List<String> years);
 
+    List<Season> findByIsActiveTrueAndLeagueIsNotNullAndYearIsNotNull();
+
     Optional<Season> findByLeague_IdAndYear(Long leagueId, String year);
 
-    @Query("select s from Season s join s.league l where l.isActive = true and s.year is not null")
+    @Query("select s from Season s join s.league l "
+            + "where l.isActive = true and s.isActive = true and s.year is not null")
     List<Season> findAllForActiveLeagues();
 }
