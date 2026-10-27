@@ -40,7 +40,7 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
     @Transactional
     public void persistLeagues(Provider selectedProvider, List<ProviderLeague> sources) {
         int synced = 0;
-        List<League> knownActiveLeagues = new ArrayList<>(leagueRepository.findByIsActiveTrue());
+        List<League> knownActiveLeagues = new ArrayList<>(leagueRepository.findAll());
         for (ProviderLeague source : sources) {
             if (source == null || source.externalId() == null || source.externalId().isBlank()
                     || source.name() == null || source.name().isBlank()) {
@@ -70,11 +70,12 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                     continue;
                 }
                 if (candidates.isEmpty() && selectedProvider != Provider.FOOTBALL_DATA) {
-                    log.info("Skipping SofaScore tournament '{}' (external ID {}) because no existing canonical league matched; SofaScore mapping sync does not create core entities.",
+                    log.info("Skipping provider league '{}' (external ID {}) because no existing canonical league matched; secondary provider mapping sync does not create core entities.",
                             source.name(), source.externalId());
                     continue;
                 }
                 league = candidates.isEmpty() ? new League() : candidates.get(0);
+                if (candidates.isEmpty()) league.setIsActive(false);
             }
 
             LeagueExternalId existingLeagueMapping = league.getId() == null ? null
@@ -93,7 +94,6 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                 }
                 if (source.country() != null && !source.country().isBlank()) league.setCountry(source.country());
                 if (source.logoUrl() != null && !source.logoUrl().isBlank()) league.setLogoUrl(source.logoUrl());
-                league.setIsActive(true);
                 league = leagueRepository.save(league);
                 Long savedLeagueId = league.getId();
                 if (knownActiveLeagues.stream().noneMatch(existing -> existing.getId() != null
@@ -127,7 +127,7 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                     season = seasonRepository.findByLeague_IdAndYear(savedLeague.getId(), sourceSeason.year())
                             .orElse(null);
                     if (season == null && selectedProvider != Provider.FOOTBALL_DATA) {
-                        log.debug("Skipping SofaScore season {} for canonical league {} because no core season exists",
+                        log.debug("Skipping provider season {} for canonical league {} because no core season exists",
                                 sourceSeason.year(), savedLeague.getId());
                         continue;
                     }

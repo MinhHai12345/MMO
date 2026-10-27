@@ -1,6 +1,5 @@
 package com.mmo.module.fb.analytics.service.impl;
 
-import com.mmo.AppProperties;
 import com.mmo.module.fb.analytics.service.DataCoverageAuditService;
 import com.mmo.module.fb.analytics.service.DataCoverageAuditService.*;
 import com.mmo.module.fb.match.enums.MatchStatus;
@@ -17,7 +16,6 @@ import java.util.*;
 @RequiredArgsConstructor
 public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
     private final EntityManager entityManager;
-    private final AppProperties properties;
 
     @Override
     @Transactional(readOnly = true)
@@ -48,10 +46,9 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
                 """, Long.class).getResultList();
         long duplicateExcess = duplicateGroups.stream().mapToLong(n -> n - 1).sum();
 
-        Provider lp = properties.getIngestion().getProviders().getLeague();
-        Provider tp = properties.getIngestion().getProviders().getTeam();
-        Provider fp = properties.getIngestion().getProviders().getFixture();
-        Provider sp = properties.getIngestion().getProviders().getStandings();
+        Provider lp = Provider.FOOTBALL_DATA;
+        Provider tp = Provider.FOOTBALL_DATA;
+        Provider fp = Provider.FOOTBALL_DATA;
         Map<String, MappingCoverage> mapping = new LinkedHashMap<>();
         addMapping(mapping, "league", "League", "LeagueExternalId", "league", lp);
         addMapping(mapping, "team", "Team", "TeamExternalId", "team", tp);
@@ -59,28 +56,12 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
         addMapping(mapping, "match", "Match", "MatchExternalId", "match", fp);
 
         List<SeasonCoverage> seasonCoverage = new ArrayList<>();
-        AppProperties.ProviderConfig footballDataConfig = properties.getIngestion().getProviderConfig()
-                .get(Provider.FOOTBALL_DATA);
-        List<String> configuredSeasons = footballDataConfig == null || footballDataConfig.getSeasons() == null
-                ? List.of() : footballDataConfig.getSeasons();
-        List<Object[]> seasonRows;
-        if (configuredSeasons != null && !configuredSeasons.isEmpty()) {
-            seasonRows = entityManager.createQuery("""
-                    select s.id, l.name, s.year, s.isCurrent
-                    from Season s join s.league l
-                    where s.year in :years
-                    order by l.name asc, s.year desc
-                    """, Object[].class).setParameter("years", configuredSeasons).getResultList();
-        } else {
-            // Same default semantics as FootballData configuration: when no explicit years are set,
-            // focus the season-level audit on seasons marked current instead of stale historical rows.
-            seasonRows = entityManager.createQuery("""
-                    select s.id, l.name, s.year, s.isCurrent
-                    from Season s join s.league l
-                    where s.isCurrent = true
-                    order by l.name asc, s.year desc
-                    """, Object[].class).getResultList();
-        }
+        List<Object[]> seasonRows = entityManager.createQuery("""
+                select s.id, l.name, s.year, s.isCurrent
+                from Season s join s.league l
+                where l.isActive = true
+                order by l.name asc, s.year desc
+                """, Object[].class).getResultList();
         for (Object[] s : seasonRows) {
             Long id = ((Number) s[0]).longValue();
             String league = (String) s[1];

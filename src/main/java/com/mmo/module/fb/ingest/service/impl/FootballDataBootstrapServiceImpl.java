@@ -50,24 +50,12 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         validateProvider(fixtureProvider, false);
         validateProvider(standingsProvider, false);
 
-        AppProperties.ProviderConfig footballData = appProperties.getIngestion().getProviderConfig()
-                .get(Provider.FOOTBALL_DATA);
-        if (fixtureProvider == Provider.FOOTBALL_DATA && footballData != null
-                && footballData.getSeasons() != null && !footballData.getSeasons().isEmpty()) {
-            log.info("Historical fixture backfill enabled for football-data.org seasons={}. "
-                            + "Requests are paced by FootballDataClient; seasons unavailable to the subscription "
-                            + "will be reported as restricted/skipped and must not be treated as successfully backfilled.",
-                    footballData.getSeasons());
-        } else {
-            log.info("No explicit historical fixture backfill configured; fixture sync uses current seasons.");
-        }
         log.info("Starting core-data bootstrap: league={}, team={}, fixture={}, standings={}",
                 leagueProvider, teamProvider, fixtureProvider, standingsProvider);
 
         runStage("leagues", () -> leagueIngestionService.syncLeaguesForProvider(leagueProvider));
         runStage("teams", () -> teamIngestionService.syncTeamsForProvider(teamProvider));
-        // Null date bounds import all fixtures for current seasons, or every configured season
-        // when app.football-data.seasons is set. Persistence is idempotent via provider fixture IDs.
+        // Catalogue initialization stores all returned seasons; downstream fetching only processes active leagues.
         runStage("fixtures", () -> fixtureIngestionService.syncFixturesForProvider(fixtureProvider, null, null));
         runStage("standings", () -> standingsIngestionService.syncStandingsForProvider(standingsProvider));
 
@@ -141,16 +129,10 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
             AppProperties.ProviderConfig config = appProperties.getIngestion().getProviderConfig()
                     .get(Provider.API_FOOTBALL);
             requireToken(config == null ? null : config.getApiKey(), "API_FOOTBALL_API_KEY");
-            if (leagueResource && (config == null || config.getLeagueIds() == null || config.getLeagueIds().isEmpty())) {
-                throw new IllegalStateException("Set app.ingestion.provider-config.API_FOOTBALL.league-ids to a comma-separated list of API-Football league IDs.");
-            }
         } else if (provider == Provider.FOOTBALL_DATA) {
             AppProperties.ProviderConfig config = appProperties.getIngestion().getProviderConfig()
                     .get(Provider.FOOTBALL_DATA);
             requireToken(config == null ? null : config.getApiKey(), "FOOTBALL_DATA_API_KEY");
-            if (leagueResource && (config == null || config.getLeagueIds() == null || config.getLeagueIds().isEmpty())) {
-                throw new IllegalStateException("Set app.ingestion.provider-config.FOOTBALL_DATA.league-ids to numeric football-data.org competition IDs.");
-            }
         }
     }
 
