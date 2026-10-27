@@ -16,6 +16,9 @@ public interface ConversionEventRepository extends JpaRepository<ConversionEvent
     long countByEventTypeAndCurrencyAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
             String eventType, String currency, Instant from, Instant to);
 
+    long countByEventTypeAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
+            String eventType, Instant from, Instant to);
+
     @Query("""
             select coalesce(sum(event.amount), 0)
             from ConversionEventEntity event
