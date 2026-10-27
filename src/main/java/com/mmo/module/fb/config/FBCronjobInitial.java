@@ -1,6 +1,7 @@
 package com.mmo.module.fb.config;
 
 import com.mmo.core.cronjob.entity.CronJob;
+import com.mmo.core.cronjob.entity.JobState;
 import com.mmo.core.cronjob.repository.CronJobRepository;
 import com.mmo.core.cronjob.service.CronJobService;
 import com.mmo.core.initialize.DataInitializer;
@@ -71,6 +72,13 @@ public class FBCronjobInitial implements DataInitializer {
         createOrUpdateJob(PublicationWorkerQuartzJob.class,
                 "0 * * * * ?", "Poll approved, due Telegram publications once per minute; opt-in required");
 
+        // These legacy rows may already exist in production DBs. Merely omitting them
+        // from registration would leave their persisted Quartz triggers active.
+        pauseRetiredJob("MatchStatusTrackerJob");
+        pauseRetiredJob("CrawlerHealthCheckJob");
+        pauseRetiredJob("DataCleanupJob");
+        pauseRetiredJob("MatchLineupOddsUpdateJob");
+
         log.info("Football CronJob initialization completed.");
     }
 
@@ -78,6 +86,15 @@ public class FBCronjobInitial implements DataInitializer {
      * Keep persisted schedules aligned with code. The old create-only behavior meant
      * schedule fixes were silently ignored for installations that already had rows.
      */
+    private void pauseRetiredJob(String jobName) {
+        cronJobRepository.findByJobNameAndJobGroup(jobName, FB_JOB_GROUP).ifPresent(job -> {
+            if (job.getJobStatus() != JobState.PAUSED) {
+                cronJobService.pauseJob(job.getId());
+                log.warn("Paused retired CronJob [{}]; implementation is empty or not part of the content MVP", jobName);
+            }
+        });
+    }
+
     private void createOrUpdateJob(Class<?> jobClass, String cronExpression, String description) {
         String jobName = jobClass.getSimpleName();
         CronJob job = cronJobRepository.findByJobNameAndJobGroup(jobName, FB_JOB_GROUP)
