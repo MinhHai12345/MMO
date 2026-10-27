@@ -123,6 +123,10 @@ public class CronJobServiceImpl implements CronJobService {
         try {
             final JobKey jobKey = new JobKey(cronJob.getJobName(), cronJob.getJobGroup());
 
+            if (cronJob.getJobStatus() == JobState.PAUSED) {
+                throw new ScheduleJobException("Cannot trigger paused CronJob " + jobKey + "; resume it first.");
+            }
+
             // The application database is the source of truth for job definitions.
             // Quartz can lose a non-durable JobDetail when its trigger is removed,
             // or have no matching JobDetail after scheduler-store changes/restarts.
@@ -137,10 +141,6 @@ public class CronJobServiceImpl implements CronJobService {
                 throw new ScheduleJobException(
                         String.format("Cannot start job %s: Quartz JobDetail %s is still missing after recovery.",
                                 cronJob.getJobName(), jobKey));
-            }
-
-            if (cronJob.getJobStatus() == JobState.PAUSED) {
-                throw new ScheduleJobException("Cannot trigger paused CronJob " + jobKey + "; resume it first.");
             }
 
             Map<String, String> safeParameters = parameters == null ? Map.of() : new LinkedHashMap<>(parameters);
