@@ -86,6 +86,12 @@ app:
       webhook:
         secret: ${STRIPE_WEBHOOK_SECRET}
 
+  publication:
+    worker:
+      batch-size: ${FB_PUBLICATION_BATCH_SIZE:10}
+      max-attempts: ${FB_PUBLICATION_MAX_ATTEMPTS:5}
+      retry-delay-millis: ${FB_PUBLICATION_RETRY_DELAY_MILLIS:300000}
+
   # Ingestion owns all football-data provider configuration and provider routing.
   ingestion:
     providers:
