@@ -7,5 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface ContentPublicationAttemptRepository extends JpaRepository<ContentPublicationAttemptEntity, Long> {
+    java.util.Optional<ContentPublicationAttemptEntity> findByPublicationIdAndAttemptNumber(Long publicationId, int attemptNumber);
     List<ContentPublicationAttemptEntity> findByPublicationIdOrderByAttemptNumberDesc(Long publicationId);
 }
