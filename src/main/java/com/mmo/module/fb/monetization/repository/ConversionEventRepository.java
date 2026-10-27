@@ -20,7 +20,7 @@ public interface ConversionEventRepository extends JpaRepository<ConversionEvent
             String eventType, Instant from, Instant to);
 
     @Query("""
-            select coalesce(sum(event.amount), 0)
+            select sum(event.amount)
             from ConversionEventEntity event
             where event.eventType = :eventType
               and event.currency = :currency
