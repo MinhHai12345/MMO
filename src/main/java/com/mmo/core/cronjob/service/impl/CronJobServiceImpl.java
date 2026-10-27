@@ -139,16 +139,31 @@ public class CronJobServiceImpl implements CronJobService {
                                 cronJob.getJobName(), jobKey));
             }
 
+            if (cronJob.getJobStatus() == JobState.PAUSED) {
+                throw new ScheduleJobException("Cannot trigger paused CronJob " + jobKey + "; resume it first.");
+            }
+
             Map<String, String> safeParameters = parameters == null ? Map.of() : new LinkedHashMap<>(parameters);
             safeParameters.keySet().removeIf(key -> key == null
                     || !(key.equals("provider") || key.matches("provider\\.(league|team|fixture|standings|odds)")));
-            if (safeParameters.isEmpty()) {
-                scheduler.triggerJob(jobKey);
-            } else {
-                scheduler.triggerJob(jobKey, new JobDataMap(safeParameters));
-            }
+
+            // Persist RUNNING before triggerJob. Otherwise a very fast job can complete
+            // and the late RUNNING save below can overwrite the listener's COMPLETE state.
             cronJob.setJobStatus(JobState.RUNNING);
             cronJobRepository.save(cronJob);
+
+            try {
+                if (safeParameters.isEmpty()) {
+                    scheduler.triggerJob(jobKey);
+                } else {
+                    scheduler.triggerJob(jobKey, new JobDataMap(safeParameters));
+                }
+            } catch (SchedulerException triggerFailure) {
+                cronJob.setJobStatus(JobState.SCHEDULED);
+                cronJobRepository.save(cronJob);
+                throw triggerFailure;
+            }
+
             LOGGER.info("Job {} is triggered for immediate execution.", jobKey);
             return cronJob;
         } catch (SchedulerException e) {
