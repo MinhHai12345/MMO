@@ -105,26 +105,34 @@ app:
       standings: ${INGESTION_STANDINGS_PROVIDER:FOOTBALL_DATA}
       odds: ${INGESTION_ODDS_PROVIDER:API_FOOTBALL}
 
-    sofa-score:
-      api: ${SOFA_SCORE_API_URL}
-      url: ${SOFA_SCORE_WEB_URL}
-      tournament-region: ${SOFASCORE_TOURNAMENT_REGION}
+    provider-config:
+      FOOTBALL_DATA:
+        enabled: ${FOOTBALL_DATA_ENABLED:true}
+        base-url: ${FOOTBALL_DATA_BASE_URL:https://api.football-data.org/v4}
+        api-key: ${FOOTBALL_DATA_API_KEY:}
+        league-ids: ${FOOTBALL_DATA_COMPETITION_IDS:}
+        seasons: ${FOOTBALL_DATA_SEASONS:}
 
-    api-football:
-      enabled: ${API_FOOTBALL_ENABLED}
-      base-url: ${API_FOOTBALL_BASE_URL}
-      api-key: ${API_FOOTBALL_API_KEY}
-      league-ids: ${API_FOOTBALL_LEAGUE_IDS}
+      API_FOOTBALL:
+        enabled: ${API_FOOTBALL_ENABLED:true}
+        base-url: ${API_FOOTBALL_BASE_URL:https://v3.football.api-sports.io}
+        api-key: ${API_FOOTBALL_API_KEY:}
+        league-ids: ${API_FOOTBALL_LEAGUE_IDS:}
+        seasons: ${API_FOOTBALL_SEASONS:}
 
-    football-data:
-      enabled: ${FOOTBALL_DATA_ENABLED}
-      base-url: ${FOOTBALL_DATA_BASE_URL}
-      api-key: ${FOOTBALL_DATA_API_KEY}
-      competition-ids: ${FOOTBALL_DATA_COMPETITION_IDS}
-      seasons: ${FOOTBALL_DATA_SEASONS}
+      SOFA_SCORE:
+        enabled: ${SOFA_SCORE_ENABLED:true}
+        base-url: ${SOFA_SCORE_API_URL:${SOFASCORE_API_URL:https://www.sofascore.com/api/v1/}}
+        web-url: ${SOFA_SCORE_WEB_URL:https://www.sofascore.com}
+        league-ids: ${SOFASCORE_TOURNAMENT_IDS:}
+        options:
+          tournament-region: ${SOFASCORE_TOURNAMENT_REGION:EN}
 
-    understats:
-      base-url: ${UNDER_STAT_BASE_URL}
+      UNDER_STATS:
+        enabled: ${UNDER_STATS_ENABLED:false}
+        base-url: ${UNDER_STAT_BASE_URL:${UNDERSTAT_BASE_URL:https://understat.com}}
+        league-ids: ${UNDER_STATS_LEAGUE_IDS:}
+        seasons: ${UNDER_STATS_SEASONS:}
 
   sync:
     bootstrap-on-start: ${APP_SYNC_BOOTSTRAP_ON_START}
