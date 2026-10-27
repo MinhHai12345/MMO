@@ -31,6 +31,7 @@ public class AppProperties {
     private Stripe stripe = new Stripe();
     private Ingestion ingestion = new Ingestion();
     private Sync sync = new Sync();
+    private Publication publication = new Publication();
 
     /**
      * Backward-compatible accessors keep existing integrations source-compatible while the
@@ -109,6 +110,21 @@ public class AppProperties {
     @Setter
     public static class InitialData {
         private boolean autoImport = true;
+    }
+
+    /** Operational controls for the persisted content-publication queue. */
+    @Getter
+    @Setter
+    public static class Publication {
+        private Worker worker = new Worker();
+
+        @Getter
+        @Setter
+        public static class Worker {
+            private int batchSize = 10;
+            private int maxAttempts = 5;
+            private long retryDelayMillis = 300_000L;
+        }
     }
 
     /** Credentials and destination identifiers for outbound social publishing. */
