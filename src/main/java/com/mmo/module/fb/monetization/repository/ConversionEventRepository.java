@@ -27,6 +27,21 @@ public interface ConversionEventRepository extends JpaRepository<ConversionEvent
                      @Param("campaignCode") String campaignCode);
 
     @Query("""
+            select count(event)
+            from ConversionEventEntity event
+            where event.eventType = :eventType
+              and event.currency = :currency
+              and event.occurredAt >= :from
+              and event.occurredAt < :to
+              and (:campaignCode is null or event.campaignCode = :campaignCode)
+            """)
+    long countFinancialEvents(@Param("eventType") String eventType,
+                              @Param("currency") String currency,
+                              @Param("from") Instant from,
+                              @Param("to") Instant to,
+                              @Param("campaignCode") String campaignCode);
+
+    @Query("""
             select sum(event.amount)
             from ConversionEventEntity event
             where event.eventType = :eventType
