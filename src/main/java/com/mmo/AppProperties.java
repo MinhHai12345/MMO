@@ -104,37 +104,6 @@ public class AppProperties {
         return result;
     }
 
-    public SofaScore getSofaScore() {
-        return ingestion.resolveSofaScore();
-    }
-
-    public void setSofaScore(SofaScore sofaScore) {
-        ingestion.setSofaScore(sofaScore);
-    }
-
-    public ApiFootball getApiFootball() {
-        return ingestion.resolveApiFootball();
-    }
-
-    public void setApiFootball(ApiFootball apiFootball) {
-        ingestion.setApiFootball(apiFootball);
-    }
-
-    public FootballData getFootballData() {
-        return ingestion.resolveFootballData();
-    }
-
-    public void setFootballData(FootballData footballData) {
-        ingestion.setFootballData(footballData);
-    }
-
-    public Understats getUnderstats() {
-        return ingestion.resolveUnderstats();
-    }
-
-    public void setUnderstats(Understats understats) {
-        ingestion.setUnderstats(understats);
-    }
 
     @Getter
     @Setter
