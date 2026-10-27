@@ -84,6 +84,9 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         if (providers == null || providers.isEmpty()) {
             throw new IllegalArgumentException("At least one ingestion provider is required");
         }
+        if (providers.stream().anyMatch(java.util.Objects::isNull)) {
+            throw new IllegalArgumentException("Provider list must not contain null");
+        }
         List<Provider> ordered = new ArrayList<>(new LinkedHashSet<>(providers));
         ordered.sort((left, right) -> {
             if (left == right) return 0;
