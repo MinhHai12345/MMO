@@ -55,7 +55,7 @@ public class ContentLifecycleServiceImpl implements ContentLifecycleService {
             if (existing != null) {
                 if (!sameRequest(existing, command)) throw new ResponseStatusException(HttpStatus.CONFLICT,
                         "Idempotency-Key was already used with different workflow parameters");
-                return existing;
+                return reuseOrResume(existing);
             }
         }
 
@@ -67,7 +67,7 @@ public class ContentLifecycleServiceImpl implements ContentLifecycleService {
             ContentWorkflowRunEntity existing = runRepository.findByIdempotencyKey(key).orElseThrow(() -> duplicateKeyRace);
             if (!sameRequest(existing, command)) throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Idempotency-Key was already used with different workflow parameters");
-            return existing;
+            return reuseOrResume(existing);
         }
 
         String executionToken = run.getExecutionToken();
@@ -121,6 +121,19 @@ public class ContentLifecycleServiceImpl implements ContentLifecycleService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Workflow run not found");
         }
         return itemRepository.findByWorkflowRunIdOrderByIdAsc(runId);
+    }
+
+    /**
+     * Reusing a scheduled idempotency key must not turn a transient failed run into a
+     * permanent no-op. Completed runs are returned as-is; failed/partial or expired
+     * RUNNING runs are resumed using their persisted per-match checkpoints.
+     */
+    private ContentWorkflowRunEntity reuseOrResume(ContentWorkflowRunEntity existing) {
+        String status = existing.getStatus();
+        if ("FAILED".equals(status) || "COMPLETED_WITH_ERRORS".equals(status) || "RUNNING".equals(status)) {
+            return resume(existing.getId());
+        }
+        return existing;
     }
 
     private static String normalizeIdempotencyKey(String key) {
