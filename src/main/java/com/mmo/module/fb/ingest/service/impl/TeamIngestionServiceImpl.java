@@ -5,8 +5,6 @@ import com.mmo.module.fb.league.entity.Season;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.league.repository.SeasonRepository;
-import com.mmo.module.fb.league.entity.SeasonExternalId;
-import com.mmo.module.fb.league.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballPlanRestrictionException;
 import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
@@ -29,9 +27,9 @@ import java.util.Map;
 public class TeamIngestionServiceImpl implements TeamIngestionService {
     private final ProviderRegistry providerRegistry;
     private final AppProperties appProperties;
+    private final IngestionServiceSupport ingestionSupport;
     private final LeagueIngestionService leagueIngestionService;
     private final SeasonRepository seasonRepository;
-    private final SeasonExternalIdRepository seasonExternalIdRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final TeamPersistenceService teamPersistenceService;
 
@@ -42,14 +40,7 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
 
     @Override
     public void syncTeamsForProvider(Provider selectedProvider) {
-        if (selectedProvider == Provider.FOOTBALL_DATA
-                && (appProperties.getFootballData() == null || !appProperties.getFootballData().isEnabled())) {
-            throw new IllegalStateException("football-data.org is disabled but was selected for team ingestion");
-        }
-        if (selectedProvider == Provider.API_FOOTBALL
-                && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
-            throw new IllegalStateException("API-Football is disabled but was selected for team ingestion");
-        }
+        ingestionSupport.requireProviderEnabled(selectedProvider, "team");
 
         // Team sync can run independently on a cold start, but should not refetch every
         // tournament and all season metadata when provider mappings already exist.
@@ -64,7 +55,7 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
 
         int fetched = 0;
         int failed = 0;
-        for (Season season : seasonsToSync(selectedProvider)) {
+        for (Season season : ingestionSupport.seasonsToSync(selectedProvider)) {
             String externalLeagueId = externalLeagueIdsByLeagueId.get(season.getLeague().getId());
             if (externalLeagueId == null || externalLeagueId.isBlank()) {
                 log.warn("Skipping teams for season {} and league {} because provider {} has no league ID mapping",
@@ -74,7 +65,7 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
             }
 
             try {
-                Long parsedLeagueId = parseLong(externalLeagueId);
+                Long parsedLeagueId = IngestionServiceSupport.parseExternalId(externalLeagueId);
                 if (parsedLeagueId == null) {
                     failed++;
                     log.error("Invalid provider league ID '{}' for provider {} season {}",
@@ -105,60 +96,5 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
                 selectedProvider, fetched, failed);
     }
 
-    private static Long parseLong(String value) {
-        try {
-            return Long.valueOf(value);
-        } catch (RuntimeException ignored) {
-            return null;
-        }
-    }
 
-    private void ensureConfiguredFootballDataSeasons(Provider selectedProvider) {
-        List<String> years = configuredSeasonYears(selectedProvider);
-        if (years.isEmpty()) return;
-
-        leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping -> {
-            for (String year : years) {
-                seasonRepository.findByLeague_IdAndYear(mapping.getLeague().getId(), year)
-                        .orElseGet(() -> {
-                            Season season = new Season();
-                            season.setLeague(mapping.getLeague());
-                            season.setYear(year);
-                            season.setCurrent(false);
-                            return seasonRepository.save(season);
-                        });
-            }
-        });
-    }
-
-    private List<Season> seasonsToSync(Provider selectedProvider) {
-        if (selectedProvider == Provider.SOFA_SCORE) {
-            Map<Long, Season> mappedSeasons = new java.util.LinkedHashMap<>();
-            for (SeasonExternalId mapping : seasonExternalIdRepository.findAllByProvider(selectedProvider)) {
-                Season season = mapping.getSeason();
-                if (season != null && season.getId() != null && season.getLeague() != null) {
-                    mappedSeasons.putIfAbsent(season.getId(), season);
-                }
-            }
-            return List.copyOf(mappedSeasons.values());
-        }
-        List<String> years = configuredSeasonYears(selectedProvider);
-        if (!years.isEmpty()) {
-            return seasonRepository.findAll().stream()
-                    .filter(season -> season.getLeague() != null && season.getYear() != null
-                            && years.contains(season.getYear()))
-                    .toList();
-        }
-        return seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
-    }
-
-    private List<String> configuredSeasonYears(Provider selectedProvider) {
-        if (selectedProvider != Provider.FOOTBALL_DATA || appProperties.getFootballData() == null
-                || appProperties.getFootballData().getSeasons() == null) {
-            return List.of();
-        }
-        return appProperties.getFootballData().getSeasons().stream()
-                .filter(year -> year != null && !year.isBlank())
-                .map(String::trim).distinct().toList();
-    }
 }
