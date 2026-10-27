@@ -97,4 +97,22 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
     }
 
 
+    private void ensureConfiguredFootballDataSeasons(Provider selectedProvider) {
+        List<String> years = ingestionSupport.configuredSeasonYears(selectedProvider);
+        if (years.isEmpty()) return;
+
+        leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping -> {
+            for (String year : years) {
+                seasonRepository.findByLeague_IdAndYear(mapping.getLeague().getId(), year)
+                        .orElseGet(() -> {
+                            Season season = new Season();
+                            season.setLeague(mapping.getLeague());
+                            season.setYear(year);
+                            season.setCurrent(false);
+                            return seasonRepository.save(season);
+                        });
+            }
+        });
+    }
+
 }
