@@ -69,7 +69,7 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                             selectedProvider, source.externalId(), source.name());
                     continue;
                 }
-                if (candidates.isEmpty() && selectedProvider == Provider.SOFA_SCORE) {
+                if (candidates.isEmpty() && selectedProvider != Provider.FOOTBALL_DATA) {
                     log.info("Skipping SofaScore tournament '{}' (external ID {}) because no existing canonical league matched; SofaScore mapping sync does not create core entities.",
                             source.name(), source.externalId());
                     continue;
@@ -85,7 +85,7 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                 continue;
             }
 
-            if (selectedProvider != Provider.SOFA_SCORE) {
+            if (selectedProvider == Provider.FOOTBALL_DATA) {
                 if (league.getName() == null || league.getName().isBlank()) league.setName(source.name());
                 if (league.getSlug() == null || league.getSlug().isBlank()) {
                     league.setSlug(slug(source.name()) + "-" + selectedProvider.name().toLowerCase()
@@ -126,7 +126,7 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                 if (season == null) {
                     season = seasonRepository.findByLeague_IdAndYear(savedLeague.getId(), sourceSeason.year())
                             .orElse(null);
-                    if (season == null && selectedProvider == Provider.SOFA_SCORE) {
+                    if (season == null && selectedProvider != Provider.FOOTBALL_DATA) {
                         log.debug("Skipping SofaScore season {} for canonical league {} because no core season exists",
                                 sourceSeason.year(), savedLeague.getId());
                         continue;
@@ -144,7 +144,7 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                     continue;
                 }
 
-                if (selectedProvider != Provider.SOFA_SCORE) {
+                if (selectedProvider == Provider.FOOTBALL_DATA) {
                     season.setCurrent(sourceSeason.current());
                     season.setStartDate(sourceSeason.startDate());
                     season.setEndDate(sourceSeason.endDate());

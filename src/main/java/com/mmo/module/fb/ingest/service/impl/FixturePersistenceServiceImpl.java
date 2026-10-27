@@ -74,7 +74,7 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
             }
         }
 
-        if (match == null && provider == Provider.SOFA_SCORE) {
+        if (match == null && provider != Provider.FOOTBALL_DATA) {
             log.debug("Skipping SofaScore fixture {} because no unique existing canonical fixture matched; SofaScore mapping sync does not create core entities.",
                     fixture.externalId());
             return false;
@@ -88,7 +88,7 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
             match = new Match();
         }
 
-        if (provider == Provider.SOFA_SCORE) {
+        if (provider != Provider.FOOTBALL_DATA) {
             // SofaScore is a secondary identity/enrichment source. Preserve canonical
             // football-data fields and only attach its provider-specific ID.
             externalIdMappingService.registerMatch(match, provider, fixture.externalId());

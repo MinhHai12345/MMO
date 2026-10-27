@@ -13,6 +13,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+
 /**
  * Runs the core-data pipeline in dependency order using the provider configured for each resource.
  */
@@ -67,6 +71,47 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
 
         log.info("Core-data bootstrap completed. Stage status: leagues=COMPLETED, teams=COMPLETED, "
                 + "fixtures=COMPLETED, standings=COMPLETED. See per-stage counters for skipped/failed records.");
+    }
+
+    /**
+     * Imports the same canonical resource set from several providers. The canonical provider
+     * runs first so secondary providers can attach IDs to existing core records instead of
+     * creating duplicates. Standings are stored only from FOOTBALL_DATA because the current
+     * standing schema has no provider dimension; odds are intentionally a separate workflow.
+     */
+    @Override
+    public void syncCoreDataForProviders(List<Provider> providers) {
+        if (providers == null || providers.isEmpty()) {
+            throw new IllegalArgumentException("At least one ingestion provider is required");
+        }
+        List<Provider> ordered = new ArrayList<>(new LinkedHashSet<>(providers));
+        ordered.sort((left, right) -> {
+            if (left == right) return 0;
+            if (left == Provider.FOOTBALL_DATA) return -1;
+            if (right == Provider.FOOTBALL_DATA) return 1;
+            return left.name().compareTo(right.name());
+        });
+
+        for (Provider provider : ordered) {
+            validateProvider(provider, true);
+        }
+
+        log.info("Starting multi-provider core ingestion. Canonical provider first; providers={}", ordered);
+        runStage("multi-provider/leagues",
+                () -> ordered.forEach(league -> leagueIngestionService.syncLeaguesForProvider(league)));
+        runStage("multi-provider/teams",
+                () -> ordered.forEach(provider -> teamIngestionService.syncTeamsForProvider(provider)));
+        runStage("multi-provider/fixtures",
+                () -> ordered.forEach(provider -> fixtureIngestionService.syncFixturesForProvider(provider, null, null)));
+
+        if (ordered.contains(Provider.FOOTBALL_DATA)) {
+            runStage("standings/FOOTBALL_DATA",
+                    () -> standingsIngestionService.syncStandingsForProvider(Provider.FOOTBALL_DATA));
+        } else {
+            log.warn("Skipping standings in multi-provider ingestion: current standings table is not provider-scoped. "
+                    + "Include FOOTBALL_DATA to refresh canonical standings.");
+        }
+        log.info("Multi-provider core ingestion finished. providers={}", ordered);
     }
 
     private void runStage(String resource, Runnable operation) {
