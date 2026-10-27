@@ -26,7 +26,7 @@ public class TelegramLivePublishingService {
             persistenceService.markDeliveryUnknown(claim, ambiguousRemoteFailure);
             return new LivePublishResponse(claim.publicationId(), PublicationStateMachine.State.DELIVERY_UNKNOWN,
                     null, Instant.now(), "Telegram delivery outcome is unknown; reconcile channel history before retry");
-        } catch (IllegalArgumentException | IllegalStateException localFailure) {
+        } catch (IllegalArgumentException | TelegramBotApiPublisher.TelegramConfigurationException localFailure) {
             persistenceService.markFailed(claim, localFailure);
             return new LivePublishResponse(claim.publicationId(), PublicationStateMachine.State.FAILED,
                     null, Instant.now(), "Telegram request was not sent: " + safeMessage(localFailure));
