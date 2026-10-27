@@ -122,20 +122,19 @@ public class FootballWorkflowOrchestrationJob extends AbstractJob<CronJob> {
 
         JobKey jobKey = new JobKey(definition.getJobName(), definition.getJobGroup());
         waitUntilNotRunning(jobKey, jobName);
-        ZonedDateTime previousExecution = cronJobService.getJob(jobName, JOB_GROUP).getLastExecutedTime();
 
         log.info("Workflow stage STARTED job={}", jobName);
         cronJobService.startJobNow(definition.getId(), providerOverrides);
-        long deadline = System.currentTimeMillis() + Math.max(POLL_INTERVAL_MS, 1800000);
+        long deadline = System.currentTimeMillis() + 1800000L;
 
         while (System.currentTimeMillis() < deadline) {
             CronJob current = cronJobService.getJob(jobName, JOB_GROUP);
-            ZonedDateTime lastExecution = current.getLastExecutedTime();
-            boolean executionRecorded = lastExecution != null
-                    && (previousExecution == null || lastExecution.isAfter(previousExecution))
-                    && current.getLastCompleteStatus() != null;
 
-            if (executionRecorded) {
+            // startJobNow persists RUNNING before triggering Quartz. The listener changes
+            // it to COMPLETE only after this execution's result has been recorded. This is
+            // safer than comparing lastExecutedTime values whose precision depends on DB.
+            if (current.getJobStatus() == JobState.COMPLETE
+                    && current.getLastCompleteStatus() != null) {
                 // The listener records completion before Quartz releases the execution slot.
                 waitUntilNotRunning(jobKey, jobName);
                 CronJob completed = cronJobService.getJob(jobName, JOB_GROUP);
