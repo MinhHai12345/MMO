@@ -19,6 +19,7 @@ import java.util.List;
 public class LeagueIngestionServiceImpl implements LeagueIngestionService {
     private final ProviderRegistry providerRegistry;
     private final AppProperties appProperties;
+    private final IngestionServiceSupport ingestionSupport;
     private final LeaguePersistenceService leaguePersistenceService;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
 
@@ -29,21 +30,8 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
 
     @Override
     public void syncLeaguesForProvider(Provider selectedProvider) {
-        if (selectedProvider == Provider.API_FOOTBALL
-                && (appProperties.getApiFootball() == null || !appProperties.getApiFootball().isEnabled())) {
-            throw new IllegalStateException("API-Football is disabled but was selected for league ingestion");
-        }
-        if (selectedProvider == Provider.FOOTBALL_DATA
-                && (appProperties.getFootballData() == null || !appProperties.getFootballData().isEnabled())) {
-            throw new IllegalStateException("football-data.org is disabled but was selected for league ingestion");
-        }
-        List<Long> configuredIds = selectedProvider == Provider.API_FOOTBALL
-                ? appProperties.getApiFootball().getLeagueIds()
-                : selectedProvider == Provider.FOOTBALL_DATA
-                    ? appProperties.getFootballData().getCompetitionIds()
-                    : selectedProvider == Provider.SOFA_SCORE
-                        ? appProperties.getSync().getTournamentIds().stream().sorted().toList()
-                        : List.of();
+        ingestionSupport.requireProviderEnabled(selectedProvider, "league");
+        List<Long> configuredIds = ingestionSupport.configuredLeagueIds(selectedProvider);
         if ((selectedProvider == Provider.API_FOOTBALL || selectedProvider == Provider.FOOTBALL_DATA)
                 && (configuredIds == null || configuredIds.isEmpty())) {
             log.warn("No competition IDs configured for provider {}; configure its league/competition ID list.", selectedProvider);
