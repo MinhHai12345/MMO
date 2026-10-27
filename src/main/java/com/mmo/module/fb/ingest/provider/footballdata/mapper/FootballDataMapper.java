@@ -1,10 +1,8 @@
 package com.mmo.module.fb.ingest.provider.footballdata.mapper;
 
-import com.mmo.AppProperties;
 import com.mmo.module.fb.league.enums.StandingType;
 import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.*;
 import com.mmo.module.fb.ingest.provider.model.*;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -14,26 +12,13 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-@RequiredArgsConstructor
 public class FootballDataMapper {
-
-    private final AppProperties appProperties;
 
     public ProviderLeague toLeague(CompetitionDto competition) {
         if (competition == null || competition.id() == null) return null;
 
         SeasonDto currentSeason = competition.currentSeason();
         String currentYear = seasonYear(currentSeason);
-
-        AppProperties.ProviderConfig footballDataConfig = appProperties.getIngestion().getProviderConfig()
-                .get(com.mmo.module.fb.ingest.enums.Provider.FOOTBALL_DATA);
-        List<String> configuredYears = footballDataConfig == null || footballDataConfig.getSeasons() == null
-                ? List.of()
-                : footballDataConfig.getSeasons().stream()
-                    .filter(year -> year != null && !year.isBlank())
-                    .map(String::trim)
-                    .distinct()
-                    .toList();
 
         // football-data.org returns the season catalogue on the competition resource.
         // Keep its real season IDs and dates; synthesizing IDs for every configured year
@@ -53,11 +38,6 @@ public class FootballDataMapper {
         for (Map.Entry<String, SeasonDto> entry : availableSeasonsByYear.entrySet()) {
             String year = entry.getKey();
             SeasonDto season = entry.getValue();
-            if (!configuredYears.isEmpty() && !configuredYears.contains(year)) continue;
-            // Without an explicit backfill configuration, retain the existing current-season
-            // default. With one, only map seasons actually present in the provider catalogue.
-            if (configuredYears.isEmpty() && !year.equals(currentYear)) continue;
-
             String externalSeasonId = season.id() == null
                     ? competition.id() + ":" + year
                     : season.id().toString();

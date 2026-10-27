@@ -37,29 +37,6 @@ public class IngestionServiceSupport {
         }
     }
 
-    public List<Long> configuredLeagueIds(Provider provider) {
-        AppProperties.ProviderConfig config = providerConfig(provider);
-        if (config == null || config.getLeagueIds() == null) return List.of();
-        return config.getLeagueIds().stream()
-                .filter(id -> id != null)
-                .distinct()
-                .toList();
-    }
-
-    public List<String> configuredSeasonYears(Provider provider) {
-        // SofaScore seasons are external IDs and must be resolved through SeasonExternalId.
-        if (provider == Provider.SOFA_SCORE) return List.of();
-
-        AppProperties.ProviderConfig config = providerConfig(provider);
-        if (config == null || config.getSeasons() == null) return List.of();
-
-        return config.getSeasons().stream()
-                .filter(year -> year != null && !year.isBlank())
-                .map(String::trim)
-                .distinct()
-                .toList();
-    }
-
     private AppProperties.ProviderConfig providerConfig(Provider provider) {
         if (provider == null || properties.getIngestion() == null
                 || properties.getIngestion().getProviderConfig() == null) {
@@ -74,25 +51,17 @@ public class IngestionServiceSupport {
             for (SeasonExternalId mapping : seasonExternalIdRepository.findAllByProvider(provider)) {
                 Season season = mapping.getSeason();
                 if (season != null && season.getId() != null && season.getLeague() != null
-                        && season.getYear() != null) {
+                        && Boolean.TRUE.equals(season.getLeague().getIsActive()) && season.getYear() != null) {
                     mapped.putIfAbsent(season.getId(), season);
                 }
             }
             return List.copyOf(mapped.values());
         }
-
-        List<String> years = configuredSeasonYears(provider);
-        if (!years.isEmpty()) {
-            return seasonRepository.findByYearInAndLeagueIsNotNullAndYearIsNotNull(years);
-        }
-        return seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
+        return seasonRepository.findAllForActiveLeagues();
     }
 
     public List<Season> standingsSeasonsToSync(Provider provider) {
-        List<String> years = configuredSeasonYears(provider);
-        return years.isEmpty()
-                ? seasonRepository.findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull()
-                : seasonRepository.findByYearInAndLeagueIsNotNullAndYearIsNotNull(years);
+        return seasonRepository.findAllForActiveLeagues();
     }
 
     public static Long parseExternalId(String value) {
