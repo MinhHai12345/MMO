@@ -55,6 +55,15 @@ public class ContentPublishingServiceImpl implements ContentPublishingService {
         }
 
         ApprovedContentReader.ApprovedContent draft = approvedContentReader.requireApproved(command.draftId());
+        ContentPublicationEntity existingForDraft = publicationRepository
+                .findByDraftIdAndPlatform(draft.draftId(), command.platform())
+                .orElse(null);
+        if (existingForDraft != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "This draft already has a publication for " + command.platform()
+                            + "; reuse publicationId=" + existingForDraft.getId()
+                            + " instead of creating a duplicate");
+        }
 
         ContentPublicationEntity publication = new ContentPublicationEntity();
         publication.setDraftId(draft.draftId());

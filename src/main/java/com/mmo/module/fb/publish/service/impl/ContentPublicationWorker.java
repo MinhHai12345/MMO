@@ -4,6 +4,7 @@ import com.mmo.AppProperties;
 import com.mmo.module.fb.publish.domain.PublicationPlatform;
 import com.mmo.module.fb.publish.domain.PublicationStateMachine;
 import com.mmo.module.fb.publish.provider.telegram.TelegramLivePublishingService;
+import com.mmo.module.fb.publish.provider.telegram.TelegramPublicationPersistenceService;
 import com.mmo.module.fb.publish.repository.ContentPublicationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,9 +31,15 @@ public class ContentPublicationWorker {
 
     private final ContentPublicationRepository publicationRepository;
     private final TelegramLivePublishingService telegramLivePublishingService;
+    private final TelegramPublicationPersistenceService publicationPersistenceService;
     private final AppProperties appProperties;
 
     public void processDuePublications() {
+        int quarantined = publicationPersistenceService.quarantineStaleDeliveries();
+        if (quarantined > 0) {
+            log.error("Quarantined {} stale publication(s) as DELIVERY_UNKNOWN; reconcile before any retry", quarantined);
+        }
+
         Instant now = Instant.now();
         AppProperties.Publication.Worker configuration = appProperties.getPublication().getWorker();
         int configuredBatchSize = Math.max(1, configuration.getBatchSize());

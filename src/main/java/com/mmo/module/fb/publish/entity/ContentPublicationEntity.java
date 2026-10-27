@@ -19,9 +19,12 @@ import java.time.Instant;
 @Entity
 @Table(
         name = "fb_content_publications",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_fb_content_publication_platform_idempotency",
-                columnNames = {"platform", "idempotency_key"}),
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_fb_content_publication_platform_idempotency",
+                        columnNames = {"platform", "idempotency_key"}),
+                @UniqueConstraint(name = "uk_fb_content_publication_draft_platform",
+                        columnNames = {"draft_id", "platform"})
+        },
         indexes = {
                 @Index(name = "idx_fb_content_publication_state_schedule", columnList = "publication_state, scheduled_at"),
                 @Index(name = "idx_fb_content_publication_draft", columnList = "draft_id, created_at_snapshot")

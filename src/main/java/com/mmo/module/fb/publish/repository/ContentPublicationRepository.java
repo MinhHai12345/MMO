@@ -19,6 +19,8 @@ public interface ContentPublicationRepository extends JpaRepository<ContentPubli
     Optional<ContentPublicationEntity> findByPlatformAndIdempotencyKey(
             PublicationPlatform platform, String idempotencyKey);
 
+    Optional<ContentPublicationEntity> findByDraftIdAndPlatform(Long draftId, PublicationPlatform platform);
+
     List<ContentPublicationEntity> findAllByOrderByCreatedAtSnapshotDesc(Pageable pageable);
 
     List<ContentPublicationEntity> findByStateOrderByCreatedAtSnapshotDesc(
@@ -54,4 +56,7 @@ public interface ContentPublicationRepository extends JpaRepository<ContentPubli
             @Param("retryBefore") Instant retryBefore,
             @Param("maxAttempts") int maxAttempts,
             Pageable pageable);
+
+    List<ContentPublicationEntity> findByStateAndLastAttemptAtBefore(
+            PublicationStateMachine.State state, Instant cutoff, Pageable pageable);
 }
