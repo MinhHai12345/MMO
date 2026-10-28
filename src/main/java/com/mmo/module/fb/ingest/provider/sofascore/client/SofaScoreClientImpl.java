@@ -53,7 +53,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
     private static final String FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI = "/api/v1/unique-tournament/%d/scheduled-events/%s";
     private static final String FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_URI = "team/%s/events/last/%d";
     private static final String FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_PAGE = "%s/football/team/%s/%s";
-    private static final String FETCH_MATCH_BY_ID_URI = "%sevent/%d";
+    private static final String FETCH_MATCH_BY_ID_URI = "event/%d";
 
     private AppProperties.ProviderConfig sofaScoreConfig() {
         AppProperties.ProviderConfig config = appProperties.getIngestion().getProviderConfig().get(Provider.SOFA_SCORE);
@@ -214,8 +214,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
             return Collections.emptyList();
         }
         String sofaTeamId = teamExternalId.getExternalId();
-        String loadPageUrl = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_PAGE, sofaScoreConfig().getWebUrl(),
-                team.getSlug(), sofaTeamId);
+        String loadPageUrl = sofaScoreConfig().getWebUrl();
         String historiesEndpoint = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_URI, sofaTeamId, index);
         Map<String, Class<?>> configMap = Map.of(historiesEndpoint, MatchesResponseDTO.class);
 
