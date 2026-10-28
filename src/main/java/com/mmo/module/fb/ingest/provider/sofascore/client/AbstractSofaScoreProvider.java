@@ -128,10 +128,19 @@ public abstract class AbstractSofaScoreProvider {
             activeContexts.put(contextId, context);
 
             Page page = context.newPage();
-            page.onRequestFailed(request -> log.warn(
-                    "[{}] Browser request failed: method={}, url={}, failure={}",
-                    Provider.SOFA_SCORE.name(), request.method(), request.url(),
-                    request.failure() == null ? "unknown" : request.failure()));
+            page.onRequestFailed(request -> {
+                String failure = request.failure() == null ? "unknown" : request.failure();
+                String url = request.url();
+                boolean cloudflareChallenge = url != null
+                        && url.contains("challenges.cloudflare.com/cdn-cgi/challenge-platform/");
+                if (cloudflareChallenge && "net::ERR_ABORTED".equalsIgnoreCase(failure)) {
+                    log.debug("[{}] Cloudflare challenge subrequest aborted during navigation: method={}, url={}",
+                            Provider.SOFA_SCORE.name(), request.method(), url);
+                    return;
+                }
+                log.warn("[{}] Browser request failed: method={}, url={}, failure={}",
+                        Provider.SOFA_SCORE.name(), request.method(), url, failure);
+            });
             page.onResponse(response -> {
                 if (response.status() >= 400) {
                     log.warn("[{}] Browser response error: status={}, url={}",
