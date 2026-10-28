@@ -66,6 +66,49 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
         return sofaScoreConfig().getWebUrl().replaceAll("/+$", "");
     }
 
+    @Override
+    protected boolean waitForManualCaptchaResolution(Page page, String requestedUrl) {
+        AppProperties.ProviderConfig config = sofaScoreConfig();
+        boolean enabled = Boolean.parseBoolean(config.getOption("manual-captcha-intervention"));
+        if (!enabled) {
+            return false;
+        }
+
+        long timeoutSeconds = 180;
+        try {
+            String configuredTimeout = config.getOption("captcha-wait-timeout-seconds");
+            if (configuredTimeout != null && !configuredTimeout.isBlank()) {
+                timeoutSeconds = Math.max(1L, Long.parseLong(configuredTimeout));
+            }
+        } catch (NumberFormatException exception) {
+            log.warn("Invalid SofaScore captcha-wait-timeout-seconds; using default {} seconds", timeoutSeconds);
+        }
+
+        String captchaUrl = page.url();
+        log.warn("Manual SofaScore CAPTCHA intervention required. Open browser page to solve it manually: {}",
+                captchaUrl);
+        try {
+            page.bringToFront();
+            long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(timeoutSeconds);
+            while (System.nanoTime() < deadline && !page.isClosed()) {
+                String currentUrl = page.url();
+                if (currentUrl == null
+                        || !currentUrl.toLowerCase(java.util.Locale.ROOT).contains("/captcha.html")) {
+                    return true;
+                }
+                page.waitForTimeout(1000);
+            }
+        } catch (Exception exception) {
+            log.warn("Manual CAPTCHA wait failed for requested URL {}: {}",
+                    requestedUrl, exception.getMessage());
+            return false;
+        }
+
+        log.warn("Manual SofaScore CAPTCHA intervention timed out after {} seconds. currentUrl={}",
+                timeoutSeconds, page.isClosed() ? "<page-closed>" : page.url());
+        return false;
+    }
+
     private AppProperties.ProviderConfig sofaScoreConfig() {
         AppProperties.ProviderConfig config = appProperties.getIngestion().getProviderConfig().get(Provider.SOFA_SCORE);
         if (config == null || !config.isEnabled()) throw new IllegalStateException("SofaScore provider is disabled or not configured");
