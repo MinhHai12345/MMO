@@ -100,12 +100,32 @@ public abstract class AbstractSofaScoreClient {
 
     private void failIfCaptchaPage(Page page, String requestedUrl) {
         String finalUrl = page.url();
-        if (finalUrl != null && finalUrl.toLowerCase(Locale.ROOT).contains("/captcha.html")) {
+        if (isCaptchaUrl(finalUrl)) {
+            log.warn("SofaScore CAPTCHA detected. currentPageUrl={}", finalUrl);
+            boolean resolved = waitForManualCaptchaResolution(page, requestedUrl);
+            String resolvedUrl = page.url();
+            if (resolved && !isCaptchaUrl(resolvedUrl)) {
+                log.info("SofaScore CAPTCHA was manually resolved; continuing in the same browser session. url={}",
+                        resolvedUrl);
+                return;
+            }
             throw new SofaScoreCaptchaException(
                     "SofaScore returned a CAPTCHA page instead of the requested page. requestedUrl="
-                            + requestedUrl + ", finalUrl=" + finalUrl
-                            + ". Automatic fetch stopped; verify authorized access or use an approved data API.");
+                            + requestedUrl + ", finalUrl=" + resolvedUrl
+                            + ". Automatic solving is not attempted; use manual intervention or an approved data API.");
         }
+    }
+
+    private boolean isCaptchaUrl(String url) {
+        return url != null && url.toLowerCase(Locale.ROOT).contains("/captcha.html");
+    }
+
+    /**
+     * Optional hook for an operator to solve a CAPTCHA manually in a visible browser.
+     * Implementations must use a bounded wait and must not automate CAPTCHA solving.
+     */
+    protected boolean waitForManualCaptchaResolution(Page page, String requestedUrl) {
+        return false;
     }
 
     private void navigateWithRetry(String loadPageUrl, Page page) {
