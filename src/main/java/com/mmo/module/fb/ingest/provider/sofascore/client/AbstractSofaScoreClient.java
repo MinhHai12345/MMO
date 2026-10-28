@@ -55,6 +55,7 @@ public abstract class AbstractSofaScoreClient {
         page.onResponse(responseHandler);
         try {
             navigateWithRetry(loadPageUrl, page);
+            failIfCaptchaPage(page, loadPageUrl);
             page.waitForTimeout(7000);
             if (triggerAction != null) {
                 page.waitForTimeout(8000);
@@ -92,6 +93,16 @@ public abstract class AbstractSofaScoreClient {
             }
         });
         return fetchResult;
+    }
+
+    private void failIfCaptchaPage(Page page, String requestedUrl) {
+        String finalUrl = page.url();
+        if (finalUrl != null && finalUrl.toLowerCase(java.util.Locale.ROOT).contains("/captcha.html")) {
+            throw new SofaScoreCaptchaException(
+                    "SofaScore returned a CAPTCHA page instead of the requested page. requestedUrl="
+                            + requestedUrl + ", finalUrl=" + finalUrl
+                            + ". Automatic fetch stopped; verify authorized access or use an approved data API.");
+        }
     }
 
     private void navigateWithRetry(String loadPageUrl, Page page) {
