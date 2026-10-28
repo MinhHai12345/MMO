@@ -9,69 +9,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.thymeleaf.util.MapUtils;
 
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 @Slf4j
 public abstract class AbstractSofaScoreClient {
-    private final Random random = new Random();
     protected final ObjectMapper objectMapper = new ObjectMapper();
-    private final AtomicInteger requestCounter = new AtomicInteger(0);
-
-    protected <T> T safeFetch(String url, Page page, Class<T> clazz) {
-        try {
-            handleAntiBotDelay(page);
-            Response response = page.navigate(url);
-            if (response == null) {
-                throw new SofaScoreFetchException("SofaScore returned no HTTP response for " + url);
-            }
-
-            int status = response.status();
-            if (status == 200) {
-                return objectMapper.readValue(response.text(), clazz);
-            }
-            if (status == 404) {
-                // A missing round/page is a normal empty result for some SofaScore endpoints.
-                log.debug("SofaScore resource not found (404): {}", url);
-                return null;
-            }
-            if (status == 403 || status == 429) {
-                throw new SofaScoreFetchException("SofaScore rejected request with HTTP " + status
-                        + " for " + url + ". Check access/rate limits and retry later.");
-            }
-            if (status >= 500) {
-                throw new SofaScoreFetchException("SofaScore upstream failure HTTP " + status + " for " + url);
-            }
-            throw new SofaScoreFetchException("Unexpected SofaScore HTTP " + status + " for " + url);
-        } catch (SofaScoreFetchException exception) {
-            throw exception;
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            throw new SofaScoreFetchException("Interrupted while waiting to fetch " + url, exception);
-        } catch (Exception exception) {
-            throw new SofaScoreFetchException("Failed to fetch SofaScore resource " + url, exception);
-        }
-    }
-
-    private void handleAntiBotDelay(Page page) throws InterruptedException {
-        int currentCount = requestCounter.incrementAndGet();
-        if (currentCount % (25 + random.nextInt(11)) == 0) {
-            long breakMillis = 45000 + random.nextInt(30000);
-            log.info("SofaScore request pacing: {} requests; pausing {} seconds",
-                    currentCount, breakMillis / 1000);
-            Thread.sleep(breakMillis);
-            if (page != null && page.context() != null) {
-                page.context().clearCookies();
-            }
-            return;
-        }
-        Thread.sleep(3000 + random.nextInt(4001));
-    }
 
     protected DynamicFetchResult safeFetch(
             String loadPageUrl,
