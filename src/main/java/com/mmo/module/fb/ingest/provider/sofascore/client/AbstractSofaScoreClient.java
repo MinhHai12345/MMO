@@ -68,6 +68,8 @@ public abstract class AbstractSofaScoreClient {
                     log.warn("SofaScore trigger action failed: {}", exception.getMessage());
                 }
             }
+            // Cloudflare may redirect after the initial navigation check.
+            failIfCaptchaPage(page, loadPageUrl);
             CompletableFuture<?>[] futuresArray = futuresMap.values().toArray(new CompletableFuture[0]);
             CompletableFuture.allOf(futuresArray).get(20, TimeUnit.SECONDS);
         } catch (TimeoutException exception) {
