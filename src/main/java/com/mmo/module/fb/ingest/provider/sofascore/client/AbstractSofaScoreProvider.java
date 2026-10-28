@@ -227,6 +227,8 @@ public abstract class AbstractSofaScoreProvider {
             if (dtoResult != null) {
                 saveConsumer.accept(dtoResult);
             }
+        } catch (SofaScoreFetchException ex) {
+            throw ex;
         } catch (PlaywrightException ex) {
             handleFatalConnectionError(ex);
         } catch (Exception ex) {
@@ -271,6 +273,8 @@ public abstract class AbstractSofaScoreProvider {
                             log.warn("⚠️ Retrying item [{}] (Attempt {}/{})", entity, attempts, MAX_RETRY_ATTEMPTS);
                             backoffDelay(attempts);
                         }
+                    } catch (SofaScoreFetchException ex) {
+                        throw ex;
                     } catch (Exception ex) {
                         log.error("❌ Error processing item [{}] in Pipeline: {}", entity, ex.getMessage());
                         break;
@@ -290,6 +294,8 @@ public abstract class AbstractSofaScoreProvider {
         try {
             page = this.createPage();
             return fetchFunction.apply(page);
+        } catch (SofaScoreFetchException ex) {
+            throw ex;
         } catch (PlaywrightException ex) {
             handleFatalConnectionError(ex);
         } catch (Exception ex) {
