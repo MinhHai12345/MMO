@@ -2,15 +2,16 @@ package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import com.mmo.module.fb.ingest.service.LeagueIngestionService;
 import com.mmo.module.fb.ingest.service.LeaguePersistenceService;
+import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
 import java.util.List;
 
 @Slf4j
@@ -33,7 +34,7 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
         ingestionSupport.requireProviderEnabled(selectedProvider, "league");
         List<ProviderLeague> leagues;
         try {
-            leagues = providerRegistry.league(selectedProvider).fetchLeagues(List.of());
+            leagues = providerRegistry.league(selectedProvider).fetchLeagues(List.of(2000L, 2001L, 2002L, 2014L, 2015L, 2019L, 2016L, 2021L));
         } catch (FootballDataRestrictedResourceException ex) {
             if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
             var existingMappings = leagueExternalIdRepository.findAllByProvider(selectedProvider);
@@ -48,7 +49,7 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
         }
         if (leagues == null || leagues.isEmpty()) {
             throw new IllegalStateException("Provider " + selectedProvider
-                    + " returned no leagues; refusing to treat league ingestion as successful.");
+                                            + " returned no leagues; refusing to treat league ingestion as successful.");
         }
         leaguePersistenceService.persistLeagues(selectedProvider, leagues);
     }

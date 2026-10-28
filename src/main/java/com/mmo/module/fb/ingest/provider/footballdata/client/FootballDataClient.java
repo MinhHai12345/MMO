@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
 @Component
 @RequiredArgsConstructor
 public class FootballDataClient {
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(25);
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(60);
     private static final int MAX_IN_MEMORY_SIZE_BYTES = 10 * 1024 * 1024;
     private static final String PLACEHOLDER_API_KEY = "mock";
     private static final long DEFAULT_RATE_LIMIT_WAIT_SECONDS = 60;

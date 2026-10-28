@@ -1,8 +1,19 @@
 package com.mmo.module.fb.ingest.provider.footballdata.mapper;
 
+import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.CompetitionDto;
+import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.MatchDto;
+import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.ScorePairDto;
+import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.SeasonDto;
+import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.StandingRowDto;
+import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.StandingTableDto;
+import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.StandingsDto;
+import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.TeamDto;
+import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
+import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
+import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
+import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
+import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.league.enums.StandingType;
-import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.*;
-import com.mmo.module.fb.ingest.provider.model.*;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -40,8 +51,9 @@ public class FootballDataMapper {
             String externalSeasonId = season.id() == null
                     ? competition.id() + ":" + year
                     : season.id().toString();
-            seasons.add(new ProviderSeason(externalSeasonId, year, year.equals(currentYear),
-                    season.startDate(), season.endDate()));
+            if (Integer.parseInt(year) > 2022) {
+                seasons.add(new ProviderSeason(externalSeasonId, year, year.equals(currentYear), season.startDate(), season.endDate()));
+            }
         }
 
         return new ProviderLeague(
@@ -64,8 +76,8 @@ public class FootballDataMapper {
 
     public ProviderFixture toFixture(MatchDto match) {
         if (match == null || match.id() == null || match.homeTeam() == null
-                || match.homeTeam().id() == null || match.awayTeam() == null
-                || match.awayTeam().id() == null) return null;
+            || match.homeTeam().id() == null || match.awayTeam() == null
+            || match.awayTeam().id() == null) return null;
         Instant kickoff = match.utcDate() == null ? null : match.utcDate().toInstant();
         ScorePairDto score = match.score() == null ? null
                 : (match.score().fullTime() != null ? match.score().fullTime() : match.score().regularTime());
