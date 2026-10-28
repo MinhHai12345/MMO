@@ -34,7 +34,14 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
         ingestionSupport.requireProviderEnabled(selectedProvider, "league");
         List<ProviderLeague> leagues;
         try {
-            leagues = providerRegistry.league(selectedProvider).fetchLeagues(List.of(2000L, 2001L, 2002L, 2014L, 2015L, 2019L, 2016L, 2021L));
+            // Football-Data competition IDs and SofaScore tournament IDs belong to different
+            // namespaces. Never pass the Football-Data allow-list to SofaScore: discover its
+            // tournament catalogue and let LeaguePersistenceService match canonical leagues by
+            // name/country before creating provider mappings.
+            List<Long> externalLeagueIds = selectedProvider == Provider.SOFA_SCORE
+                    ? List.of()
+                    : List.of(2000L, 2001L, 2002L, 2014L, 2015L, 2019L, 2016L, 2021L);
+            leagues = providerRegistry.league(selectedProvider).fetchLeagues(externalLeagueIds);
         } catch (FootballDataRestrictedResourceException ex) {
             if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
             var existingMappings = leagueExternalIdRepository.findAllByProvider(selectedProvider);
