@@ -51,7 +51,6 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
     private static final String FETCH_DAILY_ALL_MATCH_ODDS_URI = "/api/v1/sport/football/odds/1/%s";
     private static final String FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI = "/api/v1/unique-tournament/%d/scheduled-events/%s";
     private static final String FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_URI = "team/%s/events/last/%d";
-    private static final String FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_PAGE = "%s/football/team/%s/%s";
     private static final String FETCH_MATCH_BY_ID_URI = "event/%d";
 
     private AppProperties.ProviderConfig sofaScoreConfig() {
@@ -188,13 +187,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
     public List<EventDTO> fetchMatchesDailyByTournamentId(Long sofaTournamentId, Page page) {
         String endpoint = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI,
                 sofaTournamentId, DateTimeUtils.today());
-        DynamicFetchResult result = safeFetch(
-                sofaScoreConfig().getWebUrl(),
-                Map.of(endpoint, MatchesResponseDTO.class),
-                page,
-                null);
-        if (!result.hasData(endpoint)) return Collections.emptyList();
-        MatchesResponseDTO matchData = result.get(endpoint, MatchesResponseDTO.class);
+        MatchesResponseDTO matchData = fetchFromWebPage(endpoint, page, MatchesResponseDTO.class);
         return matchData != null && matchData.events() != null
                 ? matchData.events() : Collections.emptyList();
     }
@@ -212,18 +205,10 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
             return Collections.emptyList();
         }
         String sofaTeamId = teamExternalId.getExternalId();
-        String loadPageUrl = sofaScoreConfig().getWebUrl();
         String historiesEndpoint = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_URI, sofaTeamId, index);
-        Map<String, Class<?>> configMap = Map.of(historiesEndpoint, MatchesResponseDTO.class);
-
-        DynamicFetchResult result = safeFetch(loadPageUrl, configMap, page, null);
-        List<EventDTO> events = new ArrayList<>();
-        if (result.hasData(historiesEndpoint)) {
-            MatchesResponseDTO matchData = result.get(historiesEndpoint, MatchesResponseDTO.class);
-            if (matchData != null) return matchData.events();
-        }
-
-        return events;
+        MatchesResponseDTO matchData = fetchFromWebPage(historiesEndpoint, page, MatchesResponseDTO.class);
+        return matchData != null && matchData.events() != null
+                ? matchData.events() : Collections.emptyList();
     }
 
     @Override
