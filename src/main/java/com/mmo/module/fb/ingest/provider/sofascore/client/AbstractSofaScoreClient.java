@@ -9,6 +9,7 @@ import com.mmo.module.fb.ingest.provider.model.DynamicFetchResult;
 import lombok.extern.slf4j.Slf4j;
 import org.thymeleaf.util.MapUtils;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,8 +19,9 @@ import java.util.function.Consumer;
 
 @Slf4j
 public abstract class AbstractSofaScoreClient {
-    private static final int NAVIGATION_MAX_ATTEMPTS = 3;
-    private static final long NAVIGATION_RETRY_DELAY_MS = 1500;
+    private static final int NAVIGATION_MAX_ATTEMPTS = 4;
+    private static final long NAVIGATION_TIMEOUT_MS = 20_000;
+    private static final long[] RETRY_DELAYS_MS = {2_000, 4_000, 8_000};
 
     protected final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -73,7 +75,8 @@ public abstract class AbstractSofaScoreClient {
         } catch (SofaScoreFetchException exception) {
             throw exception;
         } catch (Exception exception) {
-            log.warn("Failed while loading SofaScore page {}: {}", loadPageUrl, exception.getMessage());
+            throw new SofaScoreFetchException(
+                    "Unexpected failure while fetching SofaScore page " + loadPageUrl, exception);
         } finally {
             page.offResponse(responseHandler);
         }
@@ -97,7 +100,7 @@ public abstract class AbstractSofaScoreClient {
 
     private void failIfCaptchaPage(Page page, String requestedUrl) {
         String finalUrl = page.url();
-        if (finalUrl != null && finalUrl.toLowerCase(java.util.Locale.ROOT).contains("/captcha.html")) {
+        if (finalUrl != null && finalUrl.toLowerCase(Locale.ROOT).contains("/captcha.html")) {
             throw new SofaScoreCaptchaException(
                     "SofaScore returned a CAPTCHA page instead of the requested page. requestedUrl="
                             + requestedUrl + ", finalUrl=" + finalUrl
@@ -111,24 +114,56 @@ public abstract class AbstractSofaScoreClient {
             try {
                 page.navigate(loadPageUrl, new Page.NavigateOptions()
                         .setWaitUntil(WaitUntilState.COMMIT)
-                        .setTimeout(30000));
+                        .setTimeout(NAVIGATION_TIMEOUT_MS));
                 return;
             } catch (PlaywrightException exception) {
                 lastFailure = exception;
-                log.warn("SofaScore navigation failed (attempt {}/{}): url={}, reason={}",
-                        attempt, NAVIGATION_MAX_ATTEMPTS, loadPageUrl, exception.getMessage());
-                if (attempt < NAVIGATION_MAX_ATTEMPTS) {
-                    try {
-                        page.waitForTimeout(NAVIGATION_RETRY_DELAY_MS * attempt);
-                    } catch (PlaywrightException waitException) {
-                        log.debug("Could not wait before SofaScore navigation retry: {}", waitException.getMessage());
-                    }
+                boolean retryable = isTransientNavigationFailure(exception);
+                log.warn("SofaScore navigation failed (attempt {}/{}): url={}, retryable={}, reason={}",
+                        attempt, NAVIGATION_MAX_ATTEMPTS, loadPageUrl, retryable, exception.getMessage());
+
+                if (!retryable || attempt == NAVIGATION_MAX_ATTEMPTS) {
+                    break;
+                }
+
+                long delay = RETRY_DELAYS_MS[attempt - 1];
+                log.info("Retrying SofaScore navigation in {} ms (attempt {}/{})",
+                        delay, attempt + 1, NAVIGATION_MAX_ATTEMPTS);
+                try {
+                    page.waitForTimeout(delay);
+                } catch (PlaywrightException waitException) {
+                    throw new SofaScoreFetchException(
+                            "Playwright page became unavailable while waiting to retry SofaScore navigation: "
+                                    + loadPageUrl, waitException);
                 }
             }
         }
         throw new SofaScoreFetchException(
-                "Could not navigate to SofaScore page after " + NAVIGATION_MAX_ATTEMPTS + " attempts: "
-                        + loadPageUrl + ". Check network access, DNS, proxy/VPN, or site availability.",
+                "Could not navigate to SofaScore page after navigation attempts: " + loadPageUrl
+                        + ". Check network access, DNS, proxy/VPN, or site availability.",
                 lastFailure);
+    }
+
+    private boolean isTransientNavigationFailure(PlaywrightException exception) {
+        String message = exception.getMessage();
+        if (message == null) {
+            return false;
+        }
+        String normalized = message.toLowerCase(Locale.ROOT);
+
+        // A closed browser/page is a lifecycle failure, not a network retry.
+        if (normalized.contains("target page, context or browser has been closed")
+                || normalized.contains("playwright connection closed")
+                || normalized.contains("connection closed")) {
+            return false;
+        }
+
+        return normalized.contains("err_connection_reset")
+                || normalized.contains("err_connection_closed")
+                || normalized.contains("err_connection_refused")
+                || normalized.contains("err_timed_out")
+                || normalized.contains("err_network_changed")
+                || normalized.contains("navigation timeout")
+                || normalized.contains("timeout ");
     }
 }
