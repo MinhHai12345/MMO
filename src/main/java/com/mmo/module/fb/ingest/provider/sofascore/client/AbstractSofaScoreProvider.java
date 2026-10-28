@@ -8,6 +8,7 @@ import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.PlaywrightException;
 import com.microsoft.playwright.Route;
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreFetchException;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -227,6 +228,8 @@ public abstract class AbstractSofaScoreProvider {
             if (dtoResult != null) {
                 saveConsumer.accept(dtoResult);
             }
+        } catch (SofaScoreFetchException ex) {
+            throw ex;
         } catch (PlaywrightException ex) {
             handleFatalConnectionError(ex);
         } catch (Exception ex) {
@@ -271,6 +274,8 @@ public abstract class AbstractSofaScoreProvider {
                             log.warn("⚠️ Retrying item [{}] (Attempt {}/{})", entity, attempts, MAX_RETRY_ATTEMPTS);
                             backoffDelay(attempts);
                         }
+                    } catch (SofaScoreFetchException ex) {
+                        throw ex;
                     } catch (Exception ex) {
                         log.error("❌ Error processing item [{}] in Pipeline: {}", entity, ex.getMessage());
                         break;
@@ -290,6 +295,8 @@ public abstract class AbstractSofaScoreProvider {
         try {
             page = this.createPage();
             return fetchFunction.apply(page);
+        } catch (SofaScoreFetchException ex) {
+            throw ex;
         } catch (PlaywrightException ex) {
             handleFatalConnectionError(ex);
         } catch (Exception ex) {
