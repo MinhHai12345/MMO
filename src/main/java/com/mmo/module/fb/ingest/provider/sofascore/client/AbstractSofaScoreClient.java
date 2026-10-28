@@ -19,9 +19,9 @@ import java.util.function.Consumer;
 
 @Slf4j
 public abstract class AbstractSofaScoreClient {
-    private static final int NAVIGATION_MAX_ATTEMPTS = 4;
-    private static final long NAVIGATION_TIMEOUT_MS = 20_000;
-    private static final long[] RETRY_DELAYS_MS = {2_000, 4_000, 8_000};
+    private static final int NAVIGATION_MAX_ATTEMPTS = 5;
+    private static final long NAVIGATION_TIMEOUT_MS = 15_000;
+    private static final long[] RETRY_DELAYS_MS = {5_000, 10_000, 20_000, 30_000};
 
     protected final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -153,8 +153,9 @@ public abstract class AbstractSofaScoreClient {
 
         // A closed browser/page is a lifecycle failure, not a network retry.
         if (normalized.contains("target page, context or browser has been closed")
+                || normalized.contains("browser has been closed")
                 || normalized.contains("playwright connection closed")
-                || normalized.contains("connection closed")) {
+                || normalized.contains("playwright was closed")) {
             return false;
         }
 
