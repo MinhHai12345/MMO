@@ -6,19 +6,16 @@ import com.microsoft.playwright.BrowserType;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.PlaywrightException;
-import com.microsoft.playwright.Route;
 import com.mmo.module.fb.ingest.enums.Provider;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
@@ -38,11 +35,6 @@ public abstract class AbstractSofaScoreProvider {
 
     private final Map<String, BrowserContext> activeContexts = new ConcurrentHashMap<>();
 
-    private static final List<String> USER_AGENTS = Arrays.asList(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0"
-    );
 
     protected final <T> T withPage(Function<Page, T> action) {
         Page page = null;
@@ -67,14 +59,13 @@ public abstract class AbstractSofaScoreProvider {
                 this.browser = this.playwright.chromium().launch(new BrowserType.LaunchOptions()
                         .setHeadless(true)
                         .setArgs(List.of(
-                                "--disable-blink-features=AutomationControlled",
-                                "--disable-infobars",
                                 "--no-sandbox",
                                 "--disable-dev-shm-usage",
                                 "--disable-gpu",
-                                "--disable-setuid-sandbox",
                                 "--window-size=1920,1080"
                         )));
+                log.info("[{}] Playwright Chromium started: version={}, headless=true",
+                        Provider.SOFA_SCORE.name(), browser.version());
                 this.usageCount.set(0);
                 this.needsRecycle.set(false);
                 log.info("✅ [{}] Browser initialization successful!", Provider.SOFA_SCORE.name());
@@ -94,22 +85,14 @@ public abstract class AbstractSofaScoreProvider {
             usageCount.incrementAndGet();
         }
 
-        String selectedUserAgent = USER_AGENTS.get(ThreadLocalRandom.current().nextInt(USER_AGENTS.size()));
-        Map<String, String> baseHeaders = new HashMap<>();
-        baseHeaders.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8");
-        baseHeaders.put("Accept-Language", "en-US,en;q=0.9");
-        baseHeaders.put("sec-ch-ua", "\"Chromium\";v=\"124\", \"Google Chrome\";v=\"124\", \"Not-A.Brand\";v=\"99\"");
-        baseHeaders.put("sec-ch-ua-mobile", "?0");
-        baseHeaders.put("sec-ch-ua-platform", "\"Windows\"");
-
         BrowserContext context = null;
         String contextId = null;
         try {
             synchronized (this) {
+                // Let Chromium provide a consistent User-Agent and client hints.
+                // Manually mixing browser versions/platform headers can create an invalid profile.
                 context = browser.newContext(new Browser.NewContextOptions()
-                        .setUserAgent(selectedUserAgent)
                         .setViewportSize(1920, 1080)
-                        .setExtraHTTPHeaders(baseHeaders)
                         .setLocale("en-US")
                         .setTimezoneId("Asia/Ho_Chi_Minh"));
             }
@@ -118,20 +101,16 @@ public abstract class AbstractSofaScoreProvider {
             activeContexts.put(contextId, context);
 
             Page page = context.newPage();
-            page.route("**/*.{png,jpg,jpeg,gif,svg,css,woff,woff2,ttf,eot}", Route::abort);
-
-            // Optimized anti-detection script injection
-            page.addInitScript("""
-                        (() => {
-                            const newProto = Navigator.prototype;
-                            delete newProto.webdriver;
-                            Object.defineProperty(newProto, 'webdriver', {get: () => false});
-                            Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
-                            Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
-                            window.chrome = { runtime: {}, loadTimes: function() {}, csi: function() {} };
-                        })();
-                    """);
-
+            page.onRequestFailed(request -> log.warn(
+                    "[{}] Browser request failed: method={}, url={}, failure={}",
+                    Provider.SOFA_SCORE.name(), request.method(), request.url(),
+                    request.failure() == null ? "unknown" : request.failure()));
+            page.onResponse(response -> {
+                if (response.status() >= 400) {
+                    log.warn("[{}] Browser response error: status={}, url={}",
+                            Provider.SOFA_SCORE.name(), response.status(), response.url());
+                }
+            });
             return page;
         } catch (Exception e) {
             if (contextId != null) {
