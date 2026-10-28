@@ -89,8 +89,7 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
             if (selectedProvider == Provider.FOOTBALL_DATA) {
                 if (league.getName() == null || league.getName().isBlank()) league.setName(source.name());
                 if (league.getSlug() == null || league.getSlug().isBlank()) {
-                    league.setSlug(slug(source.name()) + "-" + selectedProvider.name().toLowerCase()
-                            + "-" + source.externalId());
+                    league.setSlug(slug(source.name()));
                 }
                 if (source.country() != null && !source.country().isBlank()) league.setCountry(source.country());
                 if (source.logoUrl() != null && !source.logoUrl().isBlank()) league.setLogoUrl(source.logoUrl());

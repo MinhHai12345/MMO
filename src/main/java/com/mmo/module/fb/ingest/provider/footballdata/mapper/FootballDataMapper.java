@@ -57,7 +57,7 @@ public class FootballDataMapper {
         }
 
         return new ProviderLeague(
-                competition.id().toString(), competition.name(),
+                competition.id().toString(), "Primera Division".equals(competition.name()) ? "LaLiga" : competition.name(),
                 competition.area() == null ? null : competition.area().name(),
                 competition.emblem(), seasons);
     }
