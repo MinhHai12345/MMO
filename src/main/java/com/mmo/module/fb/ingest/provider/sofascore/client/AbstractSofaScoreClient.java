@@ -105,9 +105,22 @@ public abstract class AbstractSofaScoreClient {
             boolean resolved = waitForManualCaptchaResolution(page, requestedUrl);
             String resolvedUrl = page.url();
             if (resolved && !isCaptchaUrl(resolvedUrl)) {
-                log.info("SofaScore CAPTCHA was manually resolved; continuing in the same browser session. url={}",
-                        resolvedUrl);
-                return;
+                try {
+                    // Re-open the original page with the same browser context/cookies so its API
+                    // responses are captured by the listener already registered in safeFetch.
+                    page.navigate(requestedUrl, new Page.NavigateOptions()
+                            .setWaitUntil(WaitUntilState.COMMIT)
+                            .setTimeout(NAVIGATION_TIMEOUT_MS));
+                    String fetchUrl = page.url();
+                    if (!isCaptchaUrl(fetchUrl)) {
+                        log.info("Manual challenge completed; resumed normal SofaScore fetch in the same session. url={}",
+                                fetchUrl);
+                        return;
+                    }
+                } catch (PlaywrightException exception) {
+                    log.warn("Could not resume the requested SofaScore page after manual intervention: {}",
+                            exception.getMessage());
+                }
             }
             throw new SofaScoreCaptchaException(
                     "SofaScore returned a CAPTCHA page instead of the requested page. requestedUrl="
