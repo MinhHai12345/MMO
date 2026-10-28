@@ -152,8 +152,9 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
     @Override
     public Map<Long, MatchOddDetailDTO> fetchDailyMatchOdds(Page page) {
         String endpoint = String.format(FETCH_DAILY_ALL_MATCH_ODDS_URI, DateTimeUtils.today());
+        String loadPageUrl = String.format(FETCH_ALL_UNIQUE_TOURNAMENTS_PAGE, webUrl());
         DynamicFetchResult result = safeFetch(
-                sofaScoreConfig().getWebUrl(),
+                loadPageUrl,
                 Map.of(endpoint, OddsResponseDTO.class),
                 page,
                 this::triggerOdds);
