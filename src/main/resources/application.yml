@@ -122,6 +122,9 @@ app:
         web-url: ${SOFA_SCORE_WEB_URL}
         options:
           tournament-region: ${SOFA_SCORE_TOURNAMENT_REGION:EN}
+          headless: ${SOFA_SCORE_HEADLESS:true}
+          manual-captcha-intervention: ${SOFA_SCORE_MANUAL_CAPTCHA_INTERVENTION:false}
+          captcha-wait-timeout-seconds: ${SOFA_SCORE_CAPTCHA_WAIT_TIMEOUT_SECONDS:180}
 
       UNDER_STATS:
         enabled: ${UNDER_STATS_ENABLED}

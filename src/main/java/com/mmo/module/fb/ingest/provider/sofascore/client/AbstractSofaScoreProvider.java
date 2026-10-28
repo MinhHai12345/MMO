@@ -11,6 +11,8 @@ import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.mmo.AppProperties;
 
 import java.util.HashMap;
 import java.util.List;
@@ -26,6 +28,9 @@ import java.util.function.Function;
 @Slf4j
 @Component
 public abstract class AbstractSofaScoreProvider {
+    @Autowired
+    private AppProperties appProperties;
+
     protected volatile Playwright playwright;
     protected volatile Browser browser;
     private final AtomicInteger usageCount = new AtomicInteger(0);
@@ -56,16 +61,18 @@ public abstract class AbstractSofaScoreProvider {
             closeEverythingInternal();
             try {
                 this.playwright = Playwright.create();
+                boolean manualCaptchaEnabled = isManualCaptchaInterventionEnabled();
+                boolean headless = !manualCaptchaEnabled && isHeadlessConfigured();
                 this.browser = this.playwright.chromium().launch(new BrowserType.LaunchOptions()
-                        .setHeadless(true)
+                        .setHeadless(headless)
                         .setArgs(List.of(
                                 "--no-sandbox",
                                 "--disable-dev-shm-usage",
                                 "--disable-gpu",
                                 "--window-size=1920,1080"
                         )));
-                log.info("[{}] Playwright Chromium started: version={}, headless=true",
-                        Provider.SOFA_SCORE.name(), browser.version());
+                log.info("[{}] Playwright Chromium started: version={}, headless={}, manualIntervention={}",
+                        Provider.SOFA_SCORE.name(), browser.version(), headless, manualCaptchaEnabled);
                 this.usageCount.set(0);
                 this.needsRecycle.set(false);
                 log.info("✅ [{}] Browser initialization successful!", Provider.SOFA_SCORE.name());
@@ -77,6 +84,26 @@ public abstract class AbstractSofaScoreProvider {
         } else if (shouldRecycle) {
             needsRecycle.set(true);
         }
+    }
+
+    private boolean isManualCaptchaInterventionEnabled() {
+        AppProperties.ProviderConfig config = sofaScoreConfig();
+        return Boolean.parseBoolean(config.getOption("manual-captcha-intervention"));
+    }
+
+    private boolean isHeadlessConfigured() {
+        AppProperties.ProviderConfig config = sofaScoreConfig();
+        String value = config.getOption("headless");
+        return value == null || value.isBlank() || Boolean.parseBoolean(value);
+    }
+
+    private AppProperties.ProviderConfig sofaScoreConfig() {
+        AppProperties.ProviderConfig config =
+                appProperties.getIngestion().getProviderConfig().get(Provider.SOFA_SCORE);
+        if (config == null || !config.isEnabled()) {
+            throw new IllegalStateException("SofaScore provider is disabled or not configured");
+        }
+        return config;
     }
 
     public Page createPage() {
@@ -101,10 +128,19 @@ public abstract class AbstractSofaScoreProvider {
             activeContexts.put(contextId, context);
 
             Page page = context.newPage();
-            page.onRequestFailed(request -> log.warn(
-                    "[{}] Browser request failed: method={}, url={}, failure={}",
-                    Provider.SOFA_SCORE.name(), request.method(), request.url(),
-                    request.failure() == null ? "unknown" : request.failure()));
+            page.onRequestFailed(request -> {
+                String failure = request.failure() == null ? "unknown" : request.failure();
+                String url = request.url();
+                boolean cloudflareChallenge = url != null
+                        && url.contains("challenges.cloudflare.com/cdn-cgi/challenge-platform/");
+                if (cloudflareChallenge && "net::ERR_ABORTED".equalsIgnoreCase(failure)) {
+                    log.debug("[{}] Cloudflare challenge subrequest aborted during navigation: method={}, url={}",
+                            Provider.SOFA_SCORE.name(), request.method(), url);
+                    return;
+                }
+                log.warn("[{}] Browser request failed: method={}, url={}, failure={}",
+                        Provider.SOFA_SCORE.name(), request.method(), url, failure);
+            });
             page.onResponse(response -> {
                 if (response.status() >= 400) {
                     log.warn("[{}] Browser response error: status={}, url={}",

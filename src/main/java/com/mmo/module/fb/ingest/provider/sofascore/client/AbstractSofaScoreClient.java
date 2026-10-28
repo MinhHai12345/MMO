@@ -68,6 +68,8 @@ public abstract class AbstractSofaScoreClient {
                     log.warn("SofaScore trigger action failed: {}", exception.getMessage());
                 }
             }
+            // Cloudflare may redirect after the initial navigation check.
+            failIfCaptchaPage(page, loadPageUrl);
             CompletableFuture<?>[] futuresArray = futuresMap.values().toArray(new CompletableFuture[0]);
             CompletableFuture.allOf(futuresArray).get(20, TimeUnit.SECONDS);
         } catch (TimeoutException exception) {
@@ -100,12 +102,45 @@ public abstract class AbstractSofaScoreClient {
 
     private void failIfCaptchaPage(Page page, String requestedUrl) {
         String finalUrl = page.url();
-        if (finalUrl != null && finalUrl.toLowerCase(Locale.ROOT).contains("/captcha.html")) {
+        if (isCaptchaUrl(finalUrl)) {
+            log.warn("SofaScore CAPTCHA detected. currentPageUrl={}", finalUrl);
+            boolean resolved = waitForManualCaptchaResolution(page, requestedUrl);
+            String resolvedUrl = page.url();
+            if (resolved && !isCaptchaUrl(resolvedUrl)) {
+                try {
+                    // Re-open the original page with the same browser context/cookies so its API
+                    // responses are captured by the listener already registered in safeFetch.
+                    page.navigate(requestedUrl, new Page.NavigateOptions()
+                            .setWaitUntil(WaitUntilState.COMMIT)
+                            .setTimeout(NAVIGATION_TIMEOUT_MS));
+                    String fetchUrl = page.url();
+                    if (!isCaptchaUrl(fetchUrl)) {
+                        log.info("Manual challenge completed; resumed normal SofaScore fetch in the same session. url={}",
+                                fetchUrl);
+                        return;
+                    }
+                } catch (PlaywrightException exception) {
+                    log.warn("Could not resume the requested SofaScore page after manual intervention: {}",
+                            exception.getMessage());
+                }
+            }
             throw new SofaScoreCaptchaException(
                     "SofaScore returned a CAPTCHA page instead of the requested page. requestedUrl="
-                            + requestedUrl + ", finalUrl=" + finalUrl
-                            + ". Automatic fetch stopped; verify authorized access or use an approved data API.");
+                            + requestedUrl + ", finalUrl=" + resolvedUrl
+                            + ". Automatic solving is not attempted; use manual intervention or an approved data API.");
         }
+    }
+
+    private boolean isCaptchaUrl(String url) {
+        return url != null && url.toLowerCase(Locale.ROOT).contains("/captcha.html");
+    }
+
+    /**
+     * Optional hook for an operator to solve a CAPTCHA manually in a visible browser.
+     * Implementations must use a bounded wait and must not automate CAPTCHA solving.
+     */
+    protected boolean waitForManualCaptchaResolution(Page page, String requestedUrl) {
+        return false;
     }
 
     private void navigateWithRetry(String loadPageUrl, Page page) {
