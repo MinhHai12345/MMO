@@ -13,9 +13,13 @@ import java.util.Optional;
 public interface LeagueExternalIdRepository extends JpaRepository<LeagueExternalId, Long> {
     @EntityGraph(attributePaths = {"league"})
     List<LeagueExternalId> findAllByProvider(Provider provider);
+
     @EntityGraph(attributePaths = {"league"})
     Optional<LeagueExternalId> findByLeagueIdAndProvider(Long leagueId, Provider provider);
 
     @EntityGraph(attributePaths = {"league"})
     Optional<LeagueExternalId> findByProviderAndExternalId(Provider provider, String externalId);
+
+    @EntityGraph(attributePaths = {"league"})
+    Optional<LeagueExternalId> findByProviderAndIdentify(Provider provider, String identify);
 }
