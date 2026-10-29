@@ -146,53 +146,71 @@ public class UnderstatSyncService {
     }
 
     private Match persistMatchIdentityAndXg(Season season, ProviderMatchStatistics source) {
-        Team home = resolveTeam(source.homeTeamExternalId());
-        Team away = resolveTeam(source.awayTeamExternalId());
-        if (home == null || away == null || home.getId().equals(away.getId())) {
-            log.debug("Skipping Understat match {} because canonical teams could not be uniquely resolved",
-                    source.externalMatchId());
-            return null;
-        }
-
         Match match = matchExternalIdRepository.findByProviderAndExternalId(PROVIDER, source.externalMatchId())
                 .map(MatchExternalId::getMatch)
                 .orElse(null);
         Instant kickoff = source.kickoff() == null ? null : source.kickoff().toInstant(ZoneOffset.UTC);
+
         if (match == null && kickoff != null) {
-            List<Match> candidates = matchRepository.findFixtureCandidates(
-                    season.getId(), home.getId(), away.getId(),
-                    kickoff.minus(FIXTURE_MATCH_WINDOW), kickoff.plus(FIXTURE_MATCH_WINDOW));
-            if (candidates.size() == 1) match = candidates.get(0);
-            else if (candidates.size() > 1) {
-                log.warn("Ambiguous Understat fixture mapping for matchId={} seasonId={}",
-                        source.externalMatchId(), season.getId());
+            List<Match> candidates = matchRepository.findFixtureCandidatesBySeasonAndTime(
+                    season.getId(), kickoff.minus(FIXTURE_MATCH_WINDOW), kickoff.plus(FIXTURE_MATCH_WINDOW));
+            if (source.result() && source.homeScore() != null && source.awayScore() != null) {
+                candidates = candidates.stream()
+                        .filter(candidate -> source.homeScore().equals(candidate.getHomeScore())
+                                && source.awayScore().equals(candidate.getAwayScore()))
+                        .toList();
+            }
+            if (candidates.size() == 1) {
+                match = candidates.get(0);
+            } else {
+                log.debug("Skipping Understat match {}: {} canonical fixture candidates in season {}",
+                        source.externalMatchId(), candidates.size(), season.getId());
                 return null;
             }
         }
-        if (match == null) {
-            log.debug("Skipping Understat match {} because no canonical MMO fixture matched", source.externalMatchId());
+
+        if (match == null || match.getSeason() == null
+                || !season.getId().equals(match.getSeason().getId())
+                || match.getHomeTeam() == null || match.getAwayTeam() == null) {
+            log.debug("Skipping Understat match {} because no canonical MMO fixture matched",
+                    source.externalMatchId());
             return null;
         }
-        if (match.getSeason() == null || !season.getId().equals(match.getSeason().getId())
-                || match.getHomeTeam() == null || match.getAwayTeam() == null
-                || !home.getId().equals(match.getHomeTeam().getId())
-                || !away.getId().equals(match.getAwayTeam().getId())) {
-            log.warn("Understat match {} conflicts with canonical fixture identity; skipping", source.externalMatchId());
+
+        if (source.result()
+                && ((source.homeScore() != null && match.getHomeScore() != null
+                        && !source.homeScore().equals(match.getHomeScore()))
+                || (source.awayScore() != null && match.getAwayScore() != null
+                        && !source.awayScore().equals(match.getAwayScore())))) {
+            log.warn("Understat match {} scores conflict with canonical fixture {}; skipping",
+                    source.externalMatchId(), match.getId());
             return null;
         }
 
         try {
+            // The unique canonical fixture establishes the home/away identity. This avoids
+            // guessing provider identity from team-name spelling or aliases.
+            registerTeamIdentity(match.getHomeTeam(), source.homeTeamExternalId());
+            registerTeamIdentity(match.getAwayTeam(), source.awayTeamExternalId());
             externalIdMappingService.registerMatch(match, PROVIDER, source.externalMatchId());
         } catch (IllegalStateException conflict) {
-            log.warn("Cannot register Understat match mapping {}: {}",
+            log.warn("Cannot register Understat fixture/team mappings for match {}: {}",
                     source.externalMatchId(), conflict.getMessage());
             return null;
         }
+
         if (source.homeXg() != null) match.setHomeXG(source.homeXg().doubleValue());
         if (source.awayXg() != null) match.setAwayXG(source.awayXg().doubleValue());
         if (match.getHomeScore() == null && source.homeScore() != null) match.setHomeScore(source.homeScore());
         if (match.getAwayScore() == null && source.awayScore() != null) match.setAwayScore(source.awayScore());
         return matchRepository.save(match);
+    }
+
+    private void registerTeamIdentity(Team team, String providerTeamId) {
+        if (team == null || team.getId() == null || !StringUtils.hasText(providerTeamId)) {
+            throw new IllegalStateException("Canonical team and Understat team ID are required");
+        }
+        externalIdMappingService.registerTeam(team, PROVIDER, providerTeamId);
     }
 
     private Map<String, Team> resolveLeagueTeams(List<ProviderMatchStatistics> matches) {
