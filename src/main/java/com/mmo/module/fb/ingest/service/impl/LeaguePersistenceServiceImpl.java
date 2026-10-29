@@ -59,8 +59,20 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                 continue;
             }
             if (league == null) {
-                league = new League();
-                league.setIsActive(false);
+                List<League> exactNameMatches = knownLeagues.stream()
+                        .filter(existing -> existing.getName() != null
+                                && existing.getName().equalsIgnoreCase(source.name()))
+                        .toList();
+                if (exactNameMatches.size() == 1) {
+                    league = exactNameMatches.get(0);
+                } else if (exactNameMatches.size() > 1) {
+                    log.warn("Ambiguous exact league-name mapping for provider {} external ID {}; skipping",
+                            selectedProvider, source.externalId());
+                    continue;
+                } else {
+                    league = new League();
+                    league.setIsActive(false);
+                }
             }
 
             LeagueExternalId existingLeagueMapping = league.getId() == null ? null
