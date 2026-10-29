@@ -2,6 +2,7 @@ package com.mmo.module.fb.league.repository;
 
 import com.mmo.module.fb.league.entity.Season;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -13,6 +14,7 @@ public interface SeasonRepository extends JpaRepository<Season, Long> {
 
     List<Season> findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
 
+    @EntityGraph(attributePaths = {"league"})
     List<Season> findByIsActiveTrueAndLeagueIsNotNullAndYearIsNotNull();
 
     List<Season> findByYearInAndLeagueIsNotNullAndYearIsNotNull(List<String> years);
