@@ -33,7 +33,7 @@ class FootballDataMapperTest {
         assertThat(mapped.seasons()).extracting(ProviderSeason::externalId).containsExactly("501", "502", "503");
         assertThat(mapped.seasons()).extracting(ProviderSeason::year).containsExactly("2023", "2024", "2025");
         assertThat(mapped.seasons().get(0).startDate()).isEqualTo(LocalDate.parse("2023-08-01"));
-        assertThat(mapped.seasons().get(1).current()).isTrue();
+        assertThat(mapped.seasons().get(2).current()).isTrue();
     }
 
     @Test
