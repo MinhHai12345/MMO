@@ -155,10 +155,17 @@ public class UnderstatSyncService {
             List<Match> candidates = matchRepository.findFixtureCandidatesBySeasonAndTime(
                     season.getId(), kickoff.minus(FIXTURE_MATCH_WINDOW), kickoff.plus(FIXTURE_MATCH_WINDOW));
             if (source.result() && source.homeScore() != null && source.awayScore() != null) {
-                candidates = candidates.stream()
+                List<Match> scoreMatches = candidates.stream()
                         .filter(candidate -> source.homeScore().equals(candidate.getHomeScore())
                                 && source.awayScore().equals(candidate.getAwayScore()))
                         .toList();
+                if (!scoreMatches.isEmpty()) {
+                    candidates = scoreMatches;
+                } else if (candidates.size() != 1
+                        || candidates.get(0).getHomeScore() != null
+                        || candidates.get(0).getAwayScore() != null) {
+                    candidates = List.of();
+                }
             }
             if (candidates.size() == 1) {
                 match = candidates.get(0);
