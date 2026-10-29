@@ -22,18 +22,22 @@ public class ProviderRegistry {
     private final Map<Provider, FixtureProvider> fixtureProviders;
     private final Map<Provider, StandingsProvider> standingsProviders;
     private final Map<Provider, OddsProvider> oddsProviders;
+    private final Map<Provider, HistoricalStatsProvider> historicalStatsProviders;
 
     public ProviderRegistry(
             List<LeagueProvider> leagueProviders,
             List<TeamProvider> teamProviders,
             List<FixtureProvider> fixtureProviders,
             List<StandingsProvider> standingsProviders,
-            List<OddsProvider> oddsProviders) {
+            List<OddsProvider> oddsProviders,
+            List<HistoricalStatsProvider> historicalStatsProviders) {
         this.leagueProviders = index(leagueProviders, LeagueProvider::getProvider, "LeagueProvider");
         this.teamProviders = index(teamProviders, TeamProvider::getProvider, "TeamProvider");
         this.fixtureProviders = index(fixtureProviders, FixtureProvider::getProvider, "FixtureProvider");
         this.standingsProviders = index(standingsProviders, StandingsProvider::getProvider, "StandingsProvider");
         this.oddsProviders = index(oddsProviders, OddsProvider::getProvider, "OddsProvider");
+        this.historicalStatsProviders = index(
+                historicalStatsProviders, HistoricalStatsProvider::getProvider, "HistoricalStatsProvider");
     }
 
     public LeagueProvider league(Provider provider) {
@@ -54,6 +58,10 @@ public class ProviderRegistry {
 
     public OddsProvider odds(Provider provider) {
         return get(oddsProviders, provider, "OddsProvider");
+    }
+
+    public HistoricalStatsProvider historicalStats(Provider provider) {
+        return get(historicalStatsProviders, provider, "HistoricalStatsProvider");
     }
 
     private static <T> Map<Provider, T> index(
