@@ -94,6 +94,10 @@ public class UnderstatSyncService {
         }
         log.info("Understat sync finished: activeSeasons={}, successful={}, failed={}",
                 activeSeasons.size(), successful, failed);
+        if (failed > 0) {
+            throw new IllegalStateException("Understat sync failed for " + failed
+                    + " of " + activeSeasons.size() + " active seasons; inspect the per-season logs.");
+        }
     }
 
     private boolean syncSeason(HistoricalStatsProvider provider, Season season) {
