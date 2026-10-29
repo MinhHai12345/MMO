@@ -39,6 +39,48 @@ public class MatchAdvancedStats extends AbstractEntity {
     @Column(name = "ppda_def")
     private Integer ppdaDef;
 
+    @Column(name = "xg", precision = 8, scale = 3)
+    private BigDecimal xg;
+
+    @Column(name = "xga", precision = 8, scale = 3)
+    private BigDecimal xga;
+
+    @Column(name = "npxg", precision = 8, scale = 3)
+    private BigDecimal npxg;
+
+    @Column(name = "npxga", precision = 8, scale = 3)
+    private BigDecimal npxga;
+
+    @Column(name = "expected_points", precision = 8, scale = 3)
+    private BigDecimal expectedPoints;
+
+    @Column(name = "deep_allowed")
+    private Integer deepAllowed;
+
+    @Column(name = "scored")
+    private Integer scored;
+
+    @Column(name = "missed")
+    private Integer missed;
+
+    @Column(name = "result", length = 8)
+    private String result;
+
+    @Column(name = "wins")
+    private Integer wins;
+
+    @Column(name = "draws")
+    private Integer draws;
+
+    @Column(name = "losses")
+    private Integer losses;
+
+    @Column(name = "points")
+    private Integer points;
+
+    @Column(name = "npx_goal_difference", precision = 8, scale = 3)
+    private BigDecimal npxGoalDifference;
+
     @Column(name = "field_tilt", precision = 5, scale = 2)
     private BigDecimal fieldTilt;
 
