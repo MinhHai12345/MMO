@@ -31,6 +31,17 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
                                       @Param("startTime") Instant startTime,
                                       @Param("endTime") Instant endTime);
 
+    /** Candidate fixtures used to establish a provider's team IDs without name-based guessing. */
+    @EntityGraph(attributePaths = {"season", "homeTeam", "awayTeam"})
+    @Query("""
+            SELECT m FROM Match m
+            WHERE m.season.id = :seasonId
+              AND m.matchTime BETWEEN :startTime AND :endTime
+            """)
+    List<Match> findFixtureCandidatesBySeasonAndTime(@Param("seasonId") Long seasonId,
+                                                     @Param("startTime") Instant startTime,
+                                                     @Param("endTime") Instant endTime);
+
     List<Match> findByStatusAndMatchTimeBetweenOrderByMatchTimeAsc(
             MatchStatus status, Instant startTime, Instant endTime);
 
