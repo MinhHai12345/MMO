@@ -50,11 +50,21 @@ INSERT INTO fb_league_external_ids (league_id, provider, external_id, identify)
 VALUES (<MMO_LEAGUE_ID>, 'UNDER_STATS', 'EPL', 'EPL');
 ```
 
-The job first syncs Understat match IDs and xG to existing canonical fixtures. A fixture is linked
-only when its team identities and kickoff identify one unique match; Understat never creates a
-canonical match. Teams are resolved by existing provider mapping first, then by a unique exact
-case-insensitive canonical team-name match. Ambiguous or unmatched teams/fixtures are skipped and
-logged for explicit mapping correction. Team-history metrics are upserted into
+The job first syncs Understat match IDs and xG to existing canonical fixtures. Before enabling a
+season, create explicit `fb_team_external_ids` rows for Understat team IDs returned by its payload;
+the provider-specific `external_id` is the Understat team ID and `team_id` is the canonical MMO
+team ID. The service deliberately does not infer team identity from names.
+
+Example team mapping (replace both IDs with the actual values):
+
+```sql
+INSERT INTO fb_team_external_ids (team_id, provider, external_id)
+VALUES (<MMO_TEAM_ID>, 'UNDER_STATS', '<UNDERSTAT_TEAM_ID>');
+```
+
+A fixture is linked only when its mapped team identities and kickoff identify one unique canonical
+match; Understat never creates a canonical match. Missing mappings, ambiguous fixtures and
+conflicting IDs are skipped and logged for explicit mapping correction. Team-history metrics are upserted into
 `fb_match_advanced_stats` by `(match_id, team_id)`; the match's `home_xg`/`away_xg` are
 updated from Understat when present. League payloads are cached in memory for ten minutes to avoid
 re-downloading the same large season payload for every team.
