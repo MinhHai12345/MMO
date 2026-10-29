@@ -271,8 +271,12 @@ public class UnderstatSyncService {
         stats.setLosses(source.losses());
         stats.setPoints(source.points());
         stats.setNpxGoalDifference(source.npxGoalDifference());
-        stats.setStatisticsProvider(PROVIDER.name());
-        stats.setStatisticsSyncedAt(Instant.now());
+        Instant syncedAt = Instant.now();
+        if (stats.getId() == null || !StringUtils.hasText(stats.getStatisticsProvider())) {
+            stats.setStatisticsProvider(PROVIDER.name());
+            stats.setStatisticsSyncedAt(syncedAt);
+        }
+        stats.setUnderstatSyncedAt(syncedAt);
         matchAdvancedStatsRepository.save(stats);
         match.setStatisticsLastAttemptAt(Instant.now());
         matchRepository.save(match);
