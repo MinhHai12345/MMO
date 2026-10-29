@@ -44,15 +44,9 @@ public class SofaScoreOddsMapper {
     }
 
     private String normalizeOutcome(String outcome) {
-        if (outcome == null) return null;
-        return switch (MmoProviderDataStandardizer.displayText(outcome).toLowerCase(Locale.ROOT)) {
-            case "1", "home", "team 1" -> "Home";
-            case "x", "draw" -> "Draw";
-            case "2", "away", "team 2" -> "Away";
-            case "over 2.5", "over 2,5" -> "Over 2.5";
-            case "under 2.5", "under 2,5" -> "Under 2.5";
-            case "yes" -> "Yes";
-            case "no" -> "No";
+        String standardized = MmoProviderDataStandardizer.oddsOutcomeName(outcome);
+        return switch (standardized == null ? "" : standardized) {
+            case "Home", "Draw", "Away", "Over 2.5", "Under 2.5", "Yes", "No" -> standardized;
             default -> null;
         };
     }
