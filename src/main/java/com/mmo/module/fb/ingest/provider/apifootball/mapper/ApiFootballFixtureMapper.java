@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.provider.apifootball.mapper;
 
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.FixtureItem;
+import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -27,10 +28,10 @@ public class ApiFootballFixtureMapper {
                 item.teams().home().id().toString(),
                 item.teams().away().id().toString(),
                 kickoff,
-                item.league() == null ? null : item.league().round(),
-                item.fixture().venue() == null ? null : item.fixture().venue().name(),
-                item.fixture().referee(),
-                item.fixture().status() == null ? null : item.fixture().status().shortName(),
+                item.league() == null ? null : MmoProviderDataStandardizer.roundName(item.league().round()),
+                item.fixture().venue() == null ? null : MmoProviderDataStandardizer.venueName(item.fixture().venue().name()),
+                MmoProviderDataStandardizer.refereeName(item.fixture().referee()),
+                item.fixture().status() == null ? null : MmoProviderDataStandardizer.fixtureStatus(item.fixture().status().shortName()),
                 item.goals() == null ? null : item.goals().home(),
                 item.goals() == null ? null : item.goals().away()
         );
