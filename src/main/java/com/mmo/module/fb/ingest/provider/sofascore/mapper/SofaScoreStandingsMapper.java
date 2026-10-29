@@ -1,5 +1,6 @@
 package com.mmo.module.fb.ingest.provider.sofascore.mapper;
 
+import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.StandingGroupDTO;
 import org.springframework.stereotype.Component;
@@ -21,7 +22,7 @@ public class SofaScoreStandingsMapper {
                                 row.team() == null || row.team().id() == null
                                         ? null : row.team().id().toString(),
                                 row.position(), row.points(), parseGoalDifference(row.scoreDiffFormatted()),
-                                null, group.name(), row.matches(), row.wins(), row.draws(),
+                                null, MmoProviderDataStandardizer.displayText(group.name()), row.matches(), row.wins(), row.draws(),
                                 row.losses(), row.scoresFor(), row.scoresAgainst())))
                 .filter(standing -> standing.teamExternalId() != null)
                 .toList();

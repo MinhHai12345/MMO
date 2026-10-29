@@ -26,7 +26,7 @@ public class ApiFootballLeagueMapper {
                 leagueExternalId,
                 leagueExternalId,
                 MmoProviderDataStandardizer.leagueName(item.league().name()),
-                item.country() == null ? null : item.country().name(),
+                item.country() == null ? null : MmoProviderDataStandardizer.countryName(item.country().name()),
                 item.league().logo(),
                 seasons
         );

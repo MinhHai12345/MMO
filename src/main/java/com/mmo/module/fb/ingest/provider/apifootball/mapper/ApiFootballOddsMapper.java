@@ -4,6 +4,7 @@ import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsBet
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsBookmakerDto;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsItem;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsValueDto;
+import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import org.springframework.stereotype.Component;
 
@@ -21,13 +22,11 @@ public class ApiFootballOddsMapper {
             return null;
         }
         BigDecimal odd = decimal(input.value().odd());
-        if (odd == null) return null;
-        return new ProviderOdds(
-                input.bookmaker().name(),
-                input.bet().name(),
-                input.value().value(),
-                odd
-        );
+        String bookmaker = MmoProviderDataStandardizer.bookmakerName(input.bookmaker().name());
+        String market = MmoProviderDataStandardizer.oddsMarketName(input.bet().name());
+        String outcome = MmoProviderDataStandardizer.oddsOutcomeName(input.value().value());
+        if (odd == null || bookmaker == null || market == null || outcome == null) return null;
+        return new ProviderOdds(bookmaker, market, outcome, odd);
     }
 
     public List<ProviderOdds> toModels(List<OddsItem> items) {

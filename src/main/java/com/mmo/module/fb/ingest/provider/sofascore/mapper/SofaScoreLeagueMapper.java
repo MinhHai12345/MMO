@@ -35,7 +35,8 @@ public class SofaScoreLeagueMapper {
             seasons.add(new ProviderSeason(season.id().toString(), year, current, null, null));
         }
 
-        String country = tournament.category() == null ? null : tournament.category().name();
+        String country = tournament.category() == null ? null
+                : MmoProviderDataStandardizer.countryName(tournament.category().name());
         String tournamentId = tournament.id().toString();
         return new ProviderLeague(tournamentId, tournamentId,
                 MmoProviderDataStandardizer.leagueName(tournament.name()),

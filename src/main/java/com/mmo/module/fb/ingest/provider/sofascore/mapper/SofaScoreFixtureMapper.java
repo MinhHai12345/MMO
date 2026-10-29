@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.provider.sofascore.mapper;
 
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.EventDTO;
 
+import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import org.springframework.stereotype.Component;
 
@@ -17,12 +18,13 @@ public class SofaScoreFixtureMapper {
                 || event.awayTeam().id() == null) return null;
         Instant kickoff = event.startTimestamp() == null
                 ? null : Instant.ofEpochSecond(event.startTimestamp());
-        String status = event.status() == null ? null : mapStatus(event.status().type());
+        String status = event.status() == null ? null
+                : MmoProviderDataStandardizer.fixtureStatus(mapStatus(event.status().type()));
         return new ProviderFixture(event.id().toString(),
                 event.homeTeam().id().toString(), event.awayTeam().id().toString(),
                 kickoff,
-                event.roundInfo() == null || event.roundInfo().round() == null
-                        ? null : event.roundInfo().round().toString(),
+                MmoProviderDataStandardizer.roundName(event.roundInfo() == null || event.roundInfo().round() == null
+                        ? null : event.roundInfo().round().toString()),
                 null, null, status,
                 event.homeScore() == null ? null : event.homeScore().current(),
                 event.awayScore() == null ? null : event.awayScore().current());

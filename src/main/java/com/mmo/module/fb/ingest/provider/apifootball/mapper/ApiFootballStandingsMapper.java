@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.provider.apifootball.mapper;
 
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.StandingRowDto;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.StandingsItem;
+import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
 import org.springframework.stereotype.Component;
 
@@ -20,8 +21,8 @@ public class ApiFootballStandingsMapper {
                 row.rank(),
                 row.points(),
                 row.goalsDiff(),
-                row.form(),
-                row.group(),
+                MmoProviderDataStandardizer.displayText(row.form()),
+                MmoProviderDataStandardizer.displayText(row.group()),
                 all == null ? null : all.played(),
                 all == null ? null : all.win(),
                 all == null ? null : all.draw(),

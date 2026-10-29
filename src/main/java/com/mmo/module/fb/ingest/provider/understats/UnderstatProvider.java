@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.provider.understats;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeagueMonthlyStats;
 import com.mmo.module.fb.ingest.provider.model.ProviderMatchStatistics;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeamMatchStats;
@@ -152,11 +153,11 @@ public class UnderstatProvider implements HistoricalStatsProvider {
         return new ProviderMatchStatistics(
                 match.id(),
                 home == null ? null : home.id(),
-                home == null ? null : home.title(),
-                home == null ? null : home.shortTitle(),
+                home == null ? null : MmoProviderDataStandardizer.teamName(home.title()),
+                home == null ? null : MmoProviderDataStandardizer.teamShortName(home.shortTitle(), home.title()),
                 away == null ? null : away.id(),
-                away == null ? null : away.title(),
-                away == null ? null : away.shortTitle(),
+                away == null ? null : MmoProviderDataStandardizer.teamName(away.title()),
+                away == null ? null : MmoProviderDataStandardizer.teamShortName(away.shortTitle(), away.title()),
                 parseDateTime(match.datetime()),
                 Boolean.TRUE.equals(match.isResult()),
                 goals == null ? null : goals.h(),

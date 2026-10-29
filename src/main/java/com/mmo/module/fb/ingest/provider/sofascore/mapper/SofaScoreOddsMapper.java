@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.provider.sofascore.mapper;
 
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.*;
 
+import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import org.springframework.stereotype.Component;
 
@@ -26,32 +27,26 @@ public class SofaScoreOddsMapper {
                     String outcome = normalizeOutcome(choice.name());
                     BigDecimal odds = toDecimalOdds(choice.fractionalValue());
                     return outcome == null || odds == null ? null
-                            : new ProviderOdds(AGGREGATED_SOURCE, marketName, outcome, odds);
+                            : new ProviderOdds(MmoProviderDataStandardizer.bookmakerName(AGGREGATED_SOURCE), marketName, outcome, odds);
                 })
                 .filter(Objects::nonNull)
                 .toList();
     }
 
     private String normalizeMarket(String market) {
-        if (market == null) return null;
-        String normalized = market.toLowerCase(Locale.ROOT);
-        if (normalized.contains("full time") || normalized.contains("match winner")
-                || normalized.equals("1x2")) return "Match Winner";
-        if (normalized.contains("over/under") || normalized.contains("goals")) return "Goals Over/Under";
-        if (normalized.contains("both teams")) return "Both Teams Score";
+        String normalized = MmoProviderDataStandardizer.displayText(market);
+        if (normalized == null) return null;
+        normalized = normalized.toLowerCase(Locale.ROOT);
+        String standardized = MmoProviderDataStandardizer.oddsMarketName(normalized);
+        if ("Match Winner".equals(standardized) || "Goals Over/Under".equals(standardized)
+                || "Both Teams Score".equals(standardized)) return standardized;
         return null;
     }
 
     private String normalizeOutcome(String outcome) {
-        if (outcome == null) return null;
-        return switch (outcome.trim().toLowerCase(Locale.ROOT)) {
-            case "1", "home", "team 1" -> "Home";
-            case "x", "draw" -> "Draw";
-            case "2", "away", "team 2" -> "Away";
-            case "over 2.5", "over 2,5" -> "Over 2.5";
-            case "under 2.5", "under 2,5" -> "Under 2.5";
-            case "yes" -> "Yes";
-            case "no" -> "No";
+        String standardized = MmoProviderDataStandardizer.oddsOutcomeName(outcome);
+        return switch (standardized == null ? "" : standardized) {
+            case "Home", "Draw", "Away", "Over 2.5", "Under 2.5", "Yes", "No" -> standardized;
             default -> null;
         };
     }
