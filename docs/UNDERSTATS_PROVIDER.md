@@ -67,8 +67,10 @@ fixture, it can be mapped explicitly:
 ```sql
 INSERT INTO fb_team_external_ids (team_id, provider, external_id)
 VALUES (<MMO_TEAM_ID>, 'UNDER_STATS', '<UNDERSTAT_TEAM_ID>');
-``` Team-history metrics are upserted into
-`fb_match_advanced_stats` by `(match_id, team_id)`; the match's `home_xg`/`away_xg` are
+```
+
+Team-history metrics are upserted into `fb_match_advanced_stats` by `(match_id, team_id)`;
+the match's `home_xg`/`away_xg` are
 updated from Understat when present. League payloads are cached in memory for ten minutes to avoid
 re-downloading the same large season payload for every team.
 
