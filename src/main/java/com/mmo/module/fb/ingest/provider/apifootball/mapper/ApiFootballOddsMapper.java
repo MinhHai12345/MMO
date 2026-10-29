@@ -4,6 +4,7 @@ import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsBet
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsBookmakerDto;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsItem;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsValueDto;
+import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import org.springframework.stereotype.Component;
 
@@ -23,9 +24,9 @@ public class ApiFootballOddsMapper {
         BigDecimal odd = decimal(input.value().odd());
         if (odd == null) return null;
         return new ProviderOdds(
-                input.bookmaker().name(),
-                input.bet().name(),
-                input.value().value(),
+                MmoProviderDataStandardizer.bookmakerName(input.bookmaker().name()),
+                MmoProviderDataStandardizer.oddsMarketName(input.bet().name()),
+                MmoProviderDataStandardizer.oddsOutcomeName(input.value().value()),
                 odd
         );
     }
