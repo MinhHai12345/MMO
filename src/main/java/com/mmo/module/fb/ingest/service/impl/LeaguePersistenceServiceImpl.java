@@ -53,29 +53,14 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                     .map(LeagueExternalId::getLeague)
                     .orElse(null);
 
+            if (league == null && selectedProvider != Provider.FOOTBALL_DATA) {
+                log.info("Skipping provider league '{}' (external ID {}) because no explicit canonical mapping exists.",
+                        source.name(), source.externalId());
+                continue;
+            }
             if (league == null) {
-                List<League> candidates = knownLeagues.stream()
-                        .filter(existing -> normalizeName(existing.getName()).equals(normalizeName(source.name())))
-                        .toList();
-                if (candidates.size() > 1 && source.country() != null && !source.country().isBlank()) {
-                    List<League> countryMatches = candidates.stream()
-                            .filter(existing -> existing.getCountry() != null
-                                    && normalizeName(existing.getCountry()).equals(normalizeName(source.country())))
-                            .toList();
-                    if (!countryMatches.isEmpty()) candidates = countryMatches;
-                }
-                if (candidates.size() > 1) {
-                    log.warn("Ambiguous league mapping for provider {} external ID {} name '{}'; skipping",
-                            selectedProvider, source.externalId(), source.name());
-                    continue;
-                }
-                if (candidates.isEmpty() && selectedProvider != Provider.FOOTBALL_DATA) {
-                    log.info("Skipping provider league '{}' (external ID {}) because no existing canonical league matched; secondary provider mapping sync does not create core entities.",
-                            source.name(), source.externalId());
-                    continue;
-                }
-                league = candidates.isEmpty() ? new League() : candidates.get(0);
-                if (candidates.isEmpty()) league.setIsActive(false);
+                league = new League();
+                league.setIsActive(false);
             }
 
             LeagueExternalId existingLeagueMapping = league.getId() == null ? null
@@ -101,7 +86,12 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                 }
             }
             League savedLeague = league;
-            externalIdMappingService.registerLeague(savedLeague, selectedProvider, source.externalId());
+            LeagueExternalId mapping = externalIdMappingService.registerLeague(
+                    savedLeague, selectedProvider, source.externalId());
+            if (source.identify() != null && !source.identify().isBlank()) {
+                mapping.setIdentify(source.identify().trim());
+                leagueExternalIdRepository.save(mapping);
+            }
 
             for (ProviderSeason sourceSeason : source.seasons() == null ? List.<ProviderSeason>of() : source.seasons()) {
                 if (sourceSeason == null || sourceSeason.externalId() == null || sourceSeason.externalId().isBlank()
@@ -154,10 +144,6 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
             synced++;
         }
         log.info("League ingestion completed. {} leagues processed.", synced);
-    }
-
-    private static String normalizeName(String value) {
-        return value == null ? "" : value.toLowerCase().replaceAll("[^a-z0-9]", "");
     }
 
     private static String slug(String value) {
