@@ -55,7 +55,7 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
 
             if (league == null) {
                 List<League> candidates = knownLeagues.stream()
-                        .filter(existing -> normalizeName(existing.getName()).equals(normalizeName(source.name())))
+                        .filter(existing -> LeagueIdentityMatcher.matches(existing, source))
                         .toList();
                 if (candidates.size() > 1 && source.country() != null && !source.country().isBlank()) {
                     List<League> countryMatches = candidates.stream()
@@ -154,10 +154,6 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
             synced++;
         }
         log.info("League ingestion completed. {} leagues processed.", synced);
-    }
-
-    private static String normalizeName(String value) {
-        return value == null ? "" : value.toLowerCase().replaceAll("[^a-z0-9]", "");
     }
 
     private static String slug(String value) {
