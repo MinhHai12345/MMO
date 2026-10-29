@@ -31,6 +31,6 @@ class AppPropertiesProviderConfigTest {
     void providerConfigDoesNotContainLeagueOrSeasonAllowLists() {
         assertThat(AppProperties.ProviderConfig.class.getDeclaredFields())
                 .extracting("name")
-                .containsExactlyInAnyOrder("enabled", "baseUrl", "webUrl", "apiKey", "options");
+                .containsExactlyInAnyOrder("enabled", "uri", "webUrl", "apiKey", "options");
     }
 }

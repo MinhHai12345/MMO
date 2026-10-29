@@ -130,6 +130,9 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                 }
 
                 if (selectedProvider == Provider.FOOTBALL_DATA) {
+                    // Current seasons are active by default when first discovered. Preserve
+                    // explicit operator choices on already-persisted seasons.
+                    if (season.getId() == null) season.setActive(sourceSeason.current());
                     season.setCurrent(sourceSeason.current());
                     season.setStartDate(sourceSeason.startDate());
                     season.setEndDate(sourceSeason.endDate());

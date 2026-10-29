@@ -14,6 +14,7 @@ import com.mmo.module.fb.ingest.job.LeagueSyncJob;
 import com.mmo.module.fb.ingest.job.MatchFixtureSyncJob;
 import com.mmo.module.fb.ingest.job.MatchResultSyncJob;
 import com.mmo.module.fb.ingest.job.MatchStatisticsSyncJob;
+import com.mmo.module.fb.ingest.job.UnderstatHistoricalStatsJob;
 import com.mmo.module.fb.ingest.job.TeamSyncJob;
 import com.mmo.module.fb.monetization.job.SubscriptionExpiryCheckJob;
 import com.mmo.module.fb.workflow.job.FootballWorkflowOrchestrationJob;
@@ -53,6 +54,8 @@ public class FBCronjobInitial implements DataInitializer {
                 "0 0 0/6 * * ?", "Refresh upcoming fixtures every 6 hours");
         createOrUpdateJob(MatchStatisticsSyncJob.class,
                 "0 0 0/6 * * ?", "Refresh finished-match statistics every 6 hours");
+        createOrUpdateJob(UnderstatHistoricalStatsJob.class,
+                "0 30 0/12 * * ?", "Enrich active seasons with Understat xG, PPDA and team history every 12 hours");
 
         createOrUpdateJob(MatchProcessPredictionJob.class,
                 "0 0 0/3 * * ?", "Recalculate eligible upcoming-match predictions every 3 hours");
