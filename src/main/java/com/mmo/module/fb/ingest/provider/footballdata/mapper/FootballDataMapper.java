@@ -9,6 +9,7 @@ import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.Stand
 import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.StandingsDto;
 import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.TeamDto;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
+import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
@@ -57,7 +58,7 @@ public class FootballDataMapper {
                 competition.id().toString(),
                 competition.code() == null || competition.code().isBlank()
                         ? competition.id().toString() : competition.code(),
-                "Primera Division".equals(competition.name()) ? "LaLiga" : competition.name(),
+                MmoProviderDataStandardizer.leagueName(competition.name()),
                 competition.area() == null ? null : competition.area().name(),
                 competition.emblem(),
                 seasons);
@@ -70,8 +71,10 @@ public class FootballDataMapper {
 
     public ProviderTeam toTeam(TeamDto team) {
         if (team == null || team.id() == null) return null;
-        return new ProviderTeam(team.id().toString(), team.name(),
-                team.tla() != null ? team.tla() : team.shortName(),
+        String name = MmoProviderDataStandardizer.teamName(team.name());
+        return new ProviderTeam(team.id().toString(), name,
+                MmoProviderDataStandardizer.teamShortName(
+                        team.tla() != null ? team.tla() : team.shortName(), name),
                 team.crest(), team.founded(), team.venue(), null);
     }
 
