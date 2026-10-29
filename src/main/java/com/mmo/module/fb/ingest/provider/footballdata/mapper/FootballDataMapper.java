@@ -59,7 +59,7 @@ public class FootballDataMapper {
                 competition.code() == null || competition.code().isBlank()
                         ? competition.id().toString() : competition.code(),
                 MmoProviderDataStandardizer.leagueName(competition.name()),
-                competition.area() == null ? null : competition.area().name(),
+                competition.area() == null ? null : MmoProviderDataStandardizer.countryName(competition.area().name()),
                 competition.emblem(),
                 seasons);
     }
@@ -85,10 +85,12 @@ public class FootballDataMapper {
         Instant kickoff = match.utcDate() == null ? null : match.utcDate().toInstant();
         ScorePairDto score = match.score() == null ? null
                 : (match.score().fullTime() != null ? match.score().fullTime() : match.score().regularTime());
-        String round = match.matchday() == null ? match.stage() : "Matchday " + match.matchday();
+        String round = MmoProviderDataStandardizer.roundName(
+                match.matchday() == null ? match.stage() : "Matchday " + match.matchday());
         return new ProviderFixture(match.id().toString(), match.homeTeam().id().toString(),
                 match.awayTeam().id().toString(), kickoff, round,
-                match.venue(), null, match.status(),
+                MmoProviderDataStandardizer.venueName(match.venue()), null,
+                MmoProviderDataStandardizer.fixtureStatus(match.status()),
                 score == null ? null : score.home(), score == null ? null : score.away());
     }
 
@@ -101,8 +103,9 @@ public class FootballDataMapper {
             for (StandingRowDto row : table.table()) {
                 if (row == null || row.team() == null || row.team().id() == null) continue;
                 result.add(new ProviderStanding(row.team().id().toString(), row.position(),
-                        row.points(), row.goalDifference(), row.form(),
-                        row.group() != null ? row.group() : table.group(),
+                        row.points(), row.goalDifference(), MmoProviderDataStandardizer.displayText(row.form()),
+                        MmoProviderDataStandardizer.displayText(
+                                row.group() != null ? row.group() : table.group()),
                         row.playedGames(), row.won(), row.draw(), row.lost(),
                         row.goalsFor(), row.goalsAgainst(), type));
             }
