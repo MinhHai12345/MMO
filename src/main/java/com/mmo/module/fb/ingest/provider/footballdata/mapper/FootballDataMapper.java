@@ -30,9 +30,6 @@ public class FootballDataMapper {
 
         SeasonDto currentSeason = competition.currentSeason();
         String currentYear = seasonYear(currentSeason);
-
-        // football-data.org returns the season catalogue on the competition resource.
-        // Keep the real season IDs and dates; never synthesize mappings for seasons absent from the provider catalogue.
         Map<String, SeasonDto> availableSeasonsByYear = new LinkedHashMap<>();
         if (competition.seasons() != null) {
             for (SeasonDto season : competition.seasons()) {
@@ -49,17 +46,21 @@ public class FootballDataMapper {
             String year = entry.getKey();
             SeasonDto season = entry.getValue();
             String externalSeasonId = season.id() == null
-                    ? competition.id() + ":" + year
-                    : season.id().toString();
+                    ? competition.id() + ":" + year : season.id().toString();
             if (Integer.parseInt(year) > 2022) {
-                seasons.add(new ProviderSeason(externalSeasonId, year, year.equals(currentYear), season.startDate(), season.endDate()));
+                seasons.add(new ProviderSeason(externalSeasonId, year, year.equals(currentYear),
+                        season.startDate(), season.endDate()));
             }
         }
 
         return new ProviderLeague(
-                competition.id().toString(), "Primera Division".equals(competition.name()) ? "LaLiga" : competition.name(),
+                competition.id().toString(),
+                competition.code() == null || competition.code().isBlank()
+                        ? competition.id().toString() : competition.code(),
+                "Primera Division".equals(competition.name()) ? "LaLiga" : competition.name(),
                 competition.area() == null ? null : competition.area().name(),
-                competition.emblem(), seasons);
+                competition.emblem(),
+                seasons);
     }
 
     private static String seasonYear(SeasonDto season) {

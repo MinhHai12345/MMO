@@ -31,6 +31,11 @@ public class LeagueExternalId extends AbstractEntity {
     @Column(name = "provider", nullable = false, length = 32)
     private Provider provider;
 
+    /** Stable provider-side ID used to resolve the mapping row. */
     @Column(name = "external_id", nullable = false, length = 128)
     private String externalId;
+
+    /** Provider-specific value used in fetch requests (code, name, slug, or numeric ID). */
+    @Column(name = "identify", length = 128)
+    private String identify;
 }

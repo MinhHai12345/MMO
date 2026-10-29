@@ -4,6 +4,7 @@ import java.util.List;
 
 public record ProviderLeague(
         String externalId,
+        String identify,
         String name,
         String country,
         String logoUrl,
