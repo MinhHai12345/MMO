@@ -62,15 +62,15 @@ class UnderstatDtosTest {
 
         assertNotNull(data.dates());
         assertEquals(1, data.dates().size());
-        assertEquals("31180", data.dates().getFirst().id());
-        assertEquals("Arsenal", data.dates().getFirst().h().title());
-        assertEquals(0, data.dates().getFirst().goals().a());
+        assertEquals("31180", data.dates().get(0).id());
+        assertEquals("Arsenal", data.dates().get(0).h().title());
+        assertEquals(0, data.dates().get(0).goals().a());
 
         UnderstatDtos.LeagueTeam arsenal = data.teams().get("88");
         assertNotNull(arsenal);
         assertEquals(1, arsenal.history().size());
-        assertEquals("w", arsenal.history().getFirst().result());
-        assertEquals(180, arsenal.history().getFirst().ppda().att());
-        assertTrue(arsenal.history().getFirst().xG().doubleValue() > 1.8);
+        assertEquals("w", arsenal.history().get(0).result());
+        assertEquals(180, arsenal.history().get(0).ppda().att());
+        assertTrue(arsenal.history().get(0).xG().doubleValue() > 1.8);
     }
 }
