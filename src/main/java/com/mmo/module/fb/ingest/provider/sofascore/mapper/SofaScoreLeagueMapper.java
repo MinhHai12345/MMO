@@ -35,7 +35,9 @@ public class SofaScoreLeagueMapper {
         }
 
         String country = tournament.category() == null ? null : tournament.category().name();
-        return new ProviderLeague(tournament.id().toString(), tournament.name(), country, null, List.copyOf(seasons));
+        String tournamentId = tournament.id().toString();
+        return new ProviderLeague(tournamentId, tournamentId, tournament.name(),
+                country, null, List.copyOf(seasons));
     }
 
     public ProviderSeason toProviderSeason(SeasonDTO season) {
