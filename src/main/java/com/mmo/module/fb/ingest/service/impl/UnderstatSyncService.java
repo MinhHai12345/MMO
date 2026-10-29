@@ -96,6 +96,10 @@ public class UnderstatSyncService {
             throw new IllegalStateException("Understat sync failed for " + failed
                     + " of " + activeSeasons.size() + " active seasons; inspect the per-season logs.");
         }
+        if (successful == 0) {
+            throw new IllegalStateException("No active season was synced by Understat. Check that each active "
+                    + "season's canonical league has an UNDER_STATS mapping with a non-empty identify key.");
+        }
     }
 
     private boolean syncSeason(HistoricalStatsProvider provider, Season season) {
