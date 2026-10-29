@@ -20,7 +20,6 @@ import com.mmo.module.fb.match.repository.MatchRepository;
 import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.team.entity.TeamExternalId;
 import com.mmo.module.fb.team.repository.TeamExternalIdRepository;
-import com.mmo.module.fb.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -54,7 +53,6 @@ public class UnderstatSyncService {
     private final ProviderRegistry providerRegistry;
     private final SeasonRepository seasonRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
-    private final TeamRepository teamRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
@@ -148,8 +146,8 @@ public class UnderstatSyncService {
     }
 
     private Match persistMatchIdentityAndXg(Season season, ProviderMatchStatistics source) {
-        Team home = resolveTeam(source.homeTeamExternalId(), source.homeTeamName());
-        Team away = resolveTeam(source.awayTeamExternalId(), source.awayTeamName());
+        Team home = resolveTeam(source.homeTeamExternalId());
+        Team away = resolveTeam(source.awayTeamExternalId());
         if (home == null || away == null || home.getId().equals(away.getId())) {
             log.debug("Skipping Understat match {} because canonical teams could not be uniquely resolved",
                     source.externalMatchId());
@@ -201,39 +199,23 @@ public class UnderstatSyncService {
         Map<String, Team> result = new LinkedHashMap<>();
         for (ProviderMatchStatistics match : matches) {
             if (match == null) continue;
-            addTeam(result, match.homeTeamExternalId(), match.homeTeamName());
-            addTeam(result, match.awayTeamExternalId(), match.awayTeamName());
+            addTeam(result, match.homeTeamExternalId());
+            addTeam(result, match.awayTeamExternalId());
         }
         return result;
     }
 
-    private void addTeam(Map<String, Team> teams, String externalId, String name) {
+    private void addTeam(Map<String, Team> teams, String externalId) {
         if (!StringUtils.hasText(externalId)) return;
-        Team team = resolveTeam(externalId, name);
+        Team team = resolveTeam(externalId);
         if (team != null) teams.putIfAbsent(externalId, team);
     }
 
-    private Team resolveTeam(String externalId, String providerName) {
+    private Team resolveTeam(String externalId) {
         if (!StringUtils.hasText(externalId)) return null;
-        Team mapped = teamExternalIdRepository.findByProviderAndExternalId(PROVIDER, externalId)
-                .map(TeamExternalId::getTeam).orElse(null);
-        if (mapped != null) return mapped;
-        if (!StringUtils.hasText(providerName)) return null;
-        List<Team> exactMatches = teamRepository.findAllByNameIgnoreCase(providerName.trim());
-        if (exactMatches.size() != 1) {
-            log.debug("Understat team '{}' (external ID {}) has {} exact canonical name matches; skipping mapping",
-                    providerName, externalId, exactMatches.size());
-            return null;
-        }
-        Team team = exactMatches.get(0);
-        try {
-            externalIdMappingService.registerTeam(team, PROVIDER, externalId);
-            return team;
-        } catch (IllegalStateException conflict) {
-            log.warn("Cannot register Understat team mapping {} ('{}'): {}",
-                    externalId, providerName, conflict.getMessage());
-            return null;
-        }
+        return teamExternalIdRepository.findByProviderAndExternalId(PROVIDER, externalId)
+                .map(TeamExternalId::getTeam)
+                .orElse(null);
     }
 
     private void persistTeamStats(Match match, Team team, ProviderTeamMatchStats source) {
