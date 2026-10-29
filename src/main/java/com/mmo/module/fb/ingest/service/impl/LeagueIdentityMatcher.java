@@ -6,7 +6,6 @@ import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import java.text.Normalizer;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Resolves provider league names to an existing MMO league without treating provider
