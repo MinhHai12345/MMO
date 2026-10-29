@@ -23,6 +23,7 @@ public class ApiFootballLeagueMapper {
                 .toList();
         return new ProviderLeague(
                 leagueExternalId,
+                leagueExternalId,
                 item.league().name(),
                 item.country() == null ? null : item.country().name(),
                 item.league().logo(),
@@ -31,7 +32,6 @@ public class ApiFootballLeagueMapper {
     }
 
     private ProviderSeason toSeason(LeagueSeasonDto season, String leagueExternalId) {
-        // API-Football season years are shared across leagues; scope the external key by league.
         return new ProviderSeason(
                 leagueExternalId + ":" + season.year(),
                 season.year().toString(),
