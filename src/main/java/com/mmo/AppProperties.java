@@ -163,6 +163,7 @@ public class AppProperties {
         private Provider fixture = Provider.FOOTBALL_DATA;
         private Provider standings = Provider.FOOTBALL_DATA;
         private Provider odds = Provider.API_FOOTBALL;
+        private Provider historicalStats = Provider.UNDER_STATS;
     }
 
     @Getter
