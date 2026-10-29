@@ -13,6 +13,8 @@ public interface SeasonRepository extends JpaRepository<Season, Long> {
 
     List<Season> findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
 
+    List<Season> findByIsActiveTrueAndLeagueIsNotNullAndYearIsNotNull();
+
     List<Season> findByYearInAndLeagueIsNotNullAndYearIsNotNull(List<String> years);
 
     Optional<Season> findByLeague_IdAndYear(Long leagueId, String year);
