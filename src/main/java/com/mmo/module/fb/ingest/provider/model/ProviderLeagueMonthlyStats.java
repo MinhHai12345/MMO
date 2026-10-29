@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 
 /** Monthly league baseline derived only from completed matches in the selected month. */
 public record ProviderLeagueMonthlyStats(
-        String leagueExternalId,
+        String leagueSlug,
         int year,
         int month,
         int matches,
