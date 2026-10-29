@@ -6,6 +6,7 @@ import com.mmo.module.fb.ingest.provider.model.ProviderLeagueMonthlyStats;
 import com.mmo.module.fb.ingest.provider.model.ProviderMatchStatistics;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeamMatchStats;
 import com.mmo.module.fb.ingest.provider.spi.HistoricalStatsProvider;
+import com.mmo.module.fb.ingest.provider.understats.mapper.UnderstatMapper;
 import com.mmo.module.fb.ingest.provider.understats.dto.UnderstatDtos;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
