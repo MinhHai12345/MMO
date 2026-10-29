@@ -18,15 +18,15 @@ import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
 public class UnderstatProvider implements HistoricalStatsProvider {
 
-    private static final TypeReference<List<UnderstatDtos.Match>> MATCH_LIST =
-            new TypeReference<>() { };
-    private static final TypeReference<UnderstatDtos.TeamData> TEAM_DATA =
+    private static final TypeReference<UnderstatDtos.LeagueData> LEAGUE_DATA =
             new TypeReference<>() { };
     private static final DateTimeFormatter SOURCE_DATETIME =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -41,27 +41,39 @@ public class UnderstatProvider implements HistoricalStatsProvider {
 
     @Override
     public List<ProviderMatchStatistics> fetchLeagueMatches(String leagueSlug, int season) {
-        List<UnderstatDtos.Match> matches = client.fetchLeaguePageData(
-                leagueSlug, season, "datesData", MATCH_LIST);
-        if (matches == null || matches.isEmpty()) {
+        UnderstatDtos.LeagueData league = fetchLeagueData(leagueSlug, season);
+        if (league.dates() == null || league.dates().isEmpty()) {
             return List.of();
         }
-        return matches.stream()
+        return league.dates().stream()
                 .filter(match -> match != null && StringUtils.hasText(match.id()))
                 .map(this::toMatchStatistics)
                 .toList();
     }
 
     @Override
-    public List<ProviderTeamMatchStats> fetchTeamHistory(String teamSlug, int season) {
-        UnderstatDtos.TeamData team = client.fetchTeamPageData(teamSlug, season, "teamData", TEAM_DATA);
-        if (team == null || team.history() == null || team.history().isEmpty()) {
+    public List<ProviderTeamMatchStats> fetchTeamHistory(
+            String leagueSlug, String teamSlug, int season) {
+        if (!StringUtils.hasText(teamSlug)) {
+            throw new IllegalArgumentException("teamSlug must not be blank");
+        }
+
+        UnderstatDtos.LeagueData league = fetchLeagueData(leagueSlug, season);
+        if (league.teams() == null || league.teams().isEmpty()) {
             return List.of();
         }
-        String teamId = team.id();
+
+        UnderstatDtos.LeagueTeam team = findTeam(league.teams(), teamSlug)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Team '" + teamSlug + "' was not found in Understat league "
+                                + leagueSlug + " season " + season));
+        if (team.history() == null || team.history().isEmpty()) {
+            return List.of();
+        }
+
         return team.history().stream()
                 .filter(match -> match != null)
-                .map(match -> toTeamMatchStats(teamId, match))
+                .map(match -> toTeamMatchStats(team.id(), match))
                 .toList();
     }
 
@@ -92,6 +104,41 @@ public class UnderstatProvider implements HistoricalStatsProvider {
         return Optional.of(new ProviderLeagueMonthlyStats(
                 leagueSlug, month.getYear(), month.getMonthValue(), completed.size(),
                 homeGoals, awayGoals, homeXg, awayXg));
+    }
+
+    private UnderstatDtos.LeagueData fetchLeagueData(String leagueSlug, int season) {
+        UnderstatDtos.LeagueData league = client.fetchLeagueData(leagueSlug, season, LEAGUE_DATA);
+        if (league == null) {
+            throw new IllegalStateException(
+                    "Understat returned an empty league payload for " + leagueSlug + "/" + season);
+        }
+        return league;
+    }
+
+    private Optional<UnderstatDtos.LeagueTeam> findTeam(
+            Map<String, UnderstatDtos.LeagueTeam> teams, String teamSlug) {
+        String requested = normalizeTeamName(teamSlug);
+        return teams.entrySet().stream()
+                .map(entry -> {
+                    UnderstatDtos.LeagueTeam team = entry.getValue();
+                    if (team == null) {
+                        return null;
+                    }
+                    String id = StringUtils.hasText(team.id()) ? team.id() : entry.getKey();
+                    boolean idMatches = teamSlug.equals(id) || teamSlug.equals(entry.getKey());
+                    boolean titleMatches = normalizeTeamName(team.title()).equals(requested);
+                    return idMatches || titleMatches ? team : null;
+                })
+                .filter(team -> team != null)
+                .findFirst();
+    }
+
+    private String normalizeTeamName(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+        return value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "_")
+                .replaceAll("^_+|_+$", "");
     }
 
     private ProviderMatchStatistics toMatchStatistics(UnderstatDtos.Match match) {
