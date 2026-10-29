@@ -79,10 +79,12 @@ public class UnderstatSyncService {
 
         HistoricalStatsProvider provider = providerRegistry.historicalStats(selected);
         int successful = 0;
+        int skipped = 0;
         int failed = 0;
         for (Season season : activeSeasons) {
             try {
                 if (syncSeason(provider, season)) successful++;
+                else skipped++;
             } catch (RuntimeException ex) {
                 failed++;
                 log.error("Understat sync failed for seasonId={} leagueId={} year={}: {}",
@@ -90,15 +92,12 @@ public class UnderstatSyncService {
                         season.getYear(), ex.getMessage(), ex);
             }
         }
-        log.info("Understat sync finished: activeSeasons={}, successful={}, failed={}",
-                activeSeasons.size(), successful, failed);
-        if (failed > 0) {
-            throw new IllegalStateException("Understat sync failed for " + failed
-                    + " of " + activeSeasons.size() + " active seasons; inspect the per-season logs.");
-        }
-        if (successful == 0) {
-            throw new IllegalStateException("No active season was synced by Understat. Check that each active "
-                    + "season's canonical league has an UNDER_STATS mapping with a non-empty identify key.");
+        log.info("Understat sync finished: activeSeasons={}, successful={}, skipped={}, failed={}",
+                activeSeasons.size(), successful, skipped, failed);
+        if (failed > 0 || skipped > 0 || successful == 0) {
+            throw new IllegalStateException("Understat sync incomplete: activeSeasons=" + activeSeasons.size()
+                    + ", successful=" + successful + ", skipped=" + skipped + ", failed=" + failed
+                    + ". Check UNDER_STATS league identify mappings and per-season logs.");
         }
     }
 
