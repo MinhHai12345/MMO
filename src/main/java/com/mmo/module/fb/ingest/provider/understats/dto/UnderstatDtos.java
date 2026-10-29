@@ -5,11 +5,27 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
-/** Transport records for the JSON embedded in Understat league and team pages. */
+/** Transport records for Understat's direct AJAX JSON API. */
 public final class UnderstatDtos {
 
     private UnderstatDtos() {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record LeagueData(
+            List<Match> dates,
+            Map<String, LeagueTeam> teams
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record LeagueTeam(
+            String id,
+            String title,
+            List<TeamHistoryMatch> history
+    ) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -25,18 +41,11 @@ public final class UnderstatDtos {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Xg(
-            BigDecimal h,
-            BigDecimal a
-    ) {
+    public record Xg(BigDecimal h, BigDecimal a) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Forecast(
-            BigDecimal w,
-            BigDecimal d,
-            BigDecimal l
-    ) {
+    public record Forecast(BigDecimal w, BigDecimal d, BigDecimal l) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -78,14 +87,6 @@ public final class UnderstatDtos {
             Integer pts,
             @JsonProperty("npxGD") BigDecimal npxGD,
             String id
-    ) {
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public record TeamData(
-            String id,
-            String title,
-            List<TeamHistoryMatch> history
     ) {
     }
 }
