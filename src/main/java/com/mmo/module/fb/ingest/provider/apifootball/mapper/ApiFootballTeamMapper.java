@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.provider.apifootball.mapper;
 
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.TeamItem;
+import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import org.springframework.stereotype.Component;
 
@@ -10,10 +11,11 @@ public class ApiFootballTeamMapper {
     public ProviderTeam toModel(TeamItem item) {
         if (item == null || item.team() == null || item.team().id() == null) return null;
         var team = item.team();
+        String name = MmoProviderDataStandardizer.teamName(team.name());
         return new ProviderTeam(
                 team.id().toString(),
-                team.name(),
-                team.code(),
+                name,
+                MmoProviderDataStandardizer.teamShortName(team.code(), name),
                 team.logo(),
                 team.founded(),
                 item.venue() == null ? null : item.venue().name(),

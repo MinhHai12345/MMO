@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.provider.apifootball.mapper;
 
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.LeagueItem;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.LeagueSeasonDto;
+import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
 import org.springframework.stereotype.Component;
@@ -24,7 +25,7 @@ public class ApiFootballLeagueMapper {
         return new ProviderLeague(
                 leagueExternalId,
                 leagueExternalId,
-                item.league().name(),
+                MmoProviderDataStandardizer.leagueName(item.league().name()),
                 item.country() == null ? null : item.country().name(),
                 item.league().logo(),
                 seasons

@@ -1,5 +1,6 @@
 package com.mmo.module.fb.ingest.provider.sofascore.mapper;
 
+import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
 import com.mmo.module.fb.ingest.provider.sofascore.SofaScoreSeasonMatcher;
@@ -36,7 +37,8 @@ public class SofaScoreLeagueMapper {
 
         String country = tournament.category() == null ? null : tournament.category().name();
         String tournamentId = tournament.id().toString();
-        return new ProviderLeague(tournamentId, tournamentId, tournament.name(),
+        return new ProviderLeague(tournamentId, tournamentId,
+                MmoProviderDataStandardizer.leagueName(tournament.name()),
                 country, null, List.copyOf(seasons));
     }
 
