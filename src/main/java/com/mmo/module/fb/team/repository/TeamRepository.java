@@ -9,6 +9,8 @@ import java.util.Optional;
 
 @Repository
 public interface TeamRepository extends JpaRepository<Team, Long> {
-    
+
     Optional<Team> findByName(String name);
+
+    List<Team> findAllByNameIgnoreCase(String name);
 }
