@@ -22,13 +22,11 @@ public class ApiFootballOddsMapper {
             return null;
         }
         BigDecimal odd = decimal(input.value().odd());
-        if (odd == null) return null;
-        return new ProviderOdds(
-                MmoProviderDataStandardizer.bookmakerName(input.bookmaker().name()),
-                MmoProviderDataStandardizer.oddsMarketName(input.bet().name()),
-                MmoProviderDataStandardizer.oddsOutcomeName(input.value().value()),
-                odd
-        );
+        String bookmaker = MmoProviderDataStandardizer.bookmakerName(input.bookmaker().name());
+        String market = MmoProviderDataStandardizer.oddsMarketName(input.bet().name());
+        String outcome = MmoProviderDataStandardizer.oddsOutcomeName(input.value().value());
+        if (odd == null || bookmaker == null || market == null || outcome == null) return null;
+        return new ProviderOdds(bookmaker, market, outcome, odd);
     }
 
     public List<ProviderOdds> toModels(List<OddsItem> items) {
