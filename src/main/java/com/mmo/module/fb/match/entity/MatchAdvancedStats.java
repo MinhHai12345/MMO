@@ -161,4 +161,8 @@ public class MatchAdvancedStats extends AbstractEntity {
 
     @Column(name = "statistics_synced_at")
     private java.time.Instant statisticsSyncedAt;
+
+    /** Independent provenance timestamp for metrics enriched from Understat. */
+    @Column(name = "understat_synced_at")
+    private java.time.Instant understatSyncedAt;
 }
