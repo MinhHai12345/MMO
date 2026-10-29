@@ -23,6 +23,7 @@ public class ApiFootballLeagueMapper {
                 .toList();
         return new ProviderLeague(
                 leagueExternalId,
+                leagueExternalId,
                 item.league().name(),
                 item.country() == null ? null : item.country().name(),
                 item.league().logo(),
