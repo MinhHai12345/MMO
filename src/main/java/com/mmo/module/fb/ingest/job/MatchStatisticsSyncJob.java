@@ -1,7 +1,9 @@
 package com.mmo.module.fb.ingest.job;
 
+import com.mmo.AppProperties;
 import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.job.AbstractJob;
+import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.sofascore.SofaScoreCrawlStrategy;
 import com.mmo.module.fb.ingest.service.SofaScoreBootstrapService;
 import com.mmo.module.fb.ingest.service.impl.SofaScorePlayerStatisticsIngestionService;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class MatchStatisticsSyncJob extends AbstractJob<CronJob> {
 
+    private final AppProperties appProperties;
     private final SofaScoreBootstrapService sofaScoreBootstrapService;
     private final SofaScoreCrawlStrategy sofaScoreCrawlStrategy;
     private final SofaScorePlayerStatisticsIngestionService playerStatisticsIngestionService;
@@ -25,7 +28,13 @@ public class MatchStatisticsSyncJob extends AbstractJob<CronJob> {
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
         log.info("Starting SofaScore bootstrap, finished-match statistics/xG, and player-statistics synchronization");
         sofaScoreBootstrapService.syncInitialDataIfRequired();
-        sofaScoreCrawlStrategy.storeMatchStatistics();
+        Provider historicalStatsProvider = appProperties.getIngestion().getProviders().getHistoricalStats();
+        if (historicalStatsProvider == Provider.SOFA_SCORE) {
+            sofaScoreCrawlStrategy.storeMatchStatistics();
+        } else {
+            log.info("Skipping SofaScore team match statistics because historical-stats provider is {}",
+                    historicalStatsProvider);
+        }
         playerStatisticsIngestionService.syncFinishedMatchPlayerStatistics();
         log.info("SofaScore bootstrap and match/player statistics synchronization completed");
     }
