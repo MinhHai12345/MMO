@@ -35,6 +35,11 @@ public class Season extends AbstractEntity {
     @Builder.Default
     private boolean isCurrent = false;
 
+    /** Controls which seasons are included in scheduled historical provider ingestion. */
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private boolean isActive = false;
+
     @Column(name = "start_date")
     private LocalDate startDate;
 
