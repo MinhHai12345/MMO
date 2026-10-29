@@ -13,6 +13,7 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -21,6 +22,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 @Component
 @RequiredArgsConstructor
@@ -32,7 +35,9 @@ public class UnderstatProvider implements HistoricalStatsProvider {
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final int DECIMAL_SCALE = 6;
 
+    private static final long CACHE_TTL_SECONDS = 600;
     private final UnderstatClient client;
+    private final ConcurrentMap<String, CachedLeagueData> leagueCache = new ConcurrentHashMap<>();
 
     @Override
     public Provider getProvider() {
@@ -107,12 +112,23 @@ public class UnderstatProvider implements HistoricalStatsProvider {
     }
 
     private UnderstatDtos.LeagueData fetchLeagueData(String leagueSlug, int season) {
+        String cacheKey = leagueSlug + ":" + season;
+        Instant now = Instant.now();
+        CachedLeagueData cached = leagueCache.get(cacheKey);
+        if (cached != null && cached.loadedAt().plusSeconds(CACHE_TTL_SECONDS).isAfter(now)) {
+            return cached.data();
+        }
+
         UnderstatDtos.LeagueData league = client.fetchLeagueData(leagueSlug, season, LEAGUE_DATA);
         if (league == null) {
             throw new IllegalStateException(
                     "Understat returned an empty league payload for " + leagueSlug + "/" + season);
         }
+        leagueCache.put(cacheKey, new CachedLeagueData(league, now));
         return league;
+    }
+
+    private record CachedLeagueData(UnderstatDtos.LeagueData data, Instant loadedAt) {
     }
 
     private Optional<UnderstatDtos.LeagueTeam> findTeam(
