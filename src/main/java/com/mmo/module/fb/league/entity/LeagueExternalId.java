@@ -31,6 +31,11 @@ public class LeagueExternalId extends AbstractEntity {
     @Column(name = "provider", nullable = false, length = 32)
     private Provider provider;
 
+    /** Stable provider identity, independent of the fetch key. */
     @Column(name = "external_id", nullable = false, length = 128)
     private String externalId;
+
+    /** Provider-specific lookup key: e.g. football-data PL, Understat EPL, SofaScore 1892. */
+    @Column(name = "identify", length = 128)
+    private String identify;
 }
