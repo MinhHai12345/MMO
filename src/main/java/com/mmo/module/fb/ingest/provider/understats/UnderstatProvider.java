@@ -2,7 +2,6 @@ package com.mmo.module.fb.ingest.provider.understats;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeagueMonthlyStats;
 import com.mmo.module.fb.ingest.provider.model.ProviderMatchStatistics;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeamMatchStats;
@@ -15,10 +14,7 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -31,12 +27,11 @@ public class UnderstatProvider implements HistoricalStatsProvider {
 
     private static final TypeReference<UnderstatDtos.LeagueData> LEAGUE_DATA =
             new TypeReference<>() { };
-    private static final DateTimeFormatter SOURCE_DATETIME =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final int DECIMAL_SCALE = 6;
 
     private static final long CACHE_TTL_SECONDS = 600;
     private final UnderstatClient client;
+    private final UnderstatMapper mapper;
     private final ConcurrentMap<String, CachedLeagueData> leagueCache = new ConcurrentHashMap<>();
 
     @Override
@@ -52,7 +47,7 @@ public class UnderstatProvider implements HistoricalStatsProvider {
         }
         return league.dates().stream()
                 .filter(match -> match != null && StringUtils.hasText(match.id()))
-                .map(this::toMatchStatistics)
+                .map(mapper::toMatchStatistics)
                 .toList();
     }
 
@@ -78,7 +73,7 @@ public class UnderstatProvider implements HistoricalStatsProvider {
 
         return team.history().stream()
                 .filter(match -> match != null)
-                .map(match -> toTeamMatchStats(team.id(), match))
+                .map(match -> mapper.toTeamMatchStats(team.id(), match))
                 .toList();
     }
 
@@ -142,72 +137,6 @@ public class UnderstatProvider implements HistoricalStatsProvider {
                 })
                 .filter(team -> team != null)
                 .findFirst();
-    }
-
-    private ProviderMatchStatistics toMatchStatistics(UnderstatDtos.Match match) {
-        UnderstatDtos.TeamRef home = match.h();
-        UnderstatDtos.TeamRef away = match.a();
-        UnderstatDtos.Goals goals = match.goals();
-        UnderstatDtos.Xg xg = match.xg();
-        UnderstatDtos.Forecast forecast = match.forecast();
-        return new ProviderMatchStatistics(
-                match.id(),
-                home == null ? null : home.id(),
-                home == null ? null : MmoProviderDataStandardizer.teamName(home.title()),
-                home == null ? null : MmoProviderDataStandardizer.teamShortName(home.shortTitle(), home.title()),
-                away == null ? null : away.id(),
-                away == null ? null : MmoProviderDataStandardizer.teamName(away.title()),
-                away == null ? null : MmoProviderDataStandardizer.teamShortName(away.shortTitle(), away.title()),
-                parseDateTime(match.datetime()),
-                Boolean.TRUE.equals(match.isResult()),
-                goals == null ? null : goals.h(),
-                goals == null ? null : goals.a(),
-                xg == null ? null : xg.h(),
-                xg == null ? null : xg.a(),
-                forecast == null ? null : forecast.w(),
-                forecast == null ? null : forecast.d(),
-                forecast == null ? null : forecast.l());
-    }
-
-    private ProviderTeamMatchStats toTeamMatchStats(
-            String teamId, UnderstatDtos.TeamHistoryMatch match) {
-        UnderstatDtos.Ppda ppda = match.ppda();
-        UnderstatDtos.Ppda ppdaAllowed = match.ppdaAllowed();
-        return new ProviderTeamMatchStats(
-                teamId,
-                match.id(),
-                match.homeAway(),
-                match.date(),
-                match.xG(),
-                match.xGA(),
-                match.npxG(),
-                match.npxGA(),
-                ppda == null ? null : ppda.att(),
-                ppda == null ? null : ppda.def(),
-                ppdaAllowed == null ? null : ppdaAllowed.att(),
-                ppdaAllowed == null ? null : ppdaAllowed.def(),
-                match.deep(),
-                match.deepAllowed(),
-                match.scored(),
-                match.missed(),
-                match.xpts(),
-                match.result(),
-                match.wins(),
-                match.draws(),
-                match.loses(),
-                match.pts(),
-                match.npxGD());
-    }
-
-    private LocalDateTime parseDateTime(String value) {
-        if (!StringUtils.hasText(value)) {
-            return null;
-        }
-        try {
-            return LocalDateTime.parse(value, SOURCE_DATETIME);
-        } catch (DateTimeParseException ignored) {
-            return null;
-        }
     }
 
     private BigDecimal average(List<BigDecimal> values) {
