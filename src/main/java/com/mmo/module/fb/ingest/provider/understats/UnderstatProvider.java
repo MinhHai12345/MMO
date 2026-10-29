@@ -19,7 +19,6 @@ import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -132,29 +131,16 @@ public class UnderstatProvider implements HistoricalStatsProvider {
     }
 
     private Optional<UnderstatDtos.LeagueTeam> findTeam(
-            Map<String, UnderstatDtos.LeagueTeam> teams, String teamSlug) {
-        String requested = normalizeTeamName(teamSlug);
+            Map<String, UnderstatDtos.LeagueTeam> teams, String teamExternalId) {
         return teams.entrySet().stream()
                 .map(entry -> {
                     UnderstatDtos.LeagueTeam team = entry.getValue();
-                    if (team == null) {
-                        return null;
-                    }
+                    if (team == null) return null;
                     String id = StringUtils.hasText(team.id()) ? team.id() : entry.getKey();
-                    boolean idMatches = teamSlug.equals(id) || teamSlug.equals(entry.getKey());
-                    boolean titleMatches = normalizeTeamName(team.title()).equals(requested);
-                    return idMatches || titleMatches ? team : null;
+                    return teamExternalId.equals(id) || teamExternalId.equals(entry.getKey()) ? team : null;
                 })
                 .filter(team -> team != null)
                 .findFirst();
-    }
-
-    private String normalizeTeamName(String value) {
-        if (!StringUtils.hasText(value)) {
-            return "";
-        }
-        return value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "_")
-                .replaceAll("^_+|_+$", "");
     }
 
     private ProviderMatchStatistics toMatchStatistics(UnderstatDtos.Match match) {
