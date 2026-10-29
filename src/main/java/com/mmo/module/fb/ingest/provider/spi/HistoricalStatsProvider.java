@@ -19,7 +19,7 @@ public interface HistoricalStatsProvider {
 
     List<ProviderMatchStatistics> fetchLeagueMatches(String leagueSlug, int season);
 
-    List<ProviderTeamMatchStats> fetchTeamHistory(String teamSlug, int season);
+    List<ProviderTeamMatchStats> fetchTeamHistory(String leagueSlug, String teamSlug, int season);
 
     Optional<ProviderLeagueMonthlyStats> fetchLeagueMonthlyStats(
             String leagueSlug, int season, YearMonth month);
