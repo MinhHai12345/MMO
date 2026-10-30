@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.Year;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +52,7 @@ public class UnderstatCatalogPersistenceService {
         League league = resolveLeague(leagueKey, leagueName, country);
         seasonRepository.findByLeague_IdAndYear(league.getId(), String.valueOf(seasonYear))
                 .orElseGet(() -> {
-                    boolean current = seasonYear == Year.now().getValue();
+                    boolean current = seasonYear == Year.now(ZoneOffset.UTC).getValue();
                     return seasonRepository.save(Season.builder().league(league)
                             .year(String.valueOf(seasonYear)).isCurrent(current).isActive(current).build());
                 });
