@@ -8,7 +8,6 @@ import org.springframework.util.StringUtils;
 
 import java.time.Year;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -32,7 +31,7 @@ public class UnderStatLeagueMapper {
             "russian premier league", new LeagueDefinition("RFPL", "Russian Premier League", "Russia")
     );
 
-    /** Returns league metadata only. Seasons are deliberately fetched by SeasonProvider. */
+    /** Maps league metadata together with the seasons exposed by the same catalogue response. */
     public List<ProviderLeague> toProviderLeagues(UnderStatDtos.StatDataResponse response) {
         Map<String, LeagueAccumulator> leagues = group(response);
         return leagues.values().stream()
@@ -42,7 +41,7 @@ public class UnderStatLeagueMapper {
                         source.definition().name(),
                         source.definition().country(),
                         null,
-                        List.of()))
+                        toProviderSeasons(source)))
                 .toList();
     }
 
@@ -51,8 +50,10 @@ public class UnderStatLeagueMapper {
             UnderStatDtos.StatDataResponse response, String leagueExternalId) {
         if (!StringUtils.hasText(leagueExternalId)) return List.of();
         LeagueAccumulator league = group(response).get(leagueExternalId.trim());
-        if (league == null) return List.of();
+        return league == null ? List.of() : toProviderSeasons(league);
+    }
 
+    private static List<ProviderSeason> toProviderSeasons(LeagueAccumulator league) {
         int currentYear = Year.now(ZoneOffset.UTC).getValue();
         return league.years().stream()
                 .filter(UnderStatLeagueMapper::isYear)
