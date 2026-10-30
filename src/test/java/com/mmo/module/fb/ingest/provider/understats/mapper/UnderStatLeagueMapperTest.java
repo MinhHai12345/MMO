@@ -13,7 +13,7 @@ class UnderStatLeagueMapperTest {
     private final UnderStatLeagueMapper mapper = new UnderStatLeagueMapper();
 
     @Test
-    void groupsMonthlyStatRowsIntoProviderLeaguesAndDistinctSeasons() {
+    void separatesLeagueMetadataFromSeasonDiscovery() {
         UnderStatDtos.StatDataResponse response = new UnderStatDtos.StatDataResponse(List.of(
                 stat("1", "EPL", "2024", "8"),
                 stat("1", "EPL", "2024", "9"),
@@ -31,14 +31,17 @@ class UnderStatLeagueMapperTest {
         assertThat(epl.identify()).isEqualTo("EPL");
         assertThat(epl.name()).isEqualTo("Premier League");
         assertThat(epl.country()).isEqualTo("England");
-        assertThat(epl.seasons()).extracting("externalId")
+        assertThat(epl.seasons()).isEmpty();
+        assertThat(mapper.toProviderSeasons(response, "1")).extracting("externalId")
                 .containsExactly("1:2024", "1:2025");
-        assertThat(epl.seasons()).extracting("year").containsExactly("2024", "2025");
+        assertThat(mapper.toProviderSeasons(response, "1")).extracting("year")
+                .containsExactly("2024", "2025");
 
         ProviderLeague laLiga = leagues.get(1);
         assertThat(laLiga.identify()).isEqualTo("La_Liga");
         assertThat(laLiga.name()).isEqualTo("LaLiga");
-        assertThat(laLiga.seasons()).hasSize(1);
+        assertThat(laLiga.seasons()).isEmpty();
+        assertThat(mapper.toProviderSeasons(response, "2")).hasSize(1);
     }
 
     @Test
@@ -50,7 +53,10 @@ class UnderStatLeagueMapperTest {
                 stat(null, "EPL", "2024", "8"),
                 stat("1", null, "2024", "8"),
                 stat("1", "EPL", "unknown", "8")
-        )))).isEmpty();
+        )))).hasSize(1);
+        assertThat(mapper.toProviderSeasons(new UnderStatDtos.StatDataResponse(Arrays.asList(
+                stat("1", "EPL", "unknown", "8")
+        )), "1")).isEmpty();
     }
 
     private static UnderStatDtos.LeagueStat stat(

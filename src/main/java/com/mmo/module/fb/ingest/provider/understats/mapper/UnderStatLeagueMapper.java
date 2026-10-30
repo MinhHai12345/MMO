@@ -17,7 +17,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-/** Maps UnderStat's monthly stat catalogue to MMO's provider-neutral league contract. */
+/** Maps UnderStat's stat catalogue into independent league and season resources. */
 @Component
 public class UnderStatLeagueMapper {
     private static final Map<String, LeagueDefinition> LEAGUES = Map.of(
@@ -32,9 +32,43 @@ public class UnderStatLeagueMapper {
             "russian premier league", new LeagueDefinition("RFPL", "Russian Premier League", "Russia")
     );
 
+    /** Returns league metadata only. Seasons are deliberately fetched by SeasonProvider. */
     public List<ProviderLeague> toProviderLeagues(UnderStatDtos.StatDataResponse response) {
+        Map<String, LeagueAccumulator> leagues = group(response);
+        return leagues.values().stream()
+                .map(source -> new ProviderLeague(
+                        source.externalId(),
+                        source.definition().identify(),
+                        source.definition().name(),
+                        source.definition().country(),
+                        null,
+                        List.of()))
+                .toList();
+    }
+
+    /** Returns seasons for one UnderStat league, preserving its provider-specific season IDs. */
+    public List<ProviderSeason> toProviderSeasons(
+            UnderStatDtos.StatDataResponse response, String leagueExternalId) {
+        if (!StringUtils.hasText(leagueExternalId)) return List.of();
+        LeagueAccumulator league = group(response).get(leagueExternalId.trim());
+        if (league == null) return List.of();
+
+        int currentYear = Year.now(ZoneOffset.UTC).getValue();
+        return league.years().stream()
+                .filter(UnderStatLeagueMapper::isYear)
+                .sorted(Comparator.comparingInt(Integer::parseInt))
+                .map(year -> new ProviderSeason(
+                        league.externalId() + ":" + year,
+                        year,
+                        Integer.parseInt(year) == currentYear,
+                        null,
+                        null))
+                .toList();
+    }
+
+    private static Map<String, LeagueAccumulator> group(UnderStatDtos.StatDataResponse response) {
         if (response == null || response.stat() == null || response.stat().isEmpty()) {
-            return List.of();
+            return Map.of();
         }
 
         Map<String, LeagueAccumulator> leagues = new LinkedHashMap<>();
@@ -46,47 +80,19 @@ public class UnderStatLeagueMapper {
 
             String externalId = row.leagueId().trim();
             LeagueDefinition definition = definition(row.league());
-            LeagueAccumulator accumulator = leagues.computeIfAbsent(externalId,
-                    ignored -> new LeagueAccumulator(externalId, definition));
+            LeagueAccumulator accumulator = leagues.computeIfAbsent(
+                    externalId, ignored -> new LeagueAccumulator(externalId, definition));
             if (StringUtils.hasText(row.year())) {
                 accumulator.years().add(row.year().trim());
             }
         }
-
-        int currentYear = Year.now(ZoneOffset.UTC).getValue();
-        List<ProviderLeague> result = new ArrayList<>();
-        for (LeagueAccumulator accumulator : leagues.values()) {
-            List<ProviderSeason> seasons = accumulator.years().stream()
-                    .filter(UnderStatLeagueMapper::isYear)
-                    .sorted(Comparator.comparingInt(Integer::parseInt))
-                    .map(year -> new ProviderSeason(
-                            accumulator.externalId() + ":" + year,
-                            year,
-                            Integer.parseInt(year) == currentYear,
-                            null,
-                            null))
-                    .toList();
-            if (seasons.isEmpty()) {
-                continue;
-            }
-
-            LeagueDefinition definition = accumulator.definition();
-            result.add(new ProviderLeague(
-                    accumulator.externalId(),
-                    definition.identify(),
-                    definition.name(),
-                    definition.country(),
-                    null,
-                    seasons));
-        }
-        return List.copyOf(result);
+        return leagues;
     }
 
     private static LeagueDefinition definition(String sourceName) {
         String key = sourceName.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
         LeagueDefinition known = LEAGUES.get(key);
         if (known != null) return known;
-
         String identify = sourceName.trim().replaceAll("\\s+", "_");
         return new LeagueDefinition(identify, sourceName.trim(), null);
     }

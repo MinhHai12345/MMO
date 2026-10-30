@@ -159,6 +159,7 @@ public class AppProperties {
     @Setter
     public static class Providers {
         private Provider league = Provider.FOOTBALL_DATA;
+        private Provider season = Provider.FOOTBALL_DATA;
         private Provider team = Provider.FOOTBALL_DATA;
         private Provider fixture = Provider.FOOTBALL_DATA;
         private Provider standings = Provider.FOOTBALL_DATA;

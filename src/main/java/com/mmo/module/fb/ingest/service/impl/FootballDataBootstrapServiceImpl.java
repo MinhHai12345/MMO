@@ -7,6 +7,7 @@ import com.mmo.module.fb.ingest.service.FootballDataBootstrapService;
 import com.mmo.module.fb.ingest.service.LeagueIngestionService;
 import com.mmo.module.fb.ingest.service.ProviderOverrides;
 import com.mmo.module.fb.ingest.service.StandingsIngestionService;
+import com.mmo.module.fb.ingest.service.SeasonIngestionService;
 import com.mmo.module.fb.ingest.service.TeamIngestionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,7 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
     private final LeagueIngestionService leagueIngestionService;
+    private final SeasonIngestionService seasonIngestionService;
     private final TeamIngestionService teamIngestionService;
     private final FixtureIngestionService fixtureIngestionService;
     private final StandingsIngestionService standingsIngestionService;
@@ -41,26 +43,33 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         overrides = overrides == null ? ProviderOverrides.defaults() : overrides;
         AppProperties.Providers defaults = appProperties.getIngestion().getProviders();
         Provider leagueProvider = overrides.league() != null ? overrides.league() : defaults.getLeague();
+        Provider seasonProvider = overrides.season() != null ? overrides.season() : defaults.getSeason();
         Provider teamProvider = overrides.team() != null ? overrides.team() : defaults.getTeam();
         Provider fixtureProvider = overrides.fixture() != null ? overrides.fixture() : defaults.getFixture();
         Provider standingsProvider = overrides.standings() != null ? overrides.standings() : defaults.getStandings();
 
         validateProvider(leagueProvider);
+        validateProvider(seasonProvider);
         validateProvider(teamProvider);
         validateProvider(fixtureProvider);
         validateProvider(standingsProvider);
 
-        log.info("Starting core-data bootstrap: league={}, team={}, fixture={}, standings={}",
-                leagueProvider, teamProvider, fixtureProvider, standingsProvider);
+        log.info("Starting core-data bootstrap: league={}, season={}, team={}, fixture={}, standings={}",
+                leagueProvider, seasonProvider, teamProvider, fixtureProvider, standingsProvider);
 
         runStage("leagues", () -> leagueIngestionService.syncLeaguesForProvider(leagueProvider));
+        runStage("seasons", () -> seasonIngestionService.syncSeasonsForProvider(seasonProvider));
         runStage("teams", () -> teamIngestionService.syncTeamsForProvider(teamProvider));
-        // Catalogue initialization stores all returned seasons; downstream fetching only processes active leagues.
         runStage("fixtures", () -> fixtureIngestionService.syncFixturesForProvider(fixtureProvider, null, null));
-        runStage("standings", () -> standingsIngestionService.syncStandingsForProvider(standingsProvider));
 
-        log.info("Core-data bootstrap completed. Stage status: leagues=COMPLETED, teams=COMPLETED, "
-                + "fixtures=COMPLETED, standings=COMPLETED. See per-stage counters for skipped/failed records.");
+        if (standingsProvider == Provider.UNDER_STATS) {
+            log.info("Skipping standings stage: UNDER_STATS does not expose canonical standings");
+        } else {
+            runStage("standings", () -> standingsIngestionService.syncStandingsForProvider(standingsProvider));
+        }
+
+        log.info("Core-data bootstrap completed. Selected providers: league={}, season={}, team={}, fixture={}, standings={}",
+                leagueProvider, seasonProvider, teamProvider, fixtureProvider, standingsProvider);
     }
 
     /**
@@ -92,6 +101,8 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         log.info("Starting multi-provider core ingestion. Canonical provider first; providers={}", ordered);
         runStage("multi-provider/leagues",
                 () -> ordered.forEach(league -> leagueIngestionService.syncLeaguesForProvider(league)));
+        runStage("multi-provider/seasons",
+                () -> ordered.forEach(provider -> seasonIngestionService.syncSeasonsForProvider(provider)));
         runStage("multi-provider/teams",
                 () -> ordered.forEach(provider -> teamIngestionService.syncTeamsForProvider(provider)));
         runStage("multi-provider/fixtures",

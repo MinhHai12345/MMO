@@ -46,7 +46,7 @@ public final class IngestionJobParameters {
 
     public static Map<String, String> providerParameters(JobExecutionContext context) {
         Set<String> supportedKeys = Set.of(
-                "provider", "provider.league", "provider.team", "provider.fixture",
+                "provider", "provider.league", "provider.season", "provider.team", "provider.fixture",
                 "provider.standings");
         Map<String, String> parameters = new LinkedHashMap<>();
         JobDataMap data = context.getMergedJobDataMap();

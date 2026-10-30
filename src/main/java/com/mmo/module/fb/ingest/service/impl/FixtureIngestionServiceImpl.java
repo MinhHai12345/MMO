@@ -57,9 +57,9 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
         }
 
         List<Season> seasons = ingestionSupport.seasonsToSync(selectedProvider);
-        Map<Long, String> leagueExternalIdsByLeagueId = new HashMap<>();
+        Map<Long, com.mmo.module.fb.league.entity.LeagueExternalId> leagueMappingsByLeagueId = new HashMap<>();
         leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
-                leagueExternalIdsByLeagueId.put(mapping.getLeague().getId(), mapping.getExternalId()));
+                leagueMappingsByLeagueId.put(mapping.getLeague().getId(), mapping));
         Map<String, Long> teamIdsByExternalId = new HashMap<>();
         teamExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
                 teamIdsByExternalId.put(mapping.getExternalId(), mapping.getTeam().getId()));
@@ -69,7 +69,9 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
         int failed = 0;
         int fetched = 0;
         for (Season season : seasons) {
-            Long externalLeagueId = IngestionServiceSupport.parseExternalId(leagueExternalIdsByLeagueId.get(season.getLeague().getId()));
+            var leagueMapping = leagueMappingsByLeagueId.get(season.getLeague().getId());
+            Long externalLeagueId = IngestionServiceSupport.parseExternalId(
+                    leagueMapping == null ? null : leagueMapping.getExternalId());
             if (externalLeagueId == null) {
                 log.warn("Skipping season {} for league {} because provider {} has no league ID mapping",
                         season.getYear(), season.getLeague().getId(), selectedProvider);
@@ -80,7 +82,8 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
             List<ProviderFixture> fixtures;
             try {
                 fixtures = providerRegistry.fixture(selectedProvider).fetchFixtures(
-                        new FixtureQuery(externalLeagueId, season.getYear(), from, to));
+                        new FixtureQuery(externalLeagueId, season.getYear(), from, to,
+                                leagueMapping == null ? null : leagueMapping.getIdentify()));
             } catch (FootballDataRestrictedResourceException ex) {
                 if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
                 skipped++;

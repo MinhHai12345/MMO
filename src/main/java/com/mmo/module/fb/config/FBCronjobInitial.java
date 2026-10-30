@@ -15,7 +15,6 @@ import com.mmo.module.fb.ingest.job.MatchFixtureSyncJob;
 import com.mmo.module.fb.ingest.job.MatchResultSyncJob;
 import com.mmo.module.fb.ingest.job.MatchStatisticsSyncJob;
 import com.mmo.module.fb.ingest.job.UnderStatHistoricalStatsJob;
-import com.mmo.module.fb.ingest.job.UnderStatCatalogSyncJob;
 import com.mmo.module.fb.ingest.job.TeamSyncJob;
 import com.mmo.module.fb.monetization.job.SubscriptionExpiryCheckJob;
 import com.mmo.module.fb.workflow.job.FootballWorkflowOrchestrationJob;
@@ -55,8 +54,6 @@ public class FBCronjobInitial implements DataInitializer {
                 "0 0 0/6 * * ?", "Refresh upcoming fixtures every 6 hours");
         createOrUpdateJob(MatchStatisticsSyncJob.class,
                 "0 0 0/6 * * ?", "Refresh finished-match statistics every 6 hours");
-        createOrUpdateJob(UnderStatCatalogSyncJob.class,
-                "0 5 0 * * ?", "Discover and upsert all Understat leagues, teams and players daily at 00:05 UTC");
         createOrUpdateJob(UnderStatHistoricalStatsJob.class,
                 "0 30 0/12 * * ?", "Enrich active seasons with Understat xG, PPDA and team history every 12 hours");
 
@@ -80,6 +77,7 @@ public class FBCronjobInitial implements DataInitializer {
 
         // These legacy rows may already exist in production DBs. Merely omitting them
         // from registration would leave their persisted Quartz triggers active.
+        pauseRetiredJob("UnderStatCatalogSyncJob");
         pauseRetiredJob("MatchStatusTrackerJob");
         pauseRetiredJob("CrawlerHealthCheckJob");
         pauseRetiredJob("DataCleanupJob");

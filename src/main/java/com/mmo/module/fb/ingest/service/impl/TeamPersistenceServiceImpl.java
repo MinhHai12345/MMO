@@ -47,15 +47,23 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
             }
 
             Team team = teamsByExternalId.get(source.externalId());
-            if (team == null && selectedProvider != Provider.FOOTBALL_DATA) {
+            if (team == null && selectedProvider == Provider.UNDER_STATS) {
+                List<Team> candidates = teamRepository.findAllByNameIgnoreCase(source.name());
+                if (candidates.size() == 1 && teamExternalIdRepository
+                        .findByTeamIdAndProvider(candidates.get(0).getId(), selectedProvider).isEmpty()) {
+                    team = candidates.get(0);
+                }
+            }
+            if (team == null && selectedProvider != Provider.FOOTBALL_DATA
+                    && selectedProvider != Provider.UNDER_STATS) {
                 log.debug("Skipping unmapped team '{}' from {} (external ID {}). "
                                 + "Register its provider ID against the canonical MMO team before syncing.",
                         source.name(), selectedProvider, source.externalId());
                 continue;
             }
             if (team == null) {
-                // FOOTBALL_DATA is the canonical source for core team creation. Secondary providers
-                // must use explicit external-ID mappings; display-name similarity is not identity.
+                // Football-Data and UnderStat may bootstrap canonical teams. Other providers
+                // are secondary sources and require an explicit cross-provider mapping.
                 team = new Team();
             }
 
@@ -66,7 +74,7 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
                 continue;
             }
 
-            if (selectedProvider == Provider.FOOTBALL_DATA) {
+            if (selectedProvider == Provider.FOOTBALL_DATA || selectedProvider == Provider.UNDER_STATS) {
                 if (team.getName() == null || team.getName().isBlank()) team.setName(source.name());
                 if (team.getShortName() == null || team.getShortName().isBlank()) {
                     team.setShortName(source.shortName());

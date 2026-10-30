@@ -46,12 +46,13 @@ public class IngestionServiceSupport {
     }
 
     public List<Season> seasonsToSync(Provider provider) {
-        if (provider == Provider.SOFA_SCORE) {
+        if (provider == Provider.SOFA_SCORE || provider == Provider.UNDER_STATS) {
             Map<Long, Season> mapped = new LinkedHashMap<>();
             for (SeasonExternalId mapping : seasonExternalIdRepository.findAllByProvider(provider)) {
                 Season season = mapping.getSeason();
                 if (season != null && season.getId() != null && season.getLeague() != null
-                        && Boolean.TRUE.equals(season.getLeague().getIsActive()) && season.getYear() != null) {
+                        && Boolean.TRUE.equals(season.getLeague().getIsActive()) && season.getYear() != null
+                        && (provider != Provider.UNDER_STATS || season.isActive())) {
                     mapped.putIfAbsent(season.getId(), season);
                 }
             }

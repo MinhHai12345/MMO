@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.league.entity.Season;
+import com.mmo.module.fb.league.entity.LeagueExternalId;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballPlanRestrictionException;
@@ -46,14 +47,15 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
             leagueIngestionService.syncLeaguesForProvider(selectedProvider);
         }
 
-        Map<Long, String> externalLeagueIdsByLeagueId = new HashMap<>();
+        Map<Long, LeagueExternalId> leagueMappingsByLeagueId = new HashMap<>();
         leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
-                externalLeagueIdsByLeagueId.put(mapping.getLeague().getId(), mapping.getExternalId()));
+                leagueMappingsByLeagueId.put(mapping.getLeague().getId(), mapping));
 
         int fetched = 0;
         int failed = 0;
         for (Season season : ingestionSupport.seasonsToSync(selectedProvider)) {
-            String externalLeagueId = externalLeagueIdsByLeagueId.get(season.getLeague().getId());
+            LeagueExternalId leagueMapping = leagueMappingsByLeagueId.get(season.getLeague().getId());
+            String externalLeagueId = leagueMapping == null ? null : leagueMapping.getExternalId();
             if (externalLeagueId == null || externalLeagueId.isBlank()) {
                 log.warn("Skipping teams for season {} and league {} because provider {} has no league ID mapping",
                         season.getYear(), season.getLeague().getId(), selectedProvider);
@@ -70,7 +72,7 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
                     continue;
                 }
                 List<ProviderTeam> teams = providerRegistry.team(selectedProvider)
-                        .fetchTeams(new TeamQuery(parsedLeagueId, season.getYear()));
+                        .fetchTeams(new TeamQuery(parsedLeagueId, season.getYear(), leagueMapping.getIdentify()));
                 if (teams == null || teams.isEmpty()) {
                     log.warn("Provider {} returned no teams for league {} season {}",
                             selectedProvider, externalLeagueId, season.getYear());
