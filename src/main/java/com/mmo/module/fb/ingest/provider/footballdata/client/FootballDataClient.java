@@ -53,8 +53,7 @@ public class FootballDataClient extends AbstractProviderClient {
             throw new IllegalStateException("football-data.org API token is not configured. Set FOOTBALL_DATA_API_KEY.");
         }
 
-        String expandedPath = uriVariables == null || uriVariables.length == 0
-                ? path : UriComponentsBuilder.fromPath(path).buildAndExpand(uriVariables).encode().toUriString();
+        String expandedPath = expandUri(path, uriVariables);
         Map<String, String> headers = Map.of(
                 "X-Auth-Token", config.getApiKey(),
                 HttpHeaders.ACCEPT, "application/json");
@@ -97,6 +96,14 @@ public class FootballDataClient extends AbstractProviderClient {
             }
         }
         throw new IllegalStateException("football-data.org request exhausted retry attempts for " + path);
+    }
+
+    static String expandUri(String path, Object... uriVariables) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(path);
+        if (uriVariables == null || uriVariables.length == 0) {
+            return builder.build().encode().toUriString();
+        }
+        return builder.buildAndExpand(uriVariables).encode().toUriString();
     }
 
     private long determineRetryDelaySeconds(ProviderHttpException ex) {
