@@ -77,3 +77,36 @@ re-downloading the same large season payload for every team.
 Do not treat null xG on a scheduled fixture as zero, and only use matches completed before a
 prediction cutoff when building historical features. A challenge/non-JSON response is logged as
 a provider failure; the client does not attempt to bypass access controls.
+
+
+## Full catalogue synchronization
+
+UnderstatCatalogSyncJob runs daily at 00:05 UTC, before the historical-statistics job. It
+iterates the six Understat league keys (EPL, La_Liga, Bundesliga, Serie_A, Ligue_1, RFPL)
+and season start years from 2014 through the current UTC year. Each
+getLeagueData/{league}/{season} response contains teams, players, and dates, so one request
+supplies the complete catalogue for that league-season.
+
+The persistence workflow:
+
+1. Upserts the league in fb_leagues and registers fb_league_external_ids with
+   provider=UNDER_STATS, external_id and identify equal to the Understat league key.
+2. Creates the corresponding fb_seasons row when absent. The current season is active by
+   default; existing operator-controlled active flags are not overwritten.
+3. Upserts teams in fb_teams and registers fb_team_external_ids using Understat team IDs.
+4. Upserts players in fb_players and registers fb_player_external_ids using Understat player IDs.
+   Player team links are resolved through the team IDs in the same league payload.
+5. Reuses an existing MMO entity only when its standardized name is an exact, unique match and
+   it has no conflicting Understat mapping. Otherwise a separate provider-backed entity is created;
+   no fuzzy name matching or reassignment of an existing provider ID is performed.
+
+The catalogue sync retries transient network, HTTP 429 and HTTP 5xx failures up to three attempts
+with a short backoff. HTTP 404 means that the league-season is unavailable and is skipped. Other
+failed requests are logged and cause the Quartz job to finish in a failed state so the next
+scheduled run can recover. The existing 12-hour UnderstatHistoricalStatsJob remains responsible
+for match xG and team-history enrichment and is not replaced by the catalogue job.
+
+The player catalogue currently persists player identity, team, and position in fb_players.
+Season aggregate fields returned by Understat are retained in the transport DTO but are not
+written to fb_players, because those values are season-specific and must not overwrite a
+player's global profile.
