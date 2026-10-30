@@ -10,9 +10,9 @@ import java.util.Set;
 /**
  * Shared, provider-neutral normalization for values mapped into MMO models.
  *
- * <p>This normalizes presentation and common categorical values only. It never
- * infers entity identity: provider IDs remain untouched and cross-provider
- * relationships must use explicit external-ID mappings.</p>
+ * <p>Provider IDs remain untouched. Team-name keys are conservative comparison
+ * keys only; callers must require an unambiguous canonical-team match before
+ * registering a cross-provider external-ID relationship.</p>
  */
 public final class MmoProviderDataStandardizer {
     private static final Map<String, String> LEAGUE_ALIASES = Map.ofEntries(
