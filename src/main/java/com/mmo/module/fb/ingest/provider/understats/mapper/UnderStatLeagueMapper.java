@@ -6,7 +6,7 @@ import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import java.time.Year;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -54,14 +54,16 @@ public class UnderStatLeagueMapper {
     }
 
     private static List<ProviderSeason> toProviderSeasons(LeagueAccumulator league) {
-        int currentYear = Year.now(ZoneOffset.UTC).getValue();
-        return league.years().stream()
-                .filter(UnderStatLeagueMapper::isYear)
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        int currentSeasonStartYear = today.getMonthValue() >= 7
+                ? today.getYear() : today.getYear() - 1;
+        return league.seasonStartYears().stream()
+                .filter(UnderStatLeagueMapper::isSeasonStartYear)
                 .sorted(Comparator.comparingInt(Integer::parseInt))
                 .map(year -> new ProviderSeason(
                         seasonExternalId(league.externalId(), year),
                         year,
-                        Integer.parseInt(year) == currentYear,
+                        Integer.parseInt(year) == currentSeasonStartYear,
                         null,
                         null))
                 .toList();
@@ -91,8 +93,9 @@ public class UnderStatLeagueMapper {
             LeagueDefinition definition = definition(row.league());
             LeagueAccumulator accumulator = leagues.computeIfAbsent(
                     externalId, ignored -> new LeagueAccumulator(externalId, definition));
-            if (StringUtils.hasText(row.year())) {
-                accumulator.years().add(row.year().trim());
+            String seasonStartYear = toSeasonStartYear(row.year(), row.month());
+            if (seasonStartYear != null) {
+                accumulator.seasonStartYears().add(seasonStartYear);
             }
         }
         return leagues;
@@ -106,10 +109,25 @@ public class UnderStatLeagueMapper {
         return new LeagueDefinition(identify, sourceName.trim(), null);
     }
 
-    private static boolean isYear(String value) {
+    /**
+     * UnderStat's /getStatData catalogue is grouped by calendar month, not by football season.
+     * Seasons start in July: January-June rows belong to the season that started the previous year.
+     */
+    private static String toSeasonStartYear(String calendarYearValue, String monthValue) {
+        if (calendarYearValue == null || !calendarYearValue.matches("\\d{4}")
+                || monthValue == null || !monthValue.matches("\\d{1,2}")) {
+            return null;
+        }
+        int calendarYear = Integer.parseInt(calendarYearValue);
+        int month = Integer.parseInt(monthValue);
+        if (month < 1 || month > 12) return null;
+        return String.valueOf(month >= 7 ? calendarYear : calendarYear - 1);
+    }
+
+    private static boolean isSeasonStartYear(String value) {
         if (value == null || !value.matches("\\d{4}")) return false;
         int year = Integer.parseInt(value);
-        return year >= 2014 && year <= Year.now(ZoneOffset.UTC).getValue();
+        return year >= 2014 && year <= LocalDate.now(ZoneOffset.UTC).getYear();
     }
 
     private record LeagueDefinition(String identify, String name, String country) { }
@@ -117,7 +135,7 @@ public class UnderStatLeagueMapper {
     private record LeagueAccumulator(
             String externalId,
             LeagueDefinition definition,
-            Set<String> years) {
+            Set<String> seasonStartYears) {
         private LeagueAccumulator(String externalId, LeagueDefinition definition) {
             this(externalId, definition, new LinkedHashSet<>());
         }
