@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 
 import java.util.LinkedHashMap;
+import java.time.Duration;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,7 +24,7 @@ class ProviderHttpRequestTest {
                 HttpMethod.GET, "https://example.test/fixtures", Map.of("x-api-key", "secret"),
                 query, null, RESPONSE_TYPE, null, 0);
 
-        assertThat(request.timeout()).hasSeconds(30);
+        assertThat(request.timeout()).isEqualTo(Duration.ofSeconds(30));
         assertThat(request.maxInMemorySize()).isPositive();
         assertThat(request.queryParams()).containsEntry("season", 2026).containsEntry("optional", null);
         assertThatThrownBy(() -> request.queryParams().put("page", 1))
