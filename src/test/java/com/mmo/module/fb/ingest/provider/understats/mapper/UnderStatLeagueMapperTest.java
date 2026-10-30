@@ -4,6 +4,7 @@ import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,7 +45,7 @@ class UnderStatLeagueMapperTest {
     void ignoresInvalidRowsAndReturnsEmptyForMissingStatArray() {
         assertThat(mapper.toProviderLeagues(null)).isEmpty();
         assertThat(mapper.toProviderLeagues(new UnderStatDtos.StatDataResponse(null))).isEmpty();
-        assertThat(mapper.toProviderLeagues(new UnderStatDtos.StatDataResponse(List.of(
+        assertThat(mapper.toProviderLeagues(new UnderStatDtos.StatDataResponse(Arrays.asList(
                 null,
                 stat(null, "EPL", "2024", "8"),
                 stat("1", null, "2024", "8"),
