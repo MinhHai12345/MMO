@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.provider.spi;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.EnumMap;
 import java.util.List;
@@ -25,6 +26,7 @@ public class ProviderRegistry {
     private final Map<Provider, OddsProvider> oddsProviders;
     private final Map<Provider, HistoricalStatsProvider> historicalStatsProviders;
 
+    @Autowired
     public ProviderRegistry(
             List<LeagueProvider> leagueProviders,
             List<SeasonProvider> seasonProviders,
@@ -41,6 +43,18 @@ public class ProviderRegistry {
         this.oddsProviders = index(oddsProviders, OddsProvider::getProvider, "OddsProvider");
         this.historicalStatsProviders = index(
                 historicalStatsProviders, HistoricalStatsProvider::getProvider, "HistoricalStatsProvider");
+    }
+
+    /** Backward-compatible constructor for tests and integrations predating SeasonProvider. */
+    public ProviderRegistry(
+            List<LeagueProvider> leagueProviders,
+            List<TeamProvider> teamProviders,
+            List<FixtureProvider> fixtureProviders,
+            List<StandingsProvider> standingsProviders,
+            List<OddsProvider> oddsProviders,
+            List<HistoricalStatsProvider> historicalStatsProviders) {
+        this(leagueProviders, List.of(), teamProviders, fixtureProviders,
+                standingsProviders, oddsProviders, historicalStatsProviders);
     }
 
     public LeagueProvider league(Provider provider) {
