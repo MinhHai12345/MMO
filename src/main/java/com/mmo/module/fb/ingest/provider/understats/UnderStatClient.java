@@ -6,6 +6,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.client.AbstractProviderClient;
 import com.mmo.module.fb.ingest.provider.client.ProviderHttpClient;
 import com.mmo.module.fb.ingest.provider.client.ProviderHttpException;
+import com.mmo.module.fb.ingest.provider.client.ProviderResponseException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
@@ -17,7 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Understat endpoint definitions and request headers. Shared HTTP execution and JSON decoding
+ * UnderStat endpoint definitions and request headers. Shared HTTP execution and JSON decoding
  * are delegated to ProviderHttpClient; no challenge or access-control bypass is attempted.
  */
 @Component
@@ -66,9 +67,9 @@ public class UnderStatClient extends AbstractProviderClient {
         } catch (ProviderHttpException ex) {
             throw new IllegalStateException("UnderStat HTTP " + ex.getStatusCode() + " for " + path
                     + ". Check endpoint availability and access permissions.", ex);
-        } catch (IllegalStateException ex) {
-            throw new IllegalStateException("Could not fetch valid Understat JSON from " + path
-                    + ". Access may be blocked or a challenge page was returned.", ex);
+        } catch (ProviderResponseException ex) {
+            throw new IllegalStateException("UnderStat did not return valid JSON for " + path
+                    + ". The response may be an access challenge or an unavailable page.", ex);
         }
     }
 
