@@ -49,6 +49,28 @@ class UnderStatLeagueMapperTest {
         assertThat(mapper.toProviderSeasons(response, "2")).hasSize(1);
     }
 
+
+    @Test
+    void convertsCalendarMonthsIntoFootballSeasonStartYears() {
+        UnderStatDtos.StatDataResponse response = new UnderStatDtos.StatDataResponse(List.of(
+                stat("1", "EPL", "2023", "8"),
+                stat("1", "EPL", "2024", "2"),
+                stat("1", "EPL", "2024", "6"),
+                stat("1", "EPL", "2024", "7"),
+                stat("1", "EPL", "2025", "1"),
+                stat("1", "EPL", "2025", "7"),
+                stat("1", "EPL", "2025", "13"),
+                stat("1", "EPL", "invalid", "8")
+        ));
+
+        var seasons = mapper.toProviderSeasons(response, "1");
+
+        assertThat(seasons).extracting("year")
+                .containsExactly("2023", "2024", "2025");
+        assertThat(seasons).extracting("externalId")
+                .containsExactly("1:2023", "1:2024", "1:2025");
+    }
+
     @Test
     void ignoresInvalidRowsAndReturnsEmptyForMissingStatArray() {
         assertThat(mapper.toProviderLeagues(null)).isEmpty();
