@@ -87,7 +87,7 @@ public class ProviderHttpClient {
      * Retry only safe reads and only failures that indicate a transient transport problem.
      * HTTP responses (including 4xx/5xx) are deliberately handled by provider policy instead.
      */
-    private static boolean isRetryableTransportFailure(HttpMethod method, Throwable failure) {
+    static boolean isRetryableTransportFailure(HttpMethod method, Throwable failure) {
         if (method != HttpMethod.GET && method != HttpMethod.HEAD && method != HttpMethod.OPTIONS) {
             return false;
         }
