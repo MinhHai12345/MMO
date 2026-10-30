@@ -25,8 +25,9 @@ public class ProviderHttpClient {
     public <T> T execute(ProviderHttpRequest<T> request) {
         URI uri = buildUri(request);
         try {
-            WebClient.RequestBodySpec requestSpec = webClientBuilder.clone().build()
-                    .method(request.method()).uri(uri)
+            WebClient.RequestBodySpec requestSpec = webClientBuilder.clone()
+                    .codecs(codecs -> codecs.defaultCodecs().maxInMemorySize(request.maxInMemorySize()))
+                    .build().method(request.method()).uri(uri)
                     .headers(headers -> request.headers().forEach(headers::set));
             WebClient.RequestHeadersSpec<?> responseSpec = request.body() == null
                     ? requestSpec : requestSpec.bodyValue(request.body());
@@ -56,8 +57,11 @@ public class ProviderHttpClient {
             if (value instanceof Iterable<?> values) {
                 values.forEach(item -> { if (item != null) builder.queryParam(key, item); });
             } else if (value.getClass().isArray()) {
-                Object[] values = (Object[]) value;
-                for (Object item : values) if (item != null) builder.queryParam(key, item);
+                int length = java.lang.reflect.Array.getLength(value);
+                for (int index = 0; index < length; index++) {
+                    Object item = java.lang.reflect.Array.get(value, index);
+                    if (item != null) builder.queryParam(key, item);
+                }
             } else {
                 builder.queryParam(key, value);
             }
