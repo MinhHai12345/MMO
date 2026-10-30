@@ -3,124 +3,195 @@ package com.mmo.module.fb.ingest.service.impl;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.provider.client.ProviderHttpException;
+import com.mmo.module.fb.ingest.provider.client.ProviderTransportException;
+import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
+import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
+import com.mmo.module.fb.ingest.provider.spi.LeagueProvider;
+import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import com.mmo.module.fb.ingest.provider.understats.UnderStatClient;
 import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
+import com.mmo.module.fb.ingest.service.LeaguePersistenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
-import java.time.Year;
-import java.time.ZoneOffset;
+import org.springframework.util.StringUtils;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
-/** Discovers and synchronizes Understat's complete league/team/player catalogue. */
+/** Synchronizes UnderStat's discovered league/season catalogue, then its team/player data. */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class UnderStatCatalogSyncService {
-    private static final TypeReference<UnderStatDtos.LeagueData> LEAGUE_DATA = new TypeReference<>() {};
-    private static final int FIRST_SEASON = 2014;
+    private static final TypeReference<UnderStatDtos.LeagueData> LEAGUE_DATA = new TypeReference<>() { };
+    private static final Provider PROVIDER = Provider.UNDER_STATS;
     private static final int MAX_ATTEMPTS = 3;
-    private static final List<LeagueDefinition> LEAGUES = List.of(
-            new LeagueDefinition("EPL", "Premier League", "England"),
-            new LeagueDefinition("La_Liga", "LaLiga", "Spain"),
-            new LeagueDefinition("Bundesliga", "Bundesliga", "Germany"),
-            new LeagueDefinition("Serie_A", "Serie A", "Italy"),
-            new LeagueDefinition("Ligue_1", "Ligue 1", "France"),
-            new LeagueDefinition("RFPL", "Russian Premier League", "Russia")
-    );
+    private static final long DEFAULT_RETRY_SECONDS = 2;
+    private static final long MAX_RETRY_SECONDS = 60;
 
     private final AppProperties appProperties;
+    private final ProviderRegistry providerRegistry;
+    private final LeaguePersistenceService leaguePersistenceService;
     private final UnderStatClient understatClient;
     private final UnderStatCatalogPersistenceService persistenceService;
 
     public void syncCatalog() {
-        AppProperties.ProviderConfig config = appProperties.getIngestion().getProviderConfig().get(Provider.UNDER_STATS);
+        AppProperties.ProviderConfig config = appProperties.getIngestion().getProviderConfig().get(PROVIDER);
         if (config == null || !config.isEnabled()) {
-            log.info("Skipping Understat catalogue sync because provider is disabled");
+            log.info("Skipping UnderStat catalogue sync because provider is disabled");
             return;
         }
-        int lastSeason = Year.now(ZoneOffset.UTC).getValue();
-        int fetched = 0, empty = 0, failed = 0, teams = 0, players = 0;
-        catalogue:
-        for (LeagueDefinition league : LEAGUES) {
-            for (int year = FIRST_SEASON; year <= lastSeason; year++) {
+
+        LeagueProvider provider = providerRegistry.league(PROVIDER);
+        List<ProviderLeague> leagues = provider.fetchLeagues(List.of());
+        if (leagues == null || leagues.isEmpty()) {
+            throw new IllegalStateException(
+                    "UnderStat /getStatData returned no leagues; refusing to report catalogue sync as successful");
+        }
+
+        // Use the same ProviderLeague -> League/Season persistence workflow as other sources.
+        leaguePersistenceService.persistLeagues(PROVIDER, leagues);
+
+        int seasonsFetched = 0;
+        int emptySeasons = 0;
+        int failedRequests = 0;
+        int teamsProcessed = 0;
+        int playersProcessed = 0;
+        boolean accessDenied = false;
+
+        for (ProviderLeague league : leagues) {
+            if (league == null || !StringUtils.hasText(league.identify())
+                    || league.seasons() == null || league.seasons().isEmpty()) {
+                continue;
+            }
+
+            for (ProviderSeason season : league.seasons()) {
                 try {
-                    UnderStatDtos.LeagueData data = fetchWithRetry(league, year);
-                    if (data == null || isEmpty(data)) {
-                        empty++;
+                    UnderStatDtos.LeagueData data = fetchWithRetry(league, season);
+                    if (isEmpty(data)) {
+                        emptySeasons++;
                         continue;
                     }
-                    var result = persistenceService.persist(league.key(), league.name(), league.country(), year, data);
-                    fetched += result.leagues();
-                    teams += result.teams();
-                    players += result.players();
+
+                    UnderStatCatalogPersistenceService.CatalogSyncResult result =
+                            persistenceService.persist(league, season, data);
+                    seasonsFetched += result.leagues();
+                    teamsProcessed += result.teams();
+                    playersProcessed += result.players();
                 } catch (RuntimeException ex) {
                     if (isNotFound(ex)) {
-                        empty++;
-                        log.debug("Understat has no catalogue for league={} season={}", league.key(), year);
+                        emptySeasons++;
+                        log.debug("UnderStat has no league data: identify={}, season={}",
+                                league.identify(), season.year());
                     } else {
-                        failed++;
-                        log.error("Understat catalogue fetch failed: league={}, season={}: {}",
-                                league.key(), year, ex.getMessage(), ex);
+                        failedRequests++;
+                        log.error("UnderStat catalogue fetch failed: identify={}, season={}: {}",
+                                league.identify(), season.year(), ex.getMessage(), ex);
                         if (isAccessDenied(ex)) {
-                            log.error("Understat denied access; stopping the catalogue scan to avoid repeated blocked requests");
-                            break catalogue;
+                            accessDenied = true;
+                            log.error("UnderStat denied access; stopping catalogue scan to avoid repeated blocked requests");
+                            break;
                         }
                     }
                 }
             }
+            if (accessDenied) break;
         }
-        log.info("Understat catalogue sync finished: leagues={}, seasonsFetched={}, emptySeasons={}, "
-                        + "teamsProcessed={}, playersProcessed={}, failedRequests={}",
-                LEAGUES.size(), fetched, empty, teams, players, failed);
-        if (failed > 0) {
-            throw new IllegalStateException("Understat catalogue sync completed with " + failed
-                    + " failed league-season requests. Review provider logs and rerun the job.");
+
+        log.info("UnderStat catalogue sync finished: discoveredLeagues={}, seasonsFetched={}, emptySeasons={}, "
+                        + "teamsProcessed={}, playersProcessed={}, failedRequests={}, accessDenied={}",
+                leagues.size(), seasonsFetched, emptySeasons, teamsProcessed, playersProcessed,
+                failedRequests, accessDenied);
+
+        if (accessDenied || failedRequests > 0) {
+            throw new IllegalStateException("UnderStat catalogue sync incomplete: discoveredLeagues="
+                    + leagues.size() + ", seasonsFetched=" + seasonsFetched + ", emptySeasons=" + emptySeasons
+                    + ", failedRequests=" + failedRequests + ", accessDenied=" + accessDenied);
         }
     }
 
-    private UnderStatDtos.LeagueData fetchWithRetry(LeagueDefinition league, int year) {
-        RuntimeException last = null;
+    private UnderStatDtos.LeagueData fetchWithRetry(ProviderLeague league, ProviderSeason season) {
+        RuntimeException lastFailure = null;
+        int year = Integer.parseInt(season.year());
+
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
-                return understatClient.fetchLeagueData(league.key(), year, LEAGUE_DATA);
+                return understatClient.fetchLeagueData(league.identify(), year, LEAGUE_DATA);
             } catch (RuntimeException ex) {
-                last = ex;
-                if (!isRetryable(ex) || attempt == MAX_ATTEMPTS) throw ex;
-                long delay = 1_000L * attempt;
-                log.warn("Retrying Understat league={} season={} attempt={}/{} after {} ms: {}",
-                        league.key(), year, attempt + 1, MAX_ATTEMPTS, delay, ex.getMessage());
-                try {
-                    Thread.sleep(delay);
-                } catch (InterruptedException interrupted) {
-                    Thread.currentThread().interrupt();
-                    throw new IllegalStateException("Interrupted while retrying Understat request", interrupted);
+                lastFailure = ex;
+                if (!isRetryable(ex) || attempt == MAX_ATTEMPTS) {
+                    throw ex;
                 }
+
+                long delaySeconds = retryDelaySeconds(ex, attempt);
+                log.warn("Retrying UnderStat league={} season={} attempt={}/{} after {} seconds: {}",
+                        league.identify(), year, attempt + 1, MAX_ATTEMPTS, delaySeconds, ex.getMessage());
+                sleep(Duration.ofSeconds(delaySeconds), league.identify(), year);
             }
         }
-        throw last == null ? new IllegalStateException("Understat request failed") : last;
+        throw lastFailure == null
+                ? new IllegalStateException("UnderStat request failed without an exception")
+                : lastFailure;
     }
 
     private static boolean isRetryable(RuntimeException ex) {
-        String message = ex.getMessage() == null ? "" : ex.getMessage();
-        return message.contains("HTTP 429") || message.matches("(?s).*HTTP 5[0-9]{2}.*")
-                || message.startsWith("Failed to fetch Understat JSON endpoint");
+        if (ex instanceof ProviderTransportException) return true;
+        if (ex instanceof ProviderHttpException http) {
+            return http.getStatusCode() == 429 || http.getStatusCode() >= 500;
+        }
+        return false;
     }
 
     private static boolean isAccessDenied(RuntimeException ex) {
-        return ex.getMessage() != null && (ex.getMessage().contains("Understat HTTP 401")
-                || ex.getMessage().contains("Understat HTTP 403"));
+        return ex instanceof ProviderHttpException http
+                && (http.getStatusCode() == 401 || http.getStatusCode() == 403);
     }
 
     private static boolean isNotFound(RuntimeException ex) {
-        return ex.getMessage() != null && ex.getMessage().contains("Understat HTTP 404");
+        return ex instanceof ProviderHttpException http && http.getStatusCode() == 404;
+    }
+
+    private static long retryDelaySeconds(RuntimeException ex, int attempt) {
+        if (ex instanceof ProviderHttpException http) {
+            String retryAfter = http.getResponseHeaders().getFirst(HttpHeaders.RETRY_AFTER);
+            if (StringUtils.hasText(retryAfter)) {
+                try {
+                    return Math.min(MAX_RETRY_SECONDS, Math.max(1, Long.parseLong(retryAfter.trim())));
+                } catch (NumberFormatException ignored) {
+                    try {
+                        Instant retryAt = ZonedDateTime.parse(
+                                retryAfter.trim(), DateTimeFormatter.RFC_1123_DATE_TIME).toInstant();
+                        return Math.min(MAX_RETRY_SECONDS,
+                                Math.max(1, Duration.between(Instant.now(), retryAt).getSeconds()));
+                    } catch (DateTimeParseException ignoredDate) {
+                        // Use the bounded fallback below.
+                    }
+                }
+            }
+        }
+        return Math.min(MAX_RETRY_SECONDS, DEFAULT_RETRY_SECONDS * attempt);
+    }
+
+    private static void sleep(Duration delay, String league, int year) {
+        try {
+            Thread.sleep(delay.toMillis());
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(
+                    "Interrupted while retrying UnderStat league=" + league + " season=" + year, ex);
+        }
     }
 
     private static boolean isEmpty(UnderStatDtos.LeagueData data) {
-        return (data.teams() == null || data.teams().isEmpty())
+        return data == null || ((data.teams() == null || data.teams().isEmpty())
                 && (data.players() == null || data.players().isEmpty())
-                && (data.dates() == null || data.dates().isEmpty());
+                && (data.dates() == null || data.dates().isEmpty()));
     }
-
-    private record LeagueDefinition(String key, String name, String country) {}
 }
