@@ -43,8 +43,32 @@ public final class MmoProviderDataStandardizer {
         return normalized == null ? null : LEAGUE_ALIASES.getOrDefault(aliasKey(normalized), normalized);
     }
 
+    /**
+     * Standardizes a provider team name for storage and downstream presentation.
+     *
+     * <p>Preserves the provider's spelling, accents, case and meaningful club
+     * designators. It only applies Unicode NFC normalization, trims/collapses
+     * whitespace and normalizes equivalent Unicode dash/apostrophe characters.
+     * Identity matching is deliberately handled separately by
+     * {@link #teamNameMatchKey(String)}.</p>
+     */
+    public static String standardTeamName(String sourceName) {
+        String normalized = displayText(sourceName);
+        if (normalized == null) return null;
+
+        String unicode = Normalizer.normalize(normalized, Normalizer.Form.NFC)
+                .replaceAll("[\\u2010-\\u2015\\u2212]", "-")
+                .replace('\\u2018', '\\'')
+                .replace('\\u2019', '\\'')
+                .replace('\\u201B', '\\'')
+                .replace('\\u201C', '"')
+                .replace('\\u201D', '"');
+        return displayText(unicode);
+    }
+
+    /** Backward-compatible alias for callers using the previous method name. */
     public static String teamName(String sourceName) {
-        return displayText(sourceName);
+        return standardTeamName(sourceName);
     }
 
     /**
@@ -53,7 +77,7 @@ public final class MmoProviderDataStandardizer {
      * but does not perform fuzzy matching or remove meaningful name tokens.
      */
     public static String teamNameMatchKey(String sourceName) {
-        String normalized = displayText(sourceName);
+        String normalized = standardTeamName(sourceName);
         if (normalized == null) return null;
 
         String ascii = Normalizer.normalize(normalized, Normalizer.Form.NFD)
@@ -69,8 +93,8 @@ public final class MmoProviderDataStandardizer {
     }
 
     public static String teamShortName(String sourceShortName, String sourceName) {
-        String shortName = displayText(sourceShortName);
-        return shortName == null ? teamName(sourceName) : shortName;
+        String shortName = standardTeamName(sourceShortName);
+        return shortName == null ? standardTeamName(sourceName) : shortName;
     }
 
     public static String countryName(String sourceName) { return displayText(sourceName); }
