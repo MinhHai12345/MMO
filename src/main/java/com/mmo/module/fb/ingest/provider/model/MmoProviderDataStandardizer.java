@@ -2,8 +2,10 @@ package com.mmo.module.fb.ingest.provider.model;
 
 import org.springframework.util.StringUtils;
 
+import java.text.Normalizer;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Shared, provider-neutral normalization for values mapped into MMO models.
@@ -24,6 +26,10 @@ public final class MmoProviderDataStandardizer {
             Map.entry("serie a", "Serie A"),
             Map.entry("ligue 1", "Ligue 1")
     );
+    private static final Set<String> TEAM_NAME_DESIGNATORS = Set.of(
+            "fc", "afc", "cf", "sc", "ac", "as", "sv", "fk", "sk",
+            "club", "football", "soccer"
+    );
 
     private MmoProviderDataStandardizer() {
     }
@@ -39,6 +45,27 @@ public final class MmoProviderDataStandardizer {
 
     public static String teamName(String sourceName) {
         return displayText(sourceName);
+    }
+
+    /**
+     * Produces a conservative comparison key for cross-provider team-name matching.
+     * It ignores accents, punctuation, whitespace and common club designators,
+     * but does not perform fuzzy matching or remove meaningful name tokens.
+     */
+    public static String teamNameMatchKey(String sourceName) {
+        String normalized = displayText(sourceName);
+        if (normalized == null) return null;
+
+        String ascii = Normalizer.normalize(normalized, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", " ")
+                .trim();
+        if (ascii.isEmpty()) return null;
+
+        return java.util.Arrays.stream(ascii.split("\\s+"))
+                .filter(token -> !TEAM_NAME_DESIGNATORS.contains(token))
+                .collect(java.util.stream.Collectors.joining(" "));
     }
 
     public static String teamShortName(String sourceShortName, String sourceName) {
