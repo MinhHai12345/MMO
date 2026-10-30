@@ -58,7 +58,7 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
                 leagueProvider, seasonProvider, teamProvider, fixtureProvider, standingsProvider);
 
         runStage("leagues", () -> leagueIngestionService.syncLeaguesForProvider(leagueProvider));
-        runStage("seasons", () -> seasonIngestionService.syncSeasonsForProvider(seasonProvider));
+//        runStage("seasons", () -> seasonIngestionService.syncSeasonsForProvider(seasonProvider));
         runStage("teams", () -> teamIngestionService.syncTeamsForProvider(teamProvider));
         runStage("fixtures", () -> fixtureIngestionService.syncFixturesForProvider(fixtureProvider, null, null));
 

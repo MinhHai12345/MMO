@@ -59,7 +59,7 @@ public class UnderStatLeagueMapper {
                 .filter(UnderStatLeagueMapper::isYear)
                 .sorted(Comparator.comparingInt(Integer::parseInt))
                 .map(year -> new ProviderSeason(
-                        league.externalId() + ":" + year,
+                        league.externalId(),
                         year,
                         Integer.parseInt(year) == currentYear,
                         null,

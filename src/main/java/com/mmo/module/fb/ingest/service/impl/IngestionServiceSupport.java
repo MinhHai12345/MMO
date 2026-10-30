@@ -33,32 +33,28 @@ public class IngestionServiceSupport {
         AppProperties.ProviderConfig config = providerConfig(provider);
         if (config == null || !config.isEnabled()) {
             throw new IllegalStateException(provider + " is disabled or not configured but was selected for "
-                    + resource + " ingestion");
+                                            + resource + " ingestion");
         }
     }
 
     private AppProperties.ProviderConfig providerConfig(Provider provider) {
         if (provider == null || properties.getIngestion() == null
-                || properties.getIngestion().getProviderConfig() == null) {
+            || properties.getIngestion().getProviderConfig() == null) {
             return null;
         }
         return properties.getIngestion().getProviderConfig().get(provider);
     }
 
     public List<Season> seasonsToSync(Provider provider) {
-        if (provider == Provider.SOFA_SCORE || provider == Provider.UNDER_STATS) {
-            Map<Long, Season> mapped = new LinkedHashMap<>();
-            for (SeasonExternalId mapping : seasonExternalIdRepository.findAllByProvider(provider)) {
-                Season season = mapping.getSeason();
-                if (season != null && season.getId() != null && season.getLeague() != null
-                        && Boolean.TRUE.equals(season.getLeague().getIsActive()) && season.getYear() != null
-                        && (provider != Provider.UNDER_STATS || season.isActive())) {
-                    mapped.putIfAbsent(season.getId(), season);
-                }
+        Map<Long, Season> mapped = new LinkedHashMap<>();
+        for (SeasonExternalId mapping : seasonExternalIdRepository.findAllByProvider(provider)) {
+            Season season = mapping.getSeason();
+            if (season != null && season.isActive() && season.getYear() != null
+                && season.getLeague() != null && Boolean.TRUE.equals(season.getLeague().getIsActive())) {
+                mapped.putIfAbsent(season.getId(), season);
             }
-            return List.copyOf(mapped.values());
         }
-        return seasonRepository.findAllForActiveLeagues();
+        return List.copyOf(mapped.values());
     }
 
     public List<Season> standingsSeasonsToSync(Provider provider) {
