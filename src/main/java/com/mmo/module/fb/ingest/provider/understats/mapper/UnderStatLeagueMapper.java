@@ -60,7 +60,7 @@ public class UnderStatLeagueMapper {
         return java.util.stream.IntStream.rangeClosed(2014, currentSeasonStartYear)
                 .mapToObj(year -> new ProviderSeason(
                         seasonExternalId(league.externalId(), String.valueOf(year)),
-                        year,
+                        String.valueOf(year),
                         year == currentSeasonStartYear,
                         null,
                         null))
