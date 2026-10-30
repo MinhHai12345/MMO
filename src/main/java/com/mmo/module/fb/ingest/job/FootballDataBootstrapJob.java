@@ -23,6 +23,7 @@ public class FootballDataBootstrapJob extends AbstractJob<CronJob> {
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
         ProviderOverrides overrides = new ProviderOverrides(
                 IngestionJobParameters.provider(context, "league"),
+                IngestionJobParameters.provider(context, "season"),
                 IngestionJobParameters.provider(context, "team"),
                 IngestionJobParameters.provider(context, "fixture"),
                 IngestionJobParameters.provider(context, "standings"));
