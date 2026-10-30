@@ -18,6 +18,7 @@ import java.util.function.Function;
 public class ProviderRegistry {
 
     private final Map<Provider, LeagueProvider> leagueProviders;
+    private final Map<Provider, SeasonProvider> seasonProviders;
     private final Map<Provider, TeamProvider> teamProviders;
     private final Map<Provider, FixtureProvider> fixtureProviders;
     private final Map<Provider, StandingsProvider> standingsProviders;
@@ -26,12 +27,14 @@ public class ProviderRegistry {
 
     public ProviderRegistry(
             List<LeagueProvider> leagueProviders,
+            List<SeasonProvider> seasonProviders,
             List<TeamProvider> teamProviders,
             List<FixtureProvider> fixtureProviders,
             List<StandingsProvider> standingsProviders,
             List<OddsProvider> oddsProviders,
             List<HistoricalStatsProvider> historicalStatsProviders) {
         this.leagueProviders = index(leagueProviders, LeagueProvider::getProvider, "LeagueProvider");
+        this.seasonProviders = index(seasonProviders, SeasonProvider::getProvider, "SeasonProvider");
         this.teamProviders = index(teamProviders, TeamProvider::getProvider, "TeamProvider");
         this.fixtureProviders = index(fixtureProviders, FixtureProvider::getProvider, "FixtureProvider");
         this.standingsProviders = index(standingsProviders, StandingsProvider::getProvider, "StandingsProvider");
@@ -42,6 +45,14 @@ public class ProviderRegistry {
 
     public LeagueProvider league(Provider provider) {
         return get(leagueProviders, provider, "LeagueProvider");
+    }
+
+    public boolean hasSeasonProvider(Provider provider) {
+        return provider != null && seasonProviders.containsKey(provider);
+    }
+
+    public SeasonProvider season(Provider provider) {
+        return get(seasonProviders, provider, "SeasonProvider");
     }
 
     public TeamProvider team(Provider provider) {
