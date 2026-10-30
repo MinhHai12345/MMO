@@ -58,11 +58,11 @@ public final class MmoProviderDataStandardizer {
 
         String unicode = Normalizer.normalize(normalized, Normalizer.Form.NFC)
                 .replaceAll("[\\u2010-\\u2015\\u2212]", "-")
-                .replace('\\u2018', '\\'')
-                .replace('\\u2019', '\\'')
-                .replace('\\u201B', '\\'')
-                .replace('\\u201C', '"')
-                .replace('\\u201D', '"');
+                .replace('‘', '\\'')
+                .replace('’', '\\'')
+                .replace('‛', '\\'')
+                .replace('“', '"')
+                .replace('”', '"');
         return displayText(unicode);
     }
 
