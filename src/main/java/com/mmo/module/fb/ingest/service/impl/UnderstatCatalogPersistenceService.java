@@ -1,8 +1,8 @@
 package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.provider.understats.dto.UnderstatDtos;
+import com.mmo.module.fb.ingest.provider.understats.mapper.UnderstatMapper;
 import com.mmo.module.fb.ingest.service.ExternalIdMappingService;
 import com.mmo.module.fb.league.entity.League;
 import com.mmo.module.fb.league.entity.LeagueExternalId;
@@ -25,10 +25,9 @@ import org.springframework.util.StringUtils;
 import java.time.Year;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
-/** Persists Understat catalogue data into MMO's canonical league, team and player tables. */
+/** Persists Understat catalogue data into MMO's league, team and player tables. */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -43,18 +42,18 @@ public class UnderstatCatalogPersistenceService {
     private final PlayerRepository playerRepository;
     private final PlayerExternalIdRepository playerExternalIdRepository;
     private final ExternalIdMappingService externalIdMappingService;
+    private final UnderstatMapper mapper;
 
     @Transactional
     public CatalogSyncResult persist(String leagueKey, String leagueName, String country,
                                      int seasonYear, UnderstatDtos.LeagueData data) {
         if (data == null) return new CatalogSyncResult(0, 0, 0);
         League league = resolveLeague(leagueKey, leagueName, country);
-        Season season = seasonRepository.findByLeague_IdAndYear(league.getId(), String.valueOf(seasonYear))
+        seasonRepository.findByLeague_IdAndYear(league.getId(), String.valueOf(seasonYear))
                 .orElseGet(() -> {
                     boolean current = seasonYear == Year.now().getValue();
-                    return seasonRepository.save(Season.builder()
-                            .league(league).year(String.valueOf(seasonYear))
-                            .isCurrent(current).isActive(current).build());
+                    return seasonRepository.save(Season.builder().league(league)
+                            .year(String.valueOf(seasonYear)).isCurrent(current).isActive(current).build());
                 });
 
         Map<String, Team> teamsByTitle = new HashMap<>();
@@ -63,11 +62,11 @@ public class UnderstatCatalogPersistenceService {
             for (Map.Entry<String, UnderstatDtos.LeagueTeam> entry : data.teams().entrySet()) {
                 UnderstatDtos.LeagueTeam source = entry.getValue();
                 if (source == null) continue;
-                String externalId = firstText(source.id(), entry.getKey());
-                String name = MmoProviderDataStandardizer.teamName(source.title());
+                String externalId = StringUtils.hasText(source.id()) ? source.id().trim() : entry.getKey();
+                String name = mapper.teamName(source.title());
                 if (!StringUtils.hasText(externalId) || !StringUtils.hasText(name)) continue;
                 Team team = resolveTeam(externalId, name);
-                teamsByTitle.put(key(name), team);
+                teamsByTitle.put(mapper.teamLookupKey(name), team);
                 teamsSaved++;
             }
         }
@@ -77,11 +76,11 @@ public class UnderstatCatalogPersistenceService {
             for (UnderstatDtos.LeaguePlayer source : data.players()) {
                 if (source == null || !StringUtils.hasText(source.id())
                         || !StringUtils.hasText(source.playerName())) continue;
-                String name = MmoProviderDataStandardizer.displayText(source.playerName());
+                String name = mapper.playerName(source.playerName());
                 Team team = StringUtils.hasText(source.teamTitle())
-                        ? teamsByTitle.get(key(source.teamTitle())) : null;
-                Player player = resolvePlayer(source.id(), name, source.position(), team);
-                if (player != null) playersSaved++;
+                        ? teamsByTitle.get(mapper.teamLookupKey(source.teamTitle())) : null;
+                resolvePlayer(source.id().trim(), name, source.position(), team);
+                playersSaved++;
             }
         }
         return new CatalogSyncResult(1, teamsSaved, playersSaved);
@@ -91,25 +90,22 @@ public class UnderstatCatalogPersistenceService {
         LeagueExternalId mapped = leagueExternalIdRepository
                 .findByProviderAndExternalId(PROVIDER, leagueKey).orElse(null);
         if (mapped != null) {
-            League league = mapped.getLeague();
             mapped.setIdentify(leagueKey);
             leagueExternalIdRepository.save(mapped);
-            return league;
+            return mapped.getLeague();
         }
 
-        String standardizedName = MmoProviderDataStandardizer.leagueName(leagueName);
+        String standardizedName = mapper.leagueName(leagueName);
         List<League> named = leagueRepository.findAllByNameIgnoreCase(standardizedName);
         League league = named.size() == 1 ? named.get(0) : null;
         if (league != null && leagueExternalIdRepository
-                .findByLeagueIdAndProvider(league.getId(), PROVIDER).isPresent()) {
-            league = null;
-        }
+                .findByLeagueIdAndProvider(league.getId(), PROVIDER).isPresent()) league = null;
         if (league == null) {
             league = new League();
             league.setName(standardizedName);
             league.setSlug("understat-" + slug(leagueKey));
             league.setIsActive(false);
-            league.setCountry(MmoProviderDataStandardizer.countryName(country));
+            league.setCountry(country);
             league = leagueRepository.save(league);
         }
         LeagueExternalId mapping = externalIdMappingService.registerLeague(league, PROVIDER, leagueKey);
@@ -145,23 +141,19 @@ public class UnderstatCatalogPersistenceService {
                 .map(com.mmo.module.fb.player.entity.PlayerExternalId::getPlayer).orElse(null);
         if (player == null && team != null) {
             List<Player> candidates = playerRepository.findAllByNameIgnoreCaseAndTeam_Id(name, team.getId());
-            if (candidates.size() == 1) {
-                Player candidate = candidates.get(0);
-                if (playerExternalIdRepository.findByPlayerIdAndProvider(candidate.getId(), PROVIDER).isEmpty()) {
-                    player = candidate;
-                }
+            if (candidates.size() == 1 && playerExternalIdRepository
+                    .findByPlayerIdAndProvider(candidates.get(0).getId(), PROVIDER).isEmpty()) {
+                player = candidates.get(0);
             }
         }
         if (player == null) {
-            player = Player.builder().name(name).team(team).position(MmoProviderDataStandardizer.displayText(position))
+            player = Player.builder().name(name).team(team).position(mapper.position(position))
                     .isActive(true).build();
             player = playerRepository.save(player);
         } else {
             if (team != null) player.setTeam(team);
             player.setName(name);
-            if (StringUtils.hasText(position)) {
-                player.setPosition(MmoProviderDataStandardizer.displayText(position));
-            }
+            if (StringUtils.hasText(position)) player.setPosition(mapper.position(position));
             player.setIsActive(true);
             player = playerRepository.save(player);
         }
@@ -169,16 +161,8 @@ public class UnderstatCatalogPersistenceService {
         return player;
     }
 
-    private static String firstText(String value, String fallback) {
-        return StringUtils.hasText(value) ? value.trim() : fallback == null ? null : fallback.trim();
-    }
-
-    private static String key(String value) {
-        return MmoProviderDataStandardizer.displayText(value).toLowerCase(Locale.ROOT);
-    }
-
     private static String slug(String value) {
-        return value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
+        return value.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
     }
 
     public record CatalogSyncResult(int leagues, int teams, int players) {}
