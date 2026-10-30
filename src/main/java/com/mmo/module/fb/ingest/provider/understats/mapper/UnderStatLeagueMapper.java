@@ -6,15 +6,12 @@ import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import java.time.Year;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 /** Maps UnderStat's stat catalogue into independent league and season resources. */
 @Component
@@ -54,14 +51,17 @@ public class UnderStatLeagueMapper {
     }
 
     private static List<ProviderSeason> toProviderSeasons(LeagueAccumulator league) {
-        int currentYear = Year.now(ZoneOffset.UTC).getValue();
-        return league.years().stream()
-                .filter(UnderStatLeagueMapper::isYear)
-                .sorted(Comparator.comparingInt(Integer::parseInt))
-                .map(year -> new ProviderSeason(
-                        seasonExternalId(league.externalId(), year),
-                        year,
-                        Integer.parseInt(year) == currentYear,
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        int currentSeasonStartYear = today.getMonthValue() >= 7
+                ? today.getYear() : today.getYear() - 1;
+
+        // /getStatData is a sparse monthly statistics catalogue. It must not be
+        // treated as the authoritative list of historical seasons.
+        return java.util.stream.IntStream.rangeClosed(2014, currentSeasonStartYear)
+                .mapToObj(year -> new ProviderSeason(
+                        seasonExternalId(league.externalId(), String.valueOf(year)),
+                        String.valueOf(year),
+                        year == currentSeasonStartYear,
                         null,
                         null))
                 .toList();
@@ -91,9 +91,6 @@ public class UnderStatLeagueMapper {
             LeagueDefinition definition = definition(row.league());
             LeagueAccumulator accumulator = leagues.computeIfAbsent(
                     externalId, ignored -> new LeagueAccumulator(externalId, definition));
-            if (StringUtils.hasText(row.year())) {
-                accumulator.years().add(row.year().trim());
-            }
         }
         return leagues;
     }
@@ -106,20 +103,7 @@ public class UnderStatLeagueMapper {
         return new LeagueDefinition(identify, sourceName.trim(), null);
     }
 
-    private static boolean isYear(String value) {
-        if (value == null || !value.matches("\\d{4}")) return false;
-        int year = Integer.parseInt(value);
-        return year >= 2014 && year <= Year.now(ZoneOffset.UTC).getValue();
-    }
-
     private record LeagueDefinition(String identify, String name, String country) { }
 
-    private record LeagueAccumulator(
-            String externalId,
-            LeagueDefinition definition,
-            Set<String> years) {
-        private LeagueAccumulator(String externalId, LeagueDefinition definition) {
-            this(externalId, definition, new LinkedHashSet<>());
-        }
-    }
+    private record LeagueAccumulator(String externalId, LeagueDefinition definition) { }
 }
