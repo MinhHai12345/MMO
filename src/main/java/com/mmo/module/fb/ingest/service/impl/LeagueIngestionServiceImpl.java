@@ -7,6 +7,7 @@ import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import com.mmo.module.fb.ingest.service.LeagueIngestionService;
 import com.mmo.module.fb.ingest.service.LeaguePersistenceService;
+import com.mmo.module.fb.ingest.service.impl.UnderStatCatalogSyncService;
 import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,7 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
     private final IngestionServiceSupport ingestionSupport;
     private final LeaguePersistenceService leaguePersistenceService;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
+    private final UnderStatCatalogSyncService underStatCatalogSyncService;
 
     @Override
     public void syncLeagues() {
@@ -32,6 +34,13 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
     @Override
     public void syncLeaguesForProvider(Provider selectedProvider) {
         ingestionSupport.requireProviderEnabled(selectedProvider, "league");
+        if (selectedProvider == Provider.UNDER_STATS) {
+            // UnderStat's league catalogue endpoint is the entry point for its full
+            // league/season/team/player catalogue workflow. Keep it inside the existing
+            // bootstrap league stage instead of scheduling a dedicated job.
+            underStatCatalogSyncService.syncCatalog();
+            return;
+        }
         List<ProviderLeague> leagues;
         try {
             // Football-Data competition IDs and SofaScore tournament IDs belong to different
