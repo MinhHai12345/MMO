@@ -106,7 +106,8 @@ failed requests are logged and cause the Quartz job to finish in a failed state 
 scheduled run can recover. The existing 12-hour UnderstatHistoricalStatsJob remains responsible
 for match xG and team-history enrichment and is not replaced by the catalogue job.
 
-The player catalogue currently persists player identity, team, and position in fb_players.
-Season aggregate fields returned by Understat are retained in the transport DTO but are not
-written to fb_players, because those values are season-specific and must not overwrite a
-player's global profile.
+Player identity, current team, and position are persisted in fb_players. Season aggregates are
+stored separately in fb_player_season_stats, keyed by player, season, and provider. The table
+includes appearances, minutes, goals, xG, assists, xA, shots, key passes, cards, non-penalty
+goals, npxG, xGChain, and xGBuildup. This keeps historical season values from overwriting the
+global player profile.
