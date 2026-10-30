@@ -47,7 +47,8 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
             }
 
             Team team = teamsByExternalId.get(source.externalId());
-            if (team == null && selectedProvider != Provider.FOOTBALL_DATA) {
+            if (team == null && selectedProvider != Provider.FOOTBALL_DATA
+                    && selectedProvider != Provider.UNDER_STATS) {
                 log.debug("Skipping unmapped team '{}' from {} (external ID {}). "
                                 + "Register its provider ID against the canonical MMO team before syncing.",
                         source.name(), selectedProvider, source.externalId());
@@ -66,7 +67,7 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
                 continue;
             }
 
-            if (selectedProvider == Provider.FOOTBALL_DATA) {
+            if (selectedProvider == Provider.FOOTBALL_DATA || selectedProvider == Provider.UNDER_STATS) {
                 if (team.getName() == null || team.getName().isBlank()) team.setName(source.name());
                 if (team.getShortName() == null || team.getShortName().isBlank()) {
                     team.setShortName(source.shortName());
