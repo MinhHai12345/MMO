@@ -16,6 +16,38 @@ class UnderstatMapperTest {
     private final UnderstatMapper mapper = new UnderstatMapper();
 
     @Test
+    void standardizesLeagueTeamPlayerAndPositionCatalogValues() {
+        assertThat(mapper.leagueName("  La Liga ")).isEqualTo("LaLiga");
+        assertThat(mapper.teamName("  Manchester   City ")).isEqualTo("Manchester City");
+        assertThat(mapper.playerName("  Erling   Haaland ")).isEqualTo("Erling Haaland");
+        assertThat(mapper.position(" F   S ")).isEqualTo("F S");
+        assertThat(mapper.teamLookupKey(" Arsenal ")).isEqualTo("arsenal");
+    }
+
+    @Test
+    void mapsUnderstatPlayerSeasonAggregateMetrics() {
+        UnderstatDtos.LeaguePlayer source = new UnderstatDtos.LeaguePlayer(
+                "player-7", " Erling   Haaland ", " Manchester City ", " F ",
+                "35", "3000", "27", "28.1", "5", "2.1", "100", "30",
+                "2", "0", "25", "24.0", "40.2", "10.5");
+
+        var mapped = mapper.toPlayerSeasonStats(source);
+
+        assertThat(mapped.externalPlayerId()).isEqualTo("player-7");
+        assertThat(mapped.playerName()).isEqualTo("Erling Haaland");
+        assertThat(mapped.teamName()).isEqualTo("Manchester City");
+        assertThat(mapped.position()).isEqualTo("F");
+        assertThat(mapped.appearances()).isEqualTo(35);
+        assertThat(mapped.minutesPlayed()).isEqualTo(3000);
+        assertThat(mapped.goals()).isEqualTo(27);
+        assertThat(mapped.xg()).isEqualByComparingTo("28.1");
+        assertThat(mapped.assists()).isEqualTo(5);
+        assertThat(mapped.xa()).isEqualByComparingTo("2.1");
+        assertThat(mapped.keyPasses()).isEqualTo(30);
+        assertThat(mapped.npxg()).isEqualByComparingTo("24.0");
+    }
+
+    @Test
     void mapsMatchDtoIntoProviderNeutralModelAndStandardizesTeamNames() {
         UnderstatDtos.Match source = new UnderstatDtos.Match(
                 "match-123",
