@@ -8,9 +8,11 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.web.util.UriUtils;
 
 import java.net.SocketTimeoutException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeoutException;
 
 /**
@@ -69,24 +71,31 @@ public class ProviderHttpClient {
     }
 
     private URI buildUri(ProviderHttpRequest<?> request) {
-        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(request.uri());
+        URI originalUri = URI.create(request.uri());
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUri(originalUri);
         request.queryParams().forEach((key, value) -> {
             if (value == null) return;
             if (value instanceof Iterable<?> values) {
-                values.forEach(item -> {
-                    if (item != null) builder.queryParam(key, item);
-                });
+                values.forEach(item -> addEncodedQueryParam(builder, key, item));
             } else if (value.getClass().isArray()) {
                 int length = java.lang.reflect.Array.getLength(value);
                 for (int index = 0; index < length; index++) {
-                    Object item = java.lang.reflect.Array.get(value, index);
-                    if (item != null) builder.queryParam(key, item);
+                    addEncodedQueryParam(builder, key, java.lang.reflect.Array.get(value, index));
                 }
             } else {
-                builder.queryParam(key, value);
+                addEncodedQueryParam(builder, key, value);
             }
         });
-        return builder.build().encode().toUri();
+        // The original URI may already contain encoded path/query components. fromUri() preserves
+        // those components; encode only the newly appended query values to avoid %25 double encoding.
+        return builder.build(true).toUri();
+    }
+
+    private static void addEncodedQueryParam(UriComponentsBuilder builder, String key, Object value) {
+        if (value != null) {
+            builder.queryParam(UriUtils.encodeQueryParam(key, StandardCharsets.UTF_8),
+                    UriUtils.encodeQueryParam(String.valueOf(value), StandardCharsets.UTF_8));
+        }
     }
 
     private static boolean isTimeout(Throwable failure) {
