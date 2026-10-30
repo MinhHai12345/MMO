@@ -66,6 +66,9 @@ public class UnderStatLeagueMapper {
                             null,
                             null))
                     .toList();
+            if (seasons.isEmpty()) {
+                continue;
+            }
 
             LeagueDefinition definition = accumulator.definition();
             result.add(new ProviderLeague(
