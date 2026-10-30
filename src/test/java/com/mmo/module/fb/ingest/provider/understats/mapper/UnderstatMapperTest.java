@@ -16,6 +16,15 @@ class UnderstatMapperTest {
     private final UnderstatMapper mapper = new UnderstatMapper();
 
     @Test
+    void standardizesLeagueTeamPlayerAndPositionCatalogValues() {
+        assertThat(mapper.leagueName("  La Liga ")).isEqualTo("LaLiga");
+        assertThat(mapper.teamName("  Manchester   City ")).isEqualTo("Manchester City");
+        assertThat(mapper.playerName("  Erling   Haaland ")).isEqualTo("Erling Haaland");
+        assertThat(mapper.position(" F   S ")).isEqualTo("F S");
+        assertThat(mapper.teamLookupKey(" Arsenal ")).isEqualTo("arsenal");
+    }
+
+    @Test
     void mapsMatchDtoIntoProviderNeutralModelAndStandardizesTeamNames() {
         UnderstatDtos.Match source = new UnderstatDtos.Match(
                 "match-123",
