@@ -2,15 +2,17 @@ package com.mmo.module.fb.ingest.provider.model;
 
 import org.springframework.util.StringUtils;
 
+import java.text.Normalizer;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Shared, provider-neutral normalization for values mapped into MMO models.
  *
- * <p>This normalizes presentation and common categorical values only. It never
- * infers entity identity: provider IDs remain untouched and cross-provider
- * relationships must use explicit external-ID mappings.</p>
+ * <p>Provider IDs remain untouched. Team-name keys are conservative comparison
+ * keys only; callers must require an unambiguous canonical-team match before
+ * registering a cross-provider external-ID relationship.</p>
  */
 public final class MmoProviderDataStandardizer {
     private static final Map<String, String> LEAGUE_ALIASES = Map.ofEntries(
@@ -23,6 +25,10 @@ public final class MmoProviderDataStandardizer {
             Map.entry("bundesliga", "Bundesliga"),
             Map.entry("serie a", "Serie A"),
             Map.entry("ligue 1", "Ligue 1")
+    );
+    private static final Set<String> TEAM_NAME_DESIGNATORS = Set.of(
+            "fc", "afc", "cf", "sc", "ac", "as", "sv", "fk", "sk",
+            "club", "football", "soccer"
     );
 
     private MmoProviderDataStandardizer() {
@@ -37,13 +43,58 @@ public final class MmoProviderDataStandardizer {
         return normalized == null ? null : LEAGUE_ALIASES.getOrDefault(aliasKey(normalized), normalized);
     }
 
+    /**
+     * Standardizes a provider team name for storage and downstream presentation.
+     *
+     * <p>Preserves the provider's spelling, accents, case and meaningful club
+     * designators. It only applies Unicode NFC normalization, trims/collapses
+     * whitespace and normalizes equivalent Unicode dash/apostrophe characters.
+     * Identity matching is deliberately handled separately by
+     * {@link #teamNameMatchKey(String)}.</p>
+     */
+    public static String standardTeamName(String sourceName) {
+        String normalized = displayText(sourceName);
+        if (normalized == null) return null;
+
+        String unicode = Normalizer.normalize(normalized, Normalizer.Form.NFC)
+                .replaceAll("[\\u2010-\\u2015\\u2212]", "-")
+                .replace("‘", "'")
+                .replace("’", "'")
+                .replace("‛", "'")
+                .replace('“', '"')
+                .replace('”', '"');
+        return displayText(unicode);
+    }
+
+    /** Backward-compatible alias for callers using the previous method name. */
     public static String teamName(String sourceName) {
-        return displayText(sourceName);
+        return standardTeamName(sourceName);
+    }
+
+    /**
+     * Produces a conservative comparison key for cross-provider team-name matching.
+     * It ignores accents, punctuation, whitespace and common club designators,
+     * but does not perform fuzzy matching or remove meaningful name tokens.
+     */
+    public static String teamNameMatchKey(String sourceName) {
+        String normalized = standardTeamName(sourceName);
+        if (normalized == null) return null;
+
+        String ascii = Normalizer.normalize(normalized, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", " ")
+                .trim();
+        if (ascii.isEmpty()) return null;
+
+        return java.util.Arrays.stream(ascii.split("\\s+"))
+                .filter(token -> !TEAM_NAME_DESIGNATORS.contains(token))
+                .collect(java.util.stream.Collectors.joining(" "));
     }
 
     public static String teamShortName(String sourceShortName, String sourceName) {
-        String shortName = displayText(sourceShortName);
-        return shortName == null ? teamName(sourceName) : shortName;
+        String shortName = standardTeamName(sourceShortName);
+        return shortName == null ? standardTeamName(sourceName) : shortName;
     }
 
     public static String countryName(String sourceName) { return displayText(sourceName); }

@@ -11,7 +11,7 @@ public class SofaScoreTeamMapper {
 
     public ProviderTeam toProviderTeam(TeamDTO team) {
         if (team == null || team.id() == null || team.name() == null) return null;
-        String name = MmoProviderDataStandardizer.teamName(team.name());
+        String name = MmoProviderDataStandardizer.standardTeamName(team.name());
         return new ProviderTeam(team.id().toString(), name,
                 MmoProviderDataStandardizer.teamShortName(team.shortName(), name),
                 null, null, null, null);
