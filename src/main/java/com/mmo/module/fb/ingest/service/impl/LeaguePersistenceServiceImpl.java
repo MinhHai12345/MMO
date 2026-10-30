@@ -33,8 +33,9 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
 
     /**
      * Provider IDs identify mapping rows; provider-specific identify values are retained
-     * separately for constructing that provider's fetch requests. Names are never used
-     * to infer that two providers refer to the same canonical league.
+     * separately for constructing that provider's fetch requests. UnderStat is the one
+     * catalogue exception: its complete league catalogue is matched only by a unique exact
+     * normalized league name when no provider mapping exists.
      */
     @Override
     @Transactional
