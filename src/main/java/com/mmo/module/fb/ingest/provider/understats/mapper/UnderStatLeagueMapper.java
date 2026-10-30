@@ -57,13 +57,14 @@ public class UnderStatLeagueMapper {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         int currentSeasonStartYear = today.getMonthValue() >= 7
                 ? today.getYear() : today.getYear() - 1;
-        return league.seasonStartYears().stream()
-                .filter(UnderStatLeagueMapper::isSeasonStartYear)
-                .sorted(Comparator.comparingInt(Integer::parseInt))
-                .map(year -> new ProviderSeason(
-                        seasonExternalId(league.externalId(), year),
+
+        // /getStatData is a sparse monthly statistics catalogue. It must not be
+        // treated as the authoritative list of historical seasons.
+        return java.util.stream.IntStream.rangeClosed(2014, currentSeasonStartYear)
+                .mapToObj(year -> new ProviderSeason(
+                        seasonExternalId(league.externalId(), String.valueOf(year)),
                         year,
-                        Integer.parseInt(year) == currentSeasonStartYear,
+                        year == currentSeasonStartYear,
                         null,
                         null))
                 .toList();
