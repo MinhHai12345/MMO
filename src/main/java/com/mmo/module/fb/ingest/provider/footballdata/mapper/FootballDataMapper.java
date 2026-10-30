@@ -71,11 +71,12 @@ public class FootballDataMapper {
 
     public ProviderTeam toTeam(TeamDto team) {
         if (team == null || team.id() == null) return null;
-        String name = MmoProviderDataStandardizer.teamName(team.name());
+        String name = MmoProviderDataStandardizer.standardTeamName(team.name());
         return new ProviderTeam(team.id().toString(), name,
                 MmoProviderDataStandardizer.teamShortName(
                         team.tla() != null ? team.tla() : team.shortName(), name),
-                team.crest(), team.founded(), team.venue(), null);
+                team.crest(), team.founded(),
+                MmoProviderDataStandardizer.venueName(team.venue()), null);
     }
 
     public ProviderFixture toFixture(MatchDto match) {
