@@ -15,6 +15,21 @@ class MmoProviderDataStandardizerTest {
     }
 
     @Test
+    void createsConservativeCrossProviderTeamNameKeys() {
+        assertThat(MmoProviderDataStandardizer.teamNameMatchKey("FC Bayern München"))
+                .isEqualTo("bayern munchen");
+        assertThat(MmoProviderDataStandardizer.teamNameMatchKey("Bayern Munchen"))
+                .isEqualTo("bayern munchen");
+        assertThat(MmoProviderDataStandardizer.teamNameMatchKey("Paris Saint-Germain"))
+                .isEqualTo("paris saint germain");
+        assertThat(MmoProviderDataStandardizer.teamNameMatchKey("Paris Saint Germain"))
+                .isEqualTo("paris saint germain");
+        assertThat(MmoProviderDataStandardizer.teamNameMatchKey("Manchester United"))
+                .isNotEqualTo(MmoProviderDataStandardizer.teamNameMatchKey("Manchester City"));
+        assertThat(MmoProviderDataStandardizer.teamNameMatchKey("  ")).isNull();
+    }
+
+    @Test
     void standardizesFixtureStatusesAndOddsVocabulary() {
         assertThat(MmoProviderDataStandardizer.fixtureStatus("finished")).isEqualTo("FT");
         assertThat(MmoProviderDataStandardizer.fixtureStatus("In Progress")).isEqualTo("LIVE");
