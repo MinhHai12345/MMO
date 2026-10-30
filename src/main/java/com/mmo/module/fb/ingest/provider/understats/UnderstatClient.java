@@ -53,6 +53,7 @@ public class UnderstatClient extends AbstractProviderClient {
     }
 
     private <T> T fetchJson(String path, String referer, TypeReference<T> responseType) {
+        providerConfig(Provider.UNDER_STATS);
         Map<String, String> headers = new LinkedHashMap<>();
         headers.put(HttpHeaders.ACCEPT, ACCEPT_HEADER);
         headers.put(HttpHeaders.ACCEPT_LANGUAGE, "en-US,en;q=0.9");
