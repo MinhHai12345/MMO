@@ -130,11 +130,8 @@ app:
 
       UNDER_STATS:
         enabled: ${UNDER_STATS_ENABLED}
-        uri: ${UNDER_STAT_BASE_URL}
-        options:
-          # Session cookies are optional and must be supplied outside source control.
-          cookie: ${UNDER_STAT_COOKIE:}
-          user-agent: ${UNDER_STAT_USER_AGENT:}
+        uri: ${UNDER_STAT_URI}
+        web-url: ${UNDER_STAT_WEB_URL}
 
   sync:
     bootstrap-on-start: ${APP_SYNC_BOOTSTRAP_ON_START:true}
