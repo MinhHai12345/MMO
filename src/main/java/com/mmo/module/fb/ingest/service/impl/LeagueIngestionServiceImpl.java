@@ -23,6 +23,7 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
     private final IngestionServiceSupport ingestionSupport;
     private final LeaguePersistenceService leaguePersistenceService;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
+    private final UnderStatCatalogSyncService underStatCatalogSyncService;
 
     @Override
     public void syncLeagues() {
@@ -32,6 +33,13 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
     @Override
     public void syncLeaguesForProvider(Provider selectedProvider) {
         ingestionSupport.requireProviderEnabled(selectedProvider, "league");
+        if (selectedProvider == Provider.UNDER_STATS) {
+            // UnderStat's stat-data endpoint discovers the catalogue; its season payload
+            // also imports teams and player-season data. Run it as part of bootstrap's
+            // existing league stage rather than through a dedicated scheduled job.
+            underStatCatalogSyncService.syncCatalog();
+            return;
+        }
         List<ProviderLeague> leagues;
         try {
             // Football-Data competition IDs and SofaScore tournament IDs belong to different
