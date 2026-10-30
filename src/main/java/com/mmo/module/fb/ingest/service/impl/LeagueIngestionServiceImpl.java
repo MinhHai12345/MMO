@@ -39,6 +39,7 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
             // tournament catalogue and let LeaguePersistenceService match canonical leagues by
             // name/country before creating provider mappings.
             List<Long> externalLeagueIds = selectedProvider == Provider.SOFA_SCORE
+                    || selectedProvider == Provider.UNDER_STATS
                     ? List.of()
                     : List.of(2000L, 2001L, 2002L, 2014L, 2015L, 2019L, 2016L, 2021L);
             leagues = providerRegistry.league(selectedProvider).fetchLeagues(externalLeagueIds);
