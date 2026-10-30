@@ -10,7 +10,6 @@ import com.mmo.module.fb.league.entity.LeagueExternalId;
 import com.mmo.module.fb.league.entity.Season;
 import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.league.repository.LeagueRepository;
-import com.mmo.module.fb.league.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.league.repository.SeasonRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +27,6 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
-    private final SeasonExternalIdRepository seasonExternalIdRepository;
     private final ExternalIdMappingService externalIdMappingService;
 
     /**
@@ -114,29 +112,31 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
 
                 Season season = seasonRepository.findByLeague_IdAndYear(league.getId(), sourceSeason.year())
                         .orElse(null);
-                if (season != null) {
-                    log.debug("Skipping provider season {} for canonical league {} because no core season exists",
-                            sourceSeason.year(), league.getId());
+
+                if (season == null && selectedProvider != Provider.FOOTBALL_DATA) {
+                    log.debug("Skipping provider season {} from {} for canonical league {} because no core season exists",
+                            sourceSeason.year(), selectedProvider, league.getId());
                     continue;
                 }
 
-                season = Season.builder().league(league).year(sourceSeason.year()).build();
-                var existingSeasonMapping = season.getId() == null ? null
-                        : seasonExternalIdRepository.findBySeasonIdAndProvider(season.getId(), selectedProvider)
-                        .orElse(null);
-                if (existingSeasonMapping != null
-                    && !sourceSeason.externalId().equals(existingSeasonMapping.getExternalId())) {
-                    log.warn("Skipping season {} from {} because canonical season {} is already mapped to provider ID {}",
-                            sourceSeason.year(), selectedProvider, season.getId(), existingSeasonMapping.getExternalId());
-                    continue;
+                boolean newSeason = season == null;
+                if (newSeason) {
+                    season = Season.builder()
+                            .league(league)
+                            .year(sourceSeason.year())
+                            .build();
+                    season.setActive(sourceSeason.current());
                 }
 
-                if (season.getId() == null) season.setActive(sourceSeason.current());
-                season.setCurrent(sourceSeason.current());
-                if (sourceSeason.startDate() != null) season.setStartDate(sourceSeason.startDate());
-                if (sourceSeason.endDate() != null) season.setEndDate(sourceSeason.endDate());
+                // Football-Data owns canonical season metadata. Secondary providers only
+                // attach their external identity to an existing canonical season.
+                if (selectedProvider == Provider.FOOTBALL_DATA) {
+                    season.setCurrent(sourceSeason.current());
+                    if (sourceSeason.startDate() != null) season.setStartDate(sourceSeason.startDate());
+                    if (sourceSeason.endDate() != null) season.setEndDate(sourceSeason.endDate());
+                }
+
                 season = seasonRepository.save(season);
-
                 externalIdMappingService.registerSeason(season, selectedProvider, sourceSeason.externalId());
             }
             synced++;
