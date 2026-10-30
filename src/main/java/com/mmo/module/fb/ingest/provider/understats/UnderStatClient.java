@@ -65,7 +65,9 @@ public class UnderStatClient extends AbstractProviderClient {
             return exchange(Provider.UNDER_STATS, HttpMethod.GET, path, headers, Map.of(),
                     null, responseType, REQUEST_TIMEOUT, MAX_IN_MEMORY_SIZE_BYTES);
         } catch (ProviderHttpException ex) {
-            throw new IllegalStateException("UnderStat HTTP " + ex.getStatusCode() + " for " + path
+            // Keep the common status/header/body contract while adding source context to the message.
+            throw new ProviderHttpException(ex.getStatusCode(), ex.getResponseHeaders(),
+                    ex.getResponseBody(), "UnderStat HTTP " + ex.getStatusCode() + " for " + path
                     + ". Check endpoint availability and access permissions.", ex);
         } catch (ProviderResponseException ex) {
             throw new IllegalStateException("UnderStat did not return valid JSON for " + path
