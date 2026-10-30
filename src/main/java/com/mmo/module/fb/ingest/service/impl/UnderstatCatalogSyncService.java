@@ -41,6 +41,7 @@ public class UnderstatCatalogSyncService {
         }
         int lastSeason = Year.now(ZoneOffset.UTC).getValue();
         int fetched = 0, empty = 0, failed = 0, teams = 0, players = 0;
+        catalogue:
         for (LeagueDefinition league : LEAGUES) {
             for (int year = FIRST_SEASON; year <= lastSeason; year++) {
                 try {
@@ -61,6 +62,10 @@ public class UnderstatCatalogSyncService {
                         failed++;
                         log.error("Understat catalogue fetch failed: league={}, season={}: {}",
                                 league.key(), year, ex.getMessage(), ex);
+                        if (isAccessDenied(ex)) {
+                            log.error("Understat denied access; stopping the catalogue scan to avoid repeated blocked requests");
+                            break catalogue;
+                        }
                     }
                 }
             }
@@ -100,6 +105,11 @@ public class UnderstatCatalogSyncService {
         String message = ex.getMessage() == null ? "" : ex.getMessage();
         return message.contains("HTTP 429") || message.matches("(?s).*HTTP 5[0-9]{2}.*")
                 || message.startsWith("Failed to fetch Understat JSON endpoint");
+    }
+
+    private static boolean isAccessDenied(RuntimeException ex) {
+        return ex.getMessage() != null && (ex.getMessage().contains("Understat HTTP 401")
+                || ex.getMessage().contains("Understat HTTP 403"));
     }
 
     private static boolean isNotFound(RuntimeException ex) {
