@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
-import java.util.Map;
 
 /** Maps UnderStat team catalogue rows to the provider-neutral team model. */
 @Component
@@ -25,7 +24,7 @@ public class UnderStatTeamMapper {
     private ProviderTeam toProviderTeam(String key, UnderStatDtos.LeagueTeam source) {
         if (source == null) return null;
         String externalId = StringUtils.hasText(source.id()) ? source.id().trim() : key;
-        String name = MmoProviderDataStandardizer.teamName(source.title());
+        String name = MmoProviderDataStandardizer.standardTeamName(source.title());
         if (!StringUtils.hasText(externalId) || !StringUtils.hasText(name)) return null;
         return new ProviderTeam(externalId, name, name, null, null, null, null);
     }
