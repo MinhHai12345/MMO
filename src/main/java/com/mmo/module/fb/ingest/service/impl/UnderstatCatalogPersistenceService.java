@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.provider.model.ProviderPlayerSeasonStats;
 import com.mmo.module.fb.ingest.provider.understats.dto.UnderstatDtos;
 import com.mmo.module.fb.ingest.provider.understats.mapper.UnderstatMapper;
 import com.mmo.module.fb.ingest.service.ExternalIdMappingService;
@@ -11,8 +12,10 @@ import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.league.repository.LeagueRepository;
 import com.mmo.module.fb.league.repository.SeasonRepository;
 import com.mmo.module.fb.player.entity.Player;
+import com.mmo.module.fb.player.entity.PlayerSeasonStats;
 import com.mmo.module.fb.player.repository.PlayerExternalIdRepository;
 import com.mmo.module.fb.player.repository.PlayerRepository;
+import com.mmo.module.fb.player.repository.PlayerSeasonStatsRepository;
 import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.team.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.team.repository.TeamRepository;
@@ -41,6 +44,7 @@ public class UnderstatCatalogPersistenceService {
     private final TeamRepository teamRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;
     private final PlayerRepository playerRepository;
+    private final PlayerSeasonStatsRepository playerSeasonStatsRepository;
     private final PlayerExternalIdRepository playerExternalIdRepository;
     private final ExternalIdMappingService externalIdMappingService;
     private final UnderstatMapper mapper;
@@ -50,7 +54,7 @@ public class UnderstatCatalogPersistenceService {
                                      int seasonYear, UnderstatDtos.LeagueData data) {
         if (data == null) return new CatalogSyncResult(0, 0, 0);
         League league = resolveLeague(leagueKey, leagueName, country);
-        seasonRepository.findByLeague_IdAndYear(league.getId(), String.valueOf(seasonYear))
+        Season season = seasonRepository.findByLeague_IdAndYear(league.getId(), String.valueOf(seasonYear))
                 .orElseGet(() -> {
                     boolean current = seasonYear == Year.now(ZoneOffset.UTC).getValue();
                     return seasonRepository.save(Season.builder().league(league)
@@ -77,10 +81,12 @@ public class UnderstatCatalogPersistenceService {
             for (UnderstatDtos.LeaguePlayer source : data.players()) {
                 if (source == null || !StringUtils.hasText(source.id())
                         || !StringUtils.hasText(source.playerName())) continue;
-                String name = mapper.playerName(source.playerName());
-                Team team = StringUtils.hasText(source.teamTitle())
-                        ? teamsByTitle.get(mapper.teamLookupKey(source.teamTitle())) : null;
-                resolvePlayer(source.id().trim(), name, source.position(), team);
+                ProviderPlayerSeasonStats stats = mapper.toPlayerSeasonStats(source);
+                if (stats == null) continue;
+                Team team = StringUtils.hasText(stats.teamName())
+                        ? teamsByTitle.get(mapper.teamLookupKey(stats.teamName())) : null;
+                Player player = resolvePlayer(stats.externalPlayerId(), stats.playerName(), stats.position(), team);
+                persistPlayerSeasonStats(player, season, team, stats);
                 playersSaved++;
             }
         }
@@ -160,6 +166,30 @@ public class UnderstatCatalogPersistenceService {
         }
         externalIdMappingService.registerPlayer(player, PROVIDER, externalId);
         return player;
+    }
+
+    private void persistPlayerSeasonStats(Player player, Season season, Team team,
+                                           ProviderPlayerSeasonStats source) {
+        PlayerSeasonStats stats = playerSeasonStatsRepository
+                .findByPlayerIdAndSeasonIdAndProvider(player.getId(), season.getId(), PROVIDER)
+                .orElseGet(() -> PlayerSeasonStats.builder()
+                        .player(player).season(season).provider(PROVIDER).build());
+        if (team != null) stats.setTeam(team);
+        if (source.appearances() != null) stats.setAppearances(source.appearances());
+        if (source.minutesPlayed() != null) stats.setMinutesPlayed(source.minutesPlayed());
+        if (source.goals() != null) stats.setGoals(source.goals());
+        if (source.xg() != null) stats.setXg(source.xg());
+        if (source.assists() != null) stats.setAssists(source.assists());
+        if (source.xa() != null) stats.setXa(source.xa());
+        if (source.shots() != null) stats.setShots(source.shots());
+        if (source.keyPasses() != null) stats.setKeyPasses(source.keyPasses());
+        if (source.yellowCards() != null) stats.setYellowCards(source.yellowCards());
+        if (source.redCards() != null) stats.setRedCards(source.redCards());
+        if (source.nonPenaltyGoals() != null) stats.setNonPenaltyGoals(source.nonPenaltyGoals());
+        if (source.npxg() != null) stats.setNpxg(source.npxg());
+        if (source.xgChain() != null) stats.setXgChain(source.xgChain());
+        if (source.xgBuildup() != null) stats.setXgBuildup(source.xgBuildup());
+        playerSeasonStatsRepository.save(stats);
     }
 
     private static String slug(String value) {
