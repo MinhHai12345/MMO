@@ -6,6 +6,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.team.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballPlanRestrictionException;
+import com.mmo.module.fb.ingest.provider.client.ProviderTransportException;
 import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
@@ -94,6 +95,15 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
                 skipped++;
                 log.warn("Skipping fixtures for league {} season {} because the API-Football plan does not include it: {}",
                         externalLeagueId, season.getYear(), ex.getMessage());
+                continue;
+            } catch (ProviderTransportException ex) {
+                if (selectedProvider == Provider.FOOTBALL_DATA) {
+                    throw ex;
+                }
+                failed++;
+                log.warn("Provider {} transport failed for league {} season {}. "
+                                + "Continuing with remaining seasons; the next scheduled sync can retry this season.",
+                        selectedProvider, externalLeagueId, season.getYear(), ex);
                 continue;
             }
             fetched += fixtures.size();

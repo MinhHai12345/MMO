@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.provider.client.ProviderTransportException;
 import com.mmo.module.fb.ingest.service.FixtureIngestionService;
 import com.mmo.module.fb.ingest.service.FootballDataBootstrapService;
 import com.mmo.module.fb.ingest.service.LeagueIngestionService;
@@ -57,15 +58,19 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         log.info("Starting core-data bootstrap: league={}, season={}, team={}, fixture={}, standings={}",
                 leagueProvider, seasonProvider, teamProvider, fixtureProvider, standingsProvider);
 
-        runStage("leagues", () -> leagueIngestionService.syncLeaguesForProvider(leagueProvider));
+        runProviderStage("leagues", leagueProvider,
+                () -> leagueIngestionService.syncLeaguesForProvider(leagueProvider));
 //        runStage("seasons", () -> seasonIngestionService.syncSeasonsForProvider(seasonProvider));
-        runStage("teams", () -> teamIngestionService.syncTeamsForProvider(teamProvider));
-        runStage("fixtures", () -> fixtureIngestionService.syncFixturesForProvider(fixtureProvider, null, null));
+        runProviderStage("teams", teamProvider,
+                () -> teamIngestionService.syncTeamsForProvider(teamProvider));
+        runProviderStage("fixtures", fixtureProvider,
+                () -> fixtureIngestionService.syncFixturesForProvider(fixtureProvider, null, null));
 
         if (standingsProvider == Provider.UNDER_STATS) {
             log.info("Skipping standings stage: UNDER_STATS does not expose canonical standings");
         } else {
-            runStage("standings", () -> standingsIngestionService.syncStandingsForProvider(standingsProvider));
+            runProviderStage("standings", standingsProvider,
+                    () -> standingsIngestionService.syncStandingsForProvider(standingsProvider));
         }
 
         log.info("Core-data bootstrap completed. Selected providers: league={}, season={}, team={}, fixture={}, standings={}",
@@ -99,14 +104,22 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         }
 
         log.info("Starting multi-provider core ingestion. Canonical provider first; providers={}", ordered);
-        runStage("multi-provider/leagues",
-                () -> ordered.forEach(league -> leagueIngestionService.syncLeaguesForProvider(league)));
-        runStage("multi-provider/seasons",
-                () -> ordered.forEach(provider -> seasonIngestionService.syncSeasonsForProvider(provider)));
-        runStage("multi-provider/teams",
-                () -> ordered.forEach(provider -> teamIngestionService.syncTeamsForProvider(provider)));
-        runStage("multi-provider/fixtures",
-                () -> ordered.forEach(provider -> fixtureIngestionService.syncFixturesForProvider(provider, null, null)));
+        for (Provider provider : ordered) {
+            runProviderStage("multi-provider/leagues/" + provider, provider,
+                    () -> leagueIngestionService.syncLeaguesForProvider(provider));
+        }
+        for (Provider provider : ordered) {
+            runProviderStage("multi-provider/seasons/" + provider, provider,
+                    () -> seasonIngestionService.syncSeasonsForProvider(provider));
+        }
+        for (Provider provider : ordered) {
+            runProviderStage("multi-provider/teams/" + provider, provider,
+                    () -> teamIngestionService.syncTeamsForProvider(provider));
+        }
+        for (Provider provider : ordered) {
+            runProviderStage("multi-provider/fixtures/" + provider, provider,
+                    () -> fixtureIngestionService.syncFixturesForProvider(provider, null, null));
+        }
 
         if (ordered.contains(Provider.FOOTBALL_DATA)) {
             runStage("standings/FOOTBALL_DATA",
@@ -116,6 +129,37 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
                     + "Include FOOTBALL_DATA to refresh canonical standings.");
         }
         log.info("Multi-provider core ingestion finished. providers={}", ordered);
+    }
+
+    /**
+     * Core Football-Data failures remain fatal. A transient network failure from an enrichment
+     * provider is isolated to that provider/resource so the bootstrap can continue with the
+     * remaining providers and resources. The next scheduled bootstrap retries skipped work.
+     */
+    private void runProviderStage(String resource, Provider provider, Runnable operation) {
+        long startedAt = System.nanoTime();
+        log.info("Ingestion stage {} provider={} status=STARTED", resource, provider);
+        try {
+            operation.run();
+            long durationMs = (System.nanoTime() - startedAt) / 1_000_000;
+            log.info("Ingestion stage {} provider={} status=COMPLETED durationMs={}",
+                    resource, provider, durationMs);
+        } catch (ProviderTransportException ex) {
+            long durationMs = (System.nanoTime() - startedAt) / 1_000_000;
+            if (provider == Provider.FOOTBALL_DATA) {
+                log.error("Core ingestion stage {} provider={} status=FAILED durationMs={}",
+                        resource, provider, durationMs, ex);
+                throw ex;
+            }
+            log.warn("Ingestion stage {} provider={} status=SKIPPED_RETRYABLE durationMs={}. "
+                            + "Continuing bootstrap; a later scheduled run can retry this provider.",
+                    resource, provider, durationMs, ex);
+        } catch (RuntimeException ex) {
+            long durationMs = (System.nanoTime() - startedAt) / 1_000_000;
+            log.error("Ingestion stage {} provider={} status=FAILED durationMs={} errorType={} message={}",
+                    resource, provider, durationMs, ex.getClass().getSimpleName(), ex.getMessage(), ex);
+            throw ex;
+        }
     }
 
     private void runStage(String resource, Runnable operation) {
