@@ -15,6 +15,17 @@ class MmoProviderDataStandardizerTest {
     }
 
     @Test
+    void standardizesTeamNamesForCanonicalStorageWithoutLosingDisplaySpelling() {
+        assertThat(MmoProviderDataStandardizer.standardTeamName("  FC   Bayern Mu\u0308nchen  "))
+                .isEqualTo("FC Bayern München");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Paris Saint–Germain"))
+                .isEqualTo("Paris Saint-Germain");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("O’Connell FC"))
+                .isEqualTo("O'Connell FC");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("  ")).isNull();
+    }
+
+    @Test
     void createsConservativeCrossProviderTeamNameKeys() {
         assertThat(MmoProviderDataStandardizer.teamNameMatchKey("FC Bayern München"))
                 .isEqualTo("bayern munchen");
