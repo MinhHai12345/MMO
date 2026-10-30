@@ -59,12 +59,20 @@ public class UnderStatLeagueMapper {
                 .filter(UnderStatLeagueMapper::isYear)
                 .sorted(Comparator.comparingInt(Integer::parseInt))
                 .map(year -> new ProviderSeason(
-                        league.externalId(),
+                        seasonExternalId(league.externalId(), year),
                         year,
                         Integer.parseInt(year) == currentYear,
                         null,
                         null))
                 .toList();
+    }
+
+    /**
+     * UnderStat exposes a league ID and a year, but no independent season ID.
+     * Compose both values to keep each season unique within the provider namespace.
+     */
+    static String seasonExternalId(String leagueExternalId, String year) {
+        return leagueExternalId + ":" + year;
     }
 
     private static Map<String, LeagueAccumulator> group(UnderStatDtos.StatDataResponse response) {
