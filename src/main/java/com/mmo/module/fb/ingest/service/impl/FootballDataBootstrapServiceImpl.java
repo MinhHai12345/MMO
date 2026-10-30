@@ -54,13 +54,34 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
                 leagueProvider, teamProvider, fixtureProvider, standingsProvider);
 
         runStage("leagues", () -> leagueIngestionService.syncLeaguesForProvider(leagueProvider));
-        runStage("teams", () -> teamIngestionService.syncTeamsForProvider(teamProvider));
-        // Catalogue initialization stores all returned seasons; downstream fetching only processes active leagues.
-        runStage("fixtures", () -> fixtureIngestionService.syncFixturesForProvider(fixtureProvider, null, null));
-        runStage("standings", () -> standingsIngestionService.syncStandingsForProvider(standingsProvider));
 
-        log.info("Core-data bootstrap completed. Stage status: leagues=COMPLETED, teams=COMPLETED, "
-                + "fixtures=COMPLETED, standings=COMPLETED. See per-stage counters for skipped/failed records.");
+        // UnderStat catalogue sync (invoked by the league stage) already imports teams and
+        // player-season data. Its current integration does not provide canonical fixtures
+        // or standings, so those unsupported stages are intentionally skipped.
+        if (teamProvider == Provider.UNDER_STATS && leagueProvider == Provider.UNDER_STATS) {
+            log.info("Skipping generic team stage: UnderStat catalogue stage already persisted teams");
+        } else if (teamProvider == Provider.UNDER_STATS) {
+            throw new IllegalArgumentException(
+                    "UNDER_STATS team ingestion requires provider.league=UNDER_STATS in the same bootstrap run");
+        } else {
+            runStage("teams", () -> teamIngestionService.syncTeamsForProvider(teamProvider));
+        }
+
+        if (fixtureProvider == Provider.UNDER_STATS) {
+            log.info("Skipping fixture stage: UNDER_STATS does not provide the canonical fixture resource");
+        } else {
+            // Catalogue initialization stores all returned seasons; downstream fetching only processes active leagues.
+            runStage("fixtures", () -> fixtureIngestionService.syncFixturesForProvider(fixtureProvider, null, null));
+        }
+
+        if (standingsProvider == Provider.UNDER_STATS) {
+            log.info("Skipping standings stage: UNDER_STATS does not provide the canonical standings resource");
+        } else {
+            runStage("standings", () -> standingsIngestionService.syncStandingsForProvider(standingsProvider));
+        }
+
+        log.info("Core-data bootstrap completed. Selected providers: league={}, team={}, fixture={}, standings={}",
+                leagueProvider, teamProvider, fixtureProvider, standingsProvider);
     }
 
     /**
