@@ -4,8 +4,11 @@ import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -13,17 +16,18 @@ class UnderStatLeagueMapperTest {
     private final UnderStatLeagueMapper mapper = new UnderStatLeagueMapper();
 
     @Test
-    void mapsLeagueMetadataAndItsSeasonsFromOneCatalogueResponse() {
+    void mapsLeagueMetadataAndCompleteHistoricalSeasonRange() {
         UnderStatDtos.StatDataResponse response = new UnderStatDtos.StatDataResponse(List.of(
                 stat("1", "EPL", "2024", "8"),
-                stat("1", "EPL", "2024", "9"),
                 stat("1", "EPL", "2025", "8"),
                 stat("2", "La Liga", "2025", "8"),
-                stat("2", "La Liga", "2025", "9"),
                 stat("3", "Bundesliga", "2025", "8")
         ));
 
         List<ProviderLeague> leagues = mapper.toProviderLeagues(response);
+        int currentSeasonStartYear = currentSeasonStartYear();
+        List<String> expectedYears = IntStream.rangeClosed(2014, currentSeasonStartYear)
+                .mapToObj(String::valueOf).toList();
 
         assertThat(leagues).hasSize(3);
         ProviderLeague epl = leagues.get(0);
@@ -32,43 +36,32 @@ class UnderStatLeagueMapperTest {
         assertThat(epl.name()).isEqualTo("Premier League");
         assertThat(epl.country()).isEqualTo("England");
         assertThat(epl.seasons()).extracting("externalId")
-                .containsExactly("1:2024", "1:2025");
-        assertThat(epl.seasons()).extracting("year")
-                .containsExactly("2024", "2025");
+                .containsExactlyElementsOf(expectedYears.stream().map(year -> "1:" + year).toList());
+        assertThat(epl.seasons()).extracting("year").containsExactlyElementsOf(expectedYears);
 
         ProviderLeague laLiga = leagues.get(1);
         assertThat(laLiga.identify()).isEqualTo("La_Liga");
         assertThat(laLiga.name()).isEqualTo("LaLiga");
-        assertThat(laLiga.seasons()).extracting("externalId")
-                .containsExactly("2:2025");
-
-        assertThat(mapper.toProviderSeasons(response, "1")).extracting("externalId")
-                .containsExactly("1:2024", "1:2025");
+        assertThat(laLiga.seasons()).extracting("year").containsExactlyElementsOf(expectedYears);
         assertThat(mapper.toProviderSeasons(response, "1")).extracting("year")
-                .containsExactly("2024", "2025");
-        assertThat(mapper.toProviderSeasons(response, "2")).hasSize(1);
+                .containsExactlyElementsOf(expectedYears);
+        assertThat(mapper.toProviderSeasons(response, "2")).hasSize(expectedYears.size());
     }
 
-
     @Test
-    void convertsCalendarMonthsIntoFootballSeasonStartYears() {
+    void doesNotDependOnSparseMonthlyCatalogueRowsForHistoricalSeasons() {
         UnderStatDtos.StatDataResponse response = new UnderStatDtos.StatDataResponse(List.of(
-                stat("1", "EPL", "2023", "8"),
-                stat("1", "EPL", "2024", "2"),
-                stat("1", "EPL", "2024", "6"),
-                stat("1", "EPL", "2024", "7"),
-                stat("1", "EPL", "2025", "1"),
-                stat("1", "EPL", "2025", "7"),
-                stat("1", "EPL", "2025", "13"),
-                stat("1", "EPL", "invalid", "8")
+                stat("1", "EPL", "2014", "8"),
+                stat("1", "EPL", "2023", "8")
         ));
 
         var seasons = mapper.toProviderSeasons(response, "1");
 
-        assertThat(seasons).extracting("year")
-                .containsExactly("2023", "2024", "2025");
-        assertThat(seasons).extracting("externalId")
-                .containsExactly("1:2023", "1:2024", "1:2025");
+        assertThat(seasons).hasSize(currentSeasonStartYear() - 2014 + 1);
+        assertThat(seasons).extracting("year").first().isEqualTo("2014");
+        assertThat(seasons).extracting("year").contains("2023");
+        assertThat(seasons).extracting("year").last().isEqualTo(String.valueOf(currentSeasonStartYear()));
+        assertThat(seasons).extracting("externalId").contains("1:2014", "1:2023");
     }
 
     @Test
@@ -78,15 +71,14 @@ class UnderStatLeagueMapperTest {
         assertThat(mapper.toProviderLeagues(new UnderStatDtos.StatDataResponse(Arrays.asList(
                 null,
                 stat(null, "EPL", "2024", "8"),
-                stat("1", null, "2024", "8"),
-                stat("1", "EPL", "unknown", "8")
-        )))).hasSize(1);
-        assertThat(mapper.toProviderLeagues(new UnderStatDtos.StatDataResponse(Arrays.asList(
-                stat("1", "EPL", "unknown", "8")
-        ))).get(0).seasons()).isEmpty();
-        assertThat(mapper.toProviderSeasons(new UnderStatDtos.StatDataResponse(Arrays.asList(
-                stat("1", "EPL", "unknown", "8")
-        )), "1")).isEmpty();
+                stat("1", null, "2024", "8")
+        )))).isEmpty();
+        assertThat(mapper.toProviderSeasons(new UnderStatDtos.StatDataResponse(null), "1")).isEmpty();
+    }
+
+    private static int currentSeasonStartYear() {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        return today.getMonthValue() >= 7 ? today.getYear() : today.getYear() - 1;
     }
 
     private static UnderStatDtos.LeagueStat stat(
