@@ -6,7 +6,6 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
 import com.mmo.module.fb.ingest.provider.client.AbstractProviderClient;
 import com.mmo.module.fb.ingest.provider.client.ProviderHttpClient;
-import com.mmo.module.fb.ingest.provider.client.ProviderHttpException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
@@ -40,14 +39,10 @@ public class ApiFootballClient extends AbstractProviderClient {
         Map<String, String> headers = new LinkedHashMap<>();
         headers.put("x-apisports-key", config.getApiKey());
         headers.put(HttpHeaders.ACCEPT, "application/json");
-        ApiFootballResponse<T> response;
-        try {
-            response = exchange(Provider.API_FOOTBALL, HttpMethod.GET, path, headers,
-                    queryParams, null, responseType, REQUEST_TIMEOUT, MAX_IN_MEMORY_SIZE_BYTES);
-        } catch (ProviderHttpException ex) {
-            throw new IllegalStateException("API-Football HTTP " + ex.getStatusCode()
-                    + " for " + path + ": " + ex.getResponseBody(), ex);
-        }
+
+        ApiFootballResponse<T> response = exchange(
+                Provider.API_FOOTBALL, HttpMethod.GET, path, headers, queryParams,
+                null, responseType, REQUEST_TIMEOUT, MAX_IN_MEMORY_SIZE_BYTES);
 
         if (response == null) {
             throw new IllegalStateException("Could not deserialize API-Football response for " + path);
