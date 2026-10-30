@@ -3,8 +3,8 @@ package com.mmo.module.fb.ingest.service.impl;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.understats.UnderstatClient;
-import com.mmo.module.fb.ingest.provider.understats.dto.UnderstatDtos;
+import com.mmo.module.fb.ingest.provider.understats.UnderStatClient;
+import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,8 +16,8 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class UnderstatCatalogSyncService {
-    private static final TypeReference<UnderstatDtos.LeagueData> LEAGUE_DATA = new TypeReference<>() {};
+public class UnderStatCatalogSyncService {
+    private static final TypeReference<UnderStatDtos.LeagueData> LEAGUE_DATA = new TypeReference<>() {};
     private static final int FIRST_SEASON = 2014;
     private static final int MAX_ATTEMPTS = 3;
     private static final List<LeagueDefinition> LEAGUES = List.of(
@@ -30,8 +30,8 @@ public class UnderstatCatalogSyncService {
     );
 
     private final AppProperties appProperties;
-    private final UnderstatClient understatClient;
-    private final UnderstatCatalogPersistenceService persistenceService;
+    private final UnderStatClient understatClient;
+    private final UnderStatCatalogPersistenceService persistenceService;
 
     public void syncCatalog() {
         AppProperties.ProviderConfig config = appProperties.getIngestion().getProviderConfig().get(Provider.UNDER_STATS);
@@ -45,7 +45,7 @@ public class UnderstatCatalogSyncService {
         for (LeagueDefinition league : LEAGUES) {
             for (int year = FIRST_SEASON; year <= lastSeason; year++) {
                 try {
-                    UnderstatDtos.LeagueData data = fetchWithRetry(league, year);
+                    UnderStatDtos.LeagueData data = fetchWithRetry(league, year);
                     if (data == null || isEmpty(data)) {
                         empty++;
                         continue;
@@ -79,7 +79,7 @@ public class UnderstatCatalogSyncService {
         }
     }
 
-    private UnderstatDtos.LeagueData fetchWithRetry(LeagueDefinition league, int year) {
+    private UnderStatDtos.LeagueData fetchWithRetry(LeagueDefinition league, int year) {
         RuntimeException last = null;
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
@@ -116,7 +116,7 @@ public class UnderstatCatalogSyncService {
         return ex.getMessage() != null && ex.getMessage().contains("Understat HTTP 404");
     }
 
-    private static boolean isEmpty(UnderstatDtos.LeagueData data) {
+    private static boolean isEmpty(UnderStatDtos.LeagueData data) {
         return (data.teams() == null || data.teams().isEmpty())
                 && (data.players() == null || data.players().isEmpty())
                 && (data.dates() == null || data.dates().isEmpty());

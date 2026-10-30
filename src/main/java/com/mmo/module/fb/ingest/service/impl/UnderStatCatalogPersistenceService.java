@@ -2,8 +2,8 @@ package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderPlayerSeasonStats;
-import com.mmo.module.fb.ingest.provider.understats.dto.UnderstatDtos;
-import com.mmo.module.fb.ingest.provider.understats.mapper.UnderstatMapper;
+import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
+import com.mmo.module.fb.ingest.provider.understats.mapper.UnderStatMapper;
 import com.mmo.module.fb.ingest.service.ExternalIdMappingService;
 import com.mmo.module.fb.league.entity.League;
 import com.mmo.module.fb.league.entity.LeagueExternalId;
@@ -35,7 +35,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class UnderstatCatalogPersistenceService {
+public class UnderStatCatalogPersistenceService {
     private static final Provider PROVIDER = Provider.UNDER_STATS;
 
     private final LeagueRepository leagueRepository;
@@ -47,11 +47,11 @@ public class UnderstatCatalogPersistenceService {
     private final PlayerSeasonStatsRepository playerSeasonStatsRepository;
     private final PlayerExternalIdRepository playerExternalIdRepository;
     private final ExternalIdMappingService externalIdMappingService;
-    private final UnderstatMapper mapper;
+    private final UnderStatMapper mapper;
 
     @Transactional
     public CatalogSyncResult persist(String leagueKey, String leagueName, String country,
-                                     int seasonYear, UnderstatDtos.LeagueData data) {
+                                     int seasonYear, UnderStatDtos.LeagueData data) {
         if (data == null) return new CatalogSyncResult(0, 0, 0);
         League league = resolveLeague(leagueKey, leagueName, country);
         Season season = seasonRepository.findByLeague_IdAndYear(league.getId(), String.valueOf(seasonYear))
@@ -64,8 +64,8 @@ public class UnderstatCatalogPersistenceService {
         Map<String, Team> teamsByTitle = new HashMap<>();
         int teamsSaved = 0;
         if (data.teams() != null) {
-            for (Map.Entry<String, UnderstatDtos.LeagueTeam> entry : data.teams().entrySet()) {
-                UnderstatDtos.LeagueTeam source = entry.getValue();
+            for (Map.Entry<String, UnderStatDtos.LeagueTeam> entry : data.teams().entrySet()) {
+                UnderStatDtos.LeagueTeam source = entry.getValue();
                 if (source == null) continue;
                 String externalId = StringUtils.hasText(source.id()) ? source.id().trim() : entry.getKey();
                 String name = mapper.teamName(source.title());
@@ -78,7 +78,7 @@ public class UnderstatCatalogPersistenceService {
 
         int playersSaved = 0;
         if (data.players() != null) {
-            for (UnderstatDtos.LeaguePlayer source : data.players()) {
+            for (UnderStatDtos.LeaguePlayer source : data.players()) {
                 if (source == null || !StringUtils.hasText(source.id())
                         || !StringUtils.hasText(source.playerName())) continue;
                 ProviderPlayerSeasonStats stats = mapper.toPlayerSeasonStats(source);

@@ -43,7 +43,7 @@ import java.util.regex.Pattern;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class UnderstatSyncService {
+public class UnderStatSyncService {
 
     private static final Provider PROVIDER = Provider.UNDER_STATS;
     private static final Duration FIXTURE_MATCH_WINDOW = Duration.ofHours(6);
@@ -62,18 +62,18 @@ public class UnderstatSyncService {
     public void syncActiveSeasons() {
         AppProperties.ProviderConfig config = appProperties.getIngestion().getProviderConfig().get(PROVIDER);
         if (config == null || !config.isEnabled()) {
-            log.info("Skipping Understat sync because provider {} is disabled", PROVIDER);
+            log.info("Skipping UnderStat sync because provider {} is disabled", PROVIDER);
             return;
         }
         Provider selected = appProperties.getIngestion().getProviders().getHistoricalStats();
         if (selected != PROVIDER) {
-            log.info("Skipping Understat sync because historical-stats provider is configured as {}", selected);
+            log.info("Skipping UnderStat sync because historical-stats provider is configured as {}", selected);
             return;
         }
 
         List<Season> activeSeasons = seasonRepository.findByIsActiveTrueAndLeagueIsNotNullAndYearIsNotNull();
         if (activeSeasons.isEmpty()) {
-            log.info("Understat sync has no active seasons. Set fb_seasons.is_active=true for seasons to ingest.");
+            log.info("UnderStat sync has no active seasons. Set fb_seasons.is_active=true for seasons to ingest.");
             return;
         }
 
@@ -87,15 +87,15 @@ public class UnderstatSyncService {
                 else skipped++;
             } catch (RuntimeException ex) {
                 failed++;
-                log.error("Understat sync failed for seasonId={} leagueId={} year={}: {}",
+                log.error("UnderStat sync failed for seasonId={} leagueId={} year={}: {}",
                         season.getId(), season.getLeague() == null ? null : season.getLeague().getId(),
                         season.getYear(), ex.getMessage(), ex);
             }
         }
-        log.info("Understat sync finished: activeSeasons={}, successful={}, skipped={}, failed={}",
+        log.info("UnderStat sync finished: activeSeasons={}, successful={}, skipped={}, failed={}",
                 activeSeasons.size(), successful, skipped, failed);
         if (failed > 0 || skipped > 0 || successful == 0) {
-            throw new IllegalStateException("Understat sync incomplete: activeSeasons=" + activeSeasons.size()
+            throw new IllegalStateException("UnderStat sync incomplete: activeSeasons=" + activeSeasons.size()
                     + ", successful=" + successful + ", skipped=" + skipped + ", failed=" + failed
                     + ". Check UNDER_STATS league identify mappings and per-season logs.");
         }
@@ -107,7 +107,7 @@ public class UnderstatSyncService {
                 .findByLeagueIdAndProvider(season.getLeague().getId(), PROVIDER)
                 .orElse(null);
         if (mapping == null || !StringUtils.hasText(mapping.getIdentify())) {
-            log.warn("Skipping Understat seasonId={} because league {} has no UNDER_STATS identify mapping",
+            log.warn("Skipping UnderStat seasonId={} because league {} has no UNDER_STATS identify mapping",
                     season.getId(), season.getLeague().getId());
             return false;
         }
@@ -142,7 +142,7 @@ public class UnderstatSyncService {
             }
         }
 
-        log.info("Understat season sync complete: seasonId={}, leagueIdentify={}, year={}, sourceMatches={}, "
+        log.info("UnderStat season sync complete: seasonId={}, leagueIdentify={}, year={}, sourceMatches={}, "
                         + "matchesWithXg={}, teamStatsRows={}",
                 season.getId(), leagueIdentify, providerYear, matches.size(), xgUpdated, teamStatsUpdated);
         return true;
@@ -173,7 +173,7 @@ public class UnderstatSyncService {
             if (candidates.size() == 1) {
                 match = candidates.get(0);
             } else {
-                log.debug("Skipping Understat match {}: {} canonical fixture candidates in season {}",
+                log.debug("Skipping UnderStat match {}: {} canonical fixture candidates in season {}",
                         source.externalMatchId(), candidates.size(), season.getId());
                 return null;
             }
@@ -182,7 +182,7 @@ public class UnderstatSyncService {
         if (match == null || match.getSeason() == null
                 || !season.getId().equals(match.getSeason().getId())
                 || match.getHomeTeam() == null || match.getAwayTeam() == null) {
-            log.debug("Skipping Understat match {} because no canonical MMO fixture matched",
+            log.debug("Skipping UnderStat match {} because no canonical MMO fixture matched",
                     source.externalMatchId());
             return null;
         }
@@ -192,7 +192,7 @@ public class UnderstatSyncService {
                         && !source.homeScore().equals(match.getHomeScore()))
                 || (source.awayScore() != null && match.getAwayScore() != null
                         && !source.awayScore().equals(match.getAwayScore())))) {
-            log.warn("Understat match {} scores conflict with canonical fixture {}; skipping",
+            log.warn("UnderStat match {} scores conflict with canonical fixture {}; skipping",
                     source.externalMatchId(), match.getId());
             return null;
         }
@@ -204,7 +204,7 @@ public class UnderstatSyncService {
             registerTeamIdentity(match.getAwayTeam(), source.awayTeamExternalId());
             externalIdMappingService.registerMatch(match, PROVIDER, source.externalMatchId());
         } catch (IllegalStateException conflict) {
-            log.warn("Cannot register Understat fixture/team mappings for match {}: {}",
+            log.warn("Cannot register UnderStat fixture/team mappings for match {}: {}",
                     source.externalMatchId(), conflict.getMessage());
             return null;
         }
@@ -218,7 +218,7 @@ public class UnderstatSyncService {
 
     private void registerTeamIdentity(Team team, String providerTeamId) {
         if (team == null || team.getId() == null || !StringUtils.hasText(providerTeamId)) {
-            throw new IllegalStateException("Canonical team and Understat team ID are required");
+            throw new IllegalStateException("Canonical team and UnderStat team ID are required");
         }
         externalIdMappingService.registerTeam(team, PROVIDER, providerTeamId);
     }
@@ -284,9 +284,9 @@ public class UnderstatSyncService {
     private static int parseSeasonYear(String year) {
         if (!StringUtils.hasText(year)) throw new IllegalArgumentException("Season year is blank");
         Matcher matcher = SEASON_START_YEAR.matcher(year);
-        if (!matcher.find()) throw new IllegalArgumentException("Unsupported Understat season year: " + year);
+        if (!matcher.find()) throw new IllegalArgumentException("Unsupported UnderStat season year: " + year);
         int parsed = Integer.parseInt(matcher.group(1));
-        if (parsed < 2014) throw new IllegalArgumentException("Understat supports seasons from 2014 onward");
+        if (parsed < 2014) throw new IllegalArgumentException("UnderStat supports seasons from 2014 onward");
         return parsed;
     }
 }

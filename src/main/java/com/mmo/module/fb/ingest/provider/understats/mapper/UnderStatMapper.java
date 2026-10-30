@@ -4,7 +4,7 @@ import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.provider.model.ProviderMatchStatistics;
 import com.mmo.module.fb.ingest.provider.model.ProviderPlayerSeasonStats;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeamMatchStats;
-import com.mmo.module.fb.ingest.provider.understats.dto.UnderstatDtos;
+import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -15,7 +15,7 @@ import java.util.Locale;
 
 /** Converts Understat transport values to MMO's shared domain vocabulary. */
 @Component
-public class UnderstatMapper {
+public class UnderStatMapper {
     private static final DateTimeFormatter SOURCE_DATETIME =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -40,7 +40,7 @@ public class UnderstatMapper {
         return normalized == null ? null : normalized.toLowerCase(Locale.ROOT);
     }
 
-    public ProviderPlayerSeasonStats toPlayerSeasonStats(UnderstatDtos.LeaguePlayer player) {
+    public ProviderPlayerSeasonStats toPlayerSeasonStats(UnderStatDtos.LeaguePlayer player) {
         if (player == null || !StringUtils.hasText(player.id()) || !StringUtils.hasText(player.playerName())) {
             return null;
         }
@@ -72,13 +72,13 @@ public class UnderstatMapper {
         }
     }
 
-    public ProviderMatchStatistics toMatchStatistics(UnderstatDtos.Match match) {
+    public ProviderMatchStatistics toMatchStatistics(UnderStatDtos.Match match) {
         if (match == null || !StringUtils.hasText(match.id())) return null;
-        UnderstatDtos.TeamRef home = match.h();
-        UnderstatDtos.TeamRef away = match.a();
-        UnderstatDtos.Goals goals = match.goals();
-        UnderstatDtos.Xg xg = match.xg();
-        UnderstatDtos.Forecast forecast = match.forecast();
+        UnderStatDtos.TeamRef home = match.h();
+        UnderStatDtos.TeamRef away = match.a();
+        UnderStatDtos.Goals goals = match.goals();
+        UnderStatDtos.Xg xg = match.xg();
+        UnderStatDtos.Forecast forecast = match.forecast();
         return new ProviderMatchStatistics(
                 match.id(),
                 home == null ? null : home.id(),
@@ -98,10 +98,10 @@ public class UnderstatMapper {
                 forecast == null ? null : forecast.l());
     }
 
-    public ProviderTeamMatchStats toTeamMatchStats(String teamExternalId, UnderstatDtos.TeamHistoryMatch match) {
+    public ProviderTeamMatchStats toTeamMatchStats(String teamExternalId, UnderStatDtos.TeamHistoryMatch match) {
         if (match == null) return null;
-        UnderstatDtos.Ppda ppda = match.ppda();
-        UnderstatDtos.Ppda ppdaAllowed = match.ppdaAllowed();
+        UnderStatDtos.Ppda ppda = match.ppda();
+        UnderStatDtos.Ppda ppdaAllowed = match.ppdaAllowed();
         return new ProviderTeamMatchStats(
                 teamExternalId, match.id(), MmoProviderDataStandardizer.displayText(match.homeAway()),
                 MmoProviderDataStandardizer.displayText(match.date()), match.xG(), match.xGA(),

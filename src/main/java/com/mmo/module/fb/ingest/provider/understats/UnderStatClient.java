@@ -21,14 +21,14 @@ import java.util.Map;
  * are delegated to ProviderHttpClient; no challenge or access-control bypass is attempted.
  */
 @Component
-public class UnderstatClient extends AbstractProviderClient {
+public class UnderStatClient extends AbstractProviderClient {
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(30);
     private static final int MAX_IN_MEMORY_SIZE_BYTES = 10 * 1024 * 1024;
     private static final String ACCEPT_HEADER = "application/json, text/javascript, */*; q=0.01";
     private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             + "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
-    public UnderstatClient(ProviderHttpClient httpClient, AppProperties appProperties) {
+    public UnderStatClient(ProviderHttpClient httpClient, AppProperties appProperties) {
         super(appProperties, httpClient);
     }
 
@@ -64,7 +64,7 @@ public class UnderstatClient extends AbstractProviderClient {
             return exchange(Provider.UNDER_STATS, HttpMethod.GET, path, headers, Map.of(),
                     null, responseType, REQUEST_TIMEOUT, MAX_IN_MEMORY_SIZE_BYTES);
         } catch (ProviderHttpException ex) {
-            throw new IllegalStateException("Understat HTTP " + ex.getStatusCode() + " for " + path
+            throw new IllegalStateException("UnderStat HTTP " + ex.getStatusCode() + " for " + path
                     + ". Check endpoint availability and access permissions.", ex);
         } catch (IllegalStateException ex) {
             throw new IllegalStateException("Could not fetch valid Understat JSON from " + path
@@ -73,12 +73,12 @@ public class UnderstatClient extends AbstractProviderClient {
     }
 
     private static void validateSeason(int season) {
-        if (season < 2014) throw new IllegalArgumentException("Understat season must be 2014 or later");
+        if (season < 2014) throw new IllegalArgumentException("UnderStat season must be 2014 or later");
     }
 
     private static void validateSlug(String slug, String resource) {
         if (!StringUtils.hasText(slug) || slug.contains("/") || slug.contains("..")) {
-            throw new IllegalArgumentException("A valid Understat " + resource + " slug is required");
+            throw new IllegalArgumentException("A valid UnderStat " + resource + " slug is required");
         }
     }
 }

@@ -6,8 +6,8 @@ import com.mmo.module.fb.ingest.provider.model.ProviderLeagueMonthlyStats;
 import com.mmo.module.fb.ingest.provider.model.ProviderMatchStatistics;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeamMatchStats;
 import com.mmo.module.fb.ingest.provider.spi.HistoricalStatsProvider;
-import com.mmo.module.fb.ingest.provider.understats.mapper.UnderstatMapper;
-import com.mmo.module.fb.ingest.provider.understats.dto.UnderstatDtos;
+import com.mmo.module.fb.ingest.provider.understats.mapper.UnderStatMapper;
+import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -24,15 +24,15 @@ import java.util.concurrent.ConcurrentMap;
 
 @Component
 @RequiredArgsConstructor
-public class UnderstatProvider implements HistoricalStatsProvider {
+public class UnderStatProvider implements HistoricalStatsProvider {
 
-    private static final TypeReference<UnderstatDtos.LeagueData> LEAGUE_DATA =
+    private static final TypeReference<UnderStatDtos.LeagueData> LEAGUE_DATA =
             new TypeReference<>() { };
     private static final int DECIMAL_SCALE = 6;
 
     private static final long CACHE_TTL_SECONDS = 600;
-    private final UnderstatClient client;
-    private final UnderstatMapper mapper;
+    private final UnderStatClient client;
+    private final UnderStatMapper mapper;
     private final ConcurrentMap<String, CachedLeagueData> leagueCache = new ConcurrentHashMap<>();
 
     @Override
@@ -42,7 +42,7 @@ public class UnderstatProvider implements HistoricalStatsProvider {
 
     @Override
     public List<ProviderMatchStatistics> fetchLeagueMatches(String leagueSlug, int season) {
-        UnderstatDtos.LeagueData league = fetchLeagueData(leagueSlug, season);
+        UnderStatDtos.LeagueData league = fetchLeagueData(leagueSlug, season);
         if (league.dates() == null || league.dates().isEmpty()) {
             return List.of();
         }
@@ -59,12 +59,12 @@ public class UnderstatProvider implements HistoricalStatsProvider {
             throw new IllegalArgumentException("teamSlug must not be blank");
         }
 
-        UnderstatDtos.LeagueData league = fetchLeagueData(leagueSlug, season);
+        UnderStatDtos.LeagueData league = fetchLeagueData(leagueSlug, season);
         if (league.teams() == null || league.teams().isEmpty()) {
             return List.of();
         }
 
-        UnderstatDtos.LeagueTeam team = findTeam(league.teams(), teamSlug)
+        UnderStatDtos.LeagueTeam team = findTeam(league.teams(), teamSlug)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Team '" + teamSlug + "' was not found in Understat league "
                                 + leagueSlug + " season " + season));
@@ -107,7 +107,7 @@ public class UnderstatProvider implements HistoricalStatsProvider {
                 homeGoals, awayGoals, homeXg, awayXg));
     }
 
-    private UnderstatDtos.LeagueData fetchLeagueData(String leagueSlug, int season) {
+    private UnderStatDtos.LeagueData fetchLeagueData(String leagueSlug, int season) {
         String cacheKey = leagueSlug + ":" + season;
         Instant now = Instant.now();
         CachedLeagueData cached = leagueCache.get(cacheKey);
@@ -115,23 +115,23 @@ public class UnderstatProvider implements HistoricalStatsProvider {
             return cached.data();
         }
 
-        UnderstatDtos.LeagueData league = client.fetchLeagueData(leagueSlug, season, LEAGUE_DATA);
+        UnderStatDtos.LeagueData league = client.fetchLeagueData(leagueSlug, season, LEAGUE_DATA);
         if (league == null) {
             throw new IllegalStateException(
-                    "Understat returned an empty league payload for " + leagueSlug + "/" + season);
+                    "UnderStat returned an empty league payload for " + leagueSlug + "/" + season);
         }
         leagueCache.put(cacheKey, new CachedLeagueData(league, now));
         return league;
     }
 
-    private record CachedLeagueData(UnderstatDtos.LeagueData data, Instant loadedAt) {
+    private record CachedLeagueData(UnderStatDtos.LeagueData data, Instant loadedAt) {
     }
 
-    private Optional<UnderstatDtos.LeagueTeam> findTeam(
-            Map<String, UnderstatDtos.LeagueTeam> teams, String teamExternalId) {
+    private Optional<UnderStatDtos.LeagueTeam> findTeam(
+            Map<String, UnderStatDtos.LeagueTeam> teams, String teamExternalId) {
         return teams.entrySet().stream()
                 .map(entry -> {
-                    UnderstatDtos.LeagueTeam team = entry.getValue();
+                    UnderStatDtos.LeagueTeam team = entry.getValue();
                     if (team == null) return null;
                     String id = StringUtils.hasText(team.id()) ? team.id() : entry.getKey();
                     return teamExternalId.equals(id) || teamExternalId.equals(entry.getKey()) ? team : null;

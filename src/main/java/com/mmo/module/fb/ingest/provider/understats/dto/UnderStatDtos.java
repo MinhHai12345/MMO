@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.Map;
 
 /** Transport records for Understat's direct AJAX JSON API. */
-public final class UnderstatDtos {
-    private UnderstatDtos() {}
+public final class UnderStatDtos {
+    private UnderStatDtos() {}
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record LeagueData(List<Match> dates, Map<String, LeagueTeam> teams, List<LeaguePlayer> players) {}
     @JsonIgnoreProperties(ignoreUnknown = true)
