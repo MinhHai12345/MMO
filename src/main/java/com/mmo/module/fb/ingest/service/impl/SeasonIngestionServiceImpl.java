@@ -35,9 +35,15 @@ public class SeasonIngestionServiceImpl implements SeasonIngestionService {
             return;
         }
 
+        List<LeagueExternalId> leagueMappings = leagueExternalIdRepository.findAllByProvider(selectedProvider);
+        if (leagueMappings.isEmpty()) {
+            throw new IllegalStateException("Cannot ingest seasons from " + selectedProvider
+                    + " before its league mappings have been synchronized");
+        }
+
         int discovered = 0;
         int failed = 0;
-        for (LeagueExternalId mapping : leagueExternalIdRepository.findAllByProvider(selectedProvider)) {
+        for (LeagueExternalId mapping : leagueMappings) {
             if (mapping.getLeague() == null || !StringUtils.hasText(mapping.getExternalId())) continue;
             try {
                 List<ProviderSeason> seasons = providerRegistry.season(selectedProvider).fetchSeasons(
