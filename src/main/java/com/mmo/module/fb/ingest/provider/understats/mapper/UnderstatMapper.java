@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.provider.understats.mapper;
 
 import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.provider.model.ProviderMatchStatistics;
+import com.mmo.module.fb.ingest.provider.model.ProviderPlayerSeasonStats;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeamMatchStats;
 import com.mmo.module.fb.ingest.provider.understats.dto.UnderstatDtos;
 import org.springframework.stereotype.Component;
@@ -37,6 +38,38 @@ public class UnderstatMapper {
     public String teamLookupKey(String value) {
         String normalized = teamName(value);
         return normalized == null ? null : normalized.toLowerCase(Locale.ROOT);
+    }
+
+    public ProviderPlayerSeasonStats toPlayerSeasonStats(UnderstatDtos.LeaguePlayer player) {
+        if (player == null || !StringUtils.hasText(player.id()) || !StringUtils.hasText(player.playerName())) {
+            return null;
+        }
+        return new ProviderPlayerSeasonStats(
+                player.id().trim(), playerName(player.playerName()), teamName(player.teamTitle()),
+                position(player.position()), parseInteger(player.games()), parseInteger(player.time()),
+                parseInteger(player.goals()), parseDecimal(player.xg()), parseInteger(player.assists()),
+                parseDecimal(player.xa()), parseInteger(player.shots()), parseInteger(player.keyPasses()),
+                parseInteger(player.yellowCards()), parseInteger(player.redCards()),
+                parseInteger(player.npg()), parseDecimal(player.npxg()),
+                parseDecimal(player.xgChain()), parseDecimal(player.xgBuildup()));
+    }
+
+    private Integer parseInteger(String value) {
+        if (!StringUtils.hasText(value)) return null;
+        try {
+            return new java.math.BigDecimal(value.trim()).intValueExact();
+        } catch (NumberFormatException | ArithmeticException ignored) {
+            return null;
+        }
+    }
+
+    private java.math.BigDecimal parseDecimal(String value) {
+        if (!StringUtils.hasText(value)) return null;
+        try {
+            return new java.math.BigDecimal(value.trim());
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
     public ProviderMatchStatistics toMatchStatistics(UnderstatDtos.Match match) {
