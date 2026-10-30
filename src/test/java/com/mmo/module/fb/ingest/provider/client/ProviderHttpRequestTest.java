@@ -27,7 +27,7 @@ class ProviderHttpRequestTest {
         assertThat(request.timeout()).isEqualTo(Duration.ofSeconds(30));
         assertThat(request.maxInMemorySize()).isPositive();
         assertThat(request.queryParams()).containsEntry("season", 2026).containsEntry("optional", null);
-        assertThatThrownBy(() -> request.queryParams().put("page", 1))
+        assertThatThrownBy(() -> ((Map) request.queryParams()).put("page", 1))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
