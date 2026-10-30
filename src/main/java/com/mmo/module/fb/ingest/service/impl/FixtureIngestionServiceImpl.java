@@ -97,6 +97,9 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
                         externalLeagueId, season.getYear(), ex.getMessage());
                 continue;
             } catch (ProviderTransportException ex) {
+                if (selectedProvider == Provider.FOOTBALL_DATA) {
+                    throw ex;
+                }
                 failed++;
                 log.warn("Provider {} transport failed for league {} season {}. "
                                 + "Continuing with remaining seasons; the next scheduled sync can retry this season.",
