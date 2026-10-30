@@ -51,7 +51,18 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                     .map(LeagueExternalId::getLeague)
                     .orElse(null);
 
-            if (league == null && selectedProvider != Provider.FOOTBALL_DATA) {
+            if (league == null && selectedProvider == Provider.UNDER_STATS) {
+                // UnderStat is a catalogue source: its /getStatData endpoint is the source
+                // of league identity, so exact unique-name matching is allowed here.
+                List<League> named = leagueRepository.findAllByNameIgnoreCase(source.name());
+                league = named.size() == 1 ? named.get(0) : null;
+                if (league != null && leagueExternalIdRepository
+                        .findByLeagueIdAndProvider(league.getId(), selectedProvider).isPresent()) {
+                    league = null;
+                }
+            }
+            if (league == null && selectedProvider != Provider.FOOTBALL_DATA
+                    && selectedProvider != Provider.UNDER_STATS) {
                 log.debug("Skipping unmapped league '{}' from {} (external ID {}). Register its provider ID "
                                 + "against the canonical league before syncing secondary-provider data.",
                         source.name(), selectedProvider, source.externalId());
@@ -72,12 +83,15 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                 continue;
             }
 
-            if (selectedProvider == Provider.FOOTBALL_DATA) {
+            if (selectedProvider == Provider.FOOTBALL_DATA || selectedProvider == Provider.UNDER_STATS) {
                 if (league.getName() == null || league.getName().isBlank()) league.setName(source.name());
                 if (league.getSlug() == null || league.getSlug().isBlank()) {
                     league.setSlug(slug(source.name()));
                 }
-                if (source.country() != null && !source.country().isBlank()) league.setCountry(source.country());
+                if (source.country() != null && !source.country().isBlank()
+                        && (selectedProvider == Provider.FOOTBALL_DATA || !StringUtils.hasText(league.getCountry()))) {
+                    league.setCountry(source.country());
+                }
                 if (source.logoUrl() != null && !source.logoUrl().isBlank()) league.setLogoUrl(source.logoUrl());
                 league = leagueRepository.save(league);
             }
@@ -110,7 +124,8 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                 if (season == null) {
                     season = seasonRepository.findByLeague_IdAndYear(league.getId(), sourceSeason.year())
                             .orElse(null);
-                    if (season == null && selectedProvider != Provider.FOOTBALL_DATA) {
+                    if (season == null && selectedProvider != Provider.FOOTBALL_DATA
+                            && selectedProvider != Provider.UNDER_STATS) {
                         log.debug("Skipping provider season {} for canonical league {} because no core season exists",
                                 sourceSeason.year(), league.getId());
                         continue;
@@ -129,13 +144,13 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                     continue;
                 }
 
-                if (selectedProvider == Provider.FOOTBALL_DATA) {
+                if (selectedProvider == Provider.FOOTBALL_DATA || selectedProvider == Provider.UNDER_STATS) {
                     // Current seasons are active by default when first discovered. Preserve
                     // explicit operator choices on already-persisted seasons.
                     if (season.getId() == null) season.setActive(sourceSeason.current());
                     season.setCurrent(sourceSeason.current());
-                    season.setStartDate(sourceSeason.startDate());
-                    season.setEndDate(sourceSeason.endDate());
+                    if (sourceSeason.startDate() != null) season.setStartDate(sourceSeason.startDate());
+                    if (sourceSeason.endDate() != null) season.setEndDate(sourceSeason.endDate());
                     season = seasonRepository.save(season);
                 }
                 externalIdMappingService.registerSeason(season, selectedProvider, sourceSeason.externalId());
