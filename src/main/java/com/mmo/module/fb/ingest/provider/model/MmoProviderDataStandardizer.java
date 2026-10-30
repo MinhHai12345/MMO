@@ -58,9 +58,9 @@ public final class MmoProviderDataStandardizer {
 
         String unicode = Normalizer.normalize(normalized, Normalizer.Form.NFC)
                 .replaceAll("[\\u2010-\\u2015\\u2212]", "-")
-                .replace('‘', '\\'')
-                .replace('’', '\\'')
-                .replace('‛', '\\'')
+                .replace("‘", "'")
+                .replace("’", "'")
+                .replace("‛", "'")
                 .replace('“', '"')
                 .replace('”', '"');
         return displayText(unicode);
