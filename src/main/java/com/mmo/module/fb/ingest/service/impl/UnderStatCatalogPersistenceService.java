@@ -1,7 +1,9 @@
 package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderPlayerSeasonStats;
+import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
 import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
 import com.mmo.module.fb.ingest.provider.understats.mapper.UnderStatMapper;
 import com.mmo.module.fb.ingest.service.ExternalIdMappingService;
@@ -10,6 +12,7 @@ import com.mmo.module.fb.league.entity.LeagueExternalId;
 import com.mmo.module.fb.league.entity.Season;
 import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.league.repository.LeagueRepository;
+import com.mmo.module.fb.league.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.league.repository.SeasonRepository;
 import com.mmo.module.fb.player.entity.Player;
 import com.mmo.module.fb.player.entity.PlayerSeasonStats;
@@ -31,7 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Persists Understat catalogue data into MMO's league, team and player tables. */
+/** Persists UnderStat league-season catalogue data into MMO's league, team and player tables. */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -41,6 +44,7 @@ public class UnderStatCatalogPersistenceService {
     private final LeagueRepository leagueRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final SeasonRepository seasonRepository;
+    private final SeasonExternalIdRepository seasonExternalIdRepository;
     private final TeamRepository teamRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;
     private final PlayerRepository playerRepository;
@@ -50,16 +54,16 @@ public class UnderStatCatalogPersistenceService {
     private final UnderStatMapper mapper;
 
     @Transactional
-    public CatalogSyncResult persist(String leagueKey, String leagueName, String country,
-                                     int seasonYear, UnderStatDtos.LeagueData data) {
-        if (data == null) return new CatalogSyncResult(0, 0, 0);
-        League league = resolveLeague(leagueKey, leagueName, country);
-        Season season = seasonRepository.findByLeague_IdAndYear(league.getId(), String.valueOf(seasonYear))
-                .orElseGet(() -> {
-                    boolean current = seasonYear == Year.now(ZoneOffset.UTC).getValue();
-                    return seasonRepository.save(Season.builder().league(league)
-                            .year(String.valueOf(seasonYear)).isCurrent(current).isActive(current).build());
-                });
+    public CatalogSyncResult persist(
+            ProviderLeague sourceLeague,
+            ProviderSeason sourceSeason,
+            UnderStatDtos.LeagueData data) {
+        if (sourceLeague == null || sourceSeason == null || data == null) {
+            return new CatalogSyncResult(0, 0, 0);
+        }
+
+        League league = resolveLeague(sourceLeague);
+        Season season = resolveSeason(league, sourceSeason);
 
         Map<String, Team> teamsByTitle = new HashMap<>();
         int teamsSaved = 0;
@@ -70,6 +74,7 @@ public class UnderStatCatalogPersistenceService {
                 String externalId = StringUtils.hasText(source.id()) ? source.id().trim() : entry.getKey();
                 String name = mapper.teamName(source.title());
                 if (!StringUtils.hasText(externalId) || !StringUtils.hasText(name)) continue;
+
                 Team team = resolveTeam(externalId, name);
                 teamsByTitle.put(mapper.teamLookupKey(name), team);
                 teamsSaved++;
@@ -90,35 +95,80 @@ public class UnderStatCatalogPersistenceService {
                 playersSaved++;
             }
         }
+
         return new CatalogSyncResult(1, teamsSaved, playersSaved);
     }
 
-    private League resolveLeague(String leagueKey, String leagueName, String country) {
+    private League resolveLeague(ProviderLeague source) {
         LeagueExternalId mapped = leagueExternalIdRepository
-                .findByProviderAndExternalId(PROVIDER, leagueKey).orElse(null);
+                .findByProviderAndExternalId(PROVIDER, source.externalId()).orElse(null);
         if (mapped != null) {
-            mapped.setIdentify(leagueKey);
+            mapped.setIdentify(source.identify());
             leagueExternalIdRepository.save(mapped);
             return mapped.getLeague();
         }
 
-        String standardizedName = mapper.leagueName(leagueName);
+        String standardizedName = mapper.leagueName(source.name());
         List<League> named = leagueRepository.findAllByNameIgnoreCase(standardizedName);
         League league = named.size() == 1 ? named.get(0) : null;
         if (league != null && leagueExternalIdRepository
-                .findByLeagueIdAndProvider(league.getId(), PROVIDER).isPresent()) league = null;
+                .findByLeagueIdAndProvider(league.getId(), PROVIDER).isPresent()) {
+            league = null;
+        }
+
         if (league == null) {
             league = new League();
             league.setName(standardizedName);
-            league.setSlug("understat-" + slug(leagueKey));
+            league.setSlug("understat-" + slug(source.identify()));
             league.setIsActive(false);
-            league.setCountry(country);
+            league.setCountry(source.country());
+            league = leagueRepository.save(league);
+        } else if (!StringUtils.hasText(league.getCountry()) && StringUtils.hasText(source.country())) {
+            league.setCountry(source.country());
             league = leagueRepository.save(league);
         }
-        LeagueExternalId mapping = externalIdMappingService.registerLeague(league, PROVIDER, leagueKey);
-        mapping.setIdentify(leagueKey);
+
+        LeagueExternalId mapping = externalIdMappingService.registerLeague(league, PROVIDER, source.externalId());
+        mapping.setIdentify(source.identify());
         leagueExternalIdRepository.save(mapping);
         return league;
+    }
+
+    private Season resolveSeason(League league, ProviderSeason source) {
+        Season season = seasonExternalIdRepository.findByProviderAndExternalId(PROVIDER, source.externalId())
+                .map(com.mmo.module.fb.league.entity.SeasonExternalId::getSeason)
+                .orElse(null);
+
+        if (season != null && (season.getLeague() == null
+                || !league.getId().equals(season.getLeague().getId())
+                || !source.year().equals(season.getYear()))) {
+            throw new IllegalStateException("UnderStat season ID " + source.externalId()
+                    + " is already mapped to a different canonical season");
+        }
+
+        if (season == null) {
+            season = seasonRepository.findByLeague_IdAndYear(league.getId(), source.year()).orElse(null);
+            if (season == null) {
+                season = Season.builder()
+                        .league(league)
+                        .year(source.year())
+                        .isCurrent(source.current())
+                        .isActive(source.current())
+                        .startDate(source.startDate())
+                        .endDate(source.endDate())
+                        .build();
+                season = seasonRepository.save(season);
+            }
+        }
+
+        var existingMapping = seasonExternalIdRepository.findBySeasonIdAndProvider(season.getId(), PROVIDER)
+                .orElse(null);
+        if (existingMapping != null && !source.externalId().equals(existingMapping.getExternalId())) {
+            throw new IllegalStateException("Canonical season " + season.getId()
+                    + " is already mapped to a different UnderStat season ID");
+        }
+        externalIdMappingService.registerSeason(season, PROVIDER, source.externalId());
+        return season;
     }
 
     private Team resolveTeam(String externalId, String name) {
@@ -168,8 +218,8 @@ public class UnderStatCatalogPersistenceService {
         return player;
     }
 
-    private void persistPlayerSeasonStats(Player player, Season season, Team team,
-                                           ProviderPlayerSeasonStats source) {
+    private void persistPlayerSeasonStats(
+            Player player, Season season, Team team, ProviderPlayerSeasonStats source) {
         PlayerSeasonStats stats = playerSeasonStatsRepository
                 .findByPlayerIdAndSeasonIdAndProvider(player.getId(), season.getId(), PROVIDER)
                 .orElseGet(() -> PlayerSeasonStats.builder()
@@ -193,8 +243,9 @@ public class UnderStatCatalogPersistenceService {
     }
 
     private static String slug(String value) {
+        if (!StringUtils.hasText(value)) return "unknown";
         return value.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
     }
 
-    public record CatalogSyncResult(int leagues, int teams, int players) {}
+    public record CatalogSyncResult(int leagues, int teams, int players) { }
 }
