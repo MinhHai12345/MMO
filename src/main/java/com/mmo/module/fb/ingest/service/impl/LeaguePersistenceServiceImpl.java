@@ -113,7 +113,8 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                 Season season = seasonRepository.findByLeague_IdAndYear(league.getId(), sourceSeason.year())
                         .orElse(null);
 
-                if (season == null && selectedProvider != Provider.FOOTBALL_DATA) {
+                if (season == null && selectedProvider != Provider.FOOTBALL_DATA
+                        && selectedProvider != Provider.UNDER_STATS) {
                     log.debug("Skipping provider season {} from {} for canonical league {} because no core season exists",
                             sourceSeason.year(), selectedProvider, league.getId());
                     continue;
@@ -126,10 +127,12 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
                             .year(sourceSeason.year())
                             .build();
                     season.setActive(sourceSeason.current());
+                    season.setCurrent(sourceSeason.current());
                 }
 
-                // Football-Data owns canonical season metadata. Secondary providers only
-                // attach their external identity to an existing canonical season.
+                // Football-Data owns authoritative season dates and refreshes current status
+                // for existing canonical rows. UnderStat may bootstrap a missing season as a
+                // placeholder, but never overwrites metadata on an existing core season.
                 if (selectedProvider == Provider.FOOTBALL_DATA) {
                     season.setCurrent(sourceSeason.current());
                     if (sourceSeason.startDate() != null) season.setStartDate(sourceSeason.startDate());
