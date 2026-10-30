@@ -8,13 +8,10 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 /** Maps UnderStat's stat catalogue into independent league and season resources. */
 @Component
@@ -94,10 +91,6 @@ public class UnderStatLeagueMapper {
             LeagueDefinition definition = definition(row.league());
             LeagueAccumulator accumulator = leagues.computeIfAbsent(
                     externalId, ignored -> new LeagueAccumulator(externalId, definition));
-            String seasonStartYear = toSeasonStartYear(row.year(), row.month());
-            if (seasonStartYear != null) {
-                accumulator.seasonStartYears().add(seasonStartYear);
-            }
         }
         return leagues;
     }
@@ -110,35 +103,7 @@ public class UnderStatLeagueMapper {
         return new LeagueDefinition(identify, sourceName.trim(), null);
     }
 
-    /**
-     * UnderStat's /getStatData catalogue is grouped by calendar month, not by football season.
-     * Seasons start in July: January-June rows belong to the season that started the previous year.
-     */
-    private static String toSeasonStartYear(String calendarYearValue, String monthValue) {
-        if (calendarYearValue == null || !calendarYearValue.matches("\\d{4}")
-                || monthValue == null || !monthValue.matches("\\d{1,2}")) {
-            return null;
-        }
-        int calendarYear = Integer.parseInt(calendarYearValue);
-        int month = Integer.parseInt(monthValue);
-        if (month < 1 || month > 12) return null;
-        return String.valueOf(month >= 7 ? calendarYear : calendarYear - 1);
-    }
-
-    private static boolean isSeasonStartYear(String value) {
-        if (value == null || !value.matches("\\d{4}")) return false;
-        int year = Integer.parseInt(value);
-        return year >= 2014 && year <= LocalDate.now(ZoneOffset.UTC).getYear();
-    }
-
     private record LeagueDefinition(String identify, String name, String country) { }
 
-    private record LeagueAccumulator(
-            String externalId,
-            LeagueDefinition definition,
-            Set<String> seasonStartYears) {
-        private LeagueAccumulator(String externalId, LeagueDefinition definition) {
-            this(externalId, definition, new LinkedHashSet<>());
-        }
-    }
+    private record LeagueAccumulator(String externalId, LeagueDefinition definition) { }
 }
