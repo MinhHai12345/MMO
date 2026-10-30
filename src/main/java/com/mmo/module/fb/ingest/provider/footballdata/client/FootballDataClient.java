@@ -16,6 +16,10 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.lang.reflect.Type;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -28,9 +32,11 @@ public class FootballDataClient extends AbstractProviderClient {
     private static final int MAX_IN_MEMORY_SIZE_BYTES = 10 * 1024 * 1024;
     private static final String PLACEHOLDER_API_KEY = "mock";
     private static final long DEFAULT_RATE_LIMIT_WAIT_SECONDS = 60;
+    private static final long MAX_RATE_LIMIT_WAIT_SECONDS = 3_600;
     private static final long MIN_REQUEST_INTERVAL_MILLIS = 6_000;
     private static final Pattern WAIT_SECONDS_PATTERN =
             Pattern.compile("(?i)wait\\s+(\\d+)\\s+seconds?");
+    private static final DateTimeFormatter HTTP_DATE_FORMAT = DateTimeFormatter.RFC_1123_DATE_TIME;
 
     private long nextAllowedRequestAtMillis;
     private final FootballDataRetryPolicy retryPolicy = new FootballDataRetryPolicy();
@@ -68,7 +74,11 @@ public class FootballDataClient extends AbstractProviderClient {
                     long waitSeconds = determineRetryDelaySeconds(ex);
                     nextAllowedRequestAtMillis = Math.max(nextAllowedRequestAtMillis,
                             System.currentTimeMillis() + waitSeconds * 1_000L);
-                    if (retryPolicy.shouldRetryStatus(status, attempt)) continue;
+                    if (retryPolicy.shouldRetryStatus(status, attempt)) {
+                        log.warn("football-data.org rate limited request; retrying once after {} seconds: {}",
+                                waitSeconds, path);
+                        continue;
+                    }
                     throw errorClassifier.classify(status,
                             message + ". Retry after approximately " + waitSeconds + " seconds.", ex);
                 }
@@ -92,21 +102,32 @@ public class FootballDataClient extends AbstractProviderClient {
     private long determineRetryDelaySeconds(ProviderHttpException ex) {
         String retryAfter = ex.getResponseHeaders().getFirst(HttpHeaders.RETRY_AFTER);
         if (StringUtils.hasText(retryAfter)) {
+            String value = retryAfter.trim();
             try {
-                return Math.max(1, Long.parseLong(retryAfter.trim()));
+                return boundedWaitSeconds(Long.parseLong(value));
             } catch (NumberFormatException ignored) {
-                // Retry-After may be an HTTP date; fall back to response body.
+                try {
+                    Instant retryAt = ZonedDateTime.parse(value, HTTP_DATE_FORMAT).toInstant();
+                    return boundedWaitSeconds(Duration.between(Instant.now(), retryAt).getSeconds());
+                } catch (DateTimeParseException ignoredDate) {
+                    // Fall through to the provider response body.
+                }
             }
         }
+
         Matcher matcher = WAIT_SECONDS_PATTERN.matcher(ex.getResponseBody() == null ? "" : ex.getResponseBody());
         if (matcher.find()) {
             try {
-                return Math.max(1, Long.parseLong(matcher.group(1)));
+                return boundedWaitSeconds(Long.parseLong(matcher.group(1)));
             } catch (NumberFormatException ignored) {
                 // Keep conservative default.
             }
         }
         return DEFAULT_RATE_LIMIT_WAIT_SECONDS;
+    }
+
+    private long boundedWaitSeconds(long seconds) {
+        return Math.min(MAX_RATE_LIMIT_WAIT_SECONDS, Math.max(1, seconds));
     }
 
     private void sleepBeforeRetry(long delayMillis, String path) {
