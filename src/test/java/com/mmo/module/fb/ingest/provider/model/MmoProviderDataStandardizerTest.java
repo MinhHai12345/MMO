@@ -26,6 +26,30 @@ class MmoProviderDataStandardizerTest {
     }
 
     @Test
+    void mapsProviderTeamAliasesToPopularCanonicalNames() {
+        assertThat(MmoProviderDataStandardizer.standardTeamName("FC Bayern München"))
+                .isEqualTo("Bayern Munich");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Bayern Munich"))
+                .isEqualTo("Bayern Munich");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("1. FC Köln"))
+                .isEqualTo("FC Köln");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("FC Cologne"))
+                .isEqualTo("FC Köln");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Borussia M.Gladbach"))
+                .isEqualTo("Borussia Mönchengladbach");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("FC Internazionale Milano"))
+                .isEqualTo("Inter");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Atalanta BC"))
+                .isEqualTo("Atalanta");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Brighton & Hove Albion FC"))
+                .isEqualTo("Brighton");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("RCD Espanyol de Barcelona"))
+                .isEqualTo("Espanyol");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Unknown FC"))
+                .isEqualTo("Unknown FC");
+    }
+
+    @Test
     void createsConservativeCrossProviderTeamNameKeys() {
         assertThat(MmoProviderDataStandardizer.teamNameMatchKey("FC Bayern München"))
                 .isEqualTo("bayern munchen");
