@@ -53,10 +53,10 @@ public class FBCronjobInitial implements DataInitializer {
         createOrUpdateJob(TeamSyncJob.class,
                 "0 0 3 1,15 * ?", "Refresh team metadata (UTC 03:00 on days 1 and 15)");
 
-        // Football-Data.co.uk is a CSV source: backfill historical seasons once and refresh
-        // the current season daily. Keep it separate from the football-data.org bootstrap.
+        // Football-Data.co.uk is a CSV source: import every mapped league and season,
+        // then refresh the current season on subsequent daily executions.
         createOrUpdateJob(FootballDataUkCoreSyncJob.class,
-                "0 0 4 * * ?", "Sync Football-Data UK active seasons, teams, fixtures, results and CSV statistics daily at 04:00 UTC");
+                "0 0 4 * * ?", "Sync all mapped Football-Data UK leagues and seasons: teams, fixtures, results and CSV statistics daily at 04:00 UTC");
 
         // Match data has direct value to content freshness; use bounded periodic refreshes.
         createOrUpdateJob(MatchResultSyncJob.class,
