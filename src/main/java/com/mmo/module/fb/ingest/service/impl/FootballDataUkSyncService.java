@@ -416,8 +416,11 @@ public class FootballDataUkSyncService {
 
     private String buildCsvUrl(AppProperties.ProviderConfig config, String season, String leagueCode) {
         String base = StringUtils.hasText(config.getUri())
-                ? config.getUri().trim() : "https://www.football-data.co.uk";
+                ? config.getUri().trim() : "https://football-data.co.uk";
         while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
+        if ("https://www.football-data.co.uk".equalsIgnoreCase(base)) {
+            base = "https://football-data.co.uk";
+        }
         return base + "/mmz4281/" + seasonCode(season) + "/"
                 + leagueCode.trim().toUpperCase(Locale.ROOT) + ".csv";
     }
