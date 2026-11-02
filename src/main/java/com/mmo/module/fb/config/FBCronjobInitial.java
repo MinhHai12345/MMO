@@ -10,6 +10,7 @@ import com.mmo.module.fb.analytics.job.MatchProcessPredictionJob;
 import com.mmo.module.fb.analytics.job.PredictionEvaluationJob;
 import com.mmo.module.fb.analytics.job.WalkForwardBackTestJob;
 import com.mmo.module.fb.ingest.job.FootballDataBootstrapJob;
+import com.mmo.module.fb.ingest.job.FootballDataUkCoreSyncJob;
 import com.mmo.module.fb.ingest.job.LeagueSyncJob;
 import com.mmo.module.fb.ingest.job.MatchFixtureSyncJob;
 import com.mmo.module.fb.ingest.job.MatchResultSyncJob;
@@ -51,6 +52,11 @@ public class FBCronjobInitial implements DataInitializer {
                 "0 0 2 1 * ?", "Refresh league and season metadata (monthly UTC 02:00)");
         createOrUpdateJob(TeamSyncJob.class,
                 "0 0 3 1,15 * ?", "Refresh team metadata (UTC 03:00 on days 1 and 15)");
+
+        // Football-Data.co.uk is a CSV source: backfill historical seasons once and refresh
+        // the current season daily. Keep it separate from the football-data.org bootstrap.
+        createOrUpdateJob(FootballDataUkCoreSyncJob.class,
+                "0 0 4 * * ?", "Sync Football-Data UK active seasons, teams, fixtures, results and CSV statistics daily at 04:00 UTC");
 
         // Match data has direct value to content freshness; use bounded periodic refreshes.
         createOrUpdateJob(MatchResultSyncJob.class,
