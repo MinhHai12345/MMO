@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 /**
  * Scheduled import of Football-Data.co.uk core match data.
  *
- * <p>The importer resolves provider league mappings and synchronizes active seasons,
+ * <p>The importer resolves provider league mappings and synchronizes all available seasons,
  * teams, fixtures, results and the team statistics available in the CSV files.
  * Football-Data.co.uk does not expose an official standings table.</p>
  */
