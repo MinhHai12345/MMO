@@ -50,6 +50,28 @@ class MmoProviderDataStandardizerTest {
     }
 
     @Test
+    void standardizesFootballDataUkTeamAliases() {
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Man City"))
+                .isEqualTo("Manchester City");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Man United"))
+                .isEqualTo("Manchester United");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Man Utd"))
+                .isEqualTo("Manchester United");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Nott'm Forest"))
+                .isEqualTo("Nottingham Forest");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Newcastle"))
+                .isEqualTo("Newcastle United");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Spurs"))
+                .isEqualTo("Tottenham");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("West Brom"))
+                .isEqualTo("West Bromwich Albion");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Sheffield Weds"))
+                .isEqualTo("Sheffield Wednesday");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("QPR"))
+                .isEqualTo("Queens Park Rangers");
+    }
+
+    @Test
     void createsConservativeCrossProviderTeamNameKeys() {
         assertThat(MmoProviderDataStandardizer.teamNameMatchKey("FC Bayern München"))
                 .isEqualTo("bayern munchen");
