@@ -148,6 +148,12 @@ public class FootballDataUkSyncService {
      * Bootstrap seasons from 2014 for every active league with a Football-Data.co.uk
      * identify code. Historical seasons are processed once; current season is refreshed.
      */
+    /**
+     * Synchronize all Football-Data UK mapped leagues and every available season from 2014
+     * through the current season, regardless of the league/season active flags.
+     * Historical seasons with a completed import marker are skipped on later executions;
+     * the current season is refreshed on every run.
+     */
     public void syncAllData() {
         AppProperties.ProviderConfig config = properties.getIngestion().getProviderConfig().get(PROVIDER);
         if (config == null || !config.isEnabled()) {
@@ -184,7 +190,7 @@ public class FootballDataUkSyncService {
                     importedFixtures += result.createdFixtures();
                     importedStats += result.importedTeamStats();
                     if (result.unmatchedRows() == 0 && result.csvRows() > 0) {
-                        saveSeasonMapping(season, mapping.get());
+                        saveSeasonMapping(season, mapping);
                     } else {
                         log.warn("Football-Data.co.uk season remains pending because rows were unmatched or CSV was empty: league={}, season={}, unmatched={}, rows={}",
                                 league.getName(), season.getYear(), result.unmatchedRows(), result.csvRows());
