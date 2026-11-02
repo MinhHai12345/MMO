@@ -111,8 +111,7 @@ public class FootballDataUkSyncService {
         LeagueExternalId mapping = leagueExternalIdRepository
                 .findByLeagueIdAndProvider(season.getLeague().getId(), PROVIDER).orElse(null);
         if (mapping == null || !StringUtils.hasText(mapping.getIdentify())) {
-            log.warn("Skip Football-Data.co.uk season {}: missing identify mapping", season.getYear());
-            return 0;
+            throw new IllegalStateException("Missing FOOTBALL_DATA_UK identify mapping for season " + season.getYear());
         }
         String url = buildCsvUrl(config, season.getYear(), mapping.getIdentify());
         List<Map<String, String>> rows = parseCsv(csvClient.getCsv(url));
