@@ -165,4 +165,8 @@ public class MatchAdvancedStats extends AbstractEntity {
     /** Independent provenance timestamp for metrics enriched from Understat. */
     @Column(name = "understat_synced_at")
     private java.time.Instant understatSyncedAt;
+
+    /** Independent provenance timestamp for Football-Data.co.uk match statistics. */
+    @Column(name = "football_data_uk_synced_at")
+    private java.time.Instant footballDataUkSyncedAt;
 }
