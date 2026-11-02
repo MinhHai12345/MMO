@@ -9,6 +9,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.nio.charset.Charset;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.Locale;
 
 /**
  * Downloads and validates Football-Data.co.uk CSV files.
