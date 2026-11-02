@@ -341,7 +341,7 @@ public class FootballDataUkSyncService {
         String base = StringUtils.hasText(config.getUri())
                 ? config.getUri().trim() : "https://www.football-data.co.uk";
         while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
-        return base + "/mmz" + seasonCode(season) + "/"
+        return base + "/mmz4281/" + seasonCode(season) + "/"
                 + leagueCode.trim().toUpperCase(Locale.ROOT) + ".csv";
     }
 
