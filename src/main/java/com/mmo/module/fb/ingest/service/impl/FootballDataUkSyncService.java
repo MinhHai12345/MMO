@@ -26,7 +26,6 @@ import com.mmo.module.fb.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.text.Normalizer;
@@ -56,7 +55,6 @@ public class FootballDataUkSyncService {
     private static final Provider PROVIDER = Provider.FOOTBALL_DATA_UK;
     private static final ZoneId SOURCE_ZONE = ZoneId.of("Europe/London");
     private static final DateTimeFormatter CSV_DATE = DateTimeFormatter.ofPattern("dd/MM/yy");
-    private static final LocalDate FIRST_SEASON_START = LocalDate.of(2014, 7, 1);
 
     private final AppProperties properties;
     private final FootballDataUkCsvClient csvClient;
@@ -171,8 +169,7 @@ public class FootballDataUkSyncService {
 
                 Match match = matchExternalIdRepository.findByProviderAndExternalId(PROVIDER, fixtureExternalId)
                         .map(MatchExternalId::getMatch)
-                        .orElseGet(() -> resolveOrCreateFixture(season, home, away, kickoff,
-                                fixtureExternalId, row));
+                        .orElseGet(() -> resolveOrCreateFixture(season, home, away, kickoff, row));
                 if (match.getId() != null && matchExternalIdRepository
                         .findByMatchIdAndProvider(match.getId(), PROVIDER).isEmpty()) {
                     matchExternalIdRepository.save(MatchExternalId.builder()
@@ -272,7 +269,7 @@ public class FootballDataUkSyncService {
     }
 
     private Match resolveOrCreateFixture(Season season, Team home, Team away, Instant kickoff,
-                                         String externalId, Map<String, String> row) {
+                                         Map<String, String> row) {
         List<Match> candidates = matchRepository.findFixtureCandidates(
                 season.getId(), home.getId(), away.getId(),
                 kickoff.minusSeconds(18 * 3600L), kickoff.plusSeconds(18 * 3600L));
