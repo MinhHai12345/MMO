@@ -71,77 +71,97 @@ public class FootballDataUkSyncService {
     private final MatchAdvancedStatsRepository statsRepository;
 
     /**
-     * Initialize Football-Data.co.uk league mappings for leagues already present in MMO core.
+     * Initialize Football-Data.co.uk mappings against canonical leagues already discovered
+     * by Football-Data.org and/or Understat.
      *
-     * Safe to execute repeatedly: existing mappings are updated, missing mappings are inserted,
-     * and unrelated provider mappings are never modified.
+     * Provider mappings are independent rows. The canonical league is resolved through an
+     * existing source mapping rather than its display name, because names can differ between
+     * provider catalogues. Existing UK mappings are never reassigned or overwritten.
      */
     @Transactional
     public void initialLeagueMappings() {
         List<LeagueMappingDefinition> definitions = List.of(
-                new LeagueMappingDefinition("Premier League", "E0"),
-                new LeagueMappingDefinition("Bundesliga", "D1"),
-                new LeagueMappingDefinition("Serie A", "I1"),
-                new LeagueMappingDefinition("La Liga", "SP1"),
-                new LeagueMappingDefinition("Ligue 1", "F1")
+                new LeagueMappingDefinition("EPL", "PL", "E0"),
+                new LeagueMappingDefinition("La_Liga", "PD", "SP1"),
+                new LeagueMappingDefinition("Bundesliga", "BL1", "D1"),
+                new LeagueMappingDefinition("Serie_A", "SA", "I1"),
+                new LeagueMappingDefinition("Ligue_1", "FL1", "F1")
         );
 
         int created = 0;
-        int updated = 0;
+        int existing = 0;
         int skipped = 0;
 
         for (LeagueMappingDefinition definition : definitions) {
-            List<League> leagues = leagueRepository.findAllByNameIgnoreCase(definition.leagueName());
-            if (leagues.size() != 1) {
+            Optional<LeagueExternalId> canonicalMapping = leagueExternalIdRepository
+                    .findByProviderAndIdentify(Provider.UNDER_STATS, definition.understatIdentify());
+
+            if (canonicalMapping.isEmpty()) {
+                canonicalMapping = leagueExternalIdRepository
+                        .findByProviderAndIdentify(Provider.FOOTBALL_DATA, definition.footballDataIdentify());
+            }
+
+            // Older Football-Data mappings may have external_id populated before identify
+            // was introduced. Use that exact provider ID as a safe fallback.
+            if (canonicalMapping.isEmpty()) {
+                canonicalMapping = leagueExternalIdRepository
+                        .findByProviderAndExternalId(Provider.FOOTBALL_DATA, definition.footballDataIdentify());
+            }
+
+            if (canonicalMapping.isEmpty()) {
                 skipped++;
-                log.warn("Skip Football-Data UK league mapping: name={}, matches={}",
-                        definition.leagueName(), leagues.size());
+                log.warn("Skip Football-Data UK mapping: no canonical source mapping found "
+                                + "(understat={}, footballData={})",
+                        definition.understatIdentify(), definition.footballDataIdentify());
                 continue;
             }
 
-            League league = leagues.get(0);
-            Optional<LeagueExternalId> existing = leagueExternalIdRepository
+            League league = canonicalMapping.get().getLeague();
+            Optional<LeagueExternalId> existingMapping = leagueExternalIdRepository
                     .findByLeagueIdAndProvider(league.getId(), PROVIDER);
 
-            if (existing.isPresent()) {
-                LeagueExternalId mapping = existing.get();
-                boolean changed = !definition.externalId().equals(mapping.getExternalId())
-                        || !definition.identify().equals(mapping.getIdentify());
-                if (changed) {
-                    mapping.setExternalId(definition.externalId());
-                    mapping.setIdentify(definition.identify());
-                    leagueExternalIdRepository.save(mapping);
-                    updated++;
+            if (existingMapping.isPresent()) {
+                LeagueExternalId mapping = existingMapping.get();
+                if (definition.ukCode().equals(mapping.getExternalId())
+                        && definition.ukCode().equals(mapping.getIdentify())) {
+                    existing++;
+                } else {
+                    skipped++;
+                    log.warn("Keep existing Football-Data UK mapping unchanged: leagueId={}, "
+                                    + "existingExternalId={}, expectedCode={}",
+                            league.getId(), mapping.getExternalId(), definition.ukCode());
                 }
                 continue;
             }
 
-            Optional<LeagueExternalId> conflicting = leagueExternalIdRepository
-                    .findByProviderAndExternalId(PROVIDER, definition.externalId());
-            if (conflicting.isPresent()) {
-                log.error("Cannot initialize Football-Data UK mapping: provider externalId={} already belongs to leagueId={}",
-                        definition.externalId(), conflicting.get().getLeague().getId());
+            Optional<LeagueExternalId> conflictingMapping = leagueExternalIdRepository
+                    .findByProviderAndExternalId(PROVIDER, definition.ukCode());
+            if (conflictingMapping.isPresent()) {
                 skipped++;
+                log.error("Cannot initialize Football-Data UK mapping: code={} is already assigned "
+                                + "to leagueId={}, requestedLeagueId={}",
+                        definition.ukCode(), conflictingMapping.get().getLeague().getId(), league.getId());
                 continue;
             }
 
             leagueExternalIdRepository.save(LeagueExternalId.builder()
                     .league(league)
                     .provider(PROVIDER)
-                    .externalId(definition.externalId())
-                    .identify(definition.identify())
+                    .externalId(definition.ukCode())
+                    .identify(definition.ukCode())
                     .build());
             created++;
         }
 
-        log.info("Football-Data UK league mapping initialization completed: created={}, updated={}, skipped={}",
-                created, updated, skipped);
+        log.info("Football-Data UK league mapping initialization completed: created={}, existing={}, skipped={}",
+                created, existing, skipped);
     }
 
-    private record LeagueMappingDefinition(String leagueName, String externalId, String identify) {
-        private LeagueMappingDefinition(String leagueName, String code) {
-            this(leagueName, code, code);
-        }
+    private record LeagueMappingDefinition(
+            String understatIdentify,
+            String footballDataIdentify,
+            String ukCode
+    ) {
     }
 
     /**
