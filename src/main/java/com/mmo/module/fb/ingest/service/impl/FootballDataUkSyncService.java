@@ -45,28 +45,65 @@ public class FootballDataUkSyncService {
     private final MatchRepository matchRepository;
     private final MatchAdvancedStatsRepository statsRepository;
 
+    /**
+     * One-time bootstrap for every existing active-league season from 2014 onward.
+     * After bootstrap, only the current season is fetched on subsequent job runs.
+     */
     public void syncActiveSeasons() {
         AppProperties.ProviderConfig config = properties.getIngestion().getProviderConfig().get(PROVIDER);
         if (config == null || !config.isEnabled()) {
             log.info("Football-Data.co.uk import disabled");
             return;
         }
-        List<Season> seasons = seasonRepository.findByIsActiveTrueAndLeagueIsNotNullAndYearIsNotNull();
-        int importedRows = 0, skipped = 0, failed = 0;
+
+        List<Season> seasons = seasonRepository.findAllForActiveLeagues().stream()
+                .filter(season -> seasonStartYear(season.getYear()) >= 2014)
+                .toList();
+
+        int importedRows = 0;
+        int historicalPending = 0;
+        int failed = 0;
         for (Season season : seasons) {
+            boolean current = season.isCurrent();
+            boolean firstHistoricalImport = season.getFootballDataUkImportedAt() == null;
+            if (!current && !firstHistoricalImport) {
+                continue;
+            }
+
+            if (!current) historicalPending++;
             try {
                 int count = syncSeason(season, config);
                 importedRows += count;
-                if (count == 0) skipped++;
+
+                // Mark only after the CSV has been fetched and processed successfully.
+                // The marker is not used to suppress refreshes for the current season.
+                if (firstHistoricalImport) {
+                    season.setFootballDataUkImportedAt(Instant.now());
+                    seasonRepository.save(season);
+                }
             } catch (RuntimeException ex) {
                 failed++;
-                log.error("Football-Data.co.uk import failed: seasonId={}, year={}, reason={}",
-                        season.getId(), season.getYear(), ex.getMessage(), ex);
+                log.error("Football-Data.co.uk import failed: seasonId={}, year={}, current={}, reason={}",
+                        season.getId(), season.getYear(), current, ex.getMessage(), ex);
             }
         }
-        log.info("Football-Data.co.uk import summary: activeSeasons={}, importedTeamRows={}, skippedSeasons={}, failedSeasons={}",
-                seasons.size(), importedRows, skipped, failed);
-        if (failed > 0) throw new IllegalStateException("Football-Data.co.uk import failed for " + failed + " active season(s)");
+
+        log.info("Football-Data.co.uk sync summary: eligibleSeasons={}, historicalPending={}, importedTeamRows={}, failedSeasons={}",
+                seasons.size(), historicalPending, importedRows, failed);
+        if (failed > 0) {
+            throw new IllegalStateException("Football-Data.co.uk import failed for " + failed + " season(s)");
+        }
+    }
+
+    private static int seasonStartYear(String year) {
+        if (!StringUtils.hasText(year)) return -1;
+        String digits = year.replaceAll("\\D", "");
+        if (digits.length() < 4) return -1;
+        try {
+            return Integer.parseInt(digits.substring(0, 4));
+        } catch (NumberFormatException ex) {
+            return -1;
+        }
     }
 
     @Transactional
