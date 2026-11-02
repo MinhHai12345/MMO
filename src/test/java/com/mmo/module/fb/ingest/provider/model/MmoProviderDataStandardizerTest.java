@@ -10,8 +10,8 @@ class MmoProviderDataStandardizerTest {
         assertThat(MmoProviderDataStandardizer.leagueName(" Primera   Division ")).isEqualTo("LaLiga");
         assertThat(MmoProviderDataStandardizer.leagueName("la liga")).isEqualTo("LaLiga");
         assertThat(MmoProviderDataStandardizer.leagueName(" English Premier League ")).isEqualTo("Premier League");
-        assertThat(MmoProviderDataStandardizer.teamName("  Real   Madrid CF ")).isEqualTo("Real Madrid CF");
-        assertThat(MmoProviderDataStandardizer.teamShortName(" ", "Real Madrid CF")).isEqualTo("Real Madrid CF");
+        assertThat(MmoProviderDataStandardizer.teamName("  Real   Madrid CF ")).isEqualTo("Real Madrid");
+        assertThat(MmoProviderDataStandardizer.teamShortName(" ", "Real Madrid CF")).isEqualTo("Real Madrid");
     }
 
     @Test
@@ -47,6 +47,28 @@ class MmoProviderDataStandardizerTest {
                 .isEqualTo("Espanyol");
         assertThat(MmoProviderDataStandardizer.standardTeamName("Unknown FC"))
                 .isEqualTo("Unknown FC");
+    }
+
+    @Test
+    void standardizesFootballDataUkTeamAliases() {
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Man City"))
+                .isEqualTo("Manchester City");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Man United"))
+                .isEqualTo("Manchester United");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Man Utd"))
+                .isEqualTo("Manchester United");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Nott'm Forest"))
+                .isEqualTo("Nottingham Forest");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Newcastle"))
+                .isEqualTo("Newcastle United");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Spurs"))
+                .isEqualTo("Tottenham");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("West Brom"))
+                .isEqualTo("West Bromwich Albion");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("Sheffield Weds"))
+                .isEqualTo("Sheffield Wednesday");
+        assertThat(MmoProviderDataStandardizer.standardTeamName("QPR"))
+                .isEqualTo("Queens Park Rangers");
     }
 
     @Test
