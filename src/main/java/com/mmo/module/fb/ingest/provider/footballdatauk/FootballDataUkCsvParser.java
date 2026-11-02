@@ -1,12 +1,14 @@
 package com.mmo.module.fb.ingest.provider.footballdatauk;
 
+import org.springframework.stereotype.Component;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/** RFC-4180 compatible parser supporting quoted commas and escaped quotes. */
+@Component
 public final class FootballDataUkCsvParser {
     public List<Map<String, String>> parse(String csv) {
         List<List<String>> rows = readRows(csv);
