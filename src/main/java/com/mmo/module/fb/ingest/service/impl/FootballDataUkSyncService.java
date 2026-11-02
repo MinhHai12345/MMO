@@ -135,7 +135,7 @@ public class FootballDataUkSyncService {
         LeagueExternalId mapping = leagueExternalIdRepository
                 .findByLeagueIdAndProvider(season.getLeague().getId(), PROVIDER)
                 .orElseThrow(() -> new IllegalStateException("Missing FOOTBALL_DATA_UK league mapping"));
-        String digits = season.getYear().replaceAll("\\\\D", "");
+        String digits = season.getYear().replaceAll("\\D", "");
         if (digits.length() < 4) throw new IllegalArgumentException("Unsupported season format: " + season.getYear());
         int startYear = Integer.parseInt(digits.substring(0, 4));
         String seasonCode = digits.substring(2, 4)
