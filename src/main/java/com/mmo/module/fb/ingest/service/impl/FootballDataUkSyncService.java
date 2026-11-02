@@ -98,6 +98,9 @@ public class FootballDataUkSyncService {
 
             for (int startYear = 2014; startYear <= today.getYear(); startYear++) {
                 Season season = getOrCreateSeason(league, startYear, today);
+                if (!season.isActive()) {
+                    continue;
+                }
                 boolean current = season.isCurrent();
                 boolean alreadyImported = seasonExternalIdRepository
                         .findBySeasonIdAndProvider(season.getId(), PROVIDER).isPresent();
@@ -108,7 +111,12 @@ public class FootballDataUkSyncService {
                     ImportResult result = syncSeason(season, mapping.get(), config);
                     importedFixtures += result.createdFixtures();
                     importedStats += result.importedTeamStats();
-                    saveSeasonMapping(season, mapping.get());
+                    if (result.unmatchedRows() == 0 && result.csvRows() > 0) {
+                        saveSeasonMapping(season, mapping.get());
+                    } else {
+                        log.warn("Football-Data.co.uk season remains pending because rows were unmatched or CSV was empty: league={}, season={}, unmatched={}, rows={}",
+                                league.getName(), season.getYear(), result.unmatchedRows(), result.csvRows());
+                    }
                     log.info("Football-Data.co.uk imported league={}, season={}, current={}, rows={}, createdFixtures={}, stats={}, unmatched={}",
                             league.getName(), season.getYear(), current, result.csvRows(),
                             result.createdFixtures(), result.importedTeamStats(), result.unmatchedRows());
@@ -196,6 +204,15 @@ public class FootballDataUkSyncService {
             return seasonRepository.save(Season.builder()
                     .league(league).year(year).startDate(start).endDate(end)
                     .isCurrent(current).isActive(true).build());
+        }).map(existing -> {
+            LocalDate start = LocalDate.of(startYear, 7, 1);
+            LocalDate end = LocalDate.of(startYear + 1, 6, 30);
+            boolean current = !today.isBefore(start) && !today.isAfter(end);
+            if (existing.isCurrent() != current) {
+                existing.setCurrent(current);
+                return seasonRepository.save(existing);
+            }
+            return existing;
         });
     }
 
