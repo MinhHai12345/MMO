@@ -4,6 +4,7 @@ import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkCsvClient;
 import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkCsvParser;
+import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.league.entity.League;
 import com.mmo.module.fb.league.entity.LeagueExternalId;
 import com.mmo.module.fb.league.entity.Season;
@@ -312,24 +313,29 @@ public class FootballDataUkSyncService {
             return mapped.get().getTeam();
         }
 
-        List<Team> exact = teamRepository.findAllByNameIgnoreCase(providerName.trim());
+        String canonicalName = MmoProviderDataStandardizer.standardTeamName(providerName);
+        if (!StringUtils.hasText(canonicalName)) {
+            throw new IllegalArgumentException("Football-Data UK team name is blank");
+        }
+
+        List<Team> exact = teamRepository.findAllByNameIgnoreCase(canonicalName);
         Team team;
         if (exact.size() == 1) {
             team = exact.get(0);
         } else if (exact.isEmpty()) {
             team = teamRepository.save(Team.builder()
-                    .name(providerName.trim())
-                    .shortName(providerName.trim().length() > 80
-                            ? providerName.trim().substring(0, 80) : providerName.trim())
-                    .slug(slug(providerName))
+                    .name(canonicalName)
+                    .shortName(canonicalName.length() > 80
+                            ? canonicalName.substring(0, 80) : canonicalName)
+                    .slug(slug(canonicalName))
                     .isActive(true)
                     .build());
         } else {
             // Do not guess between duplicate canonical names; create a provider-specific team.
-            team = teamRepository.save(Team.builder().name(providerName.trim())
-                    .shortName(providerName.trim().length() > 80
-                            ? providerName.trim().substring(0, 80) : providerName.trim())
-                    .slug(slug(providerName) + "-" + normalize(leagueCode))
+            team = teamRepository.save(Team.builder().name(canonicalName)
+                    .shortName(canonicalName.length() > 80
+                            ? canonicalName.substring(0, 80) : canonicalName)
+                    .slug(slug(canonicalName) + "-" + normalize(leagueCode))
                     .isActive(true).build());
         }
 
