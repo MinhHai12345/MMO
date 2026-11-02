@@ -27,7 +27,7 @@ public class FootballDataUkCoreSyncJob extends AbstractJob<CronJob> {
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
         log.info("Starting Football-Data UK core-data synchronization");
-        footballDataUkSyncService.syncActiveSeasons();
+        footballDataUkSyncService.syncAllData();
         log.info("Football-Data UK core-data synchronization completed");
     }
 }
