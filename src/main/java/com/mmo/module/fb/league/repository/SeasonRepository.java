@@ -23,6 +23,9 @@ public interface SeasonRepository extends JpaRepository<Season, Long> {
     Optional<Season> findByLeague_IdAndYear(Long leagueId, String year);
 
     @EntityGraph(attributePaths = {"league"})
+    List<Season> findByLeague_Id(Long leagueId);
+
+    @EntityGraph(attributePaths = {"league"})
     @Query("select s from Season s join s.league l where l.isActive = true and s.year is not null")
     List<Season> findAllForActiveLeagues();
 }
