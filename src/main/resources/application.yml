@@ -133,6 +133,10 @@ app:
         uri: ${UNDER_STAT_URI}
         web-url: ${UNDER_STAT_WEB_URL}
 
+      FOOTBALL_DATA_UK:
+        enabled: ${FOOTBALL_DATA_UK_ENABLED:false}
+        uri: ${FOOTBALL_DATA_UK_URI:https://www.football-data.co.uk}
+
   sync:
     bootstrap-on-start: ${APP_SYNC_BOOTSTRAP_ON_START:true}
     max-event-pages: ${SOFA_SCORE_MAX_EVENT_PAGES:20}
