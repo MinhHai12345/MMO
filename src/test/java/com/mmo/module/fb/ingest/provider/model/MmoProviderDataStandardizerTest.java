@@ -10,8 +10,8 @@ class MmoProviderDataStandardizerTest {
         assertThat(MmoProviderDataStandardizer.leagueName(" Primera   Division ")).isEqualTo("LaLiga");
         assertThat(MmoProviderDataStandardizer.leagueName("la liga")).isEqualTo("LaLiga");
         assertThat(MmoProviderDataStandardizer.leagueName(" English Premier League ")).isEqualTo("Premier League");
-        assertThat(MmoProviderDataStandardizer.teamName("  Real   Madrid CF ")).isEqualTo("Real Madrid CF");
-        assertThat(MmoProviderDataStandardizer.teamShortName(" ", "Real Madrid CF")).isEqualTo("Real Madrid CF");
+        assertThat(MmoProviderDataStandardizer.teamName("  Real   Madrid CF ")).isEqualTo("Real Madrid");
+        assertThat(MmoProviderDataStandardizer.teamShortName(" ", "Real Madrid CF")).isEqualTo("Real Madrid");
     }
 
     @Test
