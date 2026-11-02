@@ -82,7 +82,7 @@ public class FootballDataUkSyncService {
                 new LeagueMappingDefinition("Premier League", "E0"),
                 new LeagueMappingDefinition("Bundesliga", "D1"),
                 new LeagueMappingDefinition("Serie A", "I1"),
-                new LeagueMappingDefinition("La Liga", "SP1"),
+                new LeagueMappingDefinition("LaLiga", "SP1"),
                 new LeagueMappingDefinition("Ligue 1", "F1")
         );
 
