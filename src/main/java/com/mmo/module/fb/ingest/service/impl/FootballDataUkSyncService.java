@@ -200,7 +200,9 @@ public class FootballDataUkSyncService {
         LocalDate end = LocalDate.of(startYear + 1, 6, 30);
         boolean current = !today.isBefore(start) && !today.isAfter(end);
 
-        Optional<Season> existing = seasonRepository.findByLeague_IdAndYear(league.getId(), year);
+        Optional<Season> existing = seasonRepository.findByLeague_Id(league.getId()).stream()
+                .filter(candidate -> seasonStartYear(candidate.getYear()) == startYear)
+                .findFirst();
         if (existing.isEmpty()) {
             return seasonRepository.save(Season.builder()
                     .league(league).year(year).startDate(start).endDate(end)
@@ -341,6 +343,17 @@ public class FootballDataUkSyncService {
         while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
         return base + "/mmz" + seasonCode(season) + "/"
                 + leagueCode.trim().toUpperCase(Locale.ROOT) + ".csv";
+    }
+
+    private static int seasonStartYear(String season) {
+        if (!StringUtils.hasText(season)) return -1;
+        String digits = season.replaceAll("\\D", "");
+        if (digits.length() < 4) return -1;
+        try {
+            return Integer.parseInt(digits.substring(0, 4));
+        } catch (NumberFormatException ex) {
+            return -1;
+        }
     }
 
     private static String seasonCode(String season) {
