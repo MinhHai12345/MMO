@@ -16,6 +16,7 @@ import com.mmo.module.fb.ingest.job.MatchResultSyncJob;
 import com.mmo.module.fb.ingest.job.MatchStatisticsSyncJob;
 import com.mmo.module.fb.ingest.job.UnderStatHistoricalStatsJob;
 import com.mmo.module.fb.ingest.job.TeamSyncJob;
+import com.mmo.module.fb.ingest.service.impl.FootballDataUkSyncService;
 import com.mmo.module.fb.monetization.job.SubscriptionExpiryCheckJob;
 import com.mmo.module.fb.workflow.job.FootballWorkflowOrchestrationJob;
 import com.mmo.module.fb.workflow.job.PublicationWorkerQuartzJob;
@@ -31,10 +32,14 @@ public class FBCronjobInitial implements DataInitializer {
 
     private final CronJobRepository cronJobRepository;
     private final CronJobService cronJobService;
+    private final FootballDataUkSyncService footballDataUkSyncService;
 
     @Override
     public void initialize() {
         log.info("Initializing Football Analytics CronJobs (UTC timezone)...");
+
+        // Initialize provider identifiers before any scheduled ingestion job can use them.
+        footballDataUkSyncService.initialLeagueMappings();
 
         createOrUpdateJob(FootballWorkflowOrchestrationJob.class,
                 "0 30 11 * * ?", "End-to-end workflow: refresh data, calculate analytics and generate PRE_MATCH drafts (daily UTC 11:30)");
