@@ -12,7 +12,8 @@ import java.util.Optional;
 @Repository
 public interface SeasonRepository extends JpaRepository<Season, Long> {
 
-    @EntityGraph(attributePaths = {\"league\"})\n    List<Season> findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
+    @EntityGraph(attributePaths = {"league"})
+    List<Season> findByIsCurrentTrueAndLeagueIsNotNullAndYearIsNotNull();
 
     @EntityGraph(attributePaths = {"league"})
     List<Season> findByIsActiveTrueAndLeagueIsNotNullAndYearIsNotNull();
