@@ -241,6 +241,13 @@ public final class MmoProviderDataStandardizer {
             Map.entry("Wigan", "Wigan Athletic")
     );
 
+    private static final Map<String, String> TEAM_NAME_ALIASES_BY_KEY = TEAM_NAME_ALIASES.entrySet().stream()
+            .collect(java.util.stream.Collectors.toUnmodifiableMap(
+                    entry -> teamAliasKey(entry.getKey()),
+                    Map.Entry::getValue,
+                    (first, second) -> second
+            ));
+
     private static final Set<String> TEAM_NAME_DESIGNATORS = Set.of(
             "fc", "afc", "cf", "sc", "ac", "as", "sv", "fk", "sk",
             "club", "football", "soccer"
@@ -279,7 +286,7 @@ public final class MmoProviderDataStandardizer {
                 .replace('“', '"')
                 .replace('”', '"');
         String displayName = displayText(unicode);
-        return TEAM_NAME_ALIASES.getOrDefault(teamAliasKey(displayName), displayName);
+        return TEAM_NAME_ALIASES_BY_KEY.getOrDefault(teamAliasKey(displayName), displayName);
     }
 
     /** Backward-compatible alias for callers using the previous method name. */
