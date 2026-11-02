@@ -215,7 +215,30 @@ public final class MmoProviderDataStandardizer {
             Map.entry("Hull City AFC", "Hull City"),
             Map.entry("Hull", "Hull City"),
             Map.entry("Coventry City FC", "Coventry City"),
-            Map.entry("Coventry", "Coventry City")
+            Map.entry("Coventry", "Coventry City"),
+            // Football-Data.co.uk historical/current naming variants.
+            Map.entry("Man City", "Manchester City"),
+            Map.entry("Man United", "Manchester United"),
+            Map.entry("Man Utd", "Manchester United"),
+            Map.entry("Nott'm Forest", "Nottingham Forest"),
+            Map.entry("Notts Forest", "Nottingham Forest"),
+            Map.entry("Newcastle", "Newcastle United"),
+            Map.entry("Spurs", "Tottenham"),
+            Map.entry("West Brom", "West Bromwich Albion"),
+            Map.entry("WBA", "West Bromwich Albion"),
+            Map.entry("Norwich", "Norwich City"),
+            Map.entry("Stoke", "Stoke City"),
+            Map.entry("Birmingham", "Birmingham City"),
+            Map.entry("Blackburn", "Blackburn Rovers"),
+            Map.entry("Cardiff", "Cardiff City"),
+            Map.entry("Charlton", "Charlton Athletic"),
+            Map.entry("Derby", "Derby County"),
+            Map.entry("Huddersfield", "Huddersfield Town"),
+            Map.entry("QPR", "Queens Park Rangers"),
+            Map.entry("Sheffield Weds", "Sheffield Wednesday"),
+            Map.entry("Sheff Wed", "Sheffield Wednesday"),
+            Map.entry("Swansea", "Swansea City"),
+            Map.entry("Wigan", "Wigan Athletic")
     );
 
     private static final Set<String> TEAM_NAME_DESIGNATORS = Set.of(
