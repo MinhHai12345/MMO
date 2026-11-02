@@ -7,8 +7,8 @@ import java.util.Locale;
 import java.util.Map;
 
 /** RFC-4180 compatible parser supporting quoted commas and escaped quotes. */
-final class FootballDataUkCsvParser {
-    List<Map<String, String>> parse(String csv) {
+public final class FootballDataUkCsvParser {
+    public List<Map<String, String>> parse(String csv) {
         List<List<String>> rows = readRows(csv);
         if (rows.isEmpty()) return List.of();
         List<String> headers = rows.get(0).stream()
