@@ -142,10 +142,7 @@ public class FootballDataUkSyncService {
         MatchAdvancedStats stats = statsRepository.findByMatchIdAndTeamId(match.getId(), team.getId())
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
         if (shots != null) stats.setTotalShots(shots);
-        if (onTarget != null) {
-            stats.setShotsOnTarget(onTarget);
-            if (shots != null) stats.setShotsOffTarget(Math.max(0, shots - onTarget));
-        }
+        if (onTarget != null) stats.setShotsOnTarget(onTarget);
         if (corners != null) stats.setCornerKicks(corners);
         if (fouls != null) stats.setFouls(fouls);
         if (yellow != null) stats.setYellowCards(yellow);
