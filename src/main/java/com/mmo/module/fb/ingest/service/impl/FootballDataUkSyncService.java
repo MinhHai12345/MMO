@@ -26,6 +26,7 @@ import com.mmo.module.fb.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.text.Normalizer;
@@ -68,6 +69,80 @@ public class FootballDataUkSyncService {
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final MatchAdvancedStatsRepository statsRepository;
+
+    /**
+     * Initialize Football-Data.co.uk league mappings for leagues already present in MMO core.
+     *
+     * Safe to execute repeatedly: existing mappings are updated, missing mappings are inserted,
+     * and unrelated provider mappings are never modified.
+     */
+    @Transactional
+    public void initialLeagueMappings() {
+        List<LeagueMappingDefinition> definitions = List.of(
+                new LeagueMappingDefinition("Premier League", "E0"),
+                new LeagueMappingDefinition("Bundesliga", "D1"),
+                new LeagueMappingDefinition("Serie A", "I1"),
+                new LeagueMappingDefinition("La Liga", "SP1"),
+                new LeagueMappingDefinition("Ligue 1", "F1")
+        );
+
+        int created = 0;
+        int updated = 0;
+        int skipped = 0;
+
+        for (LeagueMappingDefinition definition : definitions) {
+            List<League> leagues = leagueRepository.findAllByNameIgnoreCase(definition.leagueName());
+            if (leagues.size() != 1) {
+                skipped++;
+                log.warn("Skip Football-Data UK league mapping: name={}, matches={}",
+                        definition.leagueName(), leagues.size());
+                continue;
+            }
+
+            League league = leagues.get(0);
+            Optional<LeagueExternalId> existing = leagueExternalIdRepository
+                    .findByLeagueIdAndProvider(league.getId(), PROVIDER);
+
+            if (existing.isPresent()) {
+                LeagueExternalId mapping = existing.get();
+                boolean changed = !definition.externalId().equals(mapping.getExternalId())
+                        || !definition.identify().equals(mapping.getIdentify());
+                if (changed) {
+                    mapping.setExternalId(definition.externalId());
+                    mapping.setIdentify(definition.identify());
+                    leagueExternalIdRepository.save(mapping);
+                    updated++;
+                }
+                continue;
+            }
+
+            Optional<LeagueExternalId> conflicting = leagueExternalIdRepository
+                    .findByProviderAndExternalId(PROVIDER, definition.externalId());
+            if (conflicting.isPresent()) {
+                log.error("Cannot initialize Football-Data UK mapping: provider externalId={} already belongs to leagueId={}",
+                        definition.externalId(), conflicting.get().getLeague().getId());
+                skipped++;
+                continue;
+            }
+
+            leagueExternalIdRepository.save(LeagueExternalId.builder()
+                    .league(league)
+                    .provider(PROVIDER)
+                    .externalId(definition.externalId())
+                    .identify(definition.identify())
+                    .build());
+            created++;
+        }
+
+        log.info("Football-Data UK league mapping initialization completed: created={}, updated={}, skipped={}",
+                created, updated, skipped);
+    }
+
+    private record LeagueMappingDefinition(String leagueName, String externalId, String identify) {
+        private LeagueMappingDefinition(String leagueName, String code) {
+            this(leagueName, code, code);
+        }
+    }
 
     /**
      * Bootstrap seasons from 2014 for every active league with a Football-Data.co.uk
