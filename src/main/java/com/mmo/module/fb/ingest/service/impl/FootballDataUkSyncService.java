@@ -148,7 +148,7 @@ public class FootballDataUkSyncService {
      * Bootstrap seasons from 2014 for every active league with a Football-Data.co.uk
      * identify code. Historical seasons are processed once; current season is refreshed.
      */
-    public void syncActiveSeasons() {
+    public void syncAllData() {
         AppProperties.ProviderConfig config = properties.getIngestion().getProviderConfig().get(PROVIDER);
         if (config == null || !config.isEnabled()) {
             log.info("Football-Data.co.uk import disabled");
@@ -160,10 +160,9 @@ public class FootballDataUkSyncService {
         int importedStats = 0;
         int failedSeasons = 0;
 
-        for (League league : leagueRepository.findByIsActiveTrue()) {
-            Optional<LeagueExternalId> mapping = leagueExternalIdRepository
-                    .findByLeagueIdAndProvider(league.getId(), PROVIDER);
-            if (mapping.isEmpty() || !StringUtils.hasText(mapping.get().getIdentify())) {
+        for (LeagueExternalId mapping : leagueExternalIdRepository.findAllByProvider(PROVIDER)) {
+            League league = mapping.getLeague();
+            if (!StringUtils.hasText(mapping.getIdentify())) {
                 log.warn("Skip Football-Data.co.uk league without identify mapping: leagueId={}, name={}",
                         league.getId(), league.getName());
                 continue;
@@ -171,9 +170,6 @@ public class FootballDataUkSyncService {
 
             for (int startYear = 2014; startYear <= today.getYear(); startYear++) {
                 Season season = getOrCreateSeason(league, startYear, today);
-                if (!season.isActive()) {
-                    continue;
-                }
                 boolean current = season.isCurrent();
                 Optional<SeasonExternalId> seasonMapping = seasonExternalIdRepository
                         .findBySeasonIdAndProvider(season.getId(), PROVIDER);
@@ -184,7 +180,7 @@ public class FootballDataUkSyncService {
                     continue;
                 }
                 try {
-                    ImportResult result = syncSeason(season, mapping.get(), config);
+                    ImportResult result = syncSeason(season, mapping, config);
                     importedFixtures += result.createdFixtures();
                     importedStats += result.importedTeamStats();
                     if (result.unmatchedRows() == 0 && result.csvRows() > 0) {
