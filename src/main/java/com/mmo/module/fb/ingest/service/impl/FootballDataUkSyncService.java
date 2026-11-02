@@ -197,23 +197,23 @@ public class FootballDataUkSyncService {
 
     private Season getOrCreateSeason(League league, int startYear, LocalDate today) {
         String year = startYear + "/" + (startYear + 1);
-        return seasonRepository.findByLeague_IdAndYear(league.getId(), year).orElseGet(() -> {
-            LocalDate start = LocalDate.of(startYear, 7, 1);
-            LocalDate end = LocalDate.of(startYear + 1, 6, 30);
-            boolean current = !today.isBefore(start) && !today.isAfter(end);
+        LocalDate start = LocalDate.of(startYear, 7, 1);
+        LocalDate end = LocalDate.of(startYear + 1, 6, 30);
+        boolean current = !today.isBefore(start) && !today.isAfter(end);
+
+        Optional<Season> existing = seasonRepository.findByLeague_IdAndYear(league.getId(), year);
+        if (existing.isEmpty()) {
             return seasonRepository.save(Season.builder()
                     .league(league).year(year).startDate(start).endDate(end)
                     .isCurrent(current).isActive(true).build());
-        }).map(existing -> {
-            LocalDate start = LocalDate.of(startYear, 7, 1);
-            LocalDate end = LocalDate.of(startYear + 1, 6, 30);
-            boolean current = !today.isBefore(start) && !today.isAfter(end);
-            if (existing.isCurrent() != current) {
-                existing.setCurrent(current);
-                return seasonRepository.save(existing);
-            }
-            return existing;
-        });
+        }
+
+        Season season = existing.get();
+        if (season.isCurrent() != current) {
+            season.setCurrent(current);
+            season = seasonRepository.save(season);
+        }
+        return season;
     }
 
     private void saveSeasonMapping(Season season, LeagueExternalId leagueMapping) {
