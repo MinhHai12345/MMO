@@ -151,8 +151,9 @@ public class FootballDataUkSyncService {
         if (yellow != null) stats.setYellowCards(yellow);
         if (red != null) stats.setRedCards(red);
         if (offsides != null) stats.setOffsides(offsides);
-        stats.setStatisticsProvider(PROVIDER.name());
-        stats.setStatisticsSyncedAt(Instant.now());
+        stats.setFootballDataUkSyncedAt(Instant.now());
+        if (!StringUtils.hasText(stats.getStatisticsProvider())) stats.setStatisticsProvider(PROVIDER.name());
+        if (stats.getStatisticsSyncedAt() == null) stats.setStatisticsSyncedAt(Instant.now());
         statsRepository.save(stats);
         return true;
     }
