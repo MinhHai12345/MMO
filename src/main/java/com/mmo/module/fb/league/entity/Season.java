@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,6 +46,10 @@ public class Season extends AbstractEntity {
 
     @Column(name = "end_date")
     private LocalDate endDate;
+
+    /** Set after the one-time Football-Data.co.uk historical CSV import succeeds. */
+    @Column(name = "football_data_uk_imported_at")
+    private Instant footballDataUkImportedAt;
 
     @OneToMany(mappedBy = "season", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
