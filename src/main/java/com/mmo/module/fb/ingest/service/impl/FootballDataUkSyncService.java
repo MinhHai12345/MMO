@@ -5,8 +5,10 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkCsvClient;
 import com.mmo.module.fb.league.entity.LeagueExternalId;
 import com.mmo.module.fb.league.entity.Season;
+import com.mmo.module.fb.league.entity.SeasonExternalId;
 import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.league.repository.SeasonRepository;
+import com.mmo.module.fb.league.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchAdvancedStats;
 import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
@@ -41,6 +43,7 @@ public class FootballDataUkSyncService {
     private final AppProperties properties;
     private final FootballDataUkCsvClient csvClient;
     private final SeasonRepository seasonRepository;
+    private final SeasonExternalIdRepository seasonExternalIdRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final MatchRepository matchRepository;
     private final MatchAdvancedStatsRepository statsRepository;
@@ -65,21 +68,22 @@ public class FootballDataUkSyncService {
         int failed = 0;
         for (Season season : seasons) {
             boolean current = season.isCurrent();
-            boolean firstHistoricalImport = season.getFootballDataUkImportedAt() == null;
-            if (!current && !firstHistoricalImport) {
+            boolean alreadyImported = seasonExternalIdRepository
+                    .findBySeasonIdAndProvider(season.getId(), PROVIDER).isPresent();
+            if (!current && alreadyImported) {
                 continue;
             }
 
-            if (!current) historicalPending++;
+            if (!current && !alreadyImported) historicalPending++;
             try {
                 int count = syncSeason(season, config);
                 importedRows += count;
-
-                // Mark only after the CSV has been fetched and processed successfully.
-                // The marker is not used to suppress refreshes for the current season.
-                if (firstHistoricalImport) {
-                    season.setFootballDataUkImportedAt(Instant.now());
-                    seasonRepository.save(season);
+                if (!alreadyImported) {
+                    seasonExternalIdRepository.save(SeasonExternalId.builder()
+                            .season(season)
+                            .provider(PROVIDER)
+                            .externalId(buildSeasonExternalId(season))
+                            .build());
                 }
             } catch (RuntimeException ex) {
                 failed++;
@@ -125,6 +129,18 @@ public class FootballDataUkSyncService {
         log.info("Football-Data.co.uk season summary: league={}, season={}, url={}, csvRows={}, importedTeamRows={}, unmatchedRows={}",
                 season.getLeague().getName(), season.getYear(), url, rows.size(), saved, unmatched);
         return saved;
+    }
+
+    private String buildSeasonExternalId(Season season) {
+        LeagueExternalId mapping = leagueExternalIdRepository
+                .findByLeagueIdAndProvider(season.getLeague().getId(), PROVIDER)
+                .orElseThrow(() -> new IllegalStateException("Missing FOOTBALL_DATA_UK league mapping"));
+        String digits = season.getYear().replaceAll("\\\\D", "");
+        if (digits.length() < 4) throw new IllegalArgumentException("Unsupported season format: " + season.getYear());
+        int startYear = Integer.parseInt(digits.substring(0, 4));
+        String seasonCode = digits.substring(2, 4)
+                + String.format(Locale.ROOT, "%02d", (startYear + 1) % 100);
+        return mapping.getIdentify().trim().toUpperCase(Locale.ROOT) + ":" + seasonCode;
     }
 
     String buildCsvUrl(AppProperties.ProviderConfig config, String season, String leagueCode) {
@@ -184,7 +200,6 @@ public class FootballDataUkSyncService {
         if (yellow != null) stats.setYellowCards(yellow);
         if (red != null) stats.setRedCards(red);
         if (offsides != null) stats.setOffsides(offsides);
-        stats.setFootballDataUkSyncedAt(Instant.now());
         if (!StringUtils.hasText(stats.getStatisticsProvider())) stats.setStatisticsProvider(PROVIDER.name());
         if (stats.getStatisticsSyncedAt() == null) stats.setStatisticsSyncedAt(Instant.now());
         statsRepository.save(stats);
