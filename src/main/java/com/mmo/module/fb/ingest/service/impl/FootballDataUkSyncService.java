@@ -102,8 +102,11 @@ public class FootballDataUkSyncService {
                     continue;
                 }
                 boolean current = season.isCurrent();
-                boolean alreadyImported = seasonExternalIdRepository
-                        .findBySeasonIdAndProvider(season.getId(), PROVIDER).isPresent();
+                Optional<SeasonExternalId> seasonMapping = seasonExternalIdRepository
+                        .findBySeasonIdAndProvider(season.getId(), PROVIDER);
+                boolean alreadyImported = seasonMapping
+                        .map(mappingRow -> mappingRow.getExternalId().endsWith(":CORE1"))
+                        .orElse(false);
                 if (!current && alreadyImported) {
                     continue;
                 }
@@ -135,7 +138,6 @@ public class FootballDataUkSyncService {
         }
     }
 
-    @Transactional
     public ImportResult syncSeason(Season season, LeagueExternalId leagueMapping,
                                    AppProperties.ProviderConfig config) {
         String url = buildCsvUrl(config, season.getYear(), leagueMapping.getIdentify());
@@ -217,14 +219,14 @@ public class FootballDataUkSyncService {
     }
 
     private void saveSeasonMapping(Season season, LeagueExternalId leagueMapping) {
-        if (seasonExternalIdRepository.findBySeasonIdAndProvider(season.getId(), PROVIDER).isPresent()) {
-            return;
-        }
-        seasonExternalIdRepository.save(SeasonExternalId.builder()
-                .season(season).provider(PROVIDER)
-                .externalId(leagueMapping.getIdentify().trim().toUpperCase(Locale.ROOT)
-                        + ":" + seasonCode(season.getYear()))
-                .build());
+        String externalId = leagueMapping.getIdentify().trim().toUpperCase(Locale.ROOT)
+                + ":" + seasonCode(season.getYear()) + ":CORE1";
+        SeasonExternalId mapping = seasonExternalIdRepository
+                .findBySeasonIdAndProvider(season.getId(), PROVIDER)
+                .orElseGet(() -> SeasonExternalId.builder()
+                        .season(season).provider(PROVIDER).build());
+        mapping.setExternalId(externalId);
+        seasonExternalIdRepository.save(mapping);
     }
 
     private Team resolveTeam(String leagueCode, String providerName) {
