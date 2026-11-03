@@ -260,8 +260,9 @@ public class FootballDataUkSyncService {
                         externalId.setExternalId(fixtureExternalId);
                         matchExternalIdRepository.save(externalId);
                     }
-                } else if (existingExternalId.isEmpty()) {
-                    // The new Match has no database ID yet; its mapping is persisted after Match.save().
+                } else if (match.getId() != null) {
+                    matchExternalIdRepository.save(MatchExternalId.builder()
+                            .match(match).provider(PROVIDER).externalId(fixtureExternalId).build());
                 }
                 if (match.getId() == null) {
                     match = matchRepository.save(match);
