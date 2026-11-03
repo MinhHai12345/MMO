@@ -484,11 +484,21 @@ public class FootballDataUkSyncService {
                 + normalize(home) + ":" + normalize(away);
     }
 
+    private static final List<DateTimeFormatter> SUPPORTED_CSV_DATES = List.of(
+            DateTimeFormatter.ofPattern("dd/MM/uuuu", Locale.ROOT),
+            CSV_DATE,
+            DateTimeFormatter.ISO_LOCAL_DATE
+    );
+
     private static LocalDate parseDate(String raw) {
         if (!StringUtils.hasText(raw)) return null;
-        for (DateTimeFormatter formatter : List.of(CSV_DATE, DateTimeFormatter.ISO_LOCAL_DATE)) {
-            try { return LocalDate.parse(raw.trim(), formatter); }
-            catch (DateTimeParseException ignored) { }
+        String value = raw.trim();
+        for (DateTimeFormatter formatter : SUPPORTED_CSV_DATES) {
+            try {
+                return LocalDate.parse(value, formatter);
+            } catch (DateTimeParseException ignored) {
+                // Try the next supported Football-Data date representation.
+            }
         }
         return null;
     }
