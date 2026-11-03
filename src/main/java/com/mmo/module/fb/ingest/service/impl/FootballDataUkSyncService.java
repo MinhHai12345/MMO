@@ -249,8 +249,7 @@ public class FootballDataUkSyncService {
                         .findByProviderAndExternalId(PROVIDER, fixtureExternalId);
                 Match match = existingExternalId.map(MatchExternalId::getMatch)
                         .orElseGet(() -> resolveOrCreateFixture(season, home, away, kickoff, row));
-                // Keep one provider mapping per match and migrate legacy date/time-based IDs in place.
-                if (time != null) match.setMatchTime(kickoff);
+                // Keep existing match data intact; enrich only fields that are still missing.
                 updateFixtureResult(match, row);
                 Optional<MatchExternalId> mapping = match.getId() == null ? Optional.empty()
                         : matchExternalIdRepository.findByMatchIdAndProvider(match.getId(), PROVIDER);
@@ -395,12 +394,21 @@ public class FootballDataUkSyncService {
         Integer homeHalfTimeScore = integer(value(row, "HTHG"));
         Integer awayHalfTimeScore = integer(value(row, "HTAG"));
         String halfTimeResult = value(row, "HTR").toUpperCase(Locale.ROOT);
-        if (homeScore != null) match.setHomeScore(homeScore);
-        if (awayScore != null) match.setAwayScore(awayScore);
-        if (homeHalfTimeScore != null) match.setHomeHalfTimeScore(homeHalfTimeScore);
-        if (awayHalfTimeScore != null) match.setAwayHalfTimeScore(awayHalfTimeScore);
-        if (List.of("H", "D", "A").contains(halfTimeResult)) match.setHalfTimeResult(halfTimeResult);
-        if (homeScore != null && awayScore != null
+        // This importer is an enrichment source: never replace a value already stored by
+        // another provider or an earlier import.
+        if (match.getHomeScore() == null && homeScore != null) match.setHomeScore(homeScore);
+        if (match.getAwayScore() == null && awayScore != null) match.setAwayScore(awayScore);
+        if (match.getHomeHalfTimeScore() == null && homeHalfTimeScore != null) {
+            match.setHomeHalfTimeScore(homeHalfTimeScore);
+        }
+        if (match.getAwayHalfTimeScore() == null && awayHalfTimeScore != null) {
+            match.setAwayHalfTimeScore(awayHalfTimeScore);
+        }
+        if (match.getHalfTimeResult() == null && List.of("H", "D", "A").contains(halfTimeResult)) {
+            match.setHalfTimeResult(halfTimeResult);
+        }
+        if (match.getStatus() == MatchStatus.SCHEDULED
+                && match.getHomeScore() != null && match.getAwayScore() != null
                 && List.of("H", "D", "A").contains(fullTimeResult)) {
             match.setStatus(MatchStatus.FINISHED);
         }
@@ -426,12 +434,13 @@ public class FootballDataUkSyncService {
 
         MatchAdvancedStats stats = statsRepository.findByMatchIdAndTeamId(match.getId(), team.getId())
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
-        if (shots != null) stats.setTotalShots(shots);
-        if (onTarget != null) stats.setShotsOnTarget(onTarget);
-        if (corners != null) stats.setCornerKicks(corners);
-        if (fouls != null) stats.setFouls(fouls);
-        if (yellow != null) stats.setYellowCards(yellow);
-        if (red != null) stats.setRedCards(red);
+        // Fill gaps only. Existing values may have been collected from a richer provider.
+        if (stats.getTotalShots() == null && shots != null) stats.setTotalShots(shots);
+        if (stats.getShotsOnTarget() == null && onTarget != null) stats.setShotsOnTarget(onTarget);
+        if (stats.getCornerKicks() == null && corners != null) stats.setCornerKicks(corners);
+        if (stats.getFouls() == null && fouls != null) stats.setFouls(fouls);
+        if (stats.getYellowCards() == null && yellow != null) stats.setYellowCards(yellow);
+        if (stats.getRedCards() == null && red != null) stats.setRedCards(red);
         if (!StringUtils.hasText(stats.getStatisticsProvider())) {
             stats.setStatisticsProvider(PROVIDER.name());
         }
