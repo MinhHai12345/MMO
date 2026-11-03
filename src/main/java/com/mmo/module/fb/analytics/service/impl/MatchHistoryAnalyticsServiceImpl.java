@@ -11,12 +11,14 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.time.Duration;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class MatchHistoryAnalyticsServiceImpl implements MatchHistoryAnalyticsService {
 
+    private static final Duration RESULT_AVAILABILITY_LAG = Duration.ofHours(4);
     private static final int TEAM_HISTORY_SIZE = 20;
     private static final int LEAGUE_BASELINE_SIZE = 100;
     private static final int MIN_VENUE_SAMPLES = 3;
@@ -48,9 +50,13 @@ public class MatchHistoryAnalyticsServiceImpl implements MatchHistoryAnalyticsSe
         }
 
         Long leagueId = match.getSeason().getLeague().getId();
-        TeamHistory home = loadTeamHistory(match.getHomeTeam(), leagueId, match.getMatchTime());
-        TeamHistory away = loadTeamHistory(match.getAwayTeam(), leagueId, match.getMatchTime());
-        List<Match> leagueMatches = loadLeagueHistory(leagueId, match.getMatchTime());
+        // A finished match may not be available from a provider immediately after kickoff.
+        // Apply the same four-hour maturation buffer used by team-form features to avoid
+        // leaking same-window results into pre-match estimates.
+        java.time.Instant historyCutoff = match.getMatchTime().minus(RESULT_AVAILABILITY_LAG);
+        TeamHistory home = loadTeamHistory(match.getHomeTeam(), leagueId, historyCutoff);
+        TeamHistory away = loadTeamHistory(match.getAwayTeam(), leagueId, historyCutoff);
+        List<Match> leagueMatches = loadLeagueHistory(leagueId, historyCutoff);
 
         Metric attackMetric = useExpectedGoals ? Metric.XG_FOR : Metric.GOALS_FOR;
         Metric defenceMetric = useExpectedGoals ? Metric.XG_AGAINST : Metric.GOALS_AGAINST;
