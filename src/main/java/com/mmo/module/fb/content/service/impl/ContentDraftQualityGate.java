@@ -4,6 +4,7 @@ import com.mmo.module.fb.content.service.ContentDraftService;
 import com.mmo.module.fb.content.service.ContentDraftService.ContentDraft;
 import com.mmo.module.fb.content.service.ContentDraftService.QualityReview;
 import com.mmo.module.fb.analytics.service.MatchSocialAnalyticsService.MatchSocialInsight;
+import com.mmo.module.fb.analytics.service.PreMatchAnalysisService.PreMatchReport;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -100,6 +101,16 @@ public class ContentDraftQualityGate {
      * This is a deterministic editorial check, not a proof of factual accuracy.
      */
     public QualityReview review(ContentDraft draft, MatchSocialInsight insight) {
+        return review(draft, insight, null, false);
+    }
+
+    /**
+     * Reviews a draft against both social insight and the dedicated pre-match model report.
+     * Missing or weak pre-match evidence is a warning requiring editorial review, not an
+     * automatic blocker, because other verified analytics may still support useful content.
+     */
+    public QualityReview review(ContentDraft draft, MatchSocialInsight insight,
+                                PreMatchReport preMatch, boolean preMatchExpected) {
         if (insight == null) {
             return new QualityReview("BLOCKED", 0,
                     List.of("Analytics insight is required to review this draft."), List.of());
@@ -114,6 +125,19 @@ public class ContentDraftQualityGate {
             blockers.add("Both teams must be identified before publication.");
         }
         warnings.addAll(insight.dataWarnings());
+        if (preMatchExpected && preMatch == null) {
+            warnings.add("Dedicated pre-match analysis is unavailable; do not publish model probabilities or expected-goal claims.");
+        }
+        if (preMatch != null) {
+            warnings.addAll(preMatch.dataWarnings());
+            if (!"GOOD".equalsIgnoreCase(preMatch.dataQuality())) {
+                warnings.add("Pre-match analysis data quality is " + preMatch.dataQuality()
+                        + "; explicitly disclose sample limitations in the final content.");
+            }
+            if (preMatch.goalModel() == null && preMatch.xgModel() == null) {
+                warnings.add("Neither the goals model nor the xG model produced an estimate.");
+            }
+        }
         if (insight.prediction() == null) {
             warnings.add("No persisted prediction is available; do not imply a model forecast.");
         }
