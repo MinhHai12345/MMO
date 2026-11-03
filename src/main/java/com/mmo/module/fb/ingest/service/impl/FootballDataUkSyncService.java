@@ -435,12 +435,36 @@ public class FootballDataUkSyncService {
         MatchAdvancedStats stats = statsRepository.findByMatchIdAndTeamId(match.getId(), team.getId())
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
         // Fill gaps only. Existing values may have been collected from a richer provider.
-        if (stats.getTotalShots() == null && shots != null) stats.setTotalShots(shots);
-        if (stats.getShotsOnTarget() == null && onTarget != null) stats.setShotsOnTarget(onTarget);
-        if (stats.getCornerKicks() == null && corners != null) stats.setCornerKicks(corners);
-        if (stats.getFouls() == null && fouls != null) stats.setFouls(fouls);
-        if (stats.getYellowCards() == null && yellow != null) stats.setYellowCards(yellow);
-        if (stats.getRedCards() == null && red != null) stats.setRedCards(red);
+        // Persist only when at least one metric (or its missing provenance) is actually added.
+        boolean changed = false;
+        if (stats.getTotalShots() == null && shots != null) {
+            stats.setTotalShots(shots);
+            changed = true;
+        }
+        if (stats.getShotsOnTarget() == null && onTarget != null) {
+            stats.setShotsOnTarget(onTarget);
+            changed = true;
+        }
+        if (stats.getCornerKicks() == null && corners != null) {
+            stats.setCornerKicks(corners);
+            changed = true;
+        }
+        if (stats.getFouls() == null && fouls != null) {
+            stats.setFouls(fouls);
+            changed = true;
+        }
+        if (stats.getYellowCards() == null && yellow != null) {
+            stats.setYellowCards(yellow);
+            changed = true;
+        }
+        if (stats.getRedCards() == null && red != null) {
+            stats.setRedCards(red);
+            changed = true;
+        }
+        if (!changed) {
+            return false;
+        }
+
         if (!StringUtils.hasText(stats.getStatisticsProvider())) {
             stats.setStatisticsProvider(PROVIDER.name());
         }
