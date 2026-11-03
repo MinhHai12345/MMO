@@ -543,7 +543,7 @@ public class FootballDataUkSyncService {
         String periodPrefix = closing ? "C" : "";
         String oddsPrefix = source.prefix() + periodPrefix;
         String lineHeader = closing ? "AHCH" : "AHH";
-        BigDecimal line = decimalMetric(value(row, lineHeader));
+        BigDecimal line = decimalSigned(value(row, lineHeader));
         BigDecimal home = decimalOdds(value(row, oddsPrefix + "AHH"));
         BigDecimal away = decimalOdds(value(row, oddsPrefix + "AHA"));
         if (line == null && home == null && away == null) return 0;
@@ -627,6 +627,15 @@ public class FootballDataUkSyncService {
     private static BigDecimal decimalOdds(String raw) {
         BigDecimal value = decimalMetric(raw);
         return value != null && value.signum() > 0 ? value : null;
+    }
+
+    private static BigDecimal decimalSigned(String raw) {
+        if (!StringUtils.hasText(raw)) return null;
+        try {
+            return new BigDecimal(raw.trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     /** Parse non-negative statistics including a legitimate 0.000 xG value. */
