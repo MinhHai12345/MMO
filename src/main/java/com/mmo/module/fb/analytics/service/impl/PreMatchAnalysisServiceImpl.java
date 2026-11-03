@@ -91,7 +91,7 @@ public class PreMatchAnalysisServiceImpl implements PreMatchAnalysisService {
 
         String quality = determineQuality(home, away, goalModel, xgModel);
         List<String> notes = List.of(
-                "Team form and expected-goal estimates use completed matches before the target kickoff; the four-hour result-availability buffer is applied to team-form and head-to-head history.",
+                "Team form, head-to-head and goal/xG estimates use completed matches before kickoff with a four-hour result-availability buffer.",
                 "Goal model estimates scoring rates from historical goals; xG model estimates rates from historical expected goals. Their probabilities are separate model outputs.",
                 "Head-to-head is contextual evidence only and is not blended into the model probabilities.",
                 "Poisson probabilities are not calibrated probabilities and must be evaluated out of sample before being used for automated decisions.",
@@ -162,7 +162,7 @@ public class PreMatchAnalysisServiceImpl implements PreMatchAnalysisService {
                 homeId, leagueId, MatchStatus.FINISHED, before,
                 PageRequest.of(0, HEAD_TO_HEAD_HISTORY_SIZE));
 
-        List<Match> meetings = homeHistory.stream()
+        List<Match> meetings = (homeHistory == null ? List.<Match>of() : homeHistory).stream()
                 .filter(previous -> isMeeting(previous, homeId, awayId))
                 .toList();
 
@@ -269,6 +269,7 @@ public class PreMatchAnalysisServiceImpl implements PreMatchAnalysisService {
             return "INSUFFICIENT";
         }
         if (home.matchesUsed() < MIN_FORM_MATCHES || away.matchesUsed() < MIN_FORM_MATCHES
+                || home.venueMatchesUsed() < 3 || away.venueMatchesUsed() < 3
                 || Math.min(goals.homeSamples(), goals.awaySamples()) < MIN_MODEL_SAMPLES) {
             return "LIMITED";
         }
