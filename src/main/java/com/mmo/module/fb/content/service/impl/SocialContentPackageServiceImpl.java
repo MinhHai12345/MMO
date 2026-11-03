@@ -76,8 +76,10 @@ public class SocialContentPackageServiceImpl implements SocialContentPackageServ
                 ? Stream.empty()
                 : insight.postMatchAnalysis().evidenceBasedFindings().stream();
 
+        // Include the analytics evidence in channel-ready copy, not only in the evidence appendix.
         List<String> analysisPoints = Stream.concat(
-                        Stream.concat(draft.outline().stream(), insight.editorialAngles().stream()),
+                        Stream.concat(Stream.concat(draft.outline().stream(), insight.editorialAngles().stream()),
+                                draft.evidence().stream()),
                         postMatchFindings
                 )
                 .filter(value -> value != null && !value.isBlank())
