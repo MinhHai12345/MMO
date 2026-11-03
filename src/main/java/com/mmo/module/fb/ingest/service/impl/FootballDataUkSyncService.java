@@ -243,13 +243,24 @@ public class FootballDataUkSyncService {
                 Instant kickoff = date.atTime(time == null ? LocalTime.NOON : time)
                         .atZone(SOURCE_ZONE).toInstant();
                 String fixtureExternalId = fixtureExternalId(leagueMapping.getIdentify(), season,
-                        date, time, homeName, awayName);
+                        homeName, awayName);
 
-                Match match = matchExternalIdRepository.findByProviderAndExternalId(PROVIDER, fixtureExternalId)
-                        .map(MatchExternalId::getMatch)
+                Optional<MatchExternalId> existingExternalId = matchExternalIdRepository
+                        .findByProviderAndExternalId(PROVIDER, fixtureExternalId);
+                Match match = existingExternalId.map(MatchExternalId::getMatch)
                         .orElseGet(() -> resolveOrCreateFixture(season, home, away, kickoff, row));
-                if (match.getId() != null && matchExternalIdRepository
-                        .findByMatchIdAndProvider(match.getId(), PROVIDER).isEmpty()) {
+                // Keep one provider mapping per match and migrate legacy date/time-based IDs in place.
+                if (time != null) match.setMatchTime(kickoff);
+                updateFixtureResult(match, row);
+                Optional<MatchExternalId> mapping = match.getId() == null ? Optional.empty()
+                        : matchExternalIdRepository.findByMatchIdAndProvider(match.getId(), PROVIDER);
+                if (mapping.isPresent()) {
+                    MatchExternalId externalId = mapping.get();
+                    if (!fixtureExternalId.equals(externalId.getExternalId())) {
+                        externalId.setExternalId(fixtureExternalId);
+                        matchExternalIdRepository.save(externalId);
+                    }
+                } else if (match.getId() != null) {
                     matchExternalIdRepository.save(MatchExternalId.builder()
                             .match(match).provider(PROVIDER).externalId(fixtureExternalId).build());
                 }
@@ -259,7 +270,6 @@ public class FootballDataUkSyncService {
                             .match(match).provider(PROVIDER).externalId(fixtureExternalId).build());
                     createdFixtures++;
                 } else {
-                    updateFixtureResult(match, row);
                     matchRepository.save(match);
                 }
                 importedStats += persistStatistics(match, row);
@@ -355,9 +365,14 @@ public class FootballDataUkSyncService {
 
     private Match resolveOrCreateFixture(Season season, Team home, Team away, Instant kickoff,
                                          Map<String, String> row) {
+        Instant seasonStart = season.getStartDate() == null
+                ? kickoff.minusSeconds(18 * 3600L)
+                : season.getStartDate().atStartOfDay(SOURCE_ZONE).toInstant();
+        Instant seasonEnd = season.getEndDate() == null
+                ? kickoff.plusSeconds(18 * 3600L)
+                : season.getEndDate().plusDays(1).atStartOfDay(SOURCE_ZONE).toInstant();
         List<Match> candidates = matchRepository.findFixtureCandidates(
-                season.getId(), home.getId(), away.getId(),
-                kickoff.minusSeconds(18 * 3600L), kickoff.plusSeconds(18 * 3600L));
+                season.getId(), home.getId(), away.getId(), seasonStart, seasonEnd);
         if (candidates.size() == 1) {
             Match existing = candidates.get(0);
             updateFixtureResult(existing, row);
@@ -376,11 +391,17 @@ public class FootballDataUkSyncService {
     private void updateFixtureResult(Match match, Map<String, String> row) {
         Integer homeScore = integer(value(row, "FTHG"));
         Integer awayScore = integer(value(row, "FTAG"));
-        String fullTimeResult = value(row, "FTR");
+        String fullTimeResult = value(row, "FTR").toUpperCase(Locale.ROOT);
+        Integer homeHalfTimeScore = integer(value(row, "HTHG"));
+        Integer awayHalfTimeScore = integer(value(row, "HTAG"));
+        String halfTimeResult = value(row, "HTR").toUpperCase(Locale.ROOT);
         if (homeScore != null) match.setHomeScore(homeScore);
         if (awayScore != null) match.setAwayScore(awayScore);
+        if (homeHalfTimeScore != null) match.setHomeHalfTimeScore(homeHalfTimeScore);
+        if (awayHalfTimeScore != null) match.setAwayHalfTimeScore(awayHalfTimeScore);
+        if (List.of("H", "D", "A").contains(halfTimeResult)) match.setHalfTimeResult(halfTimeResult);
         if (homeScore != null && awayScore != null
-                && List.of("H", "D", "A").contains(fullTimeResult.toUpperCase(Locale.ROOT))) {
+                && List.of("H", "D", "A").contains(fullTimeResult)) {
             match.setStatus(MatchStatus.FINISHED);
         }
     }
@@ -399,9 +420,9 @@ public class FootballDataUkSyncService {
         Integer fouls = integer(value(row, side + "F"));
         Integer yellow = integer(value(row, side + "Y"));
         Integer red = integer(value(row, side + "R"));
-        Integer offsides = integer(value(row, side + "O"));
+        // Football-Data.co.uk provides no blocked-shots or offsides columns in this CSV schema.
         if (shots == null && onTarget == null && corners == null && fouls == null
-                && yellow == null && red == null && offsides == null) return false;
+                && yellow == null && red == null) return false;
 
         MatchAdvancedStats stats = statsRepository.findByMatchIdAndTeamId(match.getId(), team.getId())
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
@@ -411,11 +432,10 @@ public class FootballDataUkSyncService {
         if (fouls != null) stats.setFouls(fouls);
         if (yellow != null) stats.setYellowCards(yellow);
         if (red != null) stats.setRedCards(red);
-        if (offsides != null) stats.setOffsides(offsides);
         if (!StringUtils.hasText(stats.getStatisticsProvider())) {
             stats.setStatisticsProvider(PROVIDER.name());
         }
-        if (stats.getStatisticsSyncedAt() == null) stats.setStatisticsSyncedAt(Instant.now());
+        stats.setStatisticsSyncedAt(Instant.now());
         statsRepository.save(stats);
         return true;
     }
@@ -449,10 +469,9 @@ public class FootballDataUkSyncService {
         return digits.substring(2, 4) + String.format(Locale.ROOT, "%02d", (startYear + 1) % 100);
     }
 
-    private static String fixtureExternalId(String leagueCode, Season season, LocalDate date,
-                                            LocalTime time, String home, String away) {
+    private static String fixtureExternalId(String leagueCode, Season season, String home, String away) {
+        // Date/time are deliberately excluded: postponed fixtures retain the same identity.
         return normalize(leagueCode) + ":" + seasonCode(season.getYear()) + ":"
-                + date + ":" + (time == null ? "unknown" : time.toString()) + ":"
                 + normalize(home) + ":" + normalize(away);
     }
 
@@ -473,8 +492,12 @@ public class FootballDataUkSyncService {
 
     private static Integer integer(String raw) {
         if (!StringUtils.hasText(raw)) return null;
-        try { return (int) Double.parseDouble(raw.trim()); }
-        catch (NumberFormatException ex) { return null; }
+        try {
+            double parsed = Double.parseDouble(raw.trim());
+            if (!Double.isFinite(parsed) || parsed < 0 || parsed != Math.rint(parsed)
+                    || parsed > Integer.MAX_VALUE) return null;
+            return (int) parsed;
+        } catch (NumberFormatException ex) { return null; }
     }
 
     private static String value(Map<String, String> row, String key) {
