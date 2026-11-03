@@ -33,7 +33,7 @@ public class UnderStatHistoricalStatsJob extends AbstractJob<CronJob> {
         }
 
         try {
-            footballDataUkSyncService.syncActiveSeasons();
+            footballDataUkSyncService.syncAllData();
         } catch (RuntimeException ex) {
             if (failure == null) {
                 failure = ex;
