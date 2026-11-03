@@ -422,6 +422,9 @@ public class FootballDataUkSyncService {
         if (match.getHalfTimeResult() == null && List.of("H", "D", "A").contains(halfTimeResult)) {
             match.setHalfTimeResult(halfTimeResult);
         }
+        if (match.getFullTimeResult() == null && List.of("H", "D", "A").contains(fullTimeResult)) {
+            match.setFullTimeResult(fullTimeResult);
+        }
         if (match.getStatus() == MatchStatus.SCHEDULED
                 && match.getHomeScore() != null && match.getAwayScore() != null
                 && List.of("H", "D", "A").contains(fullTimeResult)) {
@@ -443,11 +446,20 @@ public class FootballDataUkSyncService {
         Integer fouls = integer(value(row, side + "F"));
         Integer yellow = integer(value(row, side + "Y"));
         Integer red = integer(value(row, side + "R"));
+        Integer homeGoals = integer(value(row, "FTHG"));
+        Integer awayGoals = integer(value(row, "FTAG"));
+        Integer scored = homeGoals == null || awayGoals == null ? null
+                : (side.equals("H") ? homeGoals : awayGoals);
+        Integer missed = homeGoals == null || awayGoals == null ? null
+                : (side.equals("H") ? awayGoals : homeGoals);
+        String outcome = homeGoals == null || awayGoals == null ? null
+                : homeGoals.equals(awayGoals) ? "D"
+                : (side.equals("H") == (homeGoals > awayGoals) ? "W" : "L");
         BigDecimal xg = decimalMetric(value(row, side.equals("H") ? "HXG" : "AXG"));
         BigDecimal xga = decimalMetric(value(row, side.equals("H") ? "AXG" : "HXG"));
         // This CSV schema does not provide blocked shots, offsides, PPDA, possession or passing metrics.
         if (shots == null && onTarget == null && corners == null && fouls == null
-                && yellow == null && red == null && xg == null) return false;
+                && yellow == null && red == null && xg == null && scored == null) return false;
 
         MatchAdvancedStats stats = statsRepository.findByMatchIdAndTeamId(match.getId(), team.getId())
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
@@ -484,6 +496,34 @@ public class FootballDataUkSyncService {
         }
         if (stats.getXga() == null && xga != null) {
             stats.setXga(xga);
+            changed = true;
+        }
+        if (stats.getScored() == null && scored != null) {
+            stats.setScored(scored);
+            changed = true;
+        }
+        if (stats.getMissed() == null && missed != null) {
+            stats.setMissed(missed);
+            changed = true;
+        }
+        if (stats.getResult() == null && outcome != null) {
+            stats.setResult(outcome);
+            changed = true;
+        }
+        if (stats.getWins() == null && outcome != null) {
+            stats.setWins("W".equals(outcome) ? 1 : 0);
+            changed = true;
+        }
+        if (stats.getDraws() == null && outcome != null) {
+            stats.setDraws("D".equals(outcome) ? 1 : 0);
+            changed = true;
+        }
+        if (stats.getLosses() == null && outcome != null) {
+            stats.setLosses("L".equals(outcome) ? 1 : 0);
+            changed = true;
+        }
+        if (stats.getPoints() == null && outcome != null) {
+            stats.setPoints("W".equals(outcome) ? 3 : "D".equals(outcome) ? 1 : 0);
             changed = true;
         }
         if (!changed) {
@@ -563,6 +603,10 @@ public class FootballDataUkSyncService {
                         .sourceType(source.aggregate() ? "MARKET_AGGREGATE" : "BOOKMAKER")
                         .isActive(true)
                         .build()));
+        if (!StringUtils.hasText(bookmaker.getSourceType())) {
+            bookmaker.setSourceType(source.aggregate() ? "MARKET_AGGREGATE" : "BOOKMAKER");
+            bookmakerRepository.save(bookmaker);
+        }
 
         MatchOdds odds = matchOddsRepository.findByMatchIdAndBookmakerIdAndMarketName(
                         match.getId(), bookmaker.getId(), marketName)
