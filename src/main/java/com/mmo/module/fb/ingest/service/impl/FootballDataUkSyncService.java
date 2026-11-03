@@ -243,18 +243,25 @@ public class FootballDataUkSyncService {
                 Instant kickoff = date.atTime(time == null ? LocalTime.NOON : time)
                         .atZone(SOURCE_ZONE).toInstant();
                 String fixtureExternalId = fixtureExternalId(leagueMapping.getIdentify(), season,
-                        date, time, homeName, awayName);
+                        homeName, awayName);
 
-                Match match = matchExternalIdRepository.findByProviderAndExternalId(PROVIDER, fixtureExternalId)
-                        .map(MatchExternalId::getMatch)
+                Optional<MatchExternalId> existingExternalId = matchExternalIdRepository
+                        .findByProviderAndExternalId(PROVIDER, fixtureExternalId);
+                Match match = existingExternalId.map(MatchExternalId::getMatch)
                         .orElseGet(() -> resolveOrCreateFixture(season, home, away, kickoff, row));
-                // Football-Data UK is also the source of kickoff corrections (e.g. postponed fixtures).
+                // Keep one provider mapping per match and migrate legacy date/time-based IDs in place.
                 match.setMatchTime(kickoff);
                 updateFixtureResult(match, row);
-                if (match.getId() != null && matchExternalIdRepository
-                        .findByMatchIdAndProvider(match.getId(), PROVIDER).isEmpty()) {
-                    matchExternalIdRepository.save(MatchExternalId.builder()
-                            .match(match).provider(PROVIDER).externalId(fixtureExternalId).build());
+                Optional<MatchExternalId> mapping = match.getId() == null ? Optional.empty()
+                        : matchExternalIdRepository.findByMatchIdAndProvider(match.getId(), PROVIDER);
+                if (mapping.isPresent()) {
+                    MatchExternalId externalId = mapping.get();
+                    if (!fixtureExternalId.equals(externalId.getExternalId())) {
+                        externalId.setExternalId(fixtureExternalId);
+                        matchExternalIdRepository.save(externalId);
+                    }
+                } else if (existingExternalId.isEmpty()) {
+                    // The new Match has no database ID yet; its mapping is persisted after Match.save().
                 }
                 if (match.getId() == null) {
                     match = matchRepository.save(match);
@@ -357,9 +364,14 @@ public class FootballDataUkSyncService {
 
     private Match resolveOrCreateFixture(Season season, Team home, Team away, Instant kickoff,
                                          Map<String, String> row) {
+        Instant seasonStart = season.getStartDate() == null
+                ? kickoff.minusSeconds(18 * 3600L)
+                : season.getStartDate().atStartOfDay(SOURCE_ZONE).toInstant();
+        Instant seasonEnd = season.getEndDate() == null
+                ? kickoff.plusSeconds(18 * 3600L)
+                : season.getEndDate().plusDays(1).atStartOfDay(SOURCE_ZONE).toInstant();
         List<Match> candidates = matchRepository.findFixtureCandidates(
-                season.getId(), home.getId(), away.getId(),
-                kickoff.minusSeconds(18 * 3600L), kickoff.plusSeconds(18 * 3600L));
+                season.getId(), home.getId(), away.getId(), seasonStart, seasonEnd);
         if (candidates.size() == 1) {
             Match existing = candidates.get(0);
             updateFixtureResult(existing, row);
@@ -456,10 +468,9 @@ public class FootballDataUkSyncService {
         return digits.substring(2, 4) + String.format(Locale.ROOT, "%02d", (startYear + 1) % 100);
     }
 
-    private static String fixtureExternalId(String leagueCode, Season season, LocalDate date,
-                                            LocalTime time, String home, String away) {
+    private static String fixtureExternalId(String leagueCode, Season season, String home, String away) {
+        // Date/time are deliberately excluded: postponed fixtures retain the same identity.
         return normalize(leagueCode) + ":" + seasonCode(season.getYear()) + ":"
-                + date + ":" + (time == null ? "unknown" : time.toString()) + ":"
                 + normalize(home) + ":" + normalize(away);
     }
 
