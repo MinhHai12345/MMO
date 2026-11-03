@@ -57,6 +57,9 @@ public class MatchOdds extends AbstractEntity {
     @Column(precision = 8, scale = 3)
     private BigDecimal bttsNoOdds;
 
+    @Column(name = "asian_handicap_line", precision = 8, scale = 3)
+    private BigDecimal asianHandicapLine;
+
     @Column(precision = 8, scale = 3)
     private BigDecimal asianHandicapHome;
 
