@@ -16,10 +16,14 @@ import com.mmo.module.fb.league.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchAdvancedStats;
 import com.mmo.module.fb.match.entity.MatchExternalId;
+import com.mmo.module.fb.match.entity.Bookmaker;
+import com.mmo.module.fb.match.entity.MatchOdds;
 import com.mmo.module.fb.match.enums.MatchStatus;
 import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
 import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.match.repository.MatchRepository;
+import com.mmo.module.fb.match.repository.BookmakerRepository;
+import com.mmo.module.fb.match.repository.MatchOddsRepository;
 import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.team.entity.TeamExternalId;
 import com.mmo.module.fb.team.repository.TeamExternalIdRepository;
@@ -31,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.text.Normalizer;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -70,6 +75,8 @@ public class FootballDataUkSyncService {
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final MatchAdvancedStatsRepository statsRepository;
+    private final BookmakerRepository bookmakerRepository;
+    private final MatchOddsRepository matchOddsRepository;
 
     /**
      * Initialize Football-Data.co.uk league mappings for leagues already present in MMO core.
@@ -165,6 +172,7 @@ public class FootballDataUkSyncService {
         LocalDate today = LocalDate.now(SOURCE_ZONE);
         int importedFixtures = 0;
         int importedStats = 0;
+        int importedOdds = 0;
         int failedSeasons = 0;
 
         for (LeagueExternalId mapping : leagueExternalIdRepository.findAllByProvider(PROVIDER)) {
@@ -190,15 +198,16 @@ public class FootballDataUkSyncService {
                     ImportResult result = syncSeason(season, mapping, config);
                     importedFixtures += result.createdFixtures();
                     importedStats += result.importedTeamStats();
+                    importedOdds += result.importedOdds();
                     if (result.unmatchedRows() == 0 && result.csvRows() > 0) {
                         saveSeasonMapping(season, mapping);
                     } else {
                         log.warn("Football-Data.co.uk season remains pending because rows were unmatched or CSV was empty: league={}, season={}, unmatched={}, rows={}",
                                 league.getName(), season.getYear(), result.unmatchedRows(), result.csvRows());
                     }
-                    log.info("Football-Data.co.uk imported league={}, season={}, current={}, rows={}, createdFixtures={}, stats={}, unmatched={}",
+                    log.info("Football-Data.co.uk imported league={}, season={}, current={}, rows={}, createdFixtures={}, stats={}, odds={}, unmatched={}",
                             league.getName(), season.getYear(), current, result.csvRows(),
-                            result.createdFixtures(), result.importedTeamStats(), result.unmatchedRows());
+                            result.createdFixtures(), result.importedTeamStats(), result.importedOdds(), result.unmatchedRows());
                 } catch (RuntimeException ex) {
                     failedSeasons++;
                     log.error("Football-Data.co.uk import failed: league={}, season={}, reason={}",
@@ -207,8 +216,8 @@ public class FootballDataUkSyncService {
             }
         }
 
-        log.info("Football-Data.co.uk sync completed: createdFixtures={}, importedTeamStats={}, failedSeasons={}",
-                importedFixtures, importedStats, failedSeasons);
+        log.info("Football-Data.co.uk sync completed: createdFixtures={}, importedTeamStats={}, importedOdds={}, failedSeasons={}",
+                importedFixtures, importedStats, importedOdds, failedSeasons);
         if (failedSeasons > 0) {
             throw new IllegalStateException("Football-Data.co.uk import failed for " + failedSeasons + " season(s)");
         }
@@ -220,6 +229,7 @@ public class FootballDataUkSyncService {
         List<Map<String, String>> rows = csvParser.parse(csvClient.getCsv(url));
         int createdFixtures = 0;
         int importedStats = 0;
+        int importedOdds = 0;
         int unmatched = 0;
 
         for (Map<String, String> row : rows) {
@@ -272,13 +282,14 @@ public class FootballDataUkSyncService {
                     matchRepository.save(match);
                 }
                 importedStats += persistStatistics(match, row);
+                importedOdds += persistOdds(match, row);
             } catch (RuntimeException ex) {
                 unmatched++;
                 log.warn("Skip invalid Football-Data.co.uk row: season={}, home={}, away={}, reason={}",
                         season.getYear(), value(row, "HOMETEAM"), value(row, "AWAYTEAM"), ex.getMessage());
             }
         }
-        return new ImportResult(rows.size(), createdFixtures, importedStats, unmatched);
+        return new ImportResult(rows.size(), createdFixtures, importedStats, importedOdds, unmatched);
     }
 
     private Season getOrCreateSeason(League league, int startYear, LocalDate today) {
@@ -394,6 +405,8 @@ public class FootballDataUkSyncService {
         Integer homeHalfTimeScore = integer(value(row, "HTHG"));
         Integer awayHalfTimeScore = integer(value(row, "HTAG"));
         String halfTimeResult = value(row, "HTR").toUpperCase(Locale.ROOT);
+        BigDecimal homeXg = decimalMetric(value(row, "HXG"));
+        BigDecimal awayXg = decimalMetric(value(row, "AXG"));
         // This importer is an enrichment source: never replace a value already stored by
         // another provider or an earlier import.
         if (match.getHomeScore() == null && homeScore != null) match.setHomeScore(homeScore);
@@ -404,6 +417,8 @@ public class FootballDataUkSyncService {
         if (match.getAwayHalfTimeScore() == null && awayHalfTimeScore != null) {
             match.setAwayHalfTimeScore(awayHalfTimeScore);
         }
+        if (match.getHomeXG() == null && homeXg != null) match.setHomeXG(homeXg.doubleValue());
+        if (match.getAwayXG() == null && awayXg != null) match.setAwayXG(awayXg.doubleValue());
         if (match.getHalfTimeResult() == null && List.of("H", "D", "A").contains(halfTimeResult)) {
             match.setHalfTimeResult(halfTimeResult);
         }
@@ -428,9 +443,11 @@ public class FootballDataUkSyncService {
         Integer fouls = integer(value(row, side + "F"));
         Integer yellow = integer(value(row, side + "Y"));
         Integer red = integer(value(row, side + "R"));
-        // Football-Data.co.uk provides no blocked-shots or offsides columns in this CSV schema.
+        BigDecimal xg = decimalMetric(value(row, side.equals("H") ? "HXG" : "AXG"));
+        BigDecimal xga = decimalMetric(value(row, side.equals("H") ? "AXG" : "HXG"));
+        // This CSV schema does not provide blocked shots, offsides, PPDA, possession or passing metrics.
         if (shots == null && onTarget == null && corners == null && fouls == null
-                && yellow == null && red == null) return false;
+                && yellow == null && red == null && xg == null) return false;
 
         MatchAdvancedStats stats = statsRepository.findByMatchIdAndTeamId(match.getId(), team.getId())
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
@@ -461,6 +478,14 @@ public class FootballDataUkSyncService {
             stats.setRedCards(red);
             changed = true;
         }
+        if (stats.getXg() == null && xg != null) {
+            stats.setXg(xg);
+            changed = true;
+        }
+        if (stats.getXga() == null && xga != null) {
+            stats.setXga(xga);
+            changed = true;
+        }
         if (!changed) {
             return false;
         }
@@ -471,6 +496,148 @@ public class FootballDataUkSyncService {
         stats.setStatisticsSyncedAt(Instant.now());
         statsRepository.save(stats);
         return true;
+    }
+
+
+    /**
+     * Import opening and closing odds. Each market/period is stored separately so
+     * opening prices can never overwrite closing prices (or vice versa).
+     */
+    private int persistOdds(Match match, Map<String, String> row) {
+        int saved = 0;
+        for (OddsSource source : ODDS_SOURCES) {
+            saved += persistOneX12Odds(match, row, source, false);
+            saved += persistOneX12Odds(match, row, source, true);
+            saved += persistOneTotalsOdds(match, row, source, false);
+            saved += persistOneTotalsOdds(match, row, source, true);
+            saved += persistOneAsianHandicapOdds(match, row, source, false);
+            saved += persistOneAsianHandicapOdds(match, row, source, true);
+        }
+        return saved;
+    }
+
+    private int persistOneX12Odds(Match match, Map<String, String> row,
+                                  OddsSource source, boolean closing) {
+        String periodPrefix = closing ? "C" : "";
+        String prefix = source.prefix();
+        BigDecimal home = decimalOdds(value(row, prefix + periodPrefix + "H"));
+        BigDecimal draw = decimalOdds(value(row, prefix + periodPrefix + "D"));
+        BigDecimal away = decimalOdds(value(row, prefix + periodPrefix + "A"));
+        if (home == null && draw == null && away == null) return 0;
+        return persistOddsRow(match, source, closing ? "1X2_CLOSE" : "1X2_OPEN",
+                null, home, draw, away, null, null, null, null) ? 1 : 0;
+    }
+
+    private int persistOneTotalsOdds(Match match, Map<String, String> row,
+                                     OddsSource source, boolean closing) {
+        String prefix = source.prefix() + (closing ? "C" : "");
+        BigDecimal over = decimalOdds(value(row, prefix + ">2.5"));
+        BigDecimal under = decimalOdds(value(row, prefix + "<2.5"));
+        if (over == null && under == null) return 0;
+        return persistOddsRow(match, source, closing ? "OU25_CLOSE" : "OU25_OPEN",
+                null, null, null, null, over, under, null, null) ? 1 : 0;
+    }
+
+    private int persistOneAsianHandicapOdds(Match match, Map<String, String> row,
+                                            OddsSource source, boolean closing) {
+        String periodPrefix = closing ? "C" : "";
+        String oddsPrefix = source.prefix() + periodPrefix;
+        String lineHeader = closing ? "AHCH" : "AHH";
+        BigDecimal line = decimalMetric(value(row, lineHeader));
+        BigDecimal home = decimalOdds(value(row, oddsPrefix + "AHH"));
+        BigDecimal away = decimalOdds(value(row, oddsPrefix + "AHA"));
+        if (line == null && home == null && away == null) return 0;
+        if (home == null && away == null) return 0;
+        return persistOddsRow(match, source, closing ? "AH_CLOSE" : "AH_OPEN",
+                line, null, null, null, null, null, home, away) ? 1 : 0;
+    }
+
+    private boolean persistOddsRow(Match match, OddsSource source, String marketName,
+                                   BigDecimal handicapLine,
+                                   BigDecimal home, BigDecimal draw, BigDecimal away,
+                                   BigDecimal over, BigDecimal under,
+                                   BigDecimal asianHome, BigDecimal asianAway) {
+        Bookmaker bookmaker = bookmakerRepository.findByName(source.name())
+                .orElseGet(() -> bookmakerRepository.save(Bookmaker.builder()
+                        .name(source.name())
+                        .sourceType(source.aggregate() ? "MARKET_AGGREGATE" : "BOOKMAKER")
+                        .isActive(true)
+                        .build()));
+
+        MatchOdds odds = matchOddsRepository.findByMatchIdAndBookmakerIdAndMarketName(
+                        match.getId(), bookmaker.getId(), marketName)
+                .orElseGet(() -> MatchOdds.builder()
+                        .match(match).bookmaker(bookmaker).marketName(marketName).build());
+
+        boolean changed = false;
+        if (odds.getAsianHandicapLine() == null && handicapLine != null) {
+            odds.setAsianHandicapLine(handicapLine);
+            changed = true;
+        }
+        if (odds.getHomeWinOdds() == null && home != null) {
+            odds.setHomeWinOdds(home);
+            changed = true;
+        }
+        if (odds.getDrawOdds() == null && draw != null) {
+            odds.setDrawOdds(draw);
+            changed = true;
+        }
+        if (odds.getAwayWinOdds() == null && away != null) {
+            odds.setAwayWinOdds(away);
+            changed = true;
+        }
+        if (odds.getOver25Odds() == null && over != null) {
+            odds.setOver25Odds(over);
+            changed = true;
+        }
+        if (odds.getUnder25Odds() == null && under != null) {
+            odds.setUnder25Odds(under);
+            changed = true;
+        }
+        if (odds.getAsianHandicapHome() == null && asianHome != null) {
+            odds.setAsianHandicapHome(asianHome);
+            changed = true;
+        }
+        if (odds.getAsianHandicapAway() == null && asianAway != null) {
+            odds.setAsianHandicapAway(asianAway);
+            changed = true;
+        }
+        if (changed) matchOddsRepository.save(odds);
+        return changed;
+    }
+
+    /**
+     * Keep the provider's published abbreviations as stable source keys. Max/Avg
+     * are market aggregates, not bookmakers, and are explicitly tagged as such.
+     */
+    private static final List<OddsSource> ODDS_SOURCES = List.of(
+            new OddsSource("B365", "B365", false),
+            new OddsSource("BFD", "BFD", false),
+            new OddsSource("BV", "BV", false),
+            new OddsSource("BW", "BW", false),
+            new OddsSource("PP", "PP", false),
+            new OddsSource("SKB", "SKB", false),
+            new OddsSource("BFE", "BFE", false),
+            new OddsSource("MAX", "MAX", true),
+            new OddsSource("AVG", "AVG", true)
+    );
+
+    private record OddsSource(String prefix, String name, boolean aggregate) {}
+
+    private static BigDecimal decimalOdds(String raw) {
+        BigDecimal value = decimalMetric(raw);
+        return value != null && value.signum() > 0 ? value : null;
+    }
+
+    /** Parse non-negative statistics including a legitimate 0.000 xG value. */
+    private static BigDecimal decimalMetric(String raw) {
+        if (!StringUtils.hasText(raw)) return null;
+        try {
+            BigDecimal parsed = new BigDecimal(raw.trim());
+            return parsed.signum() >= 0 ? parsed : null;
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     private String buildCsvUrl(AppProperties.ProviderConfig config, String season, String leagueCode) {
@@ -557,5 +724,5 @@ public class FootballDataUkSyncService {
         return normalize(value).replaceAll("([a-z])([0-9])", "$1-$2");
     }
 
-    public record ImportResult(int csvRows, int createdFixtures, int importedTeamStats, int unmatchedRows) {}
+    public record ImportResult(int csvRows, int createdFixtures, int importedTeamStats, int importedOdds, int unmatchedRows) {}
 }
