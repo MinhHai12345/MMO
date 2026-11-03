@@ -250,7 +250,7 @@ public class FootballDataUkSyncService {
                 Match match = existingExternalId.map(MatchExternalId::getMatch)
                         .orElseGet(() -> resolveOrCreateFixture(season, home, away, kickoff, row));
                 // Keep one provider mapping per match and migrate legacy date/time-based IDs in place.
-                match.setMatchTime(kickoff);
+                if (time != null) match.setMatchTime(kickoff);
                 updateFixtureResult(match, row);
                 Optional<MatchExternalId> mapping = match.getId() == null ? Optional.empty()
                         : matchExternalIdRepository.findByMatchIdAndProvider(match.getId(), PROVIDER);
