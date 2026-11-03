@@ -75,6 +75,15 @@ public class Match extends AbstractEntity {
     @Column(name = "away_score")
     private Integer awayScore;
 
+    @Column(name = "home_half_time_score")
+    private Integer homeHalfTimeScore;
+
+    @Column(name = "away_half_time_score")
+    private Integer awayHalfTimeScore;
+
+    @Column(name = "half_time_result", length = 1)
+    private String halfTimeResult;
+
     @Column(name = "home_xg")
     private Double homeXG;
 
