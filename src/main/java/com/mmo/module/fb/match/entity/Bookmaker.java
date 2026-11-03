@@ -23,6 +23,11 @@ public class Bookmaker extends AbstractEntity {
 
     private String website;
 
+    /** BOOKMAKER or MARKET_AGGREGATE (e.g. Football-Data UK Max/Avg columns). */
+    @Column(name = "source_type", length = 24)
+    @Builder.Default
+    private String sourceType = "BOOKMAKER";
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;
