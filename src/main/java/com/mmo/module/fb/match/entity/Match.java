@@ -84,6 +84,9 @@ public class Match extends AbstractEntity {
     @Column(name = "half_time_result", length = 1)
     private String halfTimeResult;
 
+    @Column(name = "full_time_result", length = 1)
+    private String fullTimeResult;
+
     @Column(name = "home_xg")
     private Double homeXG;
 
