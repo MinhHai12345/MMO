@@ -99,8 +99,7 @@ class FootballDataBootstrapUseCaseTest {
 
     @Test
     void doesNotStartWorkflowWhenGlobalLockIsBusy() {
-        when(lock.execute(eq(IngestionDistributedLock.GLOBAL_INGEST_LOCK), any(Runnable.class)))
-                .thenReturn(false);
+        doReturn(false).when(lock).execute(eq(IngestionDistributedLock.GLOBAL_INGEST_LOCK), any(Runnable.class));
 
         service.syncCoreData(new ProviderOverrides(Provider.API_FOOTBALL, Provider.API_FOOTBALL,
                 Provider.API_FOOTBALL, Provider.API_FOOTBALL, null));
