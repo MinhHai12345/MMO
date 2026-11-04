@@ -73,7 +73,6 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
                 Optional<MatchExternalId> mapping = matchExternalIdRepository
                         .findByMatchIdAndProvider(match.getId(), Provider.SOFA_SCORE);
                 if (mapping.isEmpty()) {
-                    markAttempt(match);
                     enrichmentStateService.skipped(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
                     skipped++;
                     continue;
@@ -82,8 +81,7 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
                 Optional<ProviderMatchAdvancedStatistics> snapshot =
                         provider.fetchMatchStatistics(mapping.get().getExternalId());
                 if (snapshot.isEmpty()) {
-                    markAttempt(match);
-                    enrichmentStateService.empty(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
+                        enrichmentStateService.empty(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
                     skipped++;
                     continue;
                 }
@@ -117,7 +115,6 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
 
     private void persistMatchStatistics(Match match, ProviderMatchAdvancedStatistics snapshot) {
         Instant now = Instant.now();
-        match.setStatisticsLastAttemptAt(now);
 
         BigDecimal homeXg = statisticValue(snapshot.home(), "expectedGoals", "xg");
         BigDecimal awayXg = statisticValue(snapshot.away(), "expectedGoals", "xg");
@@ -197,11 +194,6 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
 
     private boolean hasStatistics(Map<String, BigDecimal> values) {
         return values != null && !values.isEmpty();
-    }
-
-    private void markAttempt(Match match) {
-        match.setStatisticsLastAttemptAt(Instant.now());
-        matchRepository.save(match);
     }
 
     private boolean hasAdvancedMetrics(MatchAdvancedStats stats) {
