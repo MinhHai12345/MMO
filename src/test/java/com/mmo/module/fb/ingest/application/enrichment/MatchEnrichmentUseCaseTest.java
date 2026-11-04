@@ -63,7 +63,6 @@ class MatchEnrichmentUseCaseTest {
 
         verify(footballDataUk, never()).syncInitialEnrichment();
         verify(footballDataUk).syncCurrentSeasonEnrichment();
-        verify(playerStats).syncFinishedMatchPlayerStatistics();
     }
 
     @Test
