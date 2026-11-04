@@ -184,7 +184,7 @@ public class FootballDataUkSyncService {
                 Optional<SeasonExternalId> seasonMapping = seasonExternalIdRepository
                         .findBySeasonIdAndProvider(season.getId(), PROVIDER);
                 boolean alreadyImported = seasonMapping
-                        .map(mappingRow -> mappingRow.getExternalId().endsWith(":CORE1"))
+                        .map(mappingRow -> mappingRow.getExternalId().endsWith(":CORE2"))
                         .orElse(false);
                 if (!current && alreadyImported) {
                     continue;
@@ -312,7 +312,7 @@ public class FootballDataUkSyncService {
 
     private void saveSeasonMapping(Season season, LeagueExternalId leagueMapping) {
         String externalId = leagueMapping.getIdentify().trim().toUpperCase(Locale.ROOT)
-                + ":" + seasonCode(season.getYear()) + ":CORE1";
+                + ":" + seasonCode(season.getYear()) + ":CORE2";
         SeasonExternalId mapping = seasonExternalIdRepository
                 .findBySeasonIdAndProvider(season.getId(), PROVIDER)
                 .orElseGet(() -> SeasonExternalId.builder()

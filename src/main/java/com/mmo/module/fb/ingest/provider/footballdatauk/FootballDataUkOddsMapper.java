@@ -129,16 +129,7 @@ public class FootballDataUkOddsMapper {
                 || asianHome != null || asianAway != null;
         if (!hasOdds) return 0;
 
-        Bookmaker bookmaker = bookmakerRepository.findByName(bookmakerName)
-                .orElseGet(() -> bookmakerRepository.save(Bookmaker.builder()
-                        .name(bookmakerName)
-                        .sourceType(aggregate ? "MARKET_AGGREGATE" : "BOOKMAKER")
-                        .isActive(true)
-                        .build()));
-        if (!StringUtils.hasText(bookmaker.getSourceType())) {
-            bookmaker.setSourceType(aggregate ? "MARKET_AGGREGATE" : "BOOKMAKER");
-            bookmakerRepository.save(bookmaker);
-        }
+        Bookmaker bookmaker = resolveBookmaker(bookmakerName, aggregate);
 
         MatchOdds odds = matchOddsRepository.findByMatchIdAndBookmakerIdAndMarketName(
                         match.getId(), bookmaker.getId(), market)
@@ -157,6 +148,49 @@ public class FootballDataUkOddsMapper {
         changed |= setIfMissing(odds.getBookmakerCount(), bookmakerCount, odds::setBookmakerCount);
         if (changed) matchOddsRepository.save(odds);
         return changed ? 1 : 0;
+    }
+
+    private Bookmaker resolveBookmaker(String canonicalName, boolean aggregate) {
+        String sourceType = aggregate ? "MARKET_AGGREGATE" : "BOOKMAKER";
+        Bookmaker bookmaker = bookmakerRepository.findByName(canonicalName).orElse(null);
+
+        // Rename records created by the first importer version instead of creating
+        // duplicate bookmaker identities and leaving their historical odds orphaned.
+        if (bookmaker == null) {
+            String legacyName = legacyBookmakerName(canonicalName);
+            if (legacyName != null) {
+                bookmaker = bookmakerRepository.findByName(legacyName).orElse(null);
+                if (bookmaker != null) {
+                    bookmaker.setName(canonicalName);
+                }
+            }
+        }
+
+        if (bookmaker == null) {
+            bookmaker = Bookmaker.builder()
+                    .name(canonicalName)
+                    .sourceType(sourceType)
+                    .isActive(true)
+                    .build();
+        } else if (!sourceType.equals(bookmaker.getSourceType())) {
+            bookmaker.setSourceType(sourceType);
+        }
+        return bookmakerRepository.save(bookmaker);
+    }
+
+    private String legacyBookmakerName(String canonicalName) {
+        return switch (canonicalName) {
+            case "Bet365" -> "B365";
+            case "Betfred" -> "BFD";
+            case "BetVictor" -> "BV";
+            case "Bet&Win" -> "BW";
+            case "Paddy Power" -> "PP";
+            case "Skybet" -> "SKB";
+            case "Betfair Exchange" -> "BFE";
+            case "Market Max" -> "MAX";
+            case "Market Average" -> "AVG";
+            default -> null;
+        };
     }
 
     private boolean setIfMissing(BigDecimal current, BigDecimal incoming,

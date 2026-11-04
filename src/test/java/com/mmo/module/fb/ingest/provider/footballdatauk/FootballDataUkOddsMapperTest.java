@@ -65,4 +65,28 @@ class FootballDataUkOddsMapperTest {
         assertEquals(28, aggregateHandicap.getBookmakerCount());
         assertEquals(-0.25, aggregateHandicap.getAsianHandicapLine().doubleValue(), 0.0001);
     }
+    @Test
+    void reusesLegacyBookmakerIdentityWhenCanonicalizingExistingOdds() {
+        BookmakerRepository bookmakers = mock(BookmakerRepository.class);
+        MatchOddsRepository oddsRepository = mock(MatchOddsRepository.class);
+        Bookmaker legacy = Bookmaker.builder().name("B365").sourceType("BOOKMAKER").isActive(true).build();
+        legacy.setId(7L);
+
+        when(bookmakers.findByName(any())).thenReturn(Optional.empty());
+        when(bookmakers.findByName("B365")).thenReturn(Optional.of(legacy));
+        when(bookmakers.save(any(Bookmaker.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(oddsRepository.findByMatchIdAndBookmakerIdAndMarketName(any(), any(), any()))
+                .thenReturn(Optional.empty());
+        when(oddsRepository.save(any(MatchOdds.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Match match = new Match();
+        match.setId(101L);
+        FootballDataUkOddsMapper mapper = new FootballDataUkOddsMapper(bookmakers, oddsRepository);
+
+        mapper.persist(match, Map.of("B365H", "2.1"));
+
+        assertEquals("Bet365", legacy.getName());
+        verify(oddsRepository).findByMatchIdAndBookmakerIdAndMarketName(101L, 7L, "1X2_OPEN");
+    }
+
 }
