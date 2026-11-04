@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchStatisticsSourceSnapshot;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.match.repository.MatchStatisticsSourceSnapshotRepository;
 import com.mmo.module.fb.team.entity.Team;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +45,7 @@ public class MatchStatisticsSnapshotPersistenceService {
         MatchStatisticsSourceSnapshot snapshot = snapshotRepository
                 .findByMatchIdAndTeamIdAndProvider(match.getId(), team.getId(), provider)
                 .orElseGet(() -> MatchStatisticsSourceSnapshot.builder()
-                        .match(match).team(team).provider(provider).build());
+                        .match(match).team(team).provider(MatchProvider.from(provider)).build());
         snapshot.setSnapshotJson(json);
         snapshot.setFetchedAt(Instant.now());
         snapshotRepository.save(snapshot);
