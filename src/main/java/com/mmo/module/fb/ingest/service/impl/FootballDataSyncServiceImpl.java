@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.AppProperties;
+import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.service.FixtureIngestionService;
 import com.mmo.module.fb.ingest.service.FootballDataSyncService;
@@ -27,6 +28,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class FootballDataSyncServiceImpl implements FootballDataSyncService {
 
+    private final IngestionDistributedLock distributedLock;
     private final AppProperties properties;
     private final LeagueIngestionService leagueIngestionService;
     private final SeasonIngestionService seasonIngestionService;
@@ -38,6 +40,14 @@ public class FootballDataSyncServiceImpl implements FootballDataSyncService {
 
     @Override
     public void sync(ProviderOverrides overrides, Provider oddsProviderOverride) {
+        boolean executed = distributedLock.execute(IngestionDistributedLock.GLOBAL_INGEST_LOCK,
+                () -> syncLocked(overrides, oddsProviderOverride));
+        if (!executed) {
+            log.warn("Core sync skipped because another ingestion workflow is running");
+        }
+    }
+
+    private void syncLocked(ProviderOverrides overrides, Provider oddsProviderOverride) {
         ProviderOverrides selected = overrides == null ? ProviderOverrides.defaults() : overrides;
         AppProperties.Providers defaults = properties.getIngestion().getProviders();
 
