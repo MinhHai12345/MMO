@@ -18,6 +18,7 @@ import static org.mockito.Mockito.*;
 class FootballDataSyncUseCaseTest {
 
     private IngestionDistributedLock lock;
+    private AppProperties properties;
     private LeagueIngestionService leagues;
     private SeasonIngestionService seasons;
     private TeamIngestionService teams;
@@ -41,7 +42,8 @@ class FootballDataSyncUseCaseTest {
         standings = mock(StandingsIngestionService.class);
         odds = mock(OddsIngestionService.class);
         uk = mock(FootballDataUkIngestionPort.class);
-        useCase = new FootballDataSyncUseCase(lock, new AppProperties(),
+        properties = new AppProperties();
+        useCase = new FootballDataSyncUseCase(lock, properties,
                 leagues, seasons, teams, fixtures, standings, odds, uk);
     }
 
@@ -57,6 +59,22 @@ class FootballDataSyncUseCaseTest {
         verify(standings).syncStandingsForProvider(any());
         verify(odds).syncUpcomingOdds(any());
         verify(uk).syncCurrentSeasonData();
+    }
+
+    @Test
+    void refreshesSeasonMappingsForEverySelectedCoreProvider() {
+        properties.getIngestion().getProviders().setLeague(com.mmo.module.fb.ingest.enums.Provider.SOFA_SCORE);
+        properties.getIngestion().getProviders().setSeason(com.mmo.module.fb.ingest.enums.Provider.UNDER_STATS);
+        properties.getIngestion().getProviders().setTeam(com.mmo.module.fb.ingest.enums.Provider.API_FOOTBALL);
+        properties.getIngestion().getProviders().setFixture(com.mmo.module.fb.ingest.enums.Provider.SOFA_SCORE);
+        properties.getIngestion().getProviders().setStandings(com.mmo.module.fb.ingest.enums.Provider.FOOTBALL_DATA);
+
+        useCase.sync(null, null);
+
+        verify(seasons).syncSeasonsForProvider(com.mmo.module.fb.ingest.enums.Provider.SOFA_SCORE);
+        verify(seasons).syncSeasonsForProvider(com.mmo.module.fb.ingest.enums.Provider.UNDER_STATS);
+        verify(seasons).syncSeasonsForProvider(com.mmo.module.fb.ingest.enums.Provider.API_FOOTBALL);
+        verify(seasons).syncSeasonsForProvider(com.mmo.module.fb.ingest.enums.Provider.FOOTBALL_DATA);
     }
 
     @Test
