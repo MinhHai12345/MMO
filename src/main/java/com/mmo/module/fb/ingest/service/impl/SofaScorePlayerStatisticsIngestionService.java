@@ -55,7 +55,7 @@ public class SofaScorePlayerStatisticsIngestionService implements PlayerStatisti
             MatchExternalId externalId = matchExternalIdRepository
                     .findByMatchIdAndProvider(match.getId(), Provider.SOFA_SCORE).orElse(null);
             if (externalId == null) {
-                enrichmentStateService.empty(match, Provider.SOFA_SCORE, MatchEnrichmentResource.PLAYER_STATISTICS);
+                enrichmentStateService.skipped(match, Provider.SOFA_SCORE, MatchEnrichmentResource.PLAYER_STATISTICS);
                 skipped++;
                 continue;
             }
