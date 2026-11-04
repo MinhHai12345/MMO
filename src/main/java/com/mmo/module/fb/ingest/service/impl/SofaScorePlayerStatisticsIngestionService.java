@@ -39,7 +39,7 @@ public class SofaScorePlayerStatisticsIngestionService implements PlayerStatisti
         Instant now = Instant.now();
         Instant retryBefore = now.minus(24, ChronoUnit.HOURS);
         List<Match> candidates = matchRepository.findFinishedMatchesMissingPlayerStatistics(
-                MatchStatus.FINISHED, Provider.SOFA_SCORE, MatchEnrichmentResource.PLAYER_STATISTICS,
+                MatchStatus.FINISHED, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.PLAYER_STATISTICS,
                 MatchEnrichmentStatus.SUCCEEDED, MatchEnrichmentStatus.IN_PROGRESS,
                 retryBefore, PageRequest.of(0, MATCH_BATCH_SIZE));
 
