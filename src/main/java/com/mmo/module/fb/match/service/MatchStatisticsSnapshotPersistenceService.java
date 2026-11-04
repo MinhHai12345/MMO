@@ -2,7 +2,7 @@ package com.mmo.module.fb.match.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchStatisticsSourceSnapshot;
 import com.mmo.module.fb.match.enums.MatchProvider;
@@ -23,7 +23,7 @@ public class MatchStatisticsSnapshotPersistenceService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public void upsert(Match match, Team team, Provider provider, Object sourcePayload) {
+    public void upsert(Match match, Team team, MatchProvider provider, Object sourcePayload) {
         if (match == null || match.getId() == null || team == null || team.getId() == null
                 || provider == null || sourcePayload == null) {
             return;
@@ -45,7 +45,7 @@ public class MatchStatisticsSnapshotPersistenceService {
         MatchStatisticsSourceSnapshot snapshot = snapshotRepository
                 .findByMatchIdAndTeamIdAndProvider(match.getId(), team.getId(), provider)
                 .orElseGet(() -> MatchStatisticsSourceSnapshot.builder()
-                        .match(match).team(team).provider(MatchProvider.from(provider)).build());
+                        .match(match).team(team).provider(provider).build());
         snapshot.setSnapshotJson(json);
         snapshot.setFetchedAt(Instant.now());
         snapshotRepository.save(snapshot);
