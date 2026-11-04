@@ -89,7 +89,7 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
 
                 ProviderMatchAdvancedStatistics providerSnapshot = snapshot.get();
                 if (!hasStatistics(providerSnapshot.home()) && !hasStatistics(providerSnapshot.away())) {
-                    enrichmentStateService.empty(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
+                    enrichmentStateService.empty(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
                     skipped++;
                     continue;
                 }
