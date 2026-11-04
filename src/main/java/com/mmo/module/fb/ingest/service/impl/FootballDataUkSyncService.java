@@ -2,10 +2,9 @@ package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkCsvClient;
-import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkCsvParser;
-import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkMatchStatisticsMapper;
-import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkOddsMapper;
+import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkMatchDataProvider;
+import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkMatchStatisticsPersistenceService;
+import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkOddsPersistenceService;
 import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.league.entity.League;
 import com.mmo.module.fb.league.entity.LeagueExternalId;
@@ -60,8 +59,7 @@ public class FootballDataUkSyncService {
     private static final DateTimeFormatter CSV_DATE = DateTimeFormatter.ofPattern("dd/MM/yy");
 
     private final AppProperties properties;
-    private final FootballDataUkCsvClient csvClient;
-    private final FootballDataUkCsvParser csvParser;
+    private final FootballDataUkMatchDataProvider matchDataProvider;
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
     private final SeasonExternalIdRepository seasonExternalIdRepository;
@@ -70,8 +68,8 @@ public class FootballDataUkSyncService {
     private final TeamExternalIdRepository teamExternalIdRepository;
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
-    private final FootballDataUkMatchStatisticsMapper statisticsMapper;
-    private final FootballDataUkOddsMapper oddsMapper;
+    private final FootballDataUkMatchStatisticsPersistenceService statisticsMapper;
+    private final FootballDataUkOddsPersistenceService oddsMapper;
 
     /**
      * Initialize Football-Data.co.uk league mappings for leagues already present in MMO core.
@@ -220,8 +218,8 @@ public class FootballDataUkSyncService {
 
     public ImportResult syncSeason(Season season, LeagueExternalId leagueMapping,
                                    AppProperties.ProviderConfig config) {
-        String url = buildCsvUrl(config, season.getYear(), leagueMapping.getIdentify());
-        List<Map<String, String>> rows = csvParser.parse(csvClient.getCsv(url));
+        List<Map<String, String>> rows = matchDataProvider.fetchSeason(
+                config.getUri(), season.getYear(), leagueMapping.getIdentify());
         int createdFixtures = 0;
         int importedStats = 0;
         int importedOdds = 0;
@@ -451,17 +449,6 @@ public class FootballDataUkSyncService {
         } catch (NumberFormatException ex) {
             return null;
         }
-    }
-
-    private String buildCsvUrl(AppProperties.ProviderConfig config, String season, String leagueCode) {
-        String base = StringUtils.hasText(config.getUri())
-                ? config.getUri().trim() : "https://football-data.co.uk";
-        while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
-        if ("https://www.football-data.co.uk".equalsIgnoreCase(base)) {
-            base = "https://football-data.co.uk";
-        }
-        return base + "/mmz4281/" + seasonCode(season) + "/"
-                + leagueCode.trim().toUpperCase(Locale.ROOT) + ".csv";
     }
 
     private static int seasonStartYear(String season) {

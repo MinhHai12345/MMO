@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.service.impl;
+package com.mmo.module.fb.ingest.persistence.sofascore;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreLineupsResponseDTO;

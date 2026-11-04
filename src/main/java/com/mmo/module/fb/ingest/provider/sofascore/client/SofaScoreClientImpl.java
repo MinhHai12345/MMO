@@ -21,9 +21,6 @@ import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.Stan
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.StatisticsResponseDTO;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.TournamentsResponseDTO;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.UniqueTournamentDTO;
-import com.mmo.module.fb.team.entity.Team;
-import com.mmo.module.fb.team.entity.TeamExternalId;
-import com.mmo.module.fb.team.repository.TeamExternalIdRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -39,7 +36,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SofaScoreClientImpl extends AbstractSofaScoreClient implements SofaScoreClient {
     private final AppProperties appProperties;
-    private final TeamExternalIdRepository teamExternalIdRepository;
 
     // Page URLs are used to trigger the browser requests; URI constants only match API responses.
     private static final String FETCH_ALL_UNIQUE_TOURNAMENTS_PAGE = "%s/football";
@@ -258,22 +254,18 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
     }
 
     @Override
-    public List<EventDTO> fetchHistoriesMatchesByTeamIdAndIndex(Team team, int index, Page page) {
-        if (team == null || team.getId() == null) {
+    public List<EventDTO> fetchHistoriesMatchesByTeamIdAndIndex(
+            String sofaTeamId, String teamSlug, int index, Page page) {
+        if (sofaTeamId == null || sofaTeamId.isBlank()
+                || teamSlug == null || teamSlug.isBlank()) {
             return Collections.emptyList();
         }
-        TeamExternalId teamExternalId = teamExternalIdRepository
-                .findByTeamIdAndProvider(team.getId(), Provider.SOFA_SCORE)
-                .orElse(null);
-        if (teamExternalId == null) {
-            log.warn("Skipping SofaScore team history: no provider ID mapping for teamId={}", team.getId());
-            return Collections.emptyList();
-        }
-        String sofaTeamId = teamExternalId.getExternalId();
         String loadPageUrl = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_PAGE,
-                webUrl(), team.getSlug(), sofaTeamId);
-        String historiesEndpoint = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_URI, sofaTeamId, index);
-        MatchesResponseDTO matchData = fetchFromWebPage(loadPageUrl, historiesEndpoint, page, MatchesResponseDTO.class);
+                webUrl(), teamSlug, sofaTeamId);
+        String historiesEndpoint = String.format(FETCH_MATCH_HISTORIES_BY_TEAM_ID_AND_INDEX_URI,
+                sofaTeamId, index);
+        MatchesResponseDTO matchData = fetchFromWebPage(
+                loadPageUrl, historiesEndpoint, page, MatchesResponseDTO.class);
         return matchData != null && matchData.events() != null
                 ? matchData.events() : Collections.emptyList();
     }

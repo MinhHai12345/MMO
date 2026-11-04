@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.footballdatauk;
+package com.mmo.module.fb.ingest.persistence.footballdatauk;
 
 import com.mmo.module.fb.match.entity.Bookmaker;
 import com.mmo.module.fb.match.entity.Match;
@@ -6,7 +6,7 @@ import com.mmo.module.fb.match.entity.MatchOdds;
 import com.mmo.module.fb.match.repository.BookmakerRepository;
 import com.mmo.module.fb.match.repository.MatchOddsRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -18,9 +18,9 @@ import java.util.function.Consumer;
  * Maps Football-Data.co.uk bookmaker and market-aggregate prices into MMO Core.
  * Opening and closing prices are separate markets; Max/Avg values are not bookmakers.
  */
-@Component
+@Service
 @RequiredArgsConstructor
-public class FootballDataUkOddsMapper {
+public class FootballDataUkOddsPersistenceService {
 
     private static final List<BookmakerSource> BOOKMAKERS = List.of(
             new BookmakerSource("1XBet", List.of("1XB"), List.of("1XB"), List.of("1XB")),

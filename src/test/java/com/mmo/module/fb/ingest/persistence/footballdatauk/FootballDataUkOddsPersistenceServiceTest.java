@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.footballdatauk;
+package com.mmo.module.fb.ingest.persistence.footballdatauk;
 
 import com.mmo.module.fb.match.entity.Bookmaker;
 import com.mmo.module.fb.match.entity.Match;
@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-class FootballDataUkOddsMapperTest {
+class FootballDataUkOddsPersistenceServiceTest {
 
     @Test
     void mapsOpeningClosingOddsAndAggregateMetadataIntoCore() {
@@ -29,7 +29,7 @@ class FootballDataUkOddsMapperTest {
 
         Match match = new Match();
         match.setId(99L);
-        FootballDataUkOddsMapper mapper = new FootballDataUkOddsMapper(bookmakers, oddsRepository);
+        FootballDataUkOddsPersistenceService mapper = new FootballDataUkOddsPersistenceService(bookmakers, oddsRepository);
         Map<String, String> row = Map.ofEntries(
                 Map.entry("B365H", "2.10"), Map.entry("B365D", "3.30"), Map.entry("B365A", "3.60"),
                 Map.entry("B365CH", "2.00"), Map.entry("B365CD", "3.40"), Map.entry("B365CA", "3.80"),
@@ -81,7 +81,7 @@ class FootballDataUkOddsMapperTest {
 
         Match match = new Match();
         match.setId(101L);
-        FootballDataUkOddsMapper mapper = new FootballDataUkOddsMapper(bookmakers, oddsRepository);
+        FootballDataUkOddsPersistenceService mapper = new FootballDataUkOddsPersistenceService(bookmakers, oddsRepository);
 
         mapper.persist(match, Map.of("B365H", "2.1"));
 

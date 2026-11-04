@@ -1,7 +1,6 @@
 package com.mmo.module.fb.config;
 
 import com.mmo.core.cronjob.entity.CronJob;
-import com.mmo.core.cronjob.entity.JobState;
 import com.mmo.core.cronjob.repository.CronJobRepository;
 import com.mmo.core.cronjob.service.CronJobService;
 import com.mmo.core.initialize.DataInitializer;
@@ -10,16 +9,11 @@ import com.mmo.module.fb.analytics.job.MatchProcessPredictionJob;
 import com.mmo.module.fb.analytics.job.PredictionEvaluationJob;
 import com.mmo.module.fb.analytics.job.WalkForwardBackTestJob;
 import com.mmo.module.fb.ingest.job.FootballDataBootstrapJob;
-import com.mmo.module.fb.ingest.job.FootballDataUkCoreSyncJob;
-import com.mmo.module.fb.ingest.job.LeagueSyncJob;
-import com.mmo.module.fb.ingest.job.MatchFixtureSyncJob;
-import com.mmo.module.fb.ingest.job.MatchResultSyncJob;
-import com.mmo.module.fb.ingest.job.MatchStatisticsSyncJob;
-import com.mmo.module.fb.ingest.job.UnderStatHistoricalStatsJob;
-import com.mmo.module.fb.ingest.job.TeamSyncJob;
-import com.mmo.module.fb.ingest.service.impl.FootballDataUkSyncService;
+import com.mmo.module.fb.ingest.job.FootballDataSyncJob;
+import com.mmo.module.fb.ingest.job.MatchEnrichmentJob;
+import com.mmo.module.fb.ingest.service.FootballDataSyncService;
 import com.mmo.module.fb.monetization.job.SubscriptionExpiryCheckJob;
-import com.mmo.module.fb.workflow.job.FootballWorkflowOrchestrationJob;
+import com.mmo.module.fb.content.job.ContentGenerationJob;
 import com.mmo.module.fb.workflow.job.PublicationWorkerQuartzJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,80 +27,64 @@ public class FBCronjobInitial implements DataInitializer {
 
     private final CronJobRepository cronJobRepository;
     private final CronJobService cronJobService;
-    private final FootballDataUkSyncService footballDataUkSyncService;
+    private final FootballDataSyncService footballDataSyncService;
 
     @Override
     public void initialize() {
         log.info("Initializing Football Analytics CronJobs (UTC timezone)...");
 
-        // Initialize provider identifiers before any scheduled ingestion job can use them.
-        footballDataUkSyncService.initialLeagueMappings();
+        // Provider bootstrap is an application use case, not a provider/job dependency.
+        footballDataSyncService.initializeProviderMappings();
 
-        createOrUpdateJob(FootballWorkflowOrchestrationJob.class,
-                "0 30 11 * * ?", "End-to-end workflow: refresh data, calculate analytics and generate PRE_MATCH drafts (daily UTC 11:30)");
+        deleteLegacyJob("FootballWorkflowOrchestrationJob");
+        createOrUpdateJob(ContentGenerationJob.class,
+                "0 30 11 * * ?", "Generate PRE_MATCH content drafts daily at 11:30 UTC");
 
-        // Bootstrap may backfill multiple seasons. Keep it out of the frequent production path.
+        // Historical bootstrap is an explicit recovery/backfill workflow.
         createOrUpdateJob(FootballDataBootstrapJob.class,
-                "0 0 1 1 * ?", "Bootstrap configured leagues, teams, fixtures and standings (monthly UTC 01:00)");
-        createOrUpdateJob(LeagueSyncJob.class,
-                "0 0 2 1 * ?", "Refresh league and season metadata (monthly UTC 02:00)");
-        createOrUpdateJob(TeamSyncJob.class,
-                "0 0 3 1,15 * ?", "Refresh team metadata (UTC 03:00 on days 1 and 15)");
+                "0 0 1 1 * ?", "Bootstrap configured leagues, teams, fixtures and standings monthly at 01:00 UTC");
+        createOrUpdateJob(FootballDataSyncJob.class,
+                "0 0 0/6 * * ?", "Incrementally synchronize canonical football data every 6 hours");
+        createOrUpdateJob(MatchEnrichmentJob.class,
+                "0 30 0/12 * * ?", "Enrich finished matches with historical and player statistics every 12 hours");
 
-        // Football-Data.co.uk is a CSV source: import every mapped league and season,
-        // then refresh the current season on subsequent daily executions.
-        createOrUpdateJob(FootballDataUkCoreSyncJob.class,
-                "0 0 4 * * ?", "Sync all mapped Football-Data UK leagues and seasons: teams, fixtures, results and CSV statistics daily at 04:00 UTC");
-
-        // Match data has direct value to content freshness; use bounded periodic refreshes.
-        createOrUpdateJob(MatchResultSyncJob.class,
-                "0 0 0/4 * * ?", "Refresh recent results and statuses every 4 hours");
-        createOrUpdateJob(MatchFixtureSyncJob.class,
-                "0 0 0/6 * * ?", "Refresh upcoming fixtures every 6 hours");
-        createOrUpdateJob(MatchStatisticsSyncJob.class,
-                "0 0 0/6 * * ?", "Refresh finished-match statistics every 6 hours");
-        createOrUpdateJob(UnderStatHistoricalStatsJob.class,
-                "0 30 0/12 * * ?", "Enrich active seasons with Understat xG, PPDA and team history every 12 hours");
-
+        // Analytics and evaluation jobs own their own schedules. The content job never
+        // triggers already-scheduled jobs, avoiding duplicate executions.
         createOrUpdateJob(MatchProcessPredictionJob.class,
                 "0 0 0/3 * * ?", "Recalculate eligible upcoming-match predictions every 3 hours");
         createOrUpdateJob(AdvancedMetricsJob.class,
                 "0 0 0/6 * * ?", "Recalculate team form and head-to-head metrics every 6 hours");
         createOrUpdateJob(PredictionEvaluationJob.class,
                 "0 0/30 * * * ?", "Evaluate predictions against newly completed match results every 30 minutes");
-
-        // Walk-forward evaluation is computationally expensive and is not required for every content run.
         createOrUpdateJob(WalkForwardBackTestJob.class,
                 "0 15 6 ? * SUN", "Run the 180-day walk-forward evaluation weekly on Sunday at 06:15 UTC");
-
         createOrUpdateJob(SubscriptionExpiryCheckJob.class,
                 "0 0 0 * * ?", "Expire subscriptions and identify renewals daily at 00:00 UTC");
-
-        // Polling is cheap, but the worker itself must enforce opt-in, state and retry limits.
         createOrUpdateJob(PublicationWorkerQuartzJob.class,
                 "0 * * * * ?", "Poll approved, due Telegram publications once per minute; opt-in required");
 
-        // These legacy rows may already exist in production DBs. Merely omitting them
-        // from registration would leave their persisted Quartz triggers active.
-        pauseRetiredJob("UnderStatCatalogSyncJob");
-        pauseRetiredJob("MatchStatusTrackerJob");
-        pauseRetiredJob("CrawlerHealthCheckJob");
-        pauseRetiredJob("DataCleanupJob");
-        pauseRetiredJob("MatchLineupOddsUpdateJob");
+        // Remove obsolete persisted schedules as well as their source classes. Leaving
+        // paused registry rows creates a false operational inventory and permits accidental resume.
+        deleteLegacyJob("LeagueSyncJob");
+        deleteLegacyJob("TeamSyncJob");
+        deleteLegacyJob("MatchFixtureSyncJob");
+        deleteLegacyJob("MatchResultSyncJob");
+        deleteLegacyJob("MatchStatisticsSyncJob");
+        deleteLegacyJob("FootballDataUkCoreSyncJob");
+        deleteLegacyJob("UnderStatHistoricalStatsJob");
+        deleteLegacyJob("UnderStatCatalogSyncJob");
+        deleteLegacyJob("MatchStatusTrackerJob");
+        deleteLegacyJob("CrawlerHealthCheckJob");
+        deleteLegacyJob("DataCleanupJob");
+        deleteLegacyJob("MatchLineupOddsUpdateJob");
 
         log.info("Football CronJob initialization completed.");
     }
 
-    /**
-     * Keep persisted schedules aligned with code. The old create-only behavior meant
-     * schedule fixes were silently ignored for installations that already had rows.
-     */
-    private void pauseRetiredJob(String jobName) {
+    private void deleteLegacyJob(String jobName) {
         cronJobRepository.findByJobNameAndJobGroup(jobName, FB_JOB_GROUP).ifPresent(job -> {
-            if (job.getJobStatus() != JobState.PAUSED) {
-                cronJobService.pauseJob(job.getId());
-                log.warn("Paused retired CronJob [{}]; implementation is empty or not part of the content MVP", jobName);
-            }
+            cronJobService.deleteJob(job.getId());
+            log.warn("Deleted obsolete CronJob [{}] from Quartz and cron_jobs registry", jobName);
         });
     }
 
@@ -126,9 +104,7 @@ public class FBCronjobInitial implements DataInitializer {
                 || !cronExpression.equals(job.getCronExpression())
                 || !description.equals(job.getDescription());
 
-        if (!changed) {
-            return;
-        }
+        if (!changed) return;
 
         job.setJobClass(jobClass.getName());
         job.setCronExpression(cronExpression);

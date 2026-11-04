@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.footballdatauk;
+package com.mmo.module.fb.ingest.persistence.footballdatauk;
 
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchAdvancedStats;
@@ -14,7 +14,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
-class FootballDataUkMatchStatisticsMapperTest {
+class FootballDataUkMatchStatisticsPersistenceServiceTest {
 
     @Test
     void mapsAllPublishedTeamStatisticsWithoutConfusingFoulsAndFreeKicks() {
@@ -31,7 +31,7 @@ class FootballDataUkMatchStatisticsMapperTest {
         match.setHomeTeam(home);
         match.setAwayTeam(away);
 
-        FootballDataUkMatchStatisticsMapper mapper = new FootballDataUkMatchStatisticsMapper(repository);
+        FootballDataUkMatchStatisticsPersistenceService mapper = new FootballDataUkMatchStatisticsPersistenceService(repository);
         Map<String, String> row = Map.ofEntries(
                 Map.entry("FTHG", "2"), Map.entry("FTAG", "1"),
                 Map.entry("HS", "14"), Map.entry("HST", "6"), Map.entry("HHW", "1"),

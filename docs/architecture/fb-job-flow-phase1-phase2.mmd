@@ -1,0 +1,22 @@
+flowchart TD
+    A[FootballDataBootstrapJob] --> B[FootballDataBootstrapService]
+    C[FootballDataSyncJob] --> D[FootballDataSyncService]
+    D --> E[League / Team / Fixture / Standings / Odds Ingestion]
+    E --> F[ProviderRegistry]
+    F --> G[Provider Adapter + DTO Mapper]
+    G --> H[Provider-neutral Model]
+    H --> I[Persistence Services]
+    J[MatchEnrichmentJob] --> K[MatchEnrichmentService]
+    K --> L[Understat / SofaScore / Player Statistics]
+    L --> I
+    I --> M[Canonical MMO Core]
+    M --> N[AdvancedMetricsJob]
+    M --> O[MatchProcessPredictionJob]
+    N --> P[Analytics / Predictions]
+    O --> P
+    P --> Q[ContentGenerationJob]
+    Q --> R[PRE_MATCH Content Generation]
+    R --> S[PublicationWorkerQuartzJob]
+    T[PredictionEvaluationJob] -.-> P
+    U[WalkForwardBackTestJob] -.-> P
+    V[SubscriptionExpiryCheckJob]
