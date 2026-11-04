@@ -46,7 +46,7 @@ class MatchEnrichmentStateTest {
 
         state.markSkipped(now.plusSeconds(1));
         assertEquals(MatchEnrichmentStatus.SKIPPED, state.getStatus());
-        assertNull(state.getLastSuccessAt());
+        assertEquals(now, state.getLastSuccessAt(), "skipping a later attempt must not erase the previous successful fetch");
         assertEquals(now.plusSeconds(1), state.getNextRetryAt());
     }
 
