@@ -1,7 +1,7 @@
 package com.mmo.module.fb.match.entity;
 
 import com.mmo.core.entity.AbstractEntity;
-import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.match.enums.MatchOddsMarketType;
 import com.mmo.module.fb.match.enums.MatchOddsPeriod;
 import jakarta.persistence.*;
@@ -48,7 +48,7 @@ public class MatchOddsQuote extends AbstractEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
-    private Provider provider;
+    private MatchProvider provider;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "market_type", nullable = false, length = 32)
