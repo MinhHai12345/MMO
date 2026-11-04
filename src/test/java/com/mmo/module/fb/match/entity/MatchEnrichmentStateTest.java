@@ -15,7 +15,7 @@ class MatchEnrichmentStateTest {
     void tracksIndependentProviderResourceAttemptLifecycle() {
         Instant now = Instant.parse("2026-11-04T10:00:00Z");
         MatchEnrichmentState state = MatchEnrichmentState.builder()
-                .provider(MatchMatchProvider.SOFA_SCORE)
+                .provider(MatchProvider.SOFA_SCORE)
                 .resource(MatchEnrichmentResource.TEAM_STATISTICS)
                 .build();
 
