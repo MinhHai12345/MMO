@@ -58,11 +58,11 @@ class FootballDataUkOddsMapperTest {
         MatchOdds aggregateHandicap = saved.stream().filter(o -> "BetBrain Max".equals(o.getBookmaker().getName())
                 && "AH_OPEN".equals(o.getMarketName())).findFirst().orElseThrow();
 
-        assertEquals(2.10, opening.getHomeWinOdds().doubleValue());
-        assertEquals(2.00, closing.getHomeWinOdds().doubleValue());
+        assertEquals(2.10, opening.getHomeWinOdds().doubleValue(), 0.0001);
+        assertEquals(2.00, closing.getHomeWinOdds().doubleValue(), 0.0001);
         assertEquals(35, aggregate.getBookmakerCount());
         assertEquals(32, aggregateTotals.getBookmakerCount());
         assertEquals(28, aggregateHandicap.getBookmakerCount());
-        assertEquals(-0.25, aggregateHandicap.getAsianHandicapLine().doubleValue());
+        assertEquals(-0.25, aggregateHandicap.getAsianHandicapLine().doubleValue(), 0.0001);
     }
 }

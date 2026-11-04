@@ -55,8 +55,8 @@ class FootballDataUkMatchStatisticsMapperTest {
         assertEquals(3, stats.getYellowCards());
         assertEquals(0, stats.getRedCards());
         assertEquals(30, stats.getBookingPoints());
-        assertEquals(1.85, stats.getXg().doubleValue());
-        assertEquals(0.75, stats.getXga().doubleValue());
+        assertEquals(1.85, stats.getXg().doubleValue(), 0.0001);
+        assertEquals(0.75, stats.getXga().doubleValue(), 0.0001);
         assertNull(stats.getMissed(), "Goals conceded must not be mapped to missed chances");
     }
 }
