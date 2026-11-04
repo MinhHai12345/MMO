@@ -1,0 +1,68 @@
+package com.mmo.module.fb.ingest.provider.footballdatauk;
+
+import com.mmo.module.fb.match.entity.Bookmaker;
+import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.match.entity.MatchOdds;
+import com.mmo.module.fb.match.repository.BookmakerRepository;
+import com.mmo.module.fb.match.repository.MatchOddsRepository;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+class FootballDataUkOddsMapperTest {
+
+    @Test
+    void mapsOpeningClosingOddsAndAggregateMetadataIntoCore() {
+        BookmakerRepository bookmakers = mock(BookmakerRepository.class);
+        MatchOddsRepository oddsRepository = mock(MatchOddsRepository.class);
+        when(bookmakers.findByName(any())).thenReturn(Optional.empty());
+        when(bookmakers.save(any(Bookmaker.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(oddsRepository.findByMatchIdAndBookmakerIdAndMarketName(any(), any(), any()))
+                .thenReturn(Optional.empty());
+        when(oddsRepository.save(any(MatchOdds.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Match match = new Match();
+        match.setId(99L);
+        FootballDataUkOddsMapper mapper = new FootballDataUkOddsMapper(bookmakers, oddsRepository);
+        Map<String, String> row = Map.ofEntries(
+                Map.entry("B365H", "2.10"), Map.entry("B365D", "3.30"), Map.entry("B365A", "3.60"),
+                Map.entry("B365CH", "2.00"), Map.entry("B365CD", "3.40"), Map.entry("B365CA", "3.80"),
+                Map.entry("B365>2.5", "1.90"), Map.entry("B365<2.5", "1.95"),
+                Map.entry("B365AH", "-0.5"), Map.entry("B365AHH", "1.91"), Map.entry("B365AHA", "1.99"),
+                Map.entry("BbMxH", "2.25"), Map.entry("BbMxD", "3.45"), Map.entry("BbMxA", "3.90"),
+                Map.entry("BbMx>2.5", "1.88"), Map.entry("BbMx<2.5", "2.02"),
+                Map.entry("BbMxAHH", "1.92"), Map.entry("BbMxAHA", "2.01"),
+                Map.entry("BbAHh", "-0.25"), Map.entry("Bb1X2", "35"),
+                Map.entry("BbOU", "32"), Map.entry("BbAH", "28")
+        );
+
+        assertTrue(mapper.persist(match, row) > 0);
+        var captor = org.mockito.ArgumentCaptor.forClass(MatchOdds.class);
+        verify(oddsRepository, atLeastOnce()).save(captor.capture());
+        List<MatchOdds> saved = captor.getAllValues();
+
+        MatchOdds opening = saved.stream().filter(o -> "Bet365".equals(o.getBookmaker().getName())
+                && "1X2_OPEN".equals(o.getMarketName())).findFirst().orElseThrow();
+        MatchOdds closing = saved.stream().filter(o -> "Bet365".equals(o.getBookmaker().getName())
+                && "1X2_CLOSE".equals(o.getMarketName())).findFirst().orElseThrow();
+        MatchOdds aggregate = saved.stream().filter(o -> "BetBrain Max".equals(o.getBookmaker().getName())
+                && "1X2_OPEN".equals(o.getMarketName())).findFirst().orElseThrow();
+        MatchOdds aggregateTotals = saved.stream().filter(o -> "BetBrain Max".equals(o.getBookmaker().getName())
+                && "OU25_OPEN".equals(o.getMarketName())).findFirst().orElseThrow();
+        MatchOdds aggregateHandicap = saved.stream().filter(o -> "BetBrain Max".equals(o.getBookmaker().getName())
+                && "AH_OPEN".equals(o.getMarketName())).findFirst().orElseThrow();
+
+        assertEquals(2.10, opening.getHomeWinOdds().doubleValue());
+        assertEquals(2.00, closing.getHomeWinOdds().doubleValue());
+        assertEquals(35, aggregate.getBookmakerCount());
+        assertEquals(32, aggregateTotals.getBookmakerCount());
+        assertEquals(28, aggregateHandicap.getBookmakerCount());
+        assertEquals(-0.25, aggregateHandicap.getAsianHandicapLine().doubleValue());
+    }
+}
