@@ -12,6 +12,7 @@ import com.mmo.module.fb.match.enums.MatchStatus;
 import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
 import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.match.repository.MatchRepository;
+import com.mmo.module.fb.match.service.MatchStatisticsSnapshotPersistenceService;
 import com.mmo.module.fb.team.entity.Team;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +46,7 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final MatchAdvancedStatsRepository matchAdvancedStatsRepository;
+    private final MatchStatisticsSnapshotPersistenceService snapshotPersistenceService;
 
     public void storeMatchStatistics() {
         List<Match> targetMatches = matchRepository.findFinishedMatchesMissingAdvancedStats(
@@ -128,6 +130,8 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
             Match match, Team team, Map<String, BigDecimal> values, Instant syncedAt) {
         if (team == null) return null;
 
+        snapshotPersistenceService.upsert(match, team, Provider.SOFA_SCORE, values);
+
         MatchAdvancedStats stats = matchAdvancedStatsRepository
                 .findByMatchIdAndTeamId(match.getId(), team.getId())
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
@@ -169,8 +173,7 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
         setIntegerIfPresent(values, stats::setGoalkeeperSaves, "goalkeeperSaves", "saves");
         setIntegerIfPresent(values, stats::setBigChancesCreated, "bigChancesCreated");
         setIntegerIfPresent(values, stats::setBigChancesMissed, "bigChancesMissed");
-        stats.setStatisticsProvider(Provider.SOFA_SCORE.name());
-        stats.setStatisticsSyncedAt(syncedAt);
+        // The source-specific payload and fetched timestamp are stored in the snapshot table.
         return stats;
     }
 
