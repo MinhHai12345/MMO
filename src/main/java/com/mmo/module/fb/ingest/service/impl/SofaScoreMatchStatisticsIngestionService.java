@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.application.port.out.MatchStatisticsIngestionPort;
 import com.mmo.module.fb.ingest.provider.model.ProviderMatchAdvancedStatistics;
 import com.mmo.module.fb.ingest.provider.spi.MatchStatisticsProvider;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
@@ -35,7 +36,7 @@ import java.util.function.Consumer;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SofaScoreMatchStatisticsIngestionService {
+public class SofaScoreMatchStatisticsIngestionService implements MatchStatisticsIngestionPort {
 
     private static final int BATCH_SIZE = 30;
     private static final int RETRY_HOURS = 24;
