@@ -30,6 +30,10 @@ class MatchStatisticsSnapshotPersistenceServiceTest {
         match.setId(10L);
         Team team = new Team();
         team.setId(20L);
+        Team away = new Team();
+        away.setId(21L);
+        match.setHomeTeam(team);
+        match.setAwayTeam(away);
 
         MatchStatisticsSnapshotPersistenceService service =
                 new MatchStatisticsSnapshotPersistenceService(repository, new ObjectMapper());
