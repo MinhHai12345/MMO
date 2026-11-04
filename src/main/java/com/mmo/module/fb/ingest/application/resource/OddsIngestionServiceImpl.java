@@ -88,7 +88,7 @@ public class OddsIngestionServiceImpl implements OddsIngestionService {
                 // Network call deliberately happens before entering the persistence transaction.
                 List<ProviderOdds> values = providerRegistry.odds(selectedProvider)
                         .fetchOdds(new OddsQuery(fixtureId));
-                oddsPersistenceService.persistOdds(match.getId(), values);
+                oddsPersistenceService.persistOdds(match.getId(), selectedProvider, values);
                 processed++;
             } catch (Exception ex) {
                 log.warn("Could not sync odds for match {}: {}", match.getId(), ex.getMessage());
