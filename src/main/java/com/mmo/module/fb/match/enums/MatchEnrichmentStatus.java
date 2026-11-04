@@ -5,5 +5,6 @@ public enum MatchEnrichmentStatus {
     IN_PROGRESS,
     SUCCEEDED,
     EMPTY,
+    SKIPPED,
     FAILED
 }
