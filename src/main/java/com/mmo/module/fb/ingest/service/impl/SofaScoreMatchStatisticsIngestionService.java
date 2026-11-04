@@ -72,7 +72,7 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
                         .findByMatchIdAndProvider(match.getId(), Provider.SOFA_SCORE);
                 if (mapping.isEmpty()) {
                     markAttempt(match);
-                    enrichmentStateService.empty(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
+                    enrichmentStateService.skipped(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
                     skipped++;
                     continue;
                 }
