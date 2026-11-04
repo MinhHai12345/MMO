@@ -100,16 +100,13 @@ public class SofaScoreMatchStatisticsIngestionService {
 
         BigDecimal homeXg = statisticValue(snapshot.home(), "expectedGoals", "xg");
         BigDecimal awayXg = statisticValue(snapshot.away(), "expectedGoals", "xg");
-        boolean matchChanged = false;
         if (homeXg != null && (match.getHomeXG() == null
                 || Double.compare(homeXg.doubleValue(), match.getHomeXG()) != 0)) {
             match.setHomeXG(homeXg.doubleValue());
-            matchChanged = true;
         }
         if (awayXg != null && (match.getAwayXG() == null
                 || Double.compare(awayXg.doubleValue(), match.getAwayXG()) != 0)) {
             match.setAwayXG(awayXg.doubleValue());
-            matchChanged = true;
         }
         matchRepository.save(match);
 
@@ -121,8 +118,8 @@ public class SofaScoreMatchStatisticsIngestionService {
         // Persist a snapshot when xG exists even if the provider does not expose other metrics.
         boolean hasMatchXg = match.getHomeXG() != null || match.getAwayXG() != null;
         List<MatchAdvancedStats> statsToSave = new ArrayList<>(2);
-        if (hasAdvancedMetrics(homeStats) || hasMatchXg) statsToSave.add(homeStats);
-        if (hasAdvancedMetrics(awayStats) || hasMatchXg) statsToSave.add(awayStats);
+        if (homeStats != null && (hasAdvancedMetrics(homeStats) || hasMatchXg)) statsToSave.add(homeStats);
+        if (awayStats != null && (hasAdvancedMetrics(awayStats) || hasMatchXg)) statsToSave.add(awayStats);
         if (!statsToSave.isEmpty()) matchAdvancedStatsRepository.saveAll(statsToSave);
     }
 
