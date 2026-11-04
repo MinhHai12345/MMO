@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * Canonical fixture aggregate. Provider IDs and enrichment execution state are separate
- * records; the legacy sync timestamps remain temporarily for backward compatibility.
+ * records; no provider-specific sync counters or retry timestamps live on this entity.
  */
 @Entity
 @Table(name = "fb_matches",
