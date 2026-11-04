@@ -128,7 +128,7 @@ public class ExternalIdMappingService {
         }
         requireIdentity(provider, externalId);
         return register(matchExternalIds.findByMatchIdAndProvider(match.getId(), MatchProvider.fromName(provider.name())),
-                matchExternalIds.findByProviderAndExternalId(provider, externalId.trim()),
+                matchExternalIds.findByProviderAndExternalId(toMatchProvider(provider), externalId.trim()),
                 () -> MatchExternalId.builder().match(match).provider(MatchProvider.fromName(provider.name()))
                         .externalId(externalId.trim()).build(),
                 MatchExternalId::getMatch, MatchExternalId::getExternalId, match, "match", provider, externalId);
@@ -197,6 +197,10 @@ public class ExternalIdMappingService {
             return left.getId() != null && left.getId().equals(right.getId());
         }
         return false;
+    }
+
+    private static MatchProvider toMatchProvider(Provider provider) {
+        return MatchProvider.fromName(provider.name());
     }
 
     private void requireIdentity(Provider provider, String externalId) {

@@ -58,6 +58,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
     private static final Provider PROVIDER = Provider.FOOTBALL_DATA_UK;
+    private static final MatchProvider MATCH_PROVIDER = MatchProvider.fromName(PROVIDER.name());
     private static final ZoneId SOURCE_ZONE = ZoneId.of("Europe/London");
     private static final DateTimeFormatter CSV_DATE = DateTimeFormatter.ofPattern("dd/MM/yy");
 
@@ -127,7 +128,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
             }
 
             Optional<LeagueExternalId> conflicting = leagueExternalIdRepository
-                    .findByProviderAndExternalId(MatchProvider.fromName(PROVIDER.name()), definition.externalId());
+                    .findByProviderAndExternalId(PROVIDER, definition.externalId());
             if (conflicting.isPresent()) {
                 log.error("Cannot initialize Football-Data UK mapping: provider externalId={} already belongs to leagueId={}",
                         definition.externalId(), conflicting.get().getLeague().getId());
@@ -405,7 +406,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 Instant kickoff = date.atTime(time == null ? LocalTime.NOON : time)
                         .atZone(SOURCE_ZONE).toInstant();
                 String externalId = fixtureExternalId(leagueMapping.getIdentify(), season, home, away);
-                Match match = matchExternalIdRepository.findByProviderAndExternalId(PROVIDER, externalId)
+                Match match = matchExternalIdRepository.findByProviderAndExternalId(MATCH_PROVIDER, externalId)
                         .map(MatchExternalId::getMatch)
                         .orElseGet(() -> matchExternalIdRepository.findByProviderAndExternalId(
                                         PROVIDER, legacyFixtureExternalId(
@@ -516,7 +517,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                         .orElseGet(() -> resolveOrCreateFixture(season, home, away, kickoff));
                 boolean footballDataOwnsCore = match.getId() != null
                         && matchExternalIdRepository.findByMatchIdAndProvider(
-                                match.getId(), Provider.FOOTBALL_DATA).isPresent();
+                                match.getId(), MatchProvider.fromName(Provider.FOOTBALL_DATA.name())).isPresent();
                 if (!footballDataOwnsCore || match.getMatchTime() == null) {
                     match.setMatchTime(kickoff);
                 }
