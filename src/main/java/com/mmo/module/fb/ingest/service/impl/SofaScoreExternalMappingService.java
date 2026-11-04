@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.ingest.service.FixtureIngestionService;
 import com.mmo.module.fb.ingest.service.LeagueIngestionService;
 import com.mmo.module.fb.ingest.service.TeamIngestionService;
@@ -40,7 +41,7 @@ public class SofaScoreExternalMappingService {
                 leagueExternalIdRepository.findAllByProvider(Provider.SOFA_SCORE).size(),
                 seasonExternalIdRepository.findAllByProvider(Provider.SOFA_SCORE).size(),
                 teamExternalIdRepository.findAllByProvider(Provider.SOFA_SCORE).size(),
-                matchExternalIdRepository.findAllByProvider(Provider.SOFA_SCORE).size()
+                matchExternalIdRepository.findAllByProvider(MatchProvider.fromName(Provider.SOFA_SCORE.name())).size()
         );
         log.info("SofaScore external ID mapping finished: {}", result);
         return result;

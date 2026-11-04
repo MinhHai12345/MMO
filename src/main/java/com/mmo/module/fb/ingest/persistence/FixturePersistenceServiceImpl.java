@@ -4,6 +4,7 @@ import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.league.entity.Season;
 import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.match.enums.MatchStatus;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.match.repository.MatchRepository;
@@ -46,7 +47,7 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
         Team away = teamRepository.findById(awayTeamId).orElse(null);
         if (season == null || home == null || away == null) return false;
 
-        Match match = matchExternalIdRepository.findByProviderAndExternalId(provider, fixture.externalId())
+        Match match = matchExternalIdRepository.findByProviderAndExternalId(MatchProvider.fromName(provider.name()), fixture.externalId())
                 .map(com.mmo.module.fb.match.entity.MatchExternalId::getMatch)
                 .orElse(null);
 
