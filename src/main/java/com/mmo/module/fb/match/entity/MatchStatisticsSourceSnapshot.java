@@ -11,7 +11,7 @@ import java.time.Instant;
 /**
  * Immutable-ish provider snapshot for one side of a match. The canonical
  * MatchAdvancedStats row remains the analytics-facing projection; this row preserves
- * the exact source payload and its provenance for audits/reconciliation.
+ * the adapter payload representation and its provenance for audits/reconciliation.
  */
 @Entity
 @Table(name = "fb_match_statistics_source_snapshots",
@@ -42,7 +42,7 @@ public class MatchStatisticsSourceSnapshot extends AbstractEntity {
     @Column(nullable = false, length = 32)
     private Provider provider;
 
-    /** Raw provider-neutralized JSON payload; retained for audit and future remapping. */
+    /** Serialized provider payload representation; retained for audit and future remapping. */
     @Lob
     @Column(name = "snapshot_json", nullable = false, columnDefinition = "LONGTEXT")
     private String snapshotJson;
