@@ -407,6 +407,8 @@ public class FootballDataUkSyncService {
         String halfTimeResult = value(row, "HTR").toUpperCase(Locale.ROOT);
         BigDecimal homeXg = decimalMetric(value(row, "HXG"));
         BigDecimal awayXg = decimalMetric(value(row, "AXG"));
+        Integer attendance = integer(value(row, "ATTENDANCE"));
+        String referee = value(row, "REFEREE");
         // This importer is an enrichment source: never replace a value already stored by
         // another provider or an earlier import.
         if (match.getHomeScore() == null && homeScore != null) match.setHomeScore(homeScore);
@@ -419,6 +421,10 @@ public class FootballDataUkSyncService {
         }
         if (match.getHomeXG() == null && homeXg != null) match.setHomeXG(homeXg.doubleValue());
         if (match.getAwayXG() == null && awayXg != null) match.setAwayXG(awayXg.doubleValue());
+        if (match.getAttendance() == null && attendance != null) match.setAttendance(attendance);
+        if (match.getReferee() == null && StringUtils.hasText(referee)) {
+            match.setReferee(referee.trim());
+        }
         if (match.getHalfTimeResult() == null && List.of("H", "D", "A").contains(halfTimeResult)) {
             match.setHalfTimeResult(halfTimeResult);
         }
@@ -446,6 +452,8 @@ public class FootballDataUkSyncService {
         Integer fouls = integer(value(row, side + "F"));
         Integer yellow = integer(value(row, side + "Y"));
         Integer red = integer(value(row, side + "R"));
+        // Football-Data.co.uk uses HO/AO for offsides (home/away).
+        Integer offsides = integer(value(row, side + "O"));
         Integer homeGoals = integer(value(row, "FTHG"));
         Integer awayGoals = integer(value(row, "FTAG"));
         Integer scored = homeGoals == null || awayGoals == null ? null
@@ -457,9 +465,11 @@ public class FootballDataUkSyncService {
                 : (side.equals("H") == (homeGoals > awayGoals) ? "W" : "L");
         BigDecimal xg = decimalMetric(value(row, side.equals("H") ? "HXG" : "AXG"));
         BigDecimal xga = decimalMetric(value(row, side.equals("H") ? "AXG" : "HXG"));
-        // This CSV schema does not provide blocked shots, offsides, PPDA, possession or passing metrics.
+        // Football-Data.co.uk provides team offsides (HO/AO), but not blocked shots,
+        // PPDA, possession, passing metrics, goalkeeper saves or player-level statistics.
         if (shots == null && onTarget == null && corners == null && fouls == null
-                && yellow == null && red == null && xg == null && scored == null) return false;
+                && yellow == null && red == null && offsides == null
+                && xg == null && scored == null) return false;
 
         MatchAdvancedStats stats = statsRepository.findByMatchIdAndTeamId(match.getId(), team.getId())
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
@@ -488,6 +498,10 @@ public class FootballDataUkSyncService {
         }
         if (stats.getRedCards() == null && red != null) {
             stats.setRedCards(red);
+            changed = true;
+        }
+        if (stats.getOffsides() == null && offsides != null) {
+            stats.setOffsides(offsides);
             changed = true;
         }
         if (stats.getXg() == null && xg != null) {
