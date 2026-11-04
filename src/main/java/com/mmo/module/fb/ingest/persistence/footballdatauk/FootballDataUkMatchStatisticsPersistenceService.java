@@ -1,11 +1,11 @@
-package com.mmo.module.fb.ingest.provider.footballdatauk;
+package com.mmo.module.fb.ingest.persistence.footballdatauk;
 
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchAdvancedStats;
 import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
 import com.mmo.module.fb.team.entity.Team;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -17,9 +17,9 @@ import java.util.function.Consumer;
  * Maps Football-Data.co.uk team statistics into the shared MMO Core model.
  * Missing values remain null; free kicks conceded are never mislabeled as fouls.
  */
-@Component
+@Service
 @RequiredArgsConstructor
-public class FootballDataUkMatchStatisticsMapper {
+public class FootballDataUkMatchStatisticsPersistenceService {
 
     private static final String PROVIDER = "FOOTBALL_DATA_UK";
 

@@ -3,7 +3,6 @@ package com.mmo.module.fb.ingest.provider.sofascore.client;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
 
 import com.microsoft.playwright.Page;
-import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaDailyMatchWrapper;
 
 import java.util.List;
@@ -57,7 +56,7 @@ public interface SofaScoreClient {
     /**
      * Fetch histories match by team id and index
      */
-    List<SofaScoreResponseDTO.EventDTO> fetchHistoriesMatchesByTeamIdAndIndex(Team team, int index, Page page);
+    List<SofaScoreResponseDTO.EventDTO> fetchHistoriesMatchesByTeamIdAndIndex(String sofaTeamId, String teamSlug, int index, Page page);
 
     /**
      * Fetch Match By ID

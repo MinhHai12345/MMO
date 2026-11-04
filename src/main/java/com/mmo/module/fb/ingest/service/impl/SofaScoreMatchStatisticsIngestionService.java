@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.sofascore;
+package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.sofascore.client.AbstractSofaScoreProvider;
@@ -18,7 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -41,9 +41,9 @@ import java.util.stream.Collectors;
  * with xG and per-team advanced statistics.
  */
 @Slf4j
-@Component
+@Service
 @RequiredArgsConstructor
-public class SofaScoreCrawlStrategy extends AbstractSofaScoreProvider {
+public class SofaScoreMatchStatisticsIngestionService extends AbstractSofaScoreProvider {
 
     private static final Pattern NUMERIC_VALUE_PATTERN = Pattern.compile("-?\\d+(?:[.,]\\d+)?");
 

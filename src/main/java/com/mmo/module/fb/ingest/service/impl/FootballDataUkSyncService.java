@@ -4,8 +4,8 @@ import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkCsvClient;
 import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkCsvParser;
-import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkMatchStatisticsMapper;
-import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkOddsMapper;
+import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkMatchStatisticsPersistenceService;
+import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkOddsPersistenceService;
 import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.league.entity.League;
 import com.mmo.module.fb.league.entity.LeagueExternalId;
@@ -70,8 +70,8 @@ public class FootballDataUkSyncService {
     private final TeamExternalIdRepository teamExternalIdRepository;
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
-    private final FootballDataUkMatchStatisticsMapper statisticsMapper;
-    private final FootballDataUkOddsMapper oddsMapper;
+    private final FootballDataUkMatchStatisticsPersistenceService statisticsMapper;
+    private final FootballDataUkOddsPersistenceService oddsMapper;
 
     /**
      * Initialize Football-Data.co.uk league mappings for leagues already present in MMO core.

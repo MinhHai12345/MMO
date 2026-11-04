@@ -1,67 +1,53 @@
 # FB Job Inventory and Target Architecture
 
-## Scope
-Phase 1 and Phase 2 consolidate Quartz entry points for inventory and ingestion. Existing ingestion services, provider adapters, mappers and persistence services remain. No business service or legacy job class is deleted.
+## Runtime jobs
 
-## Existing inventory on main before this change
-
-| Existing Quartz job | Responsibility | Decision |
+| Job | Responsibility | Execution |
 |---|---|---|
-| FootballWorkflowOrchestrationJob | Triggers bootstrap, individual sync jobs, analytics and content | Keep; point at consolidated ingestion jobs |
-| FootballDataBootstrapJob | Initial core bootstrap/backfill | Keep; run on demand/when stale |
-| LeagueSyncJob | League/season refresh | Pause registry row; retain class/service |
-| TeamSyncJob | Team refresh | Pause registry row; retain class/service |
-| MatchFixtureSyncJob | Upcoming fixture refresh | Pause registry row; retain class/service |
-| MatchResultSyncJob | Recent result refresh | Pause registry row; retain class/service |
-| MatchStatisticsSyncJob | SofaScore bootstrap, match and player statistics | Pause registry row; retain class/service |
-| FootballDataUkCoreSyncJob | Football-Data.co.uk all mapped seasons | Pause registry row; invoke through FootballDataSyncJob |
-| UnderStatHistoricalStatsJob | Understat and Football-Data.co.uk | Pause registry row; responsibility split |
-| AdvancedMetricsJob | Team form and H2H | Retain until Analytics phase |
-| MatchProcessPredictionJob | Upcoming match predictions | Retain until Analytics phase |
-| PredictionEvaluationJob | Evaluate predictions after results | Retain |
-| WalkForwardBackTestJob | Historical model evaluation | Retain as weekly/offline job |
-| PublicationWorkerQuartzJob | Publish due approved content | Retain |
-| SubscriptionExpiryCheckJob | Expire subscriptions | Retain conditionally; outside this phase |
+| FootballDataBootstrapJob | Initial core bootstrap and historical backfill | Monthly recovery schedule and manual trigger |
+| FootballDataSyncJob | Incremental leagues, teams, recent results, upcoming fixtures, standings, odds and Football-Data.co.uk import | Every 6 hours |
+| MatchEnrichmentJob | Historical match metrics and player statistics | Every 12 hours |
+| AdvancedMetricsJob | Team form and head-to-head aggregates | Every 6 hours |
+| MatchProcessPredictionJob | Upcoming-match predictions | Every 3 hours |
+| PredictionEvaluationJob | Evaluate predictions against completed results | Every 30 minutes |
+| WalkForwardBackTestJob | Historical model evaluation | Weekly / manual |
+| FootballWorkflowOrchestrationJob | Generate PRE_MATCH content drafts only | Daily |
+| PublicationWorkerQuartzJob | Publish approved, due content | Every minute |
+| SubscriptionExpiryCheckJob | Subscription expiry processing | Daily |
 
-Legacy rows already handled by initializer: UnderStatCatalogSyncJob, MatchStatusTrackerJob, CrawlerHealthCheckJob, DataCleanupJob and MatchLineupOddsUpdateJob.
+## Removed jobs
 
-## Consolidated ingestion jobs
+The following jobs duplicated the consolidated ingestion workflow and are deleted from source and the persisted Quartz registry:
 
-### FootballDataBootstrapJob
-Initial/backfill operation. Resolves configured providers by resource. It is not the frequent incremental sync.
+- LeagueSyncJob
+- TeamSyncJob
+- MatchFixtureSyncJob
+- MatchResultSyncJob
+- MatchStatisticsSyncJob
+- FootballDataUkCoreSyncJob
+- UnderStatHistoricalStatsJob
 
-### FootballDataSyncJob
-Runs canonical Core sync in dependency order:
-1. League and season metadata.
-2. Teams.
-3. Recent results (UTC today minus 7 days through today).
-4. Upcoming fixtures (UTC today through today plus 14 days).
-5. Canonical standings (skipped for providers without standings).
-6. Upcoming odds through the configured odds provider.
-7. Football-Data.co.uk import, enriching canonical matches with CSV results, statistics and odds.
+Obsolete persisted rows without active source implementations are also deleted during initialization: UnderStatCatalogSyncJob, MatchStatusTrackerJob, CrawlerHealthCheckJob, DataCleanupJob and MatchLineupOddsUpdateJob.
 
-Provider-specific services remain independent and are selected through existing provider routing and one-execution provider overrides.
+## Execution boundaries
 
-### MatchEnrichmentJob
-Uses the configured historical-stats provider (Understat or SofaScore), then syncs player match statistics. It does not create canonical teams or fixtures. Football-Data.co.uk is not called from this job.
+Quartz jobs are thin adapters. They read execution parameters and invoke one application use case. They do not call provider adapters, provider clients, persistence repositories, or provider-specific implementations.
 
-## Target flow
-FootballWorkflowOrchestrationJob -> Bootstrap when required -> FootballDataSyncJob -> MatchEnrichmentJob -> AdvancedMetricsJob -> MatchProcessPredictionJob -> Content generation -> PublicationWorkerQuartzJob.
+The scheduled content workflow does not trigger independently scheduled ingestion, enrichment, analytics, or prediction jobs. This prevents duplicate execution and makes each job independently observable and manually triggerable.
 
-PredictionEvaluationJob remains independent. WalkForwardBackTestJob remains weekly/manual.
+## Ingestion flow
 
-## Registry migration policy
-- Register the consolidated jobs with stable names and schedules.
-- Pause old job rows, not delete them. Pausing updates both Quartz and the database state.
-- Retain old job classes and ingestion services for compatibility and rollback.
-- Never automatically resume legacy rows.
-- Existing operator-paused jobs stay paused when their schedule metadata is updated.
-- Registry updates must not silently reactivate an operator-paused job.
+`FootballDataSyncJob -> FootballDataSyncService -> Resource Ingestion Services -> ProviderRegistry -> Provider Adapter -> Provider DTO Mapper -> Provider-neutral Model -> Persistence Service`
+
+`MatchEnrichmentJob -> MatchEnrichmentService -> Historical/Player Statistics Ingestion -> Provider Adapter -> Provider Mapper -> Canonical Match Persistence`
+
+Bootstrap remains separate from incremental synchronization so historical backfills do not run on every poll.
 
 ## Operational invariants
-- Provider is a data source, not a Quartz job boundary.
-- Bootstrap/backfill is distinct from incremental sync.
-- Understat and Football-Data.co.uk have separate responsibilities.
-- Enrichment operates on canonical MMO fixtures.
-- Provider persistence remains idempotent.
-- Job logs include stage and duration; failures propagate to Quartz.
+
+- Provider identity is selected per resource through configuration or one-execution overrides.
+- Provider adapters return source-neutral models; they do not persist MMO entities.
+- Persistence and canonical matching belong to ingestion application/persistence services.
+- One provider's transport failure must not silently mark its resource as successfully synchronized.
+- Legacy jobs are removed from both Quartz and `cron_jobs`, not merely paused.
+- Job execution remains idempotent and uses bounded date windows for incremental fixture/result sync.
