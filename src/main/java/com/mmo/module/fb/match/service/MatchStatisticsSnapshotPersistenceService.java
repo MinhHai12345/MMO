@@ -28,6 +28,12 @@ public class MatchStatisticsSnapshotPersistenceService {
             return;
         }
 
+        Long homeTeamId = match.getHomeTeam() == null ? null : match.getHomeTeam().getId();
+        Long awayTeamId = match.getAwayTeam() == null ? null : match.getAwayTeam().getId();
+        if (!team.getId().equals(homeTeamId) && !team.getId().equals(awayTeamId)) {
+            throw new IllegalArgumentException("Statistics team must be the home or away team of the match");
+        }
+
         final String json;
         try {
             json = objectMapper.writeValueAsString(sourcePayload);
