@@ -90,12 +90,12 @@ public class Match extends AbstractEntity {
     @Builder.Default
     private MatchStatus status = MatchStatus.SCHEDULED;
 
-    @OneToMany(mappedBy = "match", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "match", fetch = FetchType.LAZY)
     @Builder.Default
     private List<MatchExternalId> externalIds = new ArrayList<>();
 
     /** Provider/resource sync state is part of the aggregate relationship, not Match columns. */
-    @OneToMany(mappedBy = "match", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "match", fetch = FetchType.LAZY)
     @Builder.Default
     private List<MatchEnrichmentState> enrichmentStates = new ArrayList<>();
 
@@ -111,15 +111,4 @@ public class Match extends AbstractEntity {
         return status == MatchStatus.FINISHED && hasFinalScore();
     }
 
-    public void addExternalId(MatchExternalId externalId) {
-        if (externalId == null) return;
-        externalIds.add(externalId);
-        externalId.setMatch(this);
-    }
-
-    public void removeExternalId(MatchExternalId externalId) {
-        if (externalId == null) return;
-        externalIds.remove(externalId);
-        externalId.setMatch(null);
-    }
 }
