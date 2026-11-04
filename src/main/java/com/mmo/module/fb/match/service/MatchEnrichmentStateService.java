@@ -23,21 +23,21 @@ public class MatchEnrichmentStateService {
     private final MatchEnrichmentStateRepository repository;
 
     @Transactional
-    public void start(Match match, MatchMatchProvider provider, MatchEnrichmentResource resource) {
+    public void start(Match match, MatchProvider provider, MatchEnrichmentResource resource) {
         MatchEnrichmentState state = getOrCreate(match, provider, resource);
         state.markAttempt(Instant.now());
         repository.save(state);
     }
 
     @Transactional
-    public void succeed(Match match, Provider provider, MatchEnrichmentResource resource) {
+    public void succeed(Match match, MatchProvider provider, MatchEnrichmentResource resource) {
         MatchEnrichmentState state = getOrCreate(match, provider, resource);
         state.markSucceeded(Instant.now());
         repository.save(state);
     }
 
     @Transactional
-    public void empty(Match match, Provider provider, MatchEnrichmentResource resource) {
+    public void empty(Match match, MatchProvider provider, MatchEnrichmentResource resource) {
         Instant now = Instant.now();
         MatchEnrichmentState state = getOrCreate(match, provider, resource);
         state.markEmpty(now, now.plus(EMPTY_RETRY_DELAY));
@@ -45,14 +45,14 @@ public class MatchEnrichmentStateService {
     }
 
     @Transactional
-    public void skipped(Match match, Provider provider, MatchEnrichmentResource resource) {
+    public void skipped(Match match, MatchProvider provider, MatchEnrichmentResource resource) {
         MatchEnrichmentState state = getOrCreate(match, provider, resource);
         state.markSkipped(Instant.now().plus(EMPTY_RETRY_DELAY));
         repository.save(state);
     }
 
     @Transactional
-    public void failed(Match match, Provider provider, MatchEnrichmentResource resource, Throwable error) {
+    public void failed(Match match, MatchProvider provider, MatchEnrichmentResource resource, Throwable error) {
         Instant now = Instant.now();
         MatchEnrichmentState state = getOrCreate(match, provider, resource);
         state.markFailed("PROVIDER_ERROR",
@@ -62,7 +62,7 @@ public class MatchEnrichmentStateService {
     }
 
     private MatchEnrichmentState getOrCreate(
-            Match match, Provider provider, MatchEnrichmentResource resource) {
+            Match match, MatchProvider provider, MatchEnrichmentResource resource) {
         if (match == null || match.getId() == null || provider == null || resource == null) {
             throw new IllegalArgumentException("Match, provider and enrichment resource are required");
         }
