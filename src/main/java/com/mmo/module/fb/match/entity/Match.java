@@ -109,6 +109,11 @@ public class Match extends AbstractEntity {
     @Builder.Default
     private List<MatchExternalId> externalIds = new ArrayList<>();
 
+    /** Provider/resource sync state is part of the aggregate relationship, not Match columns. */
+    @OneToMany(mappedBy = "match", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<MatchEnrichmentState> enrichmentStates = new ArrayList<>();
+
     @Version
     @Column(name = "version")
     private Long version;
