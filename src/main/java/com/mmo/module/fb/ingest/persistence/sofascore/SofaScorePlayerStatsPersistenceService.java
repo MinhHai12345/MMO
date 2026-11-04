@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -46,14 +45,6 @@ public class SofaScorePlayerStatsPersistenceService {
         addTeamPlayers(match, response.away(), match.getAwayTeam(), toSave, existingByExternalId);
         if (!toSave.isEmpty()) playerMatchStatsRepository.saveAll(toSave);
         return toSave.size();
-    }
-
-    @Transactional
-    public void markAttempt(Long matchId) {
-        matchRepository.findById(matchId).ifPresent(match -> {
-            match.setPlayerStatisticsLastAttemptAt(Instant.now());
-            matchRepository.save(match);
-        });
     }
 
     private void addTeamPlayers(Match match, SofaScoreLineupsResponseDTO.LineupTeamDTO lineup,
