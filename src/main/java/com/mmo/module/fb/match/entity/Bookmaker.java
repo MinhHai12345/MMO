@@ -25,11 +25,11 @@ public class Bookmaker extends AbstractEntity {
      * BOOKMAKER or MARKET_AGGREGATE. Kept as a string for existing row compatibility;
      * canonical values are defined by the ingestion/domain contract.
      */
-    @Column(name = "source_type", nullable = false, length = 24)
+    @Column(name = "source_type", length = 24)
     @Builder.Default
     private String sourceType = "BOOKMAKER";
 
-    @Column(name = "is_active", nullable = false)
+    @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;
 
