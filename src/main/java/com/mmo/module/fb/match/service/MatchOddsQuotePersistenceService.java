@@ -7,6 +7,7 @@ import com.mmo.module.fb.match.entity.MatchOddsQuote;
 import com.mmo.module.fb.match.entity.OddsHistory;
 import com.mmo.module.fb.match.enums.MatchOddsMarketType;
 import com.mmo.module.fb.match.enums.MatchOddsPeriod;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.match.repository.MatchOddsQuoteRepository;
 import com.mmo.module.fb.match.repository.OddsHistoryRepository;
 import lombok.RequiredArgsConstructor;
@@ -48,7 +49,7 @@ public class MatchOddsQuotePersistenceService {
                 .findByMatchIdAndBookmakerIdAndProviderAndMarketTypeAndMarketPeriodAndLineAndOutcome(
                         match.getId(), bookmaker.getId(), provider, type, period, line, normalizedOutcome)
                 .orElseGet(() -> MatchOddsQuote.builder()
-                        .match(match).bookmaker(bookmaker).provider(provider)
+                        .match(match).bookmaker(bookmaker).provider(MatchProvider.from(provider))
                         .marketType(type).marketPeriod(period).line(line)
                         .outcome(normalizedOutcome).build());
 
