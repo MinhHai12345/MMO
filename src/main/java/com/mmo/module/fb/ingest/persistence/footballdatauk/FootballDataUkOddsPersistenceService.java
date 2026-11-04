@@ -9,6 +9,7 @@ import com.mmo.module.fb.match.service.MatchOddsQuotePersistenceService;
 import com.mmo.module.fb.ingest.enums.Provider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -59,6 +60,7 @@ public class FootballDataUkOddsPersistenceService {
     private final MatchOddsRepository matchOddsRepository;
     private final MatchOddsQuotePersistenceService quotePersistenceService;
 
+    @Transactional
     public int persist(Match match, Map<String, String> row) {
         int saved = 0;
         for (BookmakerSource source : BOOKMAKERS) {
