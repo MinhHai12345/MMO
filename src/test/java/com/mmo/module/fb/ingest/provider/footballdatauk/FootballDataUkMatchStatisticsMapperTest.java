@@ -40,9 +40,9 @@ class FootballDataUkMatchStatisticsMapperTest {
                 Map.entry("HBP", "30"), Map.entry("HxG", "1.85"), Map.entry("AxG", "0.75")
         );
 
-        assertEquals(1, mapper.persist(match, row));
+        assertEquals(2, mapper.persist(match, row));
         var captor = org.mockito.ArgumentCaptor.forClass(MatchAdvancedStats.class);
-        verify(repository).save(captor.capture());
+        verify(repository, times(2)).save(captor.capture());
         MatchAdvancedStats stats = captor.getValue();
 
         assertEquals(14, stats.getTotalShots());

@@ -47,10 +47,10 @@ public class FootballDataUkOddsMapper {
     );
 
     private static final List<AggregateSource> AGGREGATES = List.of(
-            new AggregateSource("BetBrain Max", "BbMx", true),
-            new AggregateSource("BetBrain Average", "BbAv", true),
-            new AggregateSource("Market Max", "Max", false),
-            new AggregateSource("Market Average", "Avg", false)
+            new AggregateSource("BetBrain Max", "BBMX", true),
+            new AggregateSource("BetBrain Average", "BBAV", true),
+            new AggregateSource("Market Max", "MAX", false),
+            new AggregateSource("Market Average", "AVG", false)
     );
 
     private final BookmakerRepository bookmakerRepository;

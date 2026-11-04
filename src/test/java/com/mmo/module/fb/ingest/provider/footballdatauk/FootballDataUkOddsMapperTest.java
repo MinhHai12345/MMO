@@ -35,11 +35,11 @@ class FootballDataUkOddsMapperTest {
                 Map.entry("B365CH", "2.00"), Map.entry("B365CD", "3.40"), Map.entry("B365CA", "3.80"),
                 Map.entry("B365>2.5", "1.90"), Map.entry("B365<2.5", "1.95"),
                 Map.entry("B365AH", "-0.5"), Map.entry("B365AHH", "1.91"), Map.entry("B365AHA", "1.99"),
-                Map.entry("BbMxH", "2.25"), Map.entry("BbMxD", "3.45"), Map.entry("BbMxA", "3.90"),
-                Map.entry("BbMx>2.5", "1.88"), Map.entry("BbMx<2.5", "2.02"),
-                Map.entry("BbMxAHH", "1.92"), Map.entry("BbMxAHA", "2.01"),
-                Map.entry("BbAHh", "-0.25"), Map.entry("Bb1X2", "35"),
-                Map.entry("BbOU", "32"), Map.entry("BbAH", "28")
+                Map.entry("BBMXH", "2.25"), Map.entry("BBMXD", "3.45"), Map.entry("BBMXA", "3.90"),
+                Map.entry("BBMX>2.5", "1.88"), Map.entry("BBMX<2.5", "2.02"),
+                Map.entry("BBMXAHH", "1.92"), Map.entry("BBMXAHA", "2.01"),
+                Map.entry("BBAHH", "-0.25"), Map.entry("BB1X2", "35"),
+                Map.entry("BBOU", "32"), Map.entry("BBAH", "28")
         );
 
         assertTrue(mapper.persist(match, row) > 0);
