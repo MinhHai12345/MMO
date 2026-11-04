@@ -36,6 +36,8 @@ import java.util.Set;
 public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapService {
 
     private static final String INITIAL_CORE_CHECKPOINT = "CORE_INITIAL_BACKFILL";
+    private static final String TEAM_BACKFILL_CHECKPOINT = "CORE_BACKFILL_TEAMS";
+    private static final String FIXTURE_BACKFILL_CHECKPOINT = "CORE_BACKFILL_FIXTURES";
 
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
@@ -68,25 +70,26 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         coreProviders.forEach(provider -> validateProvider(provider));
         if (standingsProvider != Provider.UNDER_STATS) validateProvider(standingsProvider);
 
-        boolean initialBackfill = coreProviders.stream()
-                .anyMatch(provider -> !isInitialBackfillCompleted(provider));
+        boolean teamsBackfillRequired = !isResourceBackfillCompleted(teamProvider, TEAM_BACKFILL_CHECKPOINT);
+        boolean fixturesBackfillRequired = !isResourceBackfillCompleted(fixtureProvider, FIXTURE_BACKFILL_CHECKPOINT);
+        boolean csvBackfillCompleted = isInitialBackfillCompleted(Provider.FOOTBALL_DATA_UK);
 
         // Bootstrap is a recovery entry point, not a second incremental-sync scheduler.
-        // Once both API providers and the CSV provider have durable initial checkpoints,
-        // FootballDataSyncJob exclusively owns recurring Core refreshes.
-        boolean csvBackfillCompleted = isInitialBackfillCompleted(Provider.FOOTBALL_DATA_UK);
-        if (!initialBackfill && csvBackfillCompleted) {
-            log.info("Historical Core bootstrap already completed for providers {} and {}. "
+        // Once every historical resource has its own durable checkpoint, recurring updates
+        // belong exclusively to FootballDataSyncJob.
+        if (!teamsBackfillRequired && !fixturesBackfillRequired && csvBackfillCompleted) {
+            log.info("Historical Core backfill already completed. providers: teams={}, fixtures={}, csv={}. "
                     + "Skipping bootstrap; recurring updates belong to FootballDataSyncJob.",
-                    coreProviders, Provider.FOOTBALL_DATA_UK);
+                    teamProvider, fixtureProvider, Provider.FOOTBALL_DATA_UK);
             return;
         }
 
-        log.info("Core bootstrap mode={}, providers: league={}, season={}, team={}, fixture={}, standings={}",
-                initialBackfill ? "INITIAL_2014_PLUS" : "CURRENT_SEASON_ONLY",
+        log.info("Core bootstrap mode: teams={}, fixtures={}, providers: league={}, season={}, team={}, "
+                        + "fixture={}, standings={}",
+                teamsBackfillRequired ? "HISTORICAL_BACKFILL" : "ACTIVE_SEASONS_ONLY",
+                fixturesBackfillRequired ? "HISTORICAL_BACKFILL" : "ACTIVE_SEASONS_ONLY",
                 leagueProvider, seasonProvider, teamProvider, fixtureProvider, standingsProvider);
 
-        // Every resource provider needs its own league/season external-ID mappings.
         Set<Provider> catalogueProviders = new LinkedHashSet<>(coreProviders);
         if (standingsProvider != Provider.UNDER_STATS) catalogueProviders.add(standingsProvider);
         for (Provider provider : catalogueProviders) {
@@ -97,15 +100,21 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         runStage("season-catalogue/" + seasonProvider,
                 () -> seasonIngestionService.syncSeasonsForProvider(seasonProvider));
 
-        if (initialBackfill) {
+        if (teamsBackfillRequired) {
             runStage("teams/historical/" + teamProvider,
                     () -> teamIngestionService.syncAllSeasonsForProvider(teamProvider));
+            completeResourceBackfill(teamProvider, TEAM_BACKFILL_CHECKPOINT);
+        } else {
+            runStage("teams/active-seasons/" + teamProvider,
+                    () -> teamIngestionService.syncTeamsForProvider(teamProvider));
+        }
+
+        if (fixturesBackfillRequired) {
             runStage("fixtures/historical/" + fixtureProvider,
                     () -> fixtureIngestionService.syncAllSeasonsForProvider(fixtureProvider, null, null));
+            completeResourceBackfill(fixtureProvider, FIXTURE_BACKFILL_CHECKPOINT);
         } else {
-            runStage("teams/current/" + teamProvider,
-                    () -> teamIngestionService.syncTeamsForProvider(teamProvider));
-            runStage("fixtures/current/" + fixtureProvider,
+            runStage("fixtures/active-seasons/" + fixtureProvider,
                     () -> fixtureIngestionService.syncFixturesForProvider(fixtureProvider, null, null));
         }
 
@@ -116,24 +125,17 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
                     () -> standingsIngestionService.syncStandingsForProvider(standingsProvider));
         }
 
-        // Persist provider completion only after all required Core stages have succeeded.
-        if (initialBackfill) {
-            for (Provider provider : coreProviders) {
-                completeInitialBackfill(provider);
-            }
-        }
-
-        // Football-Data UK has no numeric API catalogue. Its CSV importer owns its own
-        // provider mappings and per-season completion markers.
-        if (isInitialBackfillCompleted(Provider.FOOTBALL_DATA_UK)) {
+        if (csvBackfillCompleted) {
             runStage("football-data-uk/current-season", footballDataUkSyncService::syncCurrentSeasonData);
         } else if (footballDataUkSyncService.syncInitialData()) {
             completeInitialBackfill(Provider.FOOTBALL_DATA_UK);
         }
 
-        log.info("Core bootstrap completed. mode={}", initialBackfill ? "INITIAL" : "INCREMENTAL");
+        log.info("Core bootstrap completed. teamsMode={}, fixturesMode={}, csvMode={}",
+                teamsBackfillRequired ? "HISTORICAL" : "ACTIVE_SEASONS",
+                fixturesBackfillRequired ? "HISTORICAL" : "ACTIVE_SEASONS",
+                csvBackfillCompleted ? "CURRENT_SEASON" : "INITIAL_HISTORICAL");
     }
-
     /**
      * Explicit multi-provider historical import. Each provider is mapped to the same
      * canonical Core entities before teams and fixtures are imported.
@@ -179,6 +181,22 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
                     () -> standingsIngestionService.syncStandingsForProvider(Provider.FOOTBALL_DATA));
         }
         log.info("Multi-provider historical Core import completed: {}", ordered);
+    }
+
+    private boolean isResourceBackfillCompleted(Provider provider, String checkpointKey) {
+        return checkpointRepository.existsByProviderAndCheckpointKey(provider, checkpointKey);
+    }
+
+    private void completeResourceBackfill(Provider provider, String checkpointKey) {
+        ProviderSyncCheckpoint checkpoint = checkpointRepository
+                .findByProviderAndCheckpointKey(provider, checkpointKey)
+                .orElseGet(ProviderSyncCheckpoint::new);
+        checkpoint.setProvider(provider);
+        checkpoint.setCheckpointKey(checkpointKey);
+        checkpoint.setCompletedAt(Instant.now());
+        checkpointRepository.save(checkpoint);
+        log.info("Initial Core resource backfill checkpoint completed: provider={}, resource={}",
+                provider, checkpointKey);
     }
 
     private boolean isInitialBackfillCompleted(Provider provider) {
