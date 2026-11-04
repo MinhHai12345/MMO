@@ -129,10 +129,11 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
 
         if (!csvProviderEnabled) {
             log.info("Skipping Football-Data UK bootstrap because the provider is disabled");
-        } else if (csvBackfillCompleted) {
-            runStage("football-data-uk/current-season", footballDataUkSyncService::syncCurrentSeasonData);
-        } else if (footballDataUkSyncService.syncInitialData()) {
+        } else if (!csvBackfillCompleted && footballDataUkSyncService.syncInitialData()) {
             completeInitialBackfill(Provider.FOOTBALL_DATA_UK);
+        } else if (csvBackfillCompleted) {
+            log.info("Football-Data UK historical Core backfill is already complete; "
+                    + "current-season refresh belongs to FootballDataSyncJob");
         }
 
         log.info("Core bootstrap completed. teamsMode={}, fixturesMode={}, csvMode={}",
