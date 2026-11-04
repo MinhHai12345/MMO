@@ -70,7 +70,7 @@ The application use cases are deliberately separated from provider and persisten
 
 ## Distributed execution lock
 
-All three top-level use cases acquire the same MySQL advisory lock, `mmo:fb:ingest:global`, with a zero-second wait:
+All three top-level use cases acquire the same MySQL advisory lock, `mmo:fb:ingest:global`, scoped with the active database catalog and a zero-second wait. This avoids contention between dev/test schemas sharing one MySQL server:
 
 - Lock contention skips the current execution and logs a warning; it does not queue a stale run.
 - The lock is held on one dedicated JDBC connection for the entire use case. Repository work continues through normal Spring-managed connections/transactions.
