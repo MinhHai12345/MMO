@@ -1,6 +1,5 @@
 package com.mmo.module.fb.match.service;
 
-import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchEnrichmentState;
 import com.mmo.module.fb.match.enums.MatchEnrichmentResource;
@@ -24,7 +23,7 @@ public class MatchEnrichmentStateService {
     private final MatchEnrichmentStateRepository repository;
 
     @Transactional
-    public void start(Match match, MatchProvider provider, MatchEnrichmentResource resource) {
+    public void start(Match match, MatchMatchProvider provider, MatchEnrichmentResource resource) {
         MatchEnrichmentState state = getOrCreate(match, provider, resource);
         state.markAttempt(Instant.now());
         repository.save(state);
