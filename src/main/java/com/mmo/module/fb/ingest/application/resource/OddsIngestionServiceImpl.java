@@ -76,7 +76,10 @@ public class OddsIngestionServiceImpl implements OddsIngestionService {
         }
 
         List<Match> upcoming = matchRepository.findUpcomingWithProviderMapping(
-                MatchStatus.SCHEDULED, now, until, selectedProvider, PageRequest.of(0, MAX_FIXTURES_PER_RUN));
+                MatchStatus.SCHEDULED, now, until, selectedProvider, MatchEnrichmentResource.ODDS,
+                com.mmo.module.fb.match.enums.MatchEnrichmentStatus.SUCCEEDED,
+                com.mmo.module.fb.match.enums.MatchEnrichmentStatus.IN_PROGRESS,
+                now.minus(30, ChronoUnit.MINUTES), PageRequest.of(0, MAX_FIXTURES_PER_RUN));
 
         int processed = 0;
         for (Match match : upcoming) {
