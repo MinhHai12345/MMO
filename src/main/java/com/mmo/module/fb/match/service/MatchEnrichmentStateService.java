@@ -45,6 +45,13 @@ public class MatchEnrichmentStateService {
     }
 
     @Transactional
+    public void skipped(Match match, Provider provider, MatchEnrichmentResource resource) {
+        MatchEnrichmentState state = getOrCreate(match, provider, resource);
+        state.markSkipped(Instant.now().plus(EMPTY_RETRY_DELAY));
+        repository.save(state);
+    }
+
+    @Transactional
     public void failed(Match match, Provider provider, MatchEnrichmentResource resource, Throwable error) {
         Instant now = Instant.now();
         MatchEnrichmentState state = getOrCreate(match, provider, resource);
