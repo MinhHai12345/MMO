@@ -58,6 +58,17 @@ class IngestionDistributedLockTest {
     }
 
     @Test
+    void scopesLockToCurrentDatabaseCatalog() throws Exception {
+        when(connection.getCatalog()).thenReturn("mmo_test");
+        when(acquireResult.getInt(1)).thenReturn(1);
+
+        assertTrue(lock.execute("mmo:test:lock", () -> { }));
+
+        verify(acquireStatement).setString(1, "mmo:test:lock:mmo_test");
+        verify(releaseStatement).setString(1, "mmo:test:lock:mmo_test");
+    }
+
+    @Test
     void skipsOperationWhenAnotherNodeOwnsLock() throws Exception {
         when(acquireResult.getInt(1)).thenReturn(0);
         AtomicBoolean executed = new AtomicBoolean();
