@@ -113,7 +113,11 @@ public class ModernFootballAnalyticsServiceImpl implements ModernFootballAnalyti
                 stats == null ? null : stats.getShotsOutsideBox(),
                 goalValue, xgValue,
                 goalValue == null || xgValue == null ? null : goalValue.subtract(xgValue).setScale(3, RoundingMode.HALF_UP),
-                null, null, null, null, null);
+                stats == null ? null : stats.getTotalShots(),
+                stats == null ? null : stats.getShotsOnTarget(),
+                stats == null ? null : stats.getCornerKicks(),
+                stats == null ? null : stats.getYellowCards(),
+                stats == null ? null : stats.getRedCards());
     }
 
     private PlayerImpact playerImpact(PlayerMatchStats row) {
