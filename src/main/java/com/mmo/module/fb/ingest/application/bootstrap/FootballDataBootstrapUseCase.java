@@ -115,9 +115,11 @@ public class FootballDataBootstrapUseCase implements FootballDataBootstrapServic
                     () -> leagueIngestionService.syncLeaguesForProvider(provider));
         }
 
-        if (teamsBackfillRequired || fixturesBackfillRequired) {
-            runStage("season-catalogue/" + seasonProvider,
-                    () -> seasonIngestionService.syncSeasonsForProvider(seasonProvider));
+        // Each resource provider owns its own season external-ID namespace. Populate
+        // season mappings for every provider that participates in this historical run.
+        for (Provider provider : catalogueProviders) {
+            runStage("season-catalogue/" + provider,
+                    () -> seasonIngestionService.syncSeasonsForProvider(provider));
         }
 
         if (teamsBackfillRequired) {
