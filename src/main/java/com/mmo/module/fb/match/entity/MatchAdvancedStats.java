@@ -3,18 +3,20 @@ package com.mmo.module.fb.match.entity;
 import com.mmo.core.entity.AbstractEntity;
 import com.mmo.module.fb.team.entity.Team;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
+/**
+ * Canonical, analytics-facing team-in-match statistics projection.
+ * Provider payload/provenance belongs in MatchStatisticsSourceSnapshot.
+ */
 @Entity
 @Table(name = "fb_match_advanced_stats",
         uniqueConstraints = @UniqueConstraint(name = "uk_fb_advanced_stats_match_team", columnNames = {"match_id", "team_id"}),
         indexes = @Index(name = "idx_fb_advanced_stats_team", columnList = "team_id"))
+@org.hibernate.annotations.Check(constraints = "team_id IS NOT NULL")
 @Getter
 @Setter
 @Builder
@@ -22,156 +24,121 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 public class MatchAdvancedStats extends AbstractEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "match_id", nullable = false)
     private Match match;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "team_id", nullable = false)
     private Team team;
 
     @Column(precision = 8, scale = 3)
     private BigDecimal ppda;
-
     @Column(name = "ppda_att")
     private Integer ppdaAtt;
-
     @Column(name = "ppda_def")
     private Integer ppdaDef;
-
     @Column(name = "xg", precision = 8, scale = 3)
     private BigDecimal xg;
-
     @Column(name = "xga", precision = 8, scale = 3)
     private BigDecimal xga;
-
     @Column(name = "npxg", precision = 8, scale = 3)
     private BigDecimal npxg;
-
     @Column(name = "npxga", precision = 8, scale = 3)
     private BigDecimal npxga;
-
     @Column(name = "expected_points", precision = 8, scale = 3)
     private BigDecimal expectedPoints;
-
     @Column(name = "deep_allowed")
     private Integer deepAllowed;
-
     @Column(name = "scored")
     private Integer scored;
-
     @Column(name = "missed")
     private Integer missed;
-
     @Column(name = "result", length = 8)
     private String result;
-
     @Column(name = "wins")
     private Integer wins;
-
     @Column(name = "draws")
     private Integer draws;
-
     @Column(name = "losses")
     private Integer losses;
-
     @Column(name = "points")
     private Integer points;
-
     @Column(name = "npx_goal_difference", precision = 8, scale = 3)
     private BigDecimal npxGoalDifference;
-
     @Column(name = "field_tilt", precision = 5, scale = 2)
     private BigDecimal fieldTilt;
-
     @Column(name = "xg_chain", precision = 7, scale = 3)
     private BigDecimal xgChain;
-
     @Column(name = "xg_buildup", precision = 7, scale = 3)
     private BigDecimal xgBuildup;
-
     @Column(precision = 5, scale = 2)
     private BigDecimal possession;
-
     @Column(name = "deep_completions")
     private Integer deepCompletions;
-
     @Column(name = "final_third_entries")
     private Integer finalThirdEntries;
-
     @Column(name = "shots_from_box")
     private Integer shotsFromBox;
-
     @Column(name = "shots_outside_box")
     private Integer shotsOutsideBox;
-
     @Column(name = "set_piece_xg", precision = 7, scale = 3)
     private BigDecimal setPieceXg;
-
     @Column(name = "counter_attack_xg", precision = 7, scale = 3)
     private BigDecimal counterAttackXg;
-
     @Column(name = "total_shots")
     private Integer totalShots;
-
     @Column(name = "shots_on_target")
     private Integer shotsOnTarget;
-
     @Column(name = "shots_off_target")
     private Integer shotsOffTarget;
-
     @Column(name = "blocked_shots")
     private Integer blockedShots;
-
     @Column(name = "corner_kicks")
     private Integer cornerKicks;
-
     @Column(name = "fouls")
     private Integer fouls;
-
     @Column(name = "yellow_cards")
     private Integer yellowCards;
-
     @Column(name = "red_cards")
     private Integer redCards;
-
     @Column(name = "offsides")
     private Integer offsides;
-
     @Column(name = "hit_woodwork")
     private Integer hitWoodwork;
-
     @Column(name = "free_kicks_conceded")
     private Integer freeKicksConceded;
-
     @Column(name = "booking_points")
     private Integer bookingPoints;
-
     @Column(name = "total_passes")
     private Integer totalPasses;
-
     @Column(name = "accurate_passes")
     private Integer accuratePasses;
-
     @Column(name = "pass_accuracy", precision = 5, scale = 2)
     private BigDecimal passAccuracy;
-
     @Column(name = "goalkeeper_saves")
     private Integer goalkeeperSaves;
-
     @Column(name = "big_chances_created")
     private Integer bigChancesCreated;
-
     @Column(name = "big_chances_missed")
     private Integer bigChancesMissed;
 
+    /** @deprecated provenance is tracked per provider in MatchStatisticsSourceSnapshot. */
+    @Deprecated
     @Column(name = "statistics_provider", length = 32)
     private String statisticsProvider;
 
+    /** @deprecated provenance is tracked per provider in MatchStatisticsSourceSnapshot. */
+    @Deprecated
     @Column(name = "statistics_synced_at")
-    private java.time.Instant statisticsSyncedAt;
+    private Instant statisticsSyncedAt;
 
-    /** Independent provenance timestamp for metrics enriched from Understat. */
+    /** @deprecated use MatchStatisticsSourceSnapshot for Understat and other providers. */
+    @Deprecated
     @Column(name = "understat_synced_at")
-    private java.time.Instant understatSyncedAt;
+    private Instant understatSyncedAt;
+
+    @Version
+    @Column(name = "version")
+    private Long version;
 }
