@@ -49,7 +49,7 @@ public class OddsHistory extends AbstractEntity {
     @Column(precision = 8, scale = 3)
     private BigDecimal awayWinOdds;
 
-    @Column(name = "recorded_at", nullable = false)
+    @Column(name = "recorded_at")
     private Instant recordedAt;
 
     @PrePersist
