@@ -20,6 +20,7 @@ import java.util.Locale;
 @Component
 @RequiredArgsConstructor
 public class FootballDataUkCsvClient {
+    private static final int MAX_IN_MEMORY_SIZE = 16 * 1024 * 1024;
     private static final Duration TIMEOUT = Duration.ofSeconds(45);
     private static final Charset SOURCE_CHARSET = Charset.forName("windows-1252");
     private static final String CANONICAL_HOST = "https://football-data.co.uk/";
@@ -33,7 +34,11 @@ public class FootballDataUkCsvClient {
 
         DownloadResponse response;
         try {
-            response = webClientBuilder.clone().build().get().uri(url)
+            response = webClientBuilder.clone()
+                    .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(MAX_IN_MEMORY_SIZE))
+                    .build()
+                    .get()
+                    .uri(url)
                     .header(HttpHeaders.ACCEPT, "text/csv, text/plain, */*")
                     .header(HttpHeaders.USER_AGENT, "Mozilla/5.0 (compatible; MMO-Football-Data-Importer/1.0)")
                     .exchangeToMono(clientResponse -> clientResponse.bodyToMono(byte[].class)
