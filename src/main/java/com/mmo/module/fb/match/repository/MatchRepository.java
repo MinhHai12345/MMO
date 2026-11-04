@@ -208,7 +208,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             """)
     List<Match> findFinishedMatchesMissingAdvancedStats(
             @Param("status") MatchStatus status,
-            @Param("provider") Provider provider,
+            @Param("provider") MatchProvider provider,
             @Param("resource") MatchEnrichmentResource resource,
             @Param("succeeded") MatchEnrichmentStatus succeeded,
             @Param("inProgress") MatchEnrichmentStatus inProgress,
