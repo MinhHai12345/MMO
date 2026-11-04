@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 
-/** Persists the latest raw statistics payload independently for every provider and team side. */
+/** Persists the latest provider payload representation independently for every provider and team side. */
 @Service
 @RequiredArgsConstructor
 public class MatchStatisticsSnapshotPersistenceService {
