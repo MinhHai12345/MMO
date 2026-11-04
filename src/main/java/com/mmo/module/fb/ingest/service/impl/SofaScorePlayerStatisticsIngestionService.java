@@ -10,6 +10,8 @@ import com.mmo.module.fb.match.entity.MatchExternalId;
 import com.mmo.module.fb.match.enums.MatchStatus;
 import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.match.repository.MatchRepository;
+import com.mmo.module.fb.match.enums.MatchEnrichmentResource;
+import com.mmo.module.fb.match.service.MatchEnrichmentStateService;
 import com.mmo.module.fb.player.repository.PlayerMatchStatsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +33,7 @@ public class SofaScorePlayerStatisticsIngestionService implements PlayerStatisti
     private final PlayerMatchStatsRepository playerMatchStatsRepository;
     private final SofaScoreLineupsClient lineupsClient;
     private final SofaScorePlayerStatsPersistenceService persistenceService;
+    private final MatchEnrichmentStateService enrichmentStateService;
 
     public void syncFinishedMatchPlayerStatistics() {
         Instant retryBefore = Instant.now().minus(24, ChronoUnit.HOURS);
@@ -48,9 +51,11 @@ public class SofaScorePlayerStatisticsIngestionService implements PlayerStatisti
         int persisted = 0;
         int skipped = 0;
         for (Match match : candidates) {
+            enrichmentStateService.start(match, Provider.SOFA_SCORE, MatchEnrichmentResource.PLAYER_STATISTICS);
             MatchExternalId externalId = matchExternalIdRepository
                     .findByMatchIdAndProvider(match.getId(), Provider.SOFA_SCORE).orElse(null);
             if (externalId == null) {
+                enrichmentStateService.empty(match, Provider.SOFA_SCORE, MatchEnrichmentResource.PLAYER_STATISTICS);
                 skipped++;
                 continue;
             }
@@ -59,14 +64,22 @@ public class SofaScorePlayerStatisticsIngestionService implements PlayerStatisti
                         lineupsClient.fetchLineups(Long.valueOf(externalId.getExternalId()));
                 if (response == null || (empty(response.home()) && empty(response.away()))) {
                     persistenceService.markAttempt(match.getId());
+                    enrichmentStateService.empty(match, Provider.SOFA_SCORE, MatchEnrichmentResource.PLAYER_STATISTICS);
                     skipped++;
                     continue;
                 }
                 int rows = persistenceService.persist(match.getId(), response);
                 persistenceService.markAttempt(match.getId());
-                if (rows > 0) persisted++; else skipped++;
+                if (rows > 0) {
+                    enrichmentStateService.succeed(match, Provider.SOFA_SCORE, MatchEnrichmentResource.PLAYER_STATISTICS);
+                    persisted++;
+                } else {
+                    enrichmentStateService.empty(match, Provider.SOFA_SCORE, MatchEnrichmentResource.PLAYER_STATISTICS);
+                    skipped++;
+                }
             } catch (Exception exception) {
                 persistenceService.markAttempt(match.getId());
+                enrichmentStateService.failed(match, Provider.SOFA_SCORE, MatchEnrichmentResource.PLAYER_STATISTICS, exception);
                 log.warn("Player statistics sync failed for matchId={} providerMatchId={}: {}",
                         match.getId(), externalId.getExternalId(), exception.getMessage());
             }
