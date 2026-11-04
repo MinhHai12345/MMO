@@ -72,7 +72,7 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
             enrichmentStateService.start(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
             try {
                 Optional<MatchExternalId> mapping = matchExternalIdRepository
-                        .findByMatchIdAndProvider(match.getId(), Provider.SOFA_SCORE);
+                        .findByMatchIdAndProvider(match.getId(), MatchProvider.SOFA_SCORE);
                 if (mapping.isEmpty()) {
                     enrichmentStateService.skipped(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
                     skipped++;
