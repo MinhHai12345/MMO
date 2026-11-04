@@ -4,7 +4,6 @@ import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
-import com.mmo.module.fb.ingest.entity.ProviderSyncCheckpoint;
 import com.mmo.module.fb.ingest.enums.Provider;
 
 import com.mmo.module.fb.ingest.service.FixtureIngestionService;
@@ -22,11 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-class FootballDataBootstrapServiceImplTest {
+class FootballDataBootstrapUseCaseTest {
 
     private IngestionDistributedLock lock;
     private AppProperties properties;
-    private IngestionServiceSupport support;
     private ProviderCheckpointStore checkpoints;
     private FootballDataUkIngestionPort footballDataUk;
     private LeagueIngestionService leagues;
@@ -34,7 +32,7 @@ class FootballDataBootstrapServiceImplTest {
     private TeamIngestionService teams;
     private FixtureIngestionService fixtures;
     private StandingsIngestionService standings;
-    private FootballDataBootstrapServiceImpl service;
+    private FootballDataBootstrapUseCase service;
 
     @BeforeEach
     void setUp() {
@@ -57,7 +55,6 @@ class FootballDataBootstrapServiceImplTest {
         properties.getIngestion().getProviders().setTeam(Provider.API_FOOTBALL);
         properties.getIngestion().getProviders().setFixture(Provider.API_FOOTBALL);
 
-        support = mock(IngestionServiceSupport.class);
         checkpoints = mock(ProviderCheckpointStore.class);
         footballDataUk = mock(FootballDataUkIngestionPort.class);
         leagues = mock(LeagueIngestionService.class);
