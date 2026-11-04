@@ -193,7 +193,10 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
     }
 
     private boolean isResourceBackfillCompleted(Provider provider, String checkpointKey) {
-        return checkpointRepository.existsByProviderAndCheckpointKey(provider, checkpointKey);
+        // Backward compatibility: the legacy provider-level checkpoint was written only
+        // after both historical team and fixture stages had completed successfully.
+        return checkpointRepository.existsByProviderAndCheckpointKey(provider, checkpointKey)
+                || checkpointRepository.existsByProviderAndCheckpointKey(provider, INITIAL_CORE_CHECKPOINT);
     }
 
     private void completeResourceBackfill(Provider provider, String checkpointKey) {
