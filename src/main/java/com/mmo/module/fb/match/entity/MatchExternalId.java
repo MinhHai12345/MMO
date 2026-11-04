@@ -1,7 +1,7 @@
 package com.mmo.module.fb.match.entity;
 
 import com.mmo.core.entity.AbstractEntity;
-import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -25,7 +25,7 @@ public class MatchExternalId extends AbstractEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "provider", nullable = false, length = 32)
-    private Provider provider;
+    private MatchProvider provider;
 
     @Column(name = "external_id", nullable = false, length = 128)
     private String externalId;
