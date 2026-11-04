@@ -27,8 +27,8 @@ import java.util.Set;
  * Coordinates the one-time historical Core backfill and subsequent current-season sync.
  *
  * <p>Football-Data free tier owns seasons from 2023 onward. Football-Data.co.uk is imported
- * separately from 2014 onward. Completion is persisted per provider so restarts and retries
- * cannot accidentally turn every scheduled bootstrap into another historical import.</p>
+ * separately from 2014 onward. Completion is persisted per resource/provider so a provider
+ * selected for one resource cannot mark another resource's historical import as complete.</p>
  */
 @Slf4j
 @Service
@@ -144,8 +144,9 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         log.info("Core bootstrap completed. teamsMode={}, fixturesMode={}, csvMode={}",
                 teamsBackfillRequired ? "HISTORICAL" : "ACTIVE_SEASONS",
                 fixturesBackfillRequired ? "HISTORICAL" : "ACTIVE_SEASONS",
-                csvBackfillCompleted ? "CURRENT_SEASON" : "INITIAL_HISTORICAL");
+                !csvProviderEnabled ? "DISABLED" : csvBackfillCompleted ? "ALREADY_COMPLETED" : "INITIAL_HISTORICAL");
     }
+
     /**
      * Explicit multi-provider historical import. Each provider is mapped to the same
      * canonical Core entities before teams and fixtures are imported.
