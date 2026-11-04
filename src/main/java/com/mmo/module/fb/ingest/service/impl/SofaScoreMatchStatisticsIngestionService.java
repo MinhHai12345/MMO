@@ -88,7 +88,6 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
 
                 ProviderMatchAdvancedStatistics providerSnapshot = snapshot.get();
                 if (!hasStatistics(providerSnapshot.home()) && !hasStatistics(providerSnapshot.away())) {
-                    markAttempt(match);
                     enrichmentStateService.empty(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
                     skipped++;
                     continue;
@@ -98,7 +97,6 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
                 enrichmentStateService.succeed(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
                 persisted++;
             } catch (RuntimeException exception) {
-                markAttempt(match);
                 enrichmentStateService.failed(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS, exception);
                 failed++;
                 log.warn("SofaScore statistics sync failed for matchId={}: {}",
