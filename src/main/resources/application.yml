@@ -114,13 +114,13 @@ app:
 
       API_FOOTBALL:
         enabled: ${API_FOOTBALL_ENABLED:false}
-        uri: ${API_FOOTBALL_URI}
-        api-key: ${API_FOOTBALL_API_KEY}
+        uri: ${API_FOOTBALL_URI:}
+        api-key: ${API_FOOTBALL_API_KEY:}
 
       SOFA_SCORE:
         enabled: ${SOFA_SCORE_ENABLED:false}
-        uri: ${SOFA_SCORE_URI}
-        web-url: ${SOFA_SCORE_WEB_URL}
+        uri: ${SOFA_SCORE_URI:}
+        web-url: ${SOFA_SCORE_WEB_URL:}
         options:
           tournament-region: ${SOFA_SCORE_TOURNAMENT_REGION:EN}
           headless: ${SOFA_SCORE_HEADLESS:true}
@@ -129,8 +129,8 @@ app:
 
       UNDER_STATS:
         enabled: ${UNDER_STATS_ENABLED:false}
-        uri: ${UNDER_STAT_URI}
-        web-url: ${UNDER_STAT_WEB_URL}
+        uri: ${UNDER_STAT_URI:}
+        web-url: ${UNDER_STAT_WEB_URL:}
 
       FOOTBALL_DATA_UK:
         enabled: ${FOOTBALL_DATA_UK_ENABLED:true}

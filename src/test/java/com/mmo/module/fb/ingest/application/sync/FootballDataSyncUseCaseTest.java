@@ -73,11 +73,11 @@ class FootballDataSyncUseCaseTest {
     }
 
     @Test
-    void skipsUpcomingOddsWhenAnExplicitProviderIsDisabled() {
-        AppProperties.ProviderConfig disabled = new AppProperties.ProviderConfig();
-        disabled.setEnabled(false);
+    void neverRunsUpcomingOddsDuringPhaseOneEvenWhenAnOverrideIsSupplied() {
+        AppProperties.ProviderConfig enabledButOutOfScope = new AppProperties.ProviderConfig();
+        enabledButOutOfScope.setEnabled(true);
         properties.getIngestion().getProviderConfig().put(
-                com.mmo.module.fb.ingest.enums.Provider.API_FOOTBALL, disabled);
+                com.mmo.module.fb.ingest.enums.Provider.API_FOOTBALL, enabledButOutOfScope);
 
         useCase.sync(null, com.mmo.module.fb.ingest.enums.Provider.API_FOOTBALL);
 

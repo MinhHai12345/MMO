@@ -93,11 +93,9 @@ public class FootballDataSyncUseCase implements FootballDataSyncService {
         }
 
         if (odds == null) {
-            log.info("Skipping upcoming odds: no active odds provider is configured");
-        } else if (!isProviderEnabled(odds)) {
-            log.warn("Skipping upcoming odds because selected provider {} is disabled or not configured", odds);
+            log.info("Skipping upcoming odds: no upcoming-odds provider is active in Phase 1");
         } else {
-            runStage("upcoming-odds/" + odds, () -> oddsIngestionService.syncUpcomingOdds(odds));
+            log.warn("Ignoring upcoming-odds provider override {}: upcoming odds ingestion is disabled in Phase 1", odds);
         }
 
         // The initial 2014+ CSV backfill belongs to FootballDataBootstrapService.
@@ -112,11 +110,6 @@ public class FootballDataSyncUseCase implements FootballDataSyncService {
                     + " ingestion; " + provider + " is temporarily disabled. "
                     + "Football-Data UK is orchestrated through its dedicated CSV workflow.");
         }
-    }
-
-    private boolean isProviderEnabled(Provider provider) {
-        AppProperties.ProviderConfig config = properties.getIngestion().getProviderConfig().get(provider);
-        return config != null && config.isEnabled();
     }
 
     private void runStage(String name, Runnable operation) {
