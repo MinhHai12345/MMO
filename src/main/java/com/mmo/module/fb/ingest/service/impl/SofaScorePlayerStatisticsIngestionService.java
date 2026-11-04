@@ -70,7 +70,6 @@ public class SofaScorePlayerStatisticsIngestionService implements PlayerStatisti
                     skipped++;
                 }
             } catch (Exception exception) {
-                persistenceService.markAttempt(match.getId());
                 enrichmentStateService.failed(match, Provider.SOFA_SCORE, MatchEnrichmentResource.PLAYER_STATISTICS, exception);
                 log.warn("Player statistics sync failed for matchId={} providerMatchId={}: {}",
                         match.getId(), externalId.getExternalId(), exception.getMessage());
