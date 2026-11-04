@@ -63,8 +63,8 @@ The application use cases are deliberately separated from provider and persisten
 
 ## Workflow ownership
 
-- Bootstrap: historical Core import and recovery only. Team and fixture completion markers are independent and keyed by provider/resource. Football-Data UK has its own historical Core marker.
-- Core Sync: active-season Core refresh, standings, upcoming odds and Football-Data UK current-season Core refresh.
+- Bootstrap: historical Core import and recovery only. League and season mappings are refreshed independently for every provider participating in the run, because team/fixture queries require that provider's own season external IDs. Team and fixture completion markers are independent and keyed by provider/resource. Football-Data UK has its own historical Core marker.
+- Core Sync: refresh league/season mappings for every selected Core provider, then active-season teams/fixtures, standings, upcoming odds and Football-Data UK current-season Core refresh.
 - Match Enrichment: historical/current match statistics, xG and player statistics. It never creates canonical Core fixtures.
 - A stage writes its completion marker only after the entire stage reports success. Partial per-season progress remains in the provider-specific importer checkpoint mechanism.
 
