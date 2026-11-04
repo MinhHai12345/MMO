@@ -4,6 +4,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchEnrichmentState;
 import com.mmo.module.fb.match.enums.MatchEnrichmentResource;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.match.repository.MatchEnrichmentStateRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -68,6 +69,6 @@ public class MatchEnrichmentStateService {
         }
         return repository.findByMatchIdAndProviderAndResource(match.getId(), provider, resource)
                 .orElseGet(() -> MatchEnrichmentState.builder()
-                        .match(match).provider(provider).resource(resource).build());
+                        .match(match).provider(MatchProvider.from(provider)).resource(resource).build());
     }
 }
