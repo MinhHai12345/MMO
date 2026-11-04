@@ -57,13 +57,11 @@ public class SofaScorePlayerStatisticsIngestionService implements PlayerStatisti
                 SofaScoreLineupsResponseDTO response =
                         lineupsClient.fetchLineups(Long.valueOf(externalId.getExternalId()));
                 if (response == null || (empty(response.home()) && empty(response.away()))) {
-                    persistenceService.markAttempt(match.getId());
                     enrichmentStateService.empty(match, Provider.SOFA_SCORE, MatchEnrichmentResource.PLAYER_STATISTICS);
                     skipped++;
                     continue;
                 }
                 int rows = persistenceService.persist(match.getId(), response);
-                persistenceService.markAttempt(match.getId());
                 if (rows > 0) {
                     enrichmentStateService.succeed(match, Provider.SOFA_SCORE, MatchEnrichmentResource.PLAYER_STATISTICS);
                     persisted++;
