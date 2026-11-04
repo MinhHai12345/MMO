@@ -1,21 +1,20 @@
 package com.mmo.module.fb.ingest.application.enrichment;
 
-import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
-import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
-import com.mmo.module.fb.ingest.application.port.out.HistoricalStatisticsIngestionPort;
-import com.mmo.module.fb.ingest.application.port.out.MatchStatisticsIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.PlayerStatisticsIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
-
+import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.service.MatchEnrichmentService;
-import com.mmo.module.fb.ingest.service.SofaScoreBootstrapService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-/** Provider selection and sequencing belong to the application layer, not Quartz jobs. */
+/**
+ * Coordinates match enrichment from the canonical Football-Data UK CSV source.
+ * Match fixtures and match-level statistics are sourced from Football-Data UK;
+ * player statistics remain a separate enrichment concern.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -25,12 +24,8 @@ public class MatchEnrichmentUseCase implements MatchEnrichmentService {
     private static final String ENRICHMENT_INITIAL_CHECKPOINT = "MATCH_ENRICHMENT_INITIAL";
 
     private final IngestionDistributedLock distributedLock;
-    private final AppProperties properties;
     private final ProviderCheckpointStore checkpointStore;
     private final FootballDataUkIngestionPort footballDataUkSyncService;
-    private final HistoricalStatisticsIngestionPort underStatSyncService;
-    private final SofaScoreBootstrapService sofaScoreBootstrapService;
-    private final MatchStatisticsIngestionPort sofaScoreMatchStatisticsIngestionService;
     private final PlayerStatisticsIngestionPort playerStatisticsIngestionService;
 
     @Override
@@ -43,32 +38,26 @@ public class MatchEnrichmentUseCase implements MatchEnrichmentService {
     }
 
     private void enrichFinishedMatchesLocked() {
-        Provider selected = properties.getIngestion().getProviders().getHistoricalStats();
-        log.info("Match enrichment started: historicalStatsProvider={}", selected);
+        log.info("Match enrichment started: matchDataProvider={}", Provider.FOOTBALL_DATA_UK);
 
-        runStage("football-data-uk-enrichment", this::syncFootballDataUkEnrichment);
-
-        if (selected == Provider.UNDER_STATS) {
-            runStage("understat-historical-statistics", underStatSyncService::syncActiveSeasons);
-        } else if (selected == Provider.SOFA_SCORE) {
-            runStage("sofascore-bootstrap", sofaScoreBootstrapService::syncInitialDataIfRequired);
-            runStage("sofascore-match-statistics", sofaScoreMatchStatisticsIngestionService::storeMatchStatistics);
-        } else {
-            log.info("No historical match-statistics provider configured: {}", selected);
-        }
-
-        runStage("player-statistics", playerStatisticsIngestionService::syncFinishedMatchPlayerStatistics);
-        log.info("Match enrichment completed: historicalStatsProvider={}", selected);
-    }
-
-    private void syncFootballDataUkEnrichment() {
         boolean coreReady = checkpointStore.isCompleted(
                 Provider.FOOTBALL_DATA_UK, CORE_INITIAL_CHECKPOINT);
         if (!coreReady) {
-            log.info("Skipping Football-Data UK match enrichment until the 2014+ Core CSV import is complete");
+            log.info("Skipping match enrichment until the 2014+ Football-Data UK Core CSV import is complete");
             return;
         }
 
+        runStage("football-data-uk-match-enrichment", this::syncFootballDataUkEnrichment);
+        runStage("player-statistics", playerStatisticsIngestionService::syncFinishedMatchPlayerStatistics);
+
+        log.info("Match enrichment completed: matchDataProvider={}", Provider.FOOTBALL_DATA_UK);
+    }
+
+    /**
+     * Backfill all imported historical seasons once, then refresh only the current season.
+     * The checkpoint is marked only after the full historical enrichment succeeds.
+     */
+    private void syncFootballDataUkEnrichment() {
         boolean initialEnrichmentComplete = checkpointStore.isCompleted(
                 Provider.FOOTBALL_DATA_UK, ENRICHMENT_INITIAL_CHECKPOINT);
         if (!initialEnrichmentComplete) {
