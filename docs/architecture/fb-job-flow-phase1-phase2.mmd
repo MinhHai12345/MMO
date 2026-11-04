@@ -1,0 +1,12 @@
+flowchart TD
+    A[FootballWorkflowOrchestrationJob] --> B{Bootstrap required?}
+    B -->|Yes| C[FootballDataBootstrapJob]
+    B -->|No| D[FootballDataSyncJob]
+    C --> D
+    D --> E[MatchEnrichmentJob]
+    E --> F[AdvancedMetricsJob]
+    F --> G[MatchProcessPredictionJob]
+    G --> H[Content generation]
+    H --> I[PublicationWorkerQuartzJob]
+    J[PredictionEvaluationJob] -. independent .-> K[Completed match outcomes]
+    L[WalkForwardBackTestJob] -. weekly / manual .-> M[Model evaluation]

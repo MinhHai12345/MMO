@@ -215,8 +215,15 @@ public class CronJobServiceImpl implements CronJobService {
         try {
             final Trigger newTrigger = scheduleCreator.createCronTrigger(cronJob.getJobName(), ZonedDateTime.now(),
                     cronJob.getCronExpression(), CronTrigger.MISFIRE_INSTRUCTION_DO_NOTHING);
+            boolean wasPaused = cronJob.getJobStatus() == JobState.PAUSED;
             scheduler.rescheduleJob(TriggerKey.triggerKey(cronJob.getJobName()), newTrigger);
-            cronJob.setJobStatus(JobState.SCHEDULED);
+            if (wasPaused) {
+                // Rescheduling a persisted job must never override an operator pause.
+                scheduler.pauseJob(new JobKey(cronJob.getJobName(), cronJob.getJobGroup()));
+                cronJob.setJobStatus(JobState.PAUSED);
+            } else {
+                cronJob.setJobStatus(JobState.SCHEDULED);
+            }
             cronJobRepository.save(cronJob);
         } catch (SchedulerException e) {
             throw new ScheduleJobException(String.format("Failed to reschedule job %s", cronJob.getJobName()), e);

@@ -16,7 +16,6 @@ import org.quartz.JobExecutionContext;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -49,15 +48,9 @@ public class FootballWorkflowOrchestrationJob extends AbstractJob<CronJob> {
         Map<String, String> providerOverrides = IngestionJobParameters.providerParameters(context);
         log.info("Starting FB end-to-end workflow for {}; providerOverrides={}", today, providerOverrides);
 
-        boolean bootstrapExecuted = runBootstrapIfNeeded(providerOverrides);
-        if (!bootstrapExecuted) {
-            runExistingJobIfStale("LeagueSyncJob", Duration.ofDays(30), providerOverrides);
-            runExistingJobIfStale("TeamSyncJob", Duration.ofDays(15), providerOverrides);
-        }
-
-        runExistingJob("MatchResultSyncJob", providerOverrides);
-        runExistingJob("MatchFixtureSyncJob", providerOverrides);
-        runExistingJob("MatchStatisticsSyncJob", providerOverrides);
+        runBootstrapIfNeeded(providerOverrides);
+        runExistingJobIfStale("FootballDataSyncJob", Duration.ofHours(6), providerOverrides);
+        runExistingJobIfStale("MatchEnrichmentJob", Duration.ofHours(12), providerOverrides);
         runExistingJob("AdvancedMetricsJob");
         runExistingJob("MatchProcessPredictionJob");
 

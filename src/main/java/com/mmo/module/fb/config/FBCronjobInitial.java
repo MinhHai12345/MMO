@@ -10,13 +10,8 @@ import com.mmo.module.fb.analytics.job.MatchProcessPredictionJob;
 import com.mmo.module.fb.analytics.job.PredictionEvaluationJob;
 import com.mmo.module.fb.analytics.job.WalkForwardBackTestJob;
 import com.mmo.module.fb.ingest.job.FootballDataBootstrapJob;
-import com.mmo.module.fb.ingest.job.FootballDataUkCoreSyncJob;
-import com.mmo.module.fb.ingest.job.LeagueSyncJob;
-import com.mmo.module.fb.ingest.job.MatchFixtureSyncJob;
-import com.mmo.module.fb.ingest.job.MatchResultSyncJob;
-import com.mmo.module.fb.ingest.job.MatchStatisticsSyncJob;
-import com.mmo.module.fb.ingest.job.UnderStatHistoricalStatsJob;
-import com.mmo.module.fb.ingest.job.TeamSyncJob;
+import com.mmo.module.fb.ingest.job.FootballDataSyncJob;
+import com.mmo.module.fb.ingest.job.MatchEnrichmentJob;
 import com.mmo.module.fb.ingest.service.impl.FootballDataUkSyncService;
 import com.mmo.module.fb.monetization.job.SubscriptionExpiryCheckJob;
 import com.mmo.module.fb.workflow.job.FootballWorkflowOrchestrationJob;
@@ -48,25 +43,13 @@ public class FBCronjobInitial implements DataInitializer {
         // Bootstrap may backfill multiple seasons. Keep it out of the frequent production path.
         createOrUpdateJob(FootballDataBootstrapJob.class,
                 "0 0 1 1 * ?", "Bootstrap configured leagues, teams, fixtures and standings (monthly UTC 01:00)");
-        createOrUpdateJob(LeagueSyncJob.class,
-                "0 0 2 1 * ?", "Refresh league and season metadata (monthly UTC 02:00)");
-        createOrUpdateJob(TeamSyncJob.class,
-                "0 0 3 1,15 * ?", "Refresh team metadata (UTC 03:00 on days 1 and 15)");
+        // One Quartz entry point owns Core sync. Provider-specific services remain separate.
+        createOrUpdateJob(FootballDataSyncJob.class,
+                "0 0 0/6 * * ?", "Sync league, team, recent results, upcoming fixtures, standings and Football-Data UK enrichment every 6 hours");
+        createOrUpdateJob(MatchEnrichmentJob.class,
+                "0 30 0/12 * * ?", "Enrich canonical finished matches with configured historical and player statistics every 12 hours");
 
-        // Football-Data.co.uk is a CSV source: import every mapped league and season,
-        // then refresh the current season on subsequent daily executions.
-        createOrUpdateJob(FootballDataUkCoreSyncJob.class,
-                "0 0 4 * * ?", "Sync all mapped Football-Data UK leagues and seasons: teams, fixtures, results and CSV statistics daily at 04:00 UTC");
-
-        // Match data has direct value to content freshness; use bounded periodic refreshes.
-        createOrUpdateJob(MatchResultSyncJob.class,
-                "0 0 0/4 * * ?", "Refresh recent results and statuses every 4 hours");
-        createOrUpdateJob(MatchFixtureSyncJob.class,
-                "0 0 0/6 * * ?", "Refresh upcoming fixtures every 6 hours");
-        createOrUpdateJob(MatchStatisticsSyncJob.class,
-                "0 0 0/6 * * ?", "Refresh finished-match statistics every 6 hours");
-        createOrUpdateJob(UnderStatHistoricalStatsJob.class,
-                "0 30 0/12 * * ?", "Enrich active seasons with Understat xG, PPDA and team history every 12 hours");
+        // Legacy entry points are paused below. Their classes/services remain available for rollback.
 
         createOrUpdateJob(MatchProcessPredictionJob.class,
                 "0 0 0/3 * * ?", "Recalculate eligible upcoming-match predictions every 3 hours");
@@ -88,8 +71,16 @@ public class FBCronjobInitial implements DataInitializer {
 
         // These legacy rows may already exist in production DBs. Merely omitting them
         // from registration would leave their persisted Quartz triggers active.
-        pauseRetiredJob("UnderStatCatalogSyncJob");
-        pauseRetiredJob("MatchStatusTrackerJob");
+        pauseLegacyJob("LeagueSyncJob");
+        pauseLegacyJob("TeamSyncJob");
+        pauseLegacyJob("MatchFixtureSyncJob");
+        pauseLegacyJob("MatchResultSyncJob");
+        pauseLegacyJob("MatchStatisticsSyncJob");
+        pauseLegacyJob("FootballDataUkCoreSyncJob");
+        pauseLegacyJob("UnderStatHistoricalStatsJob");
+
+        pauseLegacyJob("UnderStatCatalogSyncJob");
+        pauseLegacyJob("MatchStatusTrackerJob");
         pauseRetiredJob("CrawlerHealthCheckJob");
         pauseRetiredJob("DataCleanupJob");
         pauseRetiredJob("MatchLineupOddsUpdateJob");
@@ -101,11 +92,11 @@ public class FBCronjobInitial implements DataInitializer {
      * Keep persisted schedules aligned with code. The old create-only behavior meant
      * schedule fixes were silently ignored for installations that already had rows.
      */
-    private void pauseRetiredJob(String jobName) {
+    private void pauseLegacyJob(String jobName) {
         cronJobRepository.findByJobNameAndJobGroup(jobName, FB_JOB_GROUP).ifPresent(job -> {
             if (job.getJobStatus() != JobState.PAUSED) {
                 cronJobService.pauseJob(job.getId());
-                log.warn("Paused retired CronJob [{}]; implementation is empty or not part of the content MVP", jobName);
+                log.warn("Paused legacy CronJob [{}]; consolidated workflow owns this responsibility", jobName);
             }
         });
     }
