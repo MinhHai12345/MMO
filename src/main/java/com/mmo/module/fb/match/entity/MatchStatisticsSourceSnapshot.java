@@ -1,7 +1,7 @@
 package com.mmo.module.fb.match.entity;
 
 import com.mmo.core.entity.AbstractEntity;
-import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.team.entity.Team;
 import jakarta.persistence.*;
 import lombok.*;
@@ -40,7 +40,7 @@ public class MatchStatisticsSourceSnapshot extends AbstractEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
-    private Provider provider;
+    private MatchProvider provider;
 
     /** Serialized provider payload representation; retained for audit and future remapping. */
     @Lob
