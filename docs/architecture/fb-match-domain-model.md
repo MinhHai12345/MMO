@@ -27,10 +27,11 @@ Resources are independent: `TEAM_STATISTICS`, `PLAYER_STATISTICS` and `ODDS`.
 Statuses distinguish pending, in-progress, succeeded, empty, skipped and failed outcomes.
 Retry time and last-attempt time belong to this row, not to the canonical Match columns.
 
-The old `last_odds_synced_at`, `statistics_last_attempt_at` and
-`player_statistics_last_attempt_at` columns remain temporarily for compatibility with
-older readers and are deprecated. Current odds/team-statistics/player-statistics candidate
-queries use provider/resource-specific state.
+The former `last_odds_synced_at`, `statistics_last_attempt_at` and
+`player_statistics_last_attempt_at` fields have been removed from the Match entity and all
+current readers/writers. Existing physical columns are left untouched by Hibernate
+`ddl-auto: update`; a later explicit migration can drop them after database verification.
+Current odds/team-statistics/player-statistics candidate queries use provider/resource-specific state.
 
 ### Statistics
 
