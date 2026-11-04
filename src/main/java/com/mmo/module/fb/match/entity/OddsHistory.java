@@ -53,7 +53,11 @@ public class OddsHistory extends AbstractEntity {
     private Instant recordedAt;
 
     @PrePersist
-    private void setRecordedAtIfMissing() {
+    @PreUpdate
+    private void validateSnapshot() {
+        if (matchOdds == null && quote == null) {
+            throw new IllegalStateException("Odds history must reference a legacy odds row or normalized quote");
+        }
         if (recordedAt == null) recordedAt = Instant.now();
     }
 }
