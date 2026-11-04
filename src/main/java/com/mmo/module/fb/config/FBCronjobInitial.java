@@ -13,7 +13,7 @@ import com.mmo.module.fb.ingest.job.FootballDataSyncJob;
 import com.mmo.module.fb.ingest.job.MatchEnrichmentJob;
 import com.mmo.module.fb.ingest.service.FootballDataSyncService;
 import com.mmo.module.fb.monetization.job.SubscriptionExpiryCheckJob;
-import com.mmo.module.fb.workflow.job.FootballWorkflowOrchestrationJob;
+import com.mmo.module.fb.content.job.ContentGenerationJob;
 import com.mmo.module.fb.workflow.job.PublicationWorkerQuartzJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +36,8 @@ public class FBCronjobInitial implements DataInitializer {
         // Provider bootstrap is an application use case, not a provider/job dependency.
         footballDataSyncService.initializeProviderMappings();
 
-        createOrUpdateJob(FootballWorkflowOrchestrationJob.class,
+        deleteLegacyJob("FootballWorkflowOrchestrationJob");
+        createOrUpdateJob(ContentGenerationJob.class,
                 "0 30 11 * * ?", "Generate PRE_MATCH content drafts daily at 11:30 UTC");
 
         // Historical bootstrap is an explicit recovery/backfill workflow.

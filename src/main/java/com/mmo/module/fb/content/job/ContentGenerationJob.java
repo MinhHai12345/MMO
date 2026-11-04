@@ -1,4 +1,4 @@
-package com.mmo.module.fb.workflow.job;
+package com.mmo.module.fb.content.job;
 
 import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.job.AbstractJob;
@@ -15,15 +15,12 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 
-/**
- * Schedules content generation only. Ingestion, enrichment, analytics and prediction
- * are independent jobs with their own schedules and can also be triggered manually.
- */
+/** Scheduled content-generation entry point. It does not orchestrate other Quartz jobs. */
 @Slf4j
 @Component
 @DisallowConcurrentExecution
 @RequiredArgsConstructor
-public class FootballWorkflowOrchestrationJob extends AbstractJob<CronJob> {
+public class ContentGenerationJob extends AbstractJob<CronJob> {
 
     private final ContentLifecycleService contentLifecycleService;
 

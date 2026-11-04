@@ -11,7 +11,7 @@
 | MatchProcessPredictionJob | Upcoming-match predictions | Every 3 hours |
 | PredictionEvaluationJob | Evaluate predictions against completed results | Every 30 minutes |
 | WalkForwardBackTestJob | Historical model evaluation | Weekly / manual |
-| FootballWorkflowOrchestrationJob | Generate PRE_MATCH content drafts only | Daily |
+| ContentGenerationJob | Generate PRE_MATCH content drafts only | Daily |
 | PublicationWorkerQuartzJob | Publish approved, due content | Every minute |
 | SubscriptionExpiryCheckJob | Subscription expiry processing | Daily |
 

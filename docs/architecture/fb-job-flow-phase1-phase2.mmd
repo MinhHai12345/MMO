@@ -14,7 +14,7 @@ flowchart TD
     M --> O[MatchProcessPredictionJob]
     N --> P[Analytics / Predictions]
     O --> P
-    P --> Q[FootballWorkflowOrchestrationJob]
+    P --> Q[ContentGenerationJob]
     Q --> R[PRE_MATCH Content Generation]
     R --> S[PublicationWorkerQuartzJob]
     T[PredictionEvaluationJob] -.-> P
