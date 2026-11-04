@@ -2,7 +2,6 @@ package com.mmo.module.fb.ingest.application.enrichment;
 
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
-import com.mmo.module.fb.ingest.application.port.out.PlayerStatisticsIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.service.MatchEnrichmentService;
@@ -13,7 +12,7 @@ import org.springframework.stereotype.Service;
 /**
  * Coordinates match enrichment from the canonical Football-Data UK CSV source.
  * Match fixtures and match-level statistics are sourced from Football-Data UK;
- * player statistics remain a separate enrichment concern.
+ * SofaScore player statistics are intentionally disabled until a later provider phase.
  */
 @Slf4j
 @Service
@@ -26,7 +25,6 @@ public class MatchEnrichmentUseCase implements MatchEnrichmentService {
     private final IngestionDistributedLock distributedLock;
     private final ProviderCheckpointStore checkpointStore;
     private final FootballDataUkIngestionPort footballDataUkSyncService;
-    private final PlayerStatisticsIngestionPort playerStatisticsIngestionService;
 
     @Override
     public void enrichFinishedMatches() {
@@ -48,9 +46,9 @@ public class MatchEnrichmentUseCase implements MatchEnrichmentService {
         }
 
         runStage("football-data-uk-match-enrichment", this::syncFootballDataUkEnrichment);
-        runStage("player-statistics", playerStatisticsIngestionService::syncFinishedMatchPlayerStatistics);
 
-        log.info("Match enrichment completed: matchDataProvider={}", Provider.FOOTBALL_DATA_UK);
+        log.info("Match enrichment completed: matchDataProvider={}; SofaScore player statistics are disabled in Phase 1",
+                Provider.FOOTBALL_DATA_UK);
     }
 
     /**

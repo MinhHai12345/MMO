@@ -2,7 +2,6 @@ package com.mmo.module.fb.ingest.application.enrichment;
 
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
-import com.mmo.module.fb.ingest.application.port.out.PlayerStatisticsIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,7 +15,6 @@ class MatchEnrichmentUseCaseTest {
     private IngestionDistributedLock lock;
     private ProviderCheckpointStore checkpoints;
     private FootballDataUkIngestionPort footballDataUk;
-    private PlayerStatisticsIngestionPort playerStats;
     private MatchEnrichmentUseCase useCase;
 
     @BeforeEach
@@ -29,8 +27,7 @@ class MatchEnrichmentUseCaseTest {
         checkpoints = mock(ProviderCheckpointStore.class);
         when(checkpoints.isCompleted(any(), anyString())).thenReturn(false);
         footballDataUk = mock(FootballDataUkIngestionPort.class);
-        playerStats = mock(PlayerStatisticsIngestionPort.class);
-        useCase = new MatchEnrichmentUseCase(lock, checkpoints, footballDataUk, playerStats);
+        useCase = new MatchEnrichmentUseCase(lock, checkpoints, footballDataUk);
     }
 
     @Test
@@ -40,7 +37,6 @@ class MatchEnrichmentUseCaseTest {
         verify(lock).execute(eq(IngestionDistributedLock.GLOBAL_INGEST_LOCK), any(Runnable.class));
         verify(footballDataUk, never()).syncInitialEnrichment();
         verify(footballDataUk, never()).syncCurrentSeasonEnrichment();
-        verifyNoInteractions(playerStats);
     }
 
     @Test
@@ -54,7 +50,6 @@ class MatchEnrichmentUseCaseTest {
         verify(footballDataUk).syncInitialEnrichment();
         verify(footballDataUk, never()).syncCurrentSeasonEnrichment();
         verify(checkpoints).markCompleted(Provider.FOOTBALL_DATA_UK, "MATCH_ENRICHMENT_INITIAL");
-        verify(playerStats).syncFinishedMatchPlayerStatistics();
     }
 
     @Test
@@ -68,7 +63,6 @@ class MatchEnrichmentUseCaseTest {
 
         verify(footballDataUk, never()).syncInitialEnrichment();
         verify(footballDataUk).syncCurrentSeasonEnrichment();
-        verify(playerStats).syncFinishedMatchPlayerStatistics();
     }
 
     @Test
@@ -77,6 +71,6 @@ class MatchEnrichmentUseCaseTest {
 
         useCase.enrichFinishedMatches();
 
-        verifyNoInteractions(checkpoints, footballDataUk, playerStats);
+        verifyNoInteractions(checkpoints, footballDataUk);
     }
 }

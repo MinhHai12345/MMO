@@ -163,8 +163,9 @@ public class AppProperties {
         private Provider team = Provider.FOOTBALL_DATA;
         private Provider fixture = Provider.FOOTBALL_DATA;
         private Provider standings = Provider.FOOTBALL_DATA;
-        private Provider odds = Provider.API_FOOTBALL;
-        private Provider historicalStats = Provider.UNDER_STATS;
+        /** Upcoming odds and third-party historical statistics are disabled in Phase 1. */
+        private Provider odds;
+        private Provider historicalStats;
     }
 
     @Getter

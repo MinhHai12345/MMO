@@ -7,7 +7,6 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.service.FixtureIngestionService;
 import com.mmo.module.fb.ingest.service.FootballDataSyncService;
 import com.mmo.module.fb.ingest.service.LeagueIngestionService;
-import com.mmo.module.fb.ingest.service.OddsIngestionService;
 import com.mmo.module.fb.ingest.service.ProviderOverrides;
 import com.mmo.module.fb.ingest.service.StandingsIngestionService;
 import com.mmo.module.fb.ingest.service.SeasonIngestionService;
@@ -36,7 +35,6 @@ public class FootballDataSyncUseCase implements FootballDataSyncService {
     private final TeamIngestionService teamIngestionService;
     private final FixtureIngestionService fixtureIngestionService;
     private final StandingsIngestionService standingsIngestionService;
-    private final OddsIngestionService oddsIngestionService;
     private final FootballDataUkIngestionPort footballDataUkSyncService;
 
     @Override
@@ -59,6 +57,12 @@ public class FootballDataSyncUseCase implements FootballDataSyncService {
         Provider standings = selected.standings() == null ? defaults.getStandings() : selected.standings();
         Provider odds = oddsProviderOverride == null ? defaults.getOdds() : oddsProviderOverride;
 
+        requireFootballDataProvider(league, "league");
+        requireFootballDataProvider(season, "season");
+        requireFootballDataProvider(team, "team");
+        requireFootballDataProvider(fixture, "fixture");
+        requireFootballDataProvider(standings, "standings");
+
         log.info("Football data incremental sync started for the current active season only: "
                         + "leagueProvider={}, teamProvider={}, fixtureProvider={}, standingsProvider={}, oddsProvider={}",
                 league, team, fixture, standings, odds);
@@ -80,18 +84,26 @@ public class FootballDataSyncUseCase implements FootballDataSyncService {
         runStage("current-season-fixtures",
                 () -> fixtureIngestionService.syncFixturesForProvider(fixture, null, null));
 
-        if (standings == Provider.UNDER_STATS) {
-            log.info("Skipping standings: UNDER_STATS does not expose canonical standings");
-        } else {
-            runStage("standings", () -> standingsIngestionService.syncStandingsForProvider(standings));
-        }
+        runStage("standings", () -> standingsIngestionService.syncStandingsForProvider(standings));
 
-        runStage("upcoming-odds", () -> oddsIngestionService.syncUpcomingOdds(odds));
+        if (odds == null) {
+            log.info("Skipping upcoming odds: no upcoming-odds provider is active in Phase 1");
+        } else {
+            log.warn("Ignoring upcoming-odds provider override {}: upcoming odds ingestion is disabled in Phase 1", odds);
+        }
 
         // The initial 2014+ CSV backfill belongs to FootballDataBootstrapService.
         // The frequent sync job must fetch only the current Football-Data UK season.
         runStage("football-data-uk-current-season", footballDataUkSyncService::syncCurrentSeasonData);
         log.info("Football data sync completed");
+    }
+
+    private void requireFootballDataProvider(Provider provider, String resource) {
+        if (provider != Provider.FOOTBALL_DATA) {
+            throw new IllegalStateException("Phase 1 supports FOOTBALL_DATA for " + resource
+                    + " ingestion; " + provider + " is temporarily disabled. "
+                    + "Football-Data UK is orchestrated through its dedicated CSV workflow.");
+        }
     }
 
     private void runStage(String name, Runnable operation) {

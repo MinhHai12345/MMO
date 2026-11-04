@@ -43,7 +43,7 @@ public class FBCronjobInitial implements DataInitializer {
         createOrUpdateJob(FootballDataSyncJob.class,
                 "0 0 0/6 * * ?", "Incrementally synchronize canonical football data every 6 hours");
         createOrUpdateJob(MatchEnrichmentJob.class,
-                "0 30 0/12 * * ?", "Enrich finished matches with historical and player statistics every 12 hours");
+                "0 30 0/12 * * ?", "Enrich match statistics and historical odds from Football-Data UK every 12 hours");
 
         // Analytics and evaluation jobs own their own schedules. The content job never
         // triggers already-scheduled jobs, avoiding duplicate executions.

@@ -104,24 +104,23 @@ app:
       team: ${INGESTION_TEAM_PROVIDER:FOOTBALL_DATA}
       fixture: ${INGESTION_FIXTURE_PROVIDER:FOOTBALL_DATA}
       standings: ${INGESTION_STANDINGS_PROVIDER:FOOTBALL_DATA}
-      odds: ${INGESTION_ODDS_PROVIDER:API_FOOTBALL}
-      historical-stats: ${INGESTION_HISTORICAL_STATS_PROVIDER:UNDER_STATS}
+      # Upcoming odds and third-party historical statistics are disabled in Phase 1.
 
     provider-config:
       FOOTBALL_DATA:
-        enabled: ${FOOTBALL_DATA_ENABLED}
-        uri: ${FOOTBALL_DATA_URI}
-        api-key: ${FOOTBALL_DATA_API_KEY}
+        enabled: ${FOOTBALL_DATA_ENABLED:true}
+        uri: ${FOOTBALL_DATA_URI:https://api.football-data.org/v4}
+        api-key: ${FOOTBALL_DATA_API_KEY:}
 
       API_FOOTBALL:
-        enabled: ${API_FOOTBALL_ENABLED}
-        uri: ${API_FOOTBALL_URI}
-        api-key: ${API_FOOTBALL_API_KEY}
+        enabled: ${API_FOOTBALL_ENABLED:false}
+        uri: ${API_FOOTBALL_URI:}
+        api-key: ${API_FOOTBALL_API_KEY:}
 
       SOFA_SCORE:
-        enabled: ${SOFA_SCORE_ENABLED}
-        uri: ${SOFA_SCORE_URI}
-        web-url: ${SOFA_SCORE_WEB_URL}
+        enabled: ${SOFA_SCORE_ENABLED:false}
+        uri: ${SOFA_SCORE_URI:}
+        web-url: ${SOFA_SCORE_WEB_URL:}
         options:
           tournament-region: ${SOFA_SCORE_TOURNAMENT_REGION:EN}
           headless: ${SOFA_SCORE_HEADLESS:true}
@@ -129,9 +128,9 @@ app:
           captcha-wait-timeout-seconds: ${SOFA_SCORE_CAPTCHA_WAIT_TIMEOUT_SECONDS:180}
 
       UNDER_STATS:
-        enabled: ${UNDER_STATS_ENABLED}
-        uri: ${UNDER_STAT_URI}
-        web-url: ${UNDER_STAT_WEB_URL}
+        enabled: ${UNDER_STATS_ENABLED:false}
+        uri: ${UNDER_STAT_URI:}
+        web-url: ${UNDER_STAT_WEB_URL:}
 
       FOOTBALL_DATA_UK:
         enabled: ${FOOTBALL_DATA_UK_ENABLED:true}

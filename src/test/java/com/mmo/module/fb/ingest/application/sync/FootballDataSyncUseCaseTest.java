@@ -44,7 +44,7 @@ class FootballDataSyncUseCaseTest {
         uk = mock(FootballDataUkIngestionPort.class);
         properties = new AppProperties();
         useCase = new FootballDataSyncUseCase(lock, properties,
-                leagues, seasons, teams, fixtures, standings, odds, uk);
+                leagues, seasons, teams, fixtures, standings, uk);
     }
 
     @Test
@@ -57,24 +57,32 @@ class FootballDataSyncUseCaseTest {
         verify(teams).syncTeamsForProvider(any());
         verify(fixtures).syncFixturesForProvider(any(), isNull(), isNull());
         verify(standings).syncStandingsForProvider(any());
-        verify(odds).syncUpcomingOdds(any());
+        verifyNoInteractions(odds);
         verify(uk).syncCurrentSeasonData();
     }
 
     @Test
-    void refreshesSeasonMappingsForEverySelectedCoreProvider() {
-        properties.getIngestion().getProviders().setLeague(com.mmo.module.fb.ingest.enums.Provider.SOFA_SCORE);
-        properties.getIngestion().getProviders().setSeason(com.mmo.module.fb.ingest.enums.Provider.UNDER_STATS);
-        properties.getIngestion().getProviders().setTeam(com.mmo.module.fb.ingest.enums.Provider.API_FOOTBALL);
-        properties.getIngestion().getProviders().setFixture(com.mmo.module.fb.ingest.enums.Provider.SOFA_SCORE);
-        properties.getIngestion().getProviders().setStandings(com.mmo.module.fb.ingest.enums.Provider.FOOTBALL_DATA);
+    void rejectsTemporarilyDisabledProvidersForCoreApiResources() {
+        properties.getIngestion().getProviders().setFixture(
+                com.mmo.module.fb.ingest.enums.Provider.SOFA_SCORE);
 
-        useCase.sync(null, null);
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> useCase.sync(null, null));
 
-        verify(seasons).syncSeasonsForProvider(com.mmo.module.fb.ingest.enums.Provider.SOFA_SCORE);
-        verify(seasons).syncSeasonsForProvider(com.mmo.module.fb.ingest.enums.Provider.UNDER_STATS);
-        verify(seasons).syncSeasonsForProvider(com.mmo.module.fb.ingest.enums.Provider.API_FOOTBALL);
-        verify(seasons).syncSeasonsForProvider(com.mmo.module.fb.ingest.enums.Provider.FOOTBALL_DATA);
+        verifyNoInteractions(leagues, seasons, teams, fixtures, standings, odds, uk);
+    }
+
+    @Test
+    void neverRunsUpcomingOddsDuringPhaseOneEvenWhenAnOverrideIsSupplied() {
+        AppProperties.ProviderConfig enabledButOutOfScope = new AppProperties.ProviderConfig();
+        enabledButOutOfScope.setEnabled(true);
+        properties.getIngestion().getProviderConfig().put(
+                com.mmo.module.fb.ingest.enums.Provider.API_FOOTBALL, enabledButOutOfScope);
+
+        useCase.sync(null, com.mmo.module.fb.ingest.enums.Provider.API_FOOTBALL);
+
+        verifyNoInteractions(odds);
+        verify(uk).syncCurrentSeasonData();
     }
 
     @Test

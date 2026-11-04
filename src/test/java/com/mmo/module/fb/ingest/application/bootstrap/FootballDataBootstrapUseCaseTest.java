@@ -43,17 +43,17 @@ class FootballDataBootstrapUseCaseTest {
         }).when(lock).execute(anyString(), any(Runnable.class));
 
         properties = new AppProperties();
-        AppProperties.ProviderConfig apiConfig = new AppProperties.ProviderConfig();
-        apiConfig.setEnabled(true);
-        apiConfig.setApiKey("test-api-key");
-        properties.getIngestion().getProviderConfig().put(Provider.API_FOOTBALL, apiConfig);
+        AppProperties.ProviderConfig footballDataConfig = new AppProperties.ProviderConfig();
+        footballDataConfig.setEnabled(true);
+        footballDataConfig.setApiKey("test-api-key");
+        properties.getIngestion().getProviderConfig().put(Provider.FOOTBALL_DATA, footballDataConfig);
         AppProperties.ProviderConfig ukConfig = new AppProperties.ProviderConfig();
         ukConfig.setEnabled(false);
         properties.getIngestion().getProviderConfig().put(Provider.FOOTBALL_DATA_UK, ukConfig);
-        properties.getIngestion().getProviders().setLeague(Provider.API_FOOTBALL);
-        properties.getIngestion().getProviders().setSeason(Provider.API_FOOTBALL);
-        properties.getIngestion().getProviders().setTeam(Provider.API_FOOTBALL);
-        properties.getIngestion().getProviders().setFixture(Provider.API_FOOTBALL);
+        properties.getIngestion().getProviders().setLeague(Provider.FOOTBALL_DATA);
+        properties.getIngestion().getProviders().setSeason(Provider.FOOTBALL_DATA);
+        properties.getIngestion().getProviders().setTeam(Provider.FOOTBALL_DATA);
+        properties.getIngestion().getProviders().setFixture(Provider.FOOTBALL_DATA);
 
         checkpoints = mock(ProviderCheckpointStore.class);
         footballDataUk = mock(FootballDataUkIngestionPort.class);
@@ -73,55 +73,46 @@ class FootballDataBootstrapUseCaseTest {
     @Test
     void recordsTeamCheckpointButNotFixtureCheckpointWhenFixtureBackfillFails() {
         doThrow(new IllegalStateException("fixture provider unavailable"))
-                .when(fixtures).syncAllSeasonsForProvider(Provider.API_FOOTBALL, null, null);
+                .when(fixtures).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA, null, null);
 
         assertThrows(IllegalStateException.class, () -> service.syncCoreData(
-                new ProviderOverrides(Provider.API_FOOTBALL, Provider.API_FOOTBALL,
-                        Provider.API_FOOTBALL, Provider.API_FOOTBALL, null)));
+                new ProviderOverrides(Provider.FOOTBALL_DATA, Provider.FOOTBALL_DATA,
+                        Provider.FOOTBALL_DATA, Provider.FOOTBALL_DATA, null)));
 
-        verify(checkpoints).markCompleted(Provider.API_FOOTBALL, "CORE_BACKFILL_TEAMS");
-        verify(checkpoints, never()).markCompleted(Provider.API_FOOTBALL, "CORE_BACKFILL_FIXTURES");
-        verify(teams).syncAllSeasonsForProvider(Provider.API_FOOTBALL);
-        verify(fixtures).syncAllSeasonsForProvider(Provider.API_FOOTBALL, null, null);
+        verify(checkpoints).markCompleted(Provider.FOOTBALL_DATA, "CORE_BACKFILL_TEAMS");
+        verify(checkpoints, never()).markCompleted(Provider.FOOTBALL_DATA, "CORE_BACKFILL_FIXTURES");
+        verify(teams).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA);
+        verify(fixtures).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA, null, null);
         verify(footballDataUk, never()).syncInitialData();
     }
 
     @Test
     void completedResourceCheckpointsMakeBootstrapNoOp() {
-        when(checkpoints.isCompleted(Provider.API_FOOTBALL, "CORE_BACKFILL_TEAMS")).thenReturn(true);
-        when(checkpoints.isCompleted(Provider.API_FOOTBALL, "CORE_BACKFILL_FIXTURES")).thenReturn(true);
+        when(checkpoints.isCompleted(Provider.FOOTBALL_DATA, "CORE_BACKFILL_TEAMS")).thenReturn(true);
+        when(checkpoints.isCompleted(Provider.FOOTBALL_DATA, "CORE_BACKFILL_FIXTURES")).thenReturn(true);
 
-        service.syncCoreData(new ProviderOverrides(Provider.API_FOOTBALL, Provider.API_FOOTBALL,
-                Provider.API_FOOTBALL, Provider.API_FOOTBALL, null));
+        service.syncCoreData(new ProviderOverrides(Provider.FOOTBALL_DATA, Provider.FOOTBALL_DATA,
+                Provider.FOOTBALL_DATA, Provider.FOOTBALL_DATA, null));
 
         verifyNoInteractions(leagues, seasons, teams, fixtures, footballDataUk);
     }
 
     @Test
-    void createsSeasonMappingsForEverySelectedResourceProvider() {
-        AppProperties.ProviderConfig sofaConfig = new AppProperties.ProviderConfig();
-        sofaConfig.setEnabled(true);
-        AppProperties.ProviderConfig understatConfig = new AppProperties.ProviderConfig();
-        understatConfig.setEnabled(true);
-        properties.getIngestion().getProviderConfig().put(Provider.SOFA_SCORE, sofaConfig);
-        properties.getIngestion().getProviderConfig().put(Provider.UNDER_STATS, understatConfig);
+    void rejectsDisabledThirdPartyProvidersDuringBootstrap() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> service.syncCoreData(new ProviderOverrides(
+                        Provider.SOFA_SCORE, Provider.UNDER_STATS,
+                        Provider.SOFA_SCORE, Provider.UNDER_STATS, null)));
 
-        service.syncCoreData(new ProviderOverrides(
-                Provider.SOFA_SCORE, Provider.UNDER_STATS,
-                Provider.SOFA_SCORE, Provider.UNDER_STATS, null));
-
-        verify(seasons).syncSeasonsForProvider(Provider.SOFA_SCORE);
-        verify(seasons).syncSeasonsForProvider(Provider.UNDER_STATS);
-        verify(teams).syncAllSeasonsForProvider(Provider.SOFA_SCORE);
-        verify(fixtures).syncAllSeasonsForProvider(Provider.UNDER_STATS, null, null);
+        verifyNoInteractions(leagues, seasons, teams, fixtures, footballDataUk);
     }
 
     @Test
     void doesNotStartWorkflowWhenGlobalLockIsBusy() {
         doReturn(false).when(lock).execute(eq(IngestionDistributedLock.GLOBAL_INGEST_LOCK), any(Runnable.class));
 
-        service.syncCoreData(new ProviderOverrides(Provider.API_FOOTBALL, Provider.API_FOOTBALL,
-                Provider.API_FOOTBALL, Provider.API_FOOTBALL, null));
+        service.syncCoreData(new ProviderOverrides(Provider.FOOTBALL_DATA, Provider.FOOTBALL_DATA,
+                Provider.FOOTBALL_DATA, Provider.FOOTBALL_DATA, null));
 
         verifyNoInteractions(leagues, seasons, teams, fixtures, footballDataUk);
     }
