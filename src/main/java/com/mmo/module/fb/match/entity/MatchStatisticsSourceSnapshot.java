@@ -52,4 +52,18 @@ public class MatchStatisticsSourceSnapshot extends AbstractEntity {
 
     @Column(name = "fetched_at", nullable = false)
     private Instant fetchedAt;
+
+    @Version
+    @Column(name = "version")
+    private Long version;
+
+    @PrePersist
+    @PreUpdate
+    private void validateSnapshot() {
+        if (match == null || team == null || provider == null
+                || snapshotJson == null || snapshotJson.isBlank()) {
+            throw new IllegalStateException("Match statistics snapshot identity and payload are required");
+        }
+        if (fetchedAt == null) fetchedAt = Instant.now();
+    }
 }
