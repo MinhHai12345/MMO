@@ -2,7 +2,6 @@ package com.mmo.module.fb.ingest.application.enrichment;
 
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
-import com.mmo.module.fb.ingest.application.port.out.PlayerStatisticsIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.service.MatchEnrichmentService;
@@ -26,7 +25,6 @@ public class MatchEnrichmentUseCase implements MatchEnrichmentService {
     private final IngestionDistributedLock distributedLock;
     private final ProviderCheckpointStore checkpointStore;
     private final FootballDataUkIngestionPort footballDataUkSyncService;
-    private final PlayerStatisticsIngestionPort playerStatisticsIngestionService;
 
     @Override
     public void enrichFinishedMatches() {
@@ -48,9 +46,9 @@ public class MatchEnrichmentUseCase implements MatchEnrichmentService {
         }
 
         runStage("football-data-uk-match-enrichment", this::syncFootballDataUkEnrichment);
-        runStage("player-statistics", playerStatisticsIngestionService::syncFinishedMatchPlayerStatistics);
 
-        log.info("Match enrichment completed: matchDataProvider={}", Provider.FOOTBALL_DATA_UK);
+        log.info("Match enrichment completed: matchDataProvider={}; SofaScore player statistics are disabled in Phase 1",
+                Provider.FOOTBALL_DATA_UK);
     }
 
     /**
