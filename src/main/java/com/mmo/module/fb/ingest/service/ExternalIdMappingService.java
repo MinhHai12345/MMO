@@ -4,6 +4,7 @@ import com.mmo.module.fb.league.entity.League;
 import com.mmo.module.fb.league.entity.LeagueExternalId;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchExternalId;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.player.entity.Player;
 import com.mmo.module.fb.player.entity.PlayerExternalId;
 import com.mmo.module.fb.league.entity.Season;
@@ -128,7 +129,7 @@ public class ExternalIdMappingService {
         requireIdentity(provider, externalId);
         return register(matchExternalIds.findByMatchIdAndProvider(match.getId(), provider),
                 matchExternalIds.findByProviderAndExternalId(provider, externalId.trim()),
-                () -> MatchExternalId.builder().match(match).provider(provider)
+                () -> MatchExternalId.builder().match(match).provider(MatchProvider.from(provider))
                         .externalId(externalId.trim()).build(),
                 MatchExternalId::getMatch, MatchExternalId::getExternalId, match, "match", provider, externalId);
     }
