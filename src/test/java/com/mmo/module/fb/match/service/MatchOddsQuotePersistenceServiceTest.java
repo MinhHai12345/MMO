@@ -1,6 +1,6 @@
 package com.mmo.module.fb.match.service;
 
-import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.match.entity.Bookmaker;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchOddsQuote;
@@ -33,7 +33,7 @@ class MatchOddsQuotePersistenceServiceTest {
         bookmaker.setId(22L);
 
         MatchOddsQuotePersistenceService service = new MatchOddsQuotePersistenceService(quotes, history);
-        service.upsert(match, bookmaker, Provider.FOOTBALL_DATA_UK,
+        service.upsert(match, bookmaker, MatchProvider.FOOTBALL_DATA_UK,
                 "OU25_OPEN", "Over 2.5", new BigDecimal("2.5"), new BigDecimal("1.91"));
 
         var captor = org.mockito.ArgumentCaptor.forClass(MatchOddsQuote.class);
@@ -67,7 +67,7 @@ class MatchOddsQuotePersistenceServiceTest {
         bookmaker.setId(2L);
 
         new MatchOddsQuotePersistenceService(quotes, history).upsert(
-                match, bookmaker, Provider.API_FOOTBALL,
+                match, bookmaker, MatchProvider.API_FOOTBALL,
                 "Match Winner", "Home", null, new BigDecimal("2.100"));
 
         verify(quotes).save(existing);
