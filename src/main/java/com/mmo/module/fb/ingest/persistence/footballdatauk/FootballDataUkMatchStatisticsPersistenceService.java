@@ -4,7 +4,7 @@ import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchAdvancedStats;
 import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
 import com.mmo.module.fb.match.service.MatchStatisticsSnapshotPersistenceService;
-import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.team.entity.Team;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -65,7 +65,7 @@ public class FootballDataUkMatchStatisticsPersistenceService {
             return false;
         }
 
-        snapshotPersistenceService.upsert(match, team, Provider.FOOTBALL_DATA_UK, row);
+        snapshotPersistenceService.upsert(match, team, MatchProvider.FOOTBALL_DATA_UK, row);
 
         MatchAdvancedStats stats = statsRepository.findByMatchIdAndTeamId(match.getId(), team.getId())
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
