@@ -81,9 +81,9 @@ public class FBCronjobInitial implements DataInitializer {
 
         pauseLegacyJob("UnderStatCatalogSyncJob");
         pauseLegacyJob("MatchStatusTrackerJob");
-        pauseRetiredJob("CrawlerHealthCheckJob");
-        pauseRetiredJob("DataCleanupJob");
-        pauseRetiredJob("MatchLineupOddsUpdateJob");
+        pauseLegacyJob("CrawlerHealthCheckJob");
+        pauseLegacyJob("DataCleanupJob");
+        pauseLegacyJob("MatchLineupOddsUpdateJob");
 
         log.info("Football CronJob initialization completed.");
     }
