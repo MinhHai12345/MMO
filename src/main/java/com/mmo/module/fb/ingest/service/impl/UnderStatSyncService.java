@@ -19,6 +19,7 @@ import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
 import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.match.repository.MatchRepository;
 import com.mmo.module.fb.match.service.MatchStatisticsSnapshotPersistenceService;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.team.entity.TeamExternalId;
 import com.mmo.module.fb.team.repository.TeamExternalIdRepository;
@@ -250,7 +251,7 @@ public class UnderStatSyncService implements HistoricalStatisticsIngestionPort {
     }
 
     private void persistTeamStats(Match match, Team team, ProviderTeamMatchStats source) {
-        snapshotPersistenceService.upsert(match, team, PROVIDER, source);
+        snapshotPersistenceService.upsert(match, team, MatchProvider.from(PROVIDER), source);
         MatchAdvancedStats stats = matchAdvancedStatsRepository
                 .findByMatchIdAndTeamId(match.getId(), team.getId())
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
