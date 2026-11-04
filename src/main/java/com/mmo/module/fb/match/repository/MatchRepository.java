@@ -6,6 +6,7 @@ import com.mmo.module.fb.match.enums.MatchEnrichmentStatus;
 import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.match.enums.MatchStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -78,7 +79,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             @Param("status") MatchStatus status,
             @Param("startTime") Instant startTime,
             @Param("endTime") Instant endTime,
-            @Param("provider") Provider provider,
+            @Param("provider") MatchProvider provider,
             @Param("resource") MatchEnrichmentResource resource,
             @Param("succeeded") MatchEnrichmentStatus succeeded,
             @Param("inProgress") MatchEnrichmentStatus inProgress,
@@ -425,5 +426,30 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             """)
     List<Match> findFinishedScoredMatchesForSeason(@Param("seasonId") Long seasonId,
                                                    @Param("status") MatchStatus status);
+
+    /** Compatibility overload for ingestion callers; the JPQL query itself stays domain-owned. */
+    default List<Match> findUpcomingWithProviderMapping(
+            MatchStatus status, Instant startTime, Instant endTime, Provider provider,
+            MatchEnrichmentResource resource, MatchEnrichmentStatus succeeded,
+            MatchEnrichmentStatus inProgress, Instant retryBefore, Pageable pageable) {
+        return findUpcomingWithProviderMapping(status, startTime, endTime, MatchProvider.from(provider),
+                resource, succeeded, inProgress, retryBefore, pageable);
+    }
+
+    default List<Match> findFinishedMatchesMissingAdvancedStats(
+            MatchStatus status, Provider provider, MatchEnrichmentResource resource,
+            MatchEnrichmentStatus succeeded, MatchEnrichmentStatus inProgress,
+            Instant retryBefore, Pageable pageable) {
+        return findFinishedMatchesMissingAdvancedStats(status, MatchProvider.from(provider), resource,
+                succeeded, inProgress, retryBefore, pageable);
+    }
+
+    default List<Match> findFinishedMatchesMissingPlayerStatistics(
+            MatchStatus finished, Provider provider, MatchEnrichmentResource resource,
+            MatchEnrichmentStatus succeeded, MatchEnrichmentStatus inProgress,
+            Instant retryBefore, Pageable pageable) {
+        return findFinishedMatchesMissingPlayerStatistics(finished, MatchProvider.from(provider), resource,
+                succeeded, inProgress, retryBefore, pageable);
+    }
 
 }
