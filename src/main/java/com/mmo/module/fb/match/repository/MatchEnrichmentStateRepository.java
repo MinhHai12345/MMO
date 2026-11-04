@@ -4,6 +4,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.match.entity.MatchEnrichmentState;
 import com.mmo.module.fb.match.enums.MatchEnrichmentResource;
 import com.mmo.module.fb.match.enums.MatchEnrichmentStatus;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,10 +16,10 @@ import java.util.Optional;
 public interface MatchEnrichmentStateRepository extends JpaRepository<MatchEnrichmentState, Long> {
 
     Optional<MatchEnrichmentState> findByMatchIdAndProviderAndResource(
-            Long matchId, Provider provider, MatchEnrichmentResource resource);
+            Long matchId, MatchProvider provider, MatchEnrichmentResource resource);
 
     List<MatchEnrichmentState> findByProviderAndResourceAndStatus(
-            Provider provider, MatchEnrichmentResource resource, MatchEnrichmentStatus status);
+            MatchProvider provider, MatchEnrichmentResource resource, MatchEnrichmentStatus status);
 
     @Query("""
             SELECT state FROM MatchEnrichmentState state
@@ -34,10 +35,26 @@ public interface MatchEnrichmentStateRepository extends JpaRepository<MatchEnric
             ORDER BY state.nextRetryAt ASC, state.lastAttemptAt ASC, state.id ASC
             """)
     List<MatchEnrichmentState> findDue(
-            @Param("provider") Provider provider,
+            @Param("provider") MatchProvider provider,
             @Param("resource") MatchEnrichmentResource resource,
             @Param("now") Instant now,
             @Param("inProgress") MatchEnrichmentStatus inProgress,
             @Param("staleBefore") Instant staleBefore,
             @Param("succeeded") MatchEnrichmentStatus succeeded);
+
+    default Optional<MatchEnrichmentState> findByMatchIdAndProviderAndResource(
+            Long matchId, Provider provider, MatchEnrichmentResource resource) {
+        return findByMatchIdAndProviderAndResource(matchId, MatchProvider.from(provider), resource);
+    }
+
+    default List<MatchEnrichmentState> findByProviderAndResourceAndStatus(
+            Provider provider, MatchEnrichmentResource resource, MatchEnrichmentStatus status) {
+        return findByProviderAndResourceAndStatus(MatchProvider.from(provider), resource, status);
+    }
+
+    default List<MatchEnrichmentState> findDue(
+            Provider provider, MatchEnrichmentResource resource, Instant now,
+            MatchEnrichmentStatus inProgress, Instant staleBefore, MatchEnrichmentStatus succeeded) {
+        return findDue(MatchProvider.from(provider), resource, now, inProgress, staleBefore, succeeded);
+    }
 }
