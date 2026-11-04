@@ -1,6 +1,6 @@
 package com.mmo.module.fb.match.service;
 
-import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.match.entity.Bookmaker;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchOddsQuote;
@@ -31,7 +31,7 @@ public class MatchOddsQuotePersistenceService {
     private final OddsHistoryRepository historyRepository;
 
     @Transactional
-    public void upsert(Match match, Bookmaker bookmaker, Provider provider,
+    public void upsert(Match match, Bookmaker bookmaker, MatchProvider provider,
                        String market, String outcome, BigDecimal explicitLine, BigDecimal odd) {
         if (match == null || match.getId() == null || bookmaker == null || bookmaker.getId() == null
                 || provider == null || !StringUtils.hasText(market) || !StringUtils.hasText(outcome)
@@ -49,7 +49,7 @@ public class MatchOddsQuotePersistenceService {
                 .findByMatchIdAndBookmakerIdAndProviderAndMarketTypeAndMarketPeriodAndLineAndOutcome(
                         match.getId(), bookmaker.getId(), provider, type, period, line, normalizedOutcome)
                 .orElseGet(() -> MatchOddsQuote.builder()
-                        .match(match).bookmaker(bookmaker).provider(MatchProvider.from(provider))
+                        .match(match).bookmaker(bookmaker).provider(provider)
                         .marketType(type).marketPeriod(period).line(line)
                         .outcome(normalizedOutcome).build());
 
