@@ -61,8 +61,7 @@ class FootballDataSyncUseCaseTest {
 
     @Test
     void skipsAllStagesWhenGlobalLockIsBusy() {
-        when(lock.execute(eq(IngestionDistributedLock.GLOBAL_INGEST_LOCK), any(Runnable.class)))
-                .thenReturn(false);
+        doReturn(false).when(lock).execute(eq(IngestionDistributedLock.GLOBAL_INGEST_LOCK), any(Runnable.class));
 
         useCase.sync(null, null);
 
