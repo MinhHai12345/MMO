@@ -8,6 +8,8 @@ canonical match model and persist provider-specific provenance separately.
 
 ## Entity boundaries
 
+`MatchProvider` is owned by the Match domain. Ingestion adapters translate their provider enum by name at the module boundary; Match entities and repositories do not import the ingestion module.
+
 ### Canonical fixture
 
 - `Match` is the canonical fixture: season, home/away teams, kickoff, venue/referee,
