@@ -12,6 +12,8 @@ import com.mmo.module.fb.match.enums.MatchStatus;
 import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
 import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.match.repository.MatchRepository;
+import com.mmo.module.fb.match.enums.MatchEnrichmentResource;
+import com.mmo.module.fb.match.service.MatchEnrichmentStateService;
 import com.mmo.module.fb.match.service.MatchStatisticsSnapshotPersistenceService;
 import com.mmo.module.fb.team.entity.Team;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +49,7 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final MatchAdvancedStatsRepository matchAdvancedStatsRepository;
     private final MatchStatisticsSnapshotPersistenceService snapshotPersistenceService;
+    private final MatchEnrichmentStateService enrichmentStateService;
 
     public void storeMatchStatistics() {
         List<Match> targetMatches = matchRepository.findFinishedMatchesMissingAdvancedStats(
@@ -63,11 +66,13 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
         int skipped = 0;
         int failed = 0;
         for (Match match : targetMatches) {
+            enrichmentStateService.start(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
             try {
                 Optional<MatchExternalId> mapping = matchExternalIdRepository
                         .findByMatchIdAndProvider(match.getId(), Provider.SOFA_SCORE);
                 if (mapping.isEmpty()) {
                     markAttempt(match);
+                    enrichmentStateService.empty(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
                     skipped++;
                     continue;
                 }
@@ -76,14 +81,17 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
                         provider.fetchMatchStatistics(mapping.get().getExternalId());
                 if (snapshot.isEmpty()) {
                     markAttempt(match);
+                    enrichmentStateService.empty(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
                     skipped++;
                     continue;
                 }
 
                 persistMatchStatistics(match, snapshot.get());
+                enrichmentStateService.succeed(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
                 persisted++;
             } catch (RuntimeException exception) {
                 markAttempt(match);
+                enrichmentStateService.failed(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS, exception);
                 failed++;
                 log.warn("SofaScore statistics sync failed for matchId={}: {}",
                         match.getId(), exception.getMessage(), exception);
