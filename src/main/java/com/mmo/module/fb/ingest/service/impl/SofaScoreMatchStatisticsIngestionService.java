@@ -13,6 +13,7 @@ import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
 import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.match.repository.MatchRepository;
 import com.mmo.module.fb.match.enums.MatchEnrichmentResource;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.match.service.MatchEnrichmentStateService;
 import com.mmo.module.fb.match.service.MatchStatisticsSnapshotPersistenceService;
 import com.mmo.module.fb.team.entity.Team;
@@ -68,12 +69,12 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
         int skipped = 0;
         int failed = 0;
         for (Match match : targetMatches) {
-            enrichmentStateService.start(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
+            enrichmentStateService.start(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
             try {
                 Optional<MatchExternalId> mapping = matchExternalIdRepository
                         .findByMatchIdAndProvider(match.getId(), Provider.SOFA_SCORE);
                 if (mapping.isEmpty()) {
-                    enrichmentStateService.skipped(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
+                    enrichmentStateService.skipped(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
                     skipped++;
                     continue;
                 }
@@ -81,7 +82,7 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
                 Optional<ProviderMatchAdvancedStatistics> snapshot =
                         provider.fetchMatchStatistics(mapping.get().getExternalId());
                 if (snapshot.isEmpty()) {
-                        enrichmentStateService.empty(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
+                        enrichmentStateService.empty(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
                     skipped++;
                     continue;
                 }
@@ -94,10 +95,10 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
                 }
 
                 persistMatchStatistics(match, providerSnapshot);
-                enrichmentStateService.succeed(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
+                enrichmentStateService.succeed(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
                 persisted++;
             } catch (RuntimeException exception) {
-                enrichmentStateService.failed(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS, exception);
+                enrichmentStateService.failed(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS, exception);
                 failed++;
                 log.warn("SofaScore statistics sync failed for matchId={}: {}",
                         match.getId(), exception.getMessage(), exception);
@@ -143,7 +144,7 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
             Match match, Team team, Map<String, BigDecimal> values, Instant syncedAt) {
         if (team == null) return null;
 
-        snapshotPersistenceService.upsert(match, team, Provider.SOFA_SCORE, values);
+        snapshotPersistenceService.upsert(match, team, MatchProvider.SOFA_SCORE, values);
 
         MatchAdvancedStats stats = matchAdvancedStatsRepository
                 .findByMatchIdAndTeamId(match.getId(), team.getId())
