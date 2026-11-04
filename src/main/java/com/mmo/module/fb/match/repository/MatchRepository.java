@@ -49,19 +49,44 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             MatchStatus status, Instant startTime, Instant endTime);
 
     @Query("""
-            SELECT DISTINCT m FROM Match m
+            SELECT m FROM Match m
             JOIN m.externalIds externalId
+            LEFT JOIN MatchEnrichmentState state
+              ON state.match = m
+             AND state.provider = :provider
+             AND state.resource = :resource
             WHERE m.status = :status
               AND m.matchTime BETWEEN :startTime AND :endTime
               AND externalId.provider = :provider
-            ORDER BY m.lastOddsSyncedAt ASC, m.matchTime ASC
+              AND (
+                    state.id IS NULL
+                    OR (
+                        state.status <> :succeeded
+                        AND (
+                            (
+                                state.status <> :inProgress
+                                AND (state.nextRetryAt IS NULL OR state.nextRetryAt <= CURRENT_TIMESTAMP)
+                            )
+                            OR (
+                                state.status = :inProgress
+                                AND (state.lastAttemptAt IS NULL OR state.lastAttemptAt < :retryBefore)
+                            )
+                        )
+                    )
+              )
+            ORDER BY state.lastAttemptAt ASC, m.matchTime ASC, m.id ASC
             """)
-    List<Match> findUpcomingWithProviderMapping(@Param("status") MatchStatus status,
-                                                @Param("startTime") Instant startTime,
-                                                @Param("endTime") Instant endTime,
-                                                @Param("provider") Provider provider,
-                                                Pageable pageable);
-    
+    List<Match> findUpcomingWithProviderMapping(
+            @Param("status") MatchStatus status,
+            @Param("startTime") Instant startTime,
+            @Param("endTime") Instant endTime,
+            @Param("provider") Provider provider,
+            @Param("resource") MatchEnrichmentResource resource,
+            @Param("succeeded") MatchEnrichmentStatus succeeded,
+            @Param("inProgress") MatchEnrichmentStatus inProgress,
+            @Param("retryBefore") Instant retryBefore,
+            Pageable pageable);
+
     @Query("""
             SELECT m FROM Match m
             JOIN FETCH m.season season
