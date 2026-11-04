@@ -70,8 +70,13 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         coreProviders.forEach(provider -> validateProvider(provider));
         if (standingsProvider != Provider.UNDER_STATS) validateProvider(standingsProvider);
 
-        boolean teamsBackfillRequired = !isResourceBackfillCompleted(teamProvider, TEAM_BACKFILL_CHECKPOINT);
-        boolean fixturesBackfillRequired = !isResourceBackfillCompleted(fixtureProvider, FIXTURE_BACKFILL_CHECKPOINT);
+        // A legacy provider-level checkpoint is safe to reuse only when the old and new
+        // configurations have one unambiguous Core provider for every resource.
+        boolean legacyCheckpointCompatible = coreProviders.size() == 1;
+        boolean teamsBackfillRequired = !isResourceBackfillCompleted(
+                teamProvider, TEAM_BACKFILL_CHECKPOINT, legacyCheckpointCompatible);
+        boolean fixturesBackfillRequired = !isResourceBackfillCompleted(
+                fixtureProvider, FIXTURE_BACKFILL_CHECKPOINT, legacyCheckpointCompatible);
         boolean csvProviderEnabled = isProviderEnabled(Provider.FOOTBALL_DATA_UK);
         boolean csvBackfillCompleted = !csvProviderEnabled
                 || isInitialBackfillCompleted(Provider.FOOTBALL_DATA_UK);
@@ -193,11 +198,16 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         return config != null && config.isEnabled();
     }
 
-    private boolean isResourceBackfillCompleted(Provider provider, String checkpointKey) {
-        // Backward compatibility: the legacy provider-level checkpoint was written only
-        // after both historical team and fixture stages had completed successfully.
-        return checkpointRepository.existsByProviderAndCheckpointKey(provider, checkpointKey)
-                || checkpointRepository.existsByProviderAndCheckpointKey(provider, INITIAL_CORE_CHECKPOINT);
+    private boolean isResourceBackfillCompleted(
+            Provider provider, String checkpointKey, boolean legacyCheckpointCompatible) {
+        boolean resourceCheckpoint = checkpointRepository
+                .existsByProviderAndCheckpointKey(provider, checkpointKey);
+        if (resourceCheckpoint || !legacyCheckpointCompatible) return resourceCheckpoint;
+
+        // The legacy provider-level checkpoint is safe only for the old default topology,
+        // where one provider supplied every Core resource and both historical stages ran
+        // before the checkpoint was written.
+        return checkpointRepository.existsByProviderAndCheckpointKey(provider, INITIAL_CORE_CHECKPOINT);
     }
 
     private void completeResourceBackfill(Provider provider, String checkpointKey) {
