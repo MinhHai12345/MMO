@@ -67,7 +67,7 @@ class MatchOddsQuotePersistenceServiceTest {
         bookmaker.setId(2L);
 
         new MatchOddsQuotePersistenceService(quotes, history).upsert(
-                match, bookmaker, MatchMatchProvider.API_FOOTBALL,
+                match, bookmaker, MatchProvider.API_FOOTBALL,
                 "Match Winner", "Home", null, new BigDecimal("2.100"));
 
         verify(quotes).save(existing);
