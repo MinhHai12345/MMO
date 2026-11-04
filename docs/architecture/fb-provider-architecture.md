@@ -30,10 +30,14 @@ The shared `ProviderRegistry` indexes implementations by `Provider` and resource
 - `StandingsProvider`
 - `OddsProvider`
 - `HistoricalStatsProvider`
+- `MatchStatisticsProvider`
 
 Provider implementations must return provider-neutral records. Resource ingestion services resolve canonical league/team/season mappings and delegate persistence to persistence services.
 
 ## Placement rules
+
+- `SofaScoreMatchStatisticsProvider` implements `MatchStatisticsProvider`; its mapper converts SofaScore transport DTOs into `ProviderMatchAdvancedStatistics`. The ingestion service consumes only that provider-neutral model.
+- `FootballDataUkMatchDataProvider` owns CSV URL construction, download and parsing; `FootballDataUkSyncService` owns canonical identity resolution and import orchestration.
 
 - `UnderStatSyncService` is an application ingestion service: it coordinates Understat data with canonical MMO matches and persists enrichment. Understat HTTP/DTO/mapper code stays in `provider.understats`.
 - `SofaScoreMatchStatisticsIngestionService` is an application ingestion service because it selects canonical matches, resolves external IDs and persists match statistics. Browser client and transport DTOs stay in `provider.sofascore`.
