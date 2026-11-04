@@ -1,7 +1,6 @@
 package com.mmo.module.fb.match.repository;
 
 import com.mmo.module.fb.match.entity.Match;
-import com.mmo.module.fb.match.entity.MatchEnrichmentState;
 import com.mmo.module.fb.match.enums.MatchEnrichmentResource;
 import com.mmo.module.fb.match.enums.MatchEnrichmentStatus;
 import com.mmo.module.fb.team.entity.Team;
@@ -51,9 +50,8 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     @Query("""
             SELECT m FROM Match m
             JOIN m.externalIds externalId
-            LEFT JOIN MatchEnrichmentState state
-              ON state.match = m
-             AND state.provider = :provider
+            LEFT JOIN m.enrichmentStates state
+              ON state.provider = :provider
              AND state.resource = :resource
             WHERE m.status = :status
               AND m.matchTime BETWEEN :startTime AND :endTime
