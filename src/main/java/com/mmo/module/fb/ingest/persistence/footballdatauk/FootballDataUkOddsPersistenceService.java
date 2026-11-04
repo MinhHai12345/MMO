@@ -156,7 +156,7 @@ public class FootballDataUkOddsPersistenceService {
         // Keep the normalized quote store authoritative for analytics while retaining
         // the legacy grouped row for existing API consumers.
         if (market.startsWith("1X2")) {
-            quotePersistenceService.upsert(match, bookmaker, MatchMatchProvider.FOOTBALL_DATA_UK,
+            quotePersistenceService.upsert(match, bookmaker, MatchProvider.FOOTBALL_DATA_UK,
                     market, "HOME", null, home);
             quotePersistenceService.upsert(match, bookmaker, MatchProvider.FOOTBALL_DATA_UK,
                     market, "DRAW", null, draw);
