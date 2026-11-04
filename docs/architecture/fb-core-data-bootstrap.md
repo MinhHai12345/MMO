@@ -28,16 +28,15 @@ The free-tier mapper exposes 2023-current seasons only; the CSV importer creates
 
 ## Subsequent bootstrap and scheduled sync
 
-After the initial checkpoint exists:
+The jobs have strict ownership:
 
-- Provider league/season metadata is refreshed.
-- Team and fixture ingestion use only active seasons.
-- Football-Data owns the active/current-season flag for its season catalogue. Historical seasons are inactive for scheduled sync.
-- Football-Data.co.uk Core import fetches only the current season; historical CSV files are not re-downloaded.
-- Football-Data.co.uk enrichment is a separate Match Enrichment stage and also switches to current-season-only after its own durable checkpoint.
-- The regular `FootballDataSyncJob` runs every six hours and also calls the CSV current-season method only.
-- `MatchEnrichmentJob` remains independent. Once the Football-Data UK Core checkpoint exists, its first run imports CSV statistics, xG and odds for 2014-current; it writes a separate `MATCH_ENRICHMENT_INITIAL` checkpoint only after that pass succeeds.
-- Later enrichment runs import Football-Data UK statistics, xG and odds for the current season only, then continue with the configured Understat/SofaScore and player-statistics workflows.
+- `FootballDataBootstrapJob` is the historical initialization/recovery entry point. It retries incomplete historical work and writes durable checkpoints only after successful stages. Once every configured Core provider and Football-Data UK has completed its initial Core backfill, the job exits immediately. It does not refresh catalogues, teams, fixtures or standings.
+- `FootballDataSyncJob` is the only recurring Core synchronization path (every six hours). It refreshes provider catalogues, active seasons' teams and fixtures, standings and upcoming odds. It also calls Football-Data UK current-season Core import only.
+- `MatchEnrichmentJob` is independent of Core synchronization. It imports match statistics, xG, odds and player statistics through configured enrichment providers. Historical enrichment and Core fixture identity must never be coupled.
+- `Season.current` describes the provider's current season. `Season.active` is the MMO operational selection used by recurring jobs; it is initialized from the provider's current flag when a season is first created, but must not be overwritten on every catalogue refresh because operators may intentionally activate a historical season.
+- Bootstrap and recurring sync are separate Quartz JobDetails, so `@DisallowConcurrentExecution` on either job alone does not serialize them against each other. A shared database-backed ingestion lock is required before running bootstrap and sync concurrently in a multi-node deployment. Until that lock is introduced, operators should avoid manually launching bootstrap during a running Core sync.
+
+Football-Data UK enrichment has its own checkpoint. Its initial enrichment pass imports CSV statistics, xG and odds for supported historical seasons; subsequent runs process the current season (and matches selected by the enrichment workflow).
 
 ## Upsert and provider mapping rules
 
