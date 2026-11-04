@@ -1,0 +1,91 @@
+package com.mmo.module.fb.ingest.application.enrichment;
+
+import com.mmo.AppProperties;
+import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
+import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
+import com.mmo.module.fb.ingest.application.port.out.HistoricalStatisticsIngestionPort;
+import com.mmo.module.fb.ingest.application.port.out.MatchStatisticsIngestionPort;
+import com.mmo.module.fb.ingest.application.port.out.PlayerStatisticsIngestionPort;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+
+import com.mmo.module.fb.ingest.service.MatchEnrichmentService;
+import com.mmo.module.fb.ingest.service.SofaScoreBootstrapService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+/** Provider selection and sequencing belong to the application layer, not Quartz jobs. */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class MatchEnrichmentUseCase implements MatchEnrichmentService {
+
+    private static final String CORE_INITIAL_CHECKPOINT = "CORE_INITIAL_BACKFILL";
+    private static final String ENRICHMENT_INITIAL_CHECKPOINT = "MATCH_ENRICHMENT_INITIAL";
+
+    private final IngestionDistributedLock distributedLock;
+    private final AppProperties properties;
+    private final ProviderCheckpointStore checkpointStore;
+    private final FootballDataUkIngestionPort footballDataUkSyncService;
+    private final HistoricalStatisticsIngestionPort underStatSyncService;
+    private final SofaScoreBootstrapService sofaScoreBootstrapService;
+    private final MatchStatisticsIngestionPort sofaScoreMatchStatisticsIngestionService;
+    private final PlayerStatisticsIngestionPort playerStatisticsIngestionService;
+
+    @Override
+    public void enrichFinishedMatches() {
+        boolean executed = distributedLock.execute(IngestionDistributedLock.GLOBAL_INGEST_LOCK,
+                this::enrichFinishedMatchesLocked);
+        if (!executed) {
+            log.warn("Match enrichment skipped because another ingestion workflow is running");
+        }
+    }
+
+    private void enrichFinishedMatchesLocked() {
+        Provider selected = properties.getIngestion().getProviders().getHistoricalStats();
+        log.info("Match enrichment started: historicalStatsProvider={}", selected);
+
+        runStage("football-data-uk-enrichment", this::syncFootballDataUkEnrichment);
+
+        if (selected == Provider.UNDER_STATS) {
+            runStage("understat-historical-statistics", underStatSyncService::syncActiveSeasons);
+        } else if (selected == Provider.SOFA_SCORE) {
+            runStage("sofascore-bootstrap", sofaScoreBootstrapService::syncInitialDataIfRequired);
+            runStage("sofascore-match-statistics", sofaScoreMatchStatisticsIngestionService::storeMatchStatistics);
+        } else {
+            log.info("No historical match-statistics provider configured: {}", selected);
+        }
+
+        runStage("player-statistics", playerStatisticsIngestionService::syncFinishedMatchPlayerStatistics);
+        log.info("Match enrichment completed: historicalStatsProvider={}", selected);
+    }
+
+    private void syncFootballDataUkEnrichment() {
+        boolean coreReady = checkpointStore.isCompleted(
+                Provider.FOOTBALL_DATA_UK, CORE_INITIAL_CHECKPOINT);
+        if (!coreReady) {
+            log.info("Skipping Football-Data UK match enrichment until the 2014+ Core CSV import is complete");
+            return;
+        }
+
+        boolean initialEnrichmentComplete = checkpointRepository.existsByProviderAndCheckpointKey(
+                Provider.FOOTBALL_DATA_UK, ENRICHMENT_INITIAL_CHECKPOINT);
+        if (!initialEnrichmentComplete) {
+            if (footballDataUkSyncService.syncInitialEnrichment()) {
+                checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK, ENRICHMENT_INITIAL_CHECKPOINT);
+            }
+            return;
+        }
+
+        footballDataUkSyncService.syncCurrentSeasonEnrichment();
+    }
+
+    private void runStage(String name, Runnable operation) {
+        long started = System.nanoTime();
+        log.info("Match enrichment stage STARTED: {}", name);
+        operation.run();
+        log.info("Match enrichment stage COMPLETED: {} durationMs={}",
+                name, (System.nanoTime() - started) / 1_000_000);
+    }
+}
