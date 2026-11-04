@@ -95,7 +95,7 @@ public class MatchOddsQuotePersistenceService {
         if (value.contains("CLOSE") || value.contains("CLOSING")) return MatchOddsPeriod.PRE_MATCH_CLOSE;
         if (value.contains("OPEN") || value.contains("OPENING")) return MatchOddsPeriod.PRE_MATCH_OPEN;
         if (value.contains("LIVE")) return MatchOddsPeriod.LIVE;
-        return MatchOddsPeriod.UNKNOWN;
+        return MatchOddsPeriod.PRE_MATCH_CURRENT;
     }
 
     private static String normalizeOutcome(String outcome) {
@@ -106,7 +106,9 @@ public class MatchOddsQuotePersistenceService {
             case "AWAY", "2" -> "AWAY";
             case "YES" -> "YES";
             case "NO" -> "NO";
-            default -> value.length() > 40 ? value.substring(0, 40) : value;
+            default -> value.startsWith("OVER_") ? "OVER"
+                    : value.startsWith("UNDER_") ? "UNDER"
+                    : value.length() > 40 ? value.substring(0, 40) : value;
         };
     }
 
