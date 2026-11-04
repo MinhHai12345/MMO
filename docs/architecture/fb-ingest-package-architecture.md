@@ -11,6 +11,15 @@ com.mmo.module.fb.ingest
 │   │   └── FootballDataSyncUseCase
 │   ├── enrichment
 │   │   └── MatchEnrichmentUseCase
+│   ├── resource
+│   │   ├── LeagueIngestionServiceImpl
+│   │   ├── SeasonIngestionServiceImpl
+│   │   ├── TeamIngestionServiceImpl
+│   │   ├── FixtureIngestionServiceImpl
+│   │   ├── StandingsIngestionServiceImpl
+│   │   └── OddsIngestionServiceImpl
+│   ├── support
+│   │   └── IngestionServiceSupport
 │   ├── lock
 │   │   └── IngestionDistributedLock
 │   └── port
@@ -28,7 +37,12 @@ com.mmo.module.fb.ingest
 │   ├── model                 # provider-neutral transport models
 │   └── spi                   # provider capabilities and registry
 ├── persistence
-│   └── ProviderCheckpointJpaAdapter
+│   ├── ProviderCheckpointJpaAdapter
+│   ├── LeaguePersistenceServiceImpl
+│   ├── TeamPersistenceServiceImpl
+│   ├── FixturePersistenceServiceImpl
+│   ├── StandingsPersistenceServiceImpl
+│   └── OddsPersistenceServiceImpl
 ├── entity                    # ingest operational entities
 ├── repository                # Spring Data persistence contracts
 ├── job                       # Quartz adapters only
@@ -74,4 +88,4 @@ All three top-level use cases acquire the same MySQL advisory lock, `mmo:fb:inge
 
 ## Remaining migration boundary
 
-The existing resource-level ingestion services and provider-specific import workflows still contain a mixture of application coordination and persistence work under legacy `service.impl` packages. They should be migrated incrementally into application resource use cases and provider/persistence adapters, with contract tests per resource. Do not perform a blind package rename: preserve transaction boundaries, provider registry selection, external-ID ownership, and existing upsert semantics.
+The resource-level Core ingestion use cases now live under `application.resource`; their JPA persistence implementations live under `persistence`. Provider-specific CSV/Understat/SofaScore import workflows remain under the legacy `service.impl` package for a later adapter extraction. Migrate those workflows incrementally behind the output ports, with contract tests per provider. Do not perform a blind package rename: preserve transaction boundaries, provider registry selection, external-ID ownership, and existing upsert semantics.
