@@ -1,9 +1,11 @@
 package com.mmo.module.fb.match.repository;
 
 import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.match.enums.MatchEnrichmentResource;
+import com.mmo.module.fb.match.enums.MatchEnrichmentStatus;
 import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.match.enums.MatchStatus;
-import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -46,19 +48,43 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             MatchStatus status, Instant startTime, Instant endTime);
 
     @Query("""
-            SELECT DISTINCT m FROM Match m
+            SELECT m FROM Match m
             JOIN m.externalIds externalId
+            LEFT JOIN m.enrichmentStates state
+              ON state.provider = :provider
+             AND state.resource = :resource
             WHERE m.status = :status
               AND m.matchTime BETWEEN :startTime AND :endTime
               AND externalId.provider = :provider
-            ORDER BY m.lastOddsSyncedAt ASC, m.matchTime ASC
+              AND (
+                    state.id IS NULL
+                    OR (
+                        state.status <> :succeeded
+                        AND (
+                            (
+                                state.status <> :inProgress
+                                AND (state.nextRetryAt IS NULL OR state.nextRetryAt <= CURRENT_TIMESTAMP)
+                            )
+                            OR (
+                                state.status = :inProgress
+                                AND (state.lastAttemptAt IS NULL OR state.lastAttemptAt < :retryBefore)
+                            )
+                        )
+                    )
+              )
+            ORDER BY state.lastAttemptAt ASC, m.matchTime ASC, m.id ASC
             """)
-    List<Match> findUpcomingWithProviderMapping(@Param("status") MatchStatus status,
-                                                @Param("startTime") Instant startTime,
-                                                @Param("endTime") Instant endTime,
-                                                @Param("provider") Provider provider,
-                                                Pageable pageable);
-    
+    List<Match> findUpcomingWithProviderMapping(
+            @Param("status") MatchStatus status,
+            @Param("startTime") Instant startTime,
+            @Param("endTime") Instant endTime,
+            @Param("provider") MatchProvider provider,
+            @Param("resource") MatchEnrichmentResource resource,
+            @Param("succeeded") MatchEnrichmentStatus succeeded,
+            @Param("inProgress") MatchEnrichmentStatus inProgress,
+            @Param("retryBefore") Instant retryBefore,
+            Pageable pageable);
+
     @Query("""
             SELECT m FROM Match m
             JOIN FETCH m.season season
@@ -139,15 +165,33 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     List<Match> findByStatus(MatchStatus status);
 
     @Query("""
-            SELECT DISTINCT m FROM Match m
+            SELECT m FROM Match m
             JOIN FETCH m.season season
             JOIN FETCH m.homeTeam
             JOIN FETCH m.awayTeam
             JOIN m.externalIds externalId
+            LEFT JOIN m.enrichmentStates state
+              ON state.provider = :provider
+             AND state.resource = :resource
             WHERE m.status = :status
               AND season.isCurrent = true
               AND externalId.provider = :provider
-              AND (m.statisticsLastAttemptAt IS NULL OR m.statisticsLastAttemptAt < :retryBefore)
+              AND (
+                    state.id IS NULL
+                    OR (
+                        state.status <> :succeeded
+                        AND (
+                            (
+                                state.status <> :inProgress
+                                AND (state.nextRetryAt IS NULL OR state.nextRetryAt <= CURRENT_TIMESTAMP)
+                            )
+                            OR (
+                                state.status = :inProgress
+                                AND (state.lastAttemptAt IS NULL OR state.lastAttemptAt < :retryBefore)
+                            )
+                        )
+                    )
+              )
               AND (
                     NOT EXISTS (
                         SELECT homeStats.id FROM MatchAdvancedStats homeStats
@@ -160,18 +204,60 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
                     OR m.homeXG IS NULL
                     OR m.awayXG IS NULL
               )
-            ORDER BY m.statisticsLastAttemptAt ASC, m.matchTime DESC
+            ORDER BY state.lastAttemptAt ASC, m.matchTime DESC, m.id ASC
             """)
-    List<Match> findFinishedMatchesMissingAdvancedStats(@Param("status") MatchStatus status,
-                                                       @Param("provider") Provider provider,
-                                                       @Param("retryBefore") Instant retryBefore,
-                                                       Pageable pageable);
-    
-    @Query("SELECT m FROM Match m WHERE m.status = 'FINISHED' AND (m.homeXG IS NULL OR m.awayXG IS NULL)")
-    List<Match> findByStatusAndHomeXGIsNullAndAwayXGIsNull();
-    
-    @Query("SELECT m FROM Match m WHERE m.status = :status AND m.homeXG IS NULL AND m.awayXG IS NULL ORDER BY m.matchTime ASC")
-    List<Match> findTop30ByStatusAndHomeXGIsNullAndAwayXGIsNullOrderByMatchTimeAsc(@Param("status") MatchStatus status);
+    List<Match> findFinishedMatchesMissingAdvancedStats(
+            @Param("status") MatchStatus status,
+            @Param("provider") MatchProvider provider,
+            @Param("resource") MatchEnrichmentResource resource,
+            @Param("succeeded") MatchEnrichmentStatus succeeded,
+            @Param("inProgress") MatchEnrichmentStatus inProgress,
+            @Param("retryBefore") Instant retryBefore,
+            Pageable pageable);
+
+    @Query("""
+            SELECT m FROM Match m
+            JOIN FETCH m.homeTeam
+            JOIN FETCH m.awayTeam
+            JOIN m.externalIds externalId
+            LEFT JOIN MatchEnrichmentState state
+              ON state.match = m
+             AND state.provider = :provider
+             AND state.resource = :resource
+            WHERE m.status = :finished
+              AND m.homeScore IS NOT NULL
+              AND m.awayScore IS NOT NULL
+              AND externalId.provider = :provider
+              AND NOT EXISTS (
+                    SELECT playerStats.id FROM com.mmo.module.fb.player.entity.PlayerMatchStats playerStats
+                    WHERE playerStats.match = m
+              )
+              AND (
+                    state.id IS NULL
+                    OR (
+                        state.status <> :succeeded
+                        AND (
+                            (
+                                state.status <> :inProgress
+                                AND (state.nextRetryAt IS NULL OR state.nextRetryAt <= CURRENT_TIMESTAMP)
+                            )
+                            OR (
+                                state.status = :inProgress
+                                AND (state.lastAttemptAt IS NULL OR state.lastAttemptAt < :retryBefore)
+                            )
+                        )
+                    )
+              )
+            ORDER BY m.matchTime DESC, m.id DESC
+            """)
+    List<Match> findFinishedMatchesMissingPlayerStatistics(
+            @Param("finished") MatchStatus finished,
+            @Param("provider") MatchProvider provider,
+            @Param("resource") MatchEnrichmentResource resource,
+            @Param("succeeded") MatchEnrichmentStatus succeeded,
+            @Param("inProgress") MatchEnrichmentStatus inProgress,
+            @Param("retryBefore") Instant retryBefore,
+            Pageable pageable);
 
     /**
      * Aggregated data coverage by league and season. Uses a projection to avoid loading
@@ -339,5 +425,6 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             """)
     List<Match> findFinishedScoredMatchesForSeason(@Param("seasonId") Long seasonId,
                                                    @Param("status") MatchStatus status);
+
 
 }

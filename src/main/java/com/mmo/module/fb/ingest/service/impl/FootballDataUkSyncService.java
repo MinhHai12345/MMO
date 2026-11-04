@@ -20,6 +20,7 @@ import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchExternalId;
 import com.mmo.module.fb.match.enums.MatchStatus;
 import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.match.repository.MatchRepository;
 import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.team.entity.TeamExternalId;
@@ -126,7 +127,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
             }
 
             Optional<LeagueExternalId> conflicting = leagueExternalIdRepository
-                    .findByProviderAndExternalId(PROVIDER, definition.externalId());
+                    .findByProviderAndExternalId(MatchProvider.fromName(PROVIDER.name()), definition.externalId());
             if (conflicting.isPresent()) {
                 log.error("Cannot initialize Football-Data UK mapping: provider externalId={} already belongs to leagueId={}",
                         definition.externalId(), conflicting.get().getLeague().getId());
@@ -419,7 +420,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
 
                 boolean footballDataOwnsCore = match.getId() != null
                         && matchExternalIdRepository.findByMatchIdAndProvider(
-                                match.getId(), Provider.FOOTBALL_DATA).isPresent();
+                                match.getId(), MatchProvider.fromName(Provider.FOOTBALL_DATA.name())).isPresent();
                 BigDecimal homeXg = decimalMetric(value(row, "HXG"));
                 BigDecimal awayXg = decimalMetric(value(row, "AXG"));
                 if ((!footballDataOwnsCore || match.getHomeXG() == null) && homeXg != null) {
@@ -523,7 +524,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 // UK refreshes its own matches and fills gaps on Football-Data-owned matches.
                 updateFixtureResult(match, row, footballDataOwnsCore);
                 Optional<MatchExternalId> mapping = match.getId() == null ? Optional.empty()
-                        : matchExternalIdRepository.findByMatchIdAndProvider(match.getId(), PROVIDER);
+                        : matchExternalIdRepository.findByMatchIdAndProvider(match.getId(), MatchProvider.fromName(PROVIDER.name()));
                 if (mapping.isPresent()) {
                     MatchExternalId externalId = mapping.get();
                     if (!fixtureExternalId.equals(externalId.getExternalId())) {

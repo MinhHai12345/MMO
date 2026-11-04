@@ -12,6 +12,10 @@ import com.mmo.module.fb.match.enums.MatchStatus;
 import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
 import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.match.repository.MatchRepository;
+import com.mmo.module.fb.match.enums.MatchEnrichmentResource;
+import com.mmo.module.fb.match.enums.MatchProvider;
+import com.mmo.module.fb.match.service.MatchEnrichmentStateService;
+import com.mmo.module.fb.match.service.MatchStatisticsSnapshotPersistenceService;
 import com.mmo.module.fb.team.entity.Team;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,10 +49,14 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final MatchAdvancedStatsRepository matchAdvancedStatsRepository;
+    private final MatchStatisticsSnapshotPersistenceService snapshotPersistenceService;
+    private final MatchEnrichmentStateService enrichmentStateService;
 
     public void storeMatchStatistics() {
         List<Match> targetMatches = matchRepository.findFinishedMatchesMissingAdvancedStats(
-                MatchStatus.FINISHED, Provider.SOFA_SCORE,
+                MatchStatus.FINISHED, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS,
+                com.mmo.module.fb.match.enums.MatchEnrichmentStatus.SUCCEEDED,
+                com.mmo.module.fb.match.enums.MatchEnrichmentStatus.IN_PROGRESS,
                 Instant.now().minus(RETRY_HOURS, ChronoUnit.HOURS), PageRequest.of(0, BATCH_SIZE));
 
         if (targetMatches == null || targetMatches.isEmpty()) {
@@ -61,11 +69,12 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
         int skipped = 0;
         int failed = 0;
         for (Match match : targetMatches) {
+            enrichmentStateService.start(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
             try {
                 Optional<MatchExternalId> mapping = matchExternalIdRepository
-                        .findByMatchIdAndProvider(match.getId(), Provider.SOFA_SCORE);
+                        .findByMatchIdAndProvider(match.getId(), MatchProvider.SOFA_SCORE);
                 if (mapping.isEmpty()) {
-                    markAttempt(match);
+                    enrichmentStateService.skipped(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
                     skipped++;
                     continue;
                 }
@@ -73,15 +82,23 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
                 Optional<ProviderMatchAdvancedStatistics> snapshot =
                         provider.fetchMatchStatistics(mapping.get().getExternalId());
                 if (snapshot.isEmpty()) {
-                    markAttempt(match);
+                        enrichmentStateService.empty(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
                     skipped++;
                     continue;
                 }
 
-                persistMatchStatistics(match, snapshot.get());
+                ProviderMatchAdvancedStatistics providerSnapshot = snapshot.get();
+                if (!hasStatistics(providerSnapshot.home()) && !hasStatistics(providerSnapshot.away())) {
+                    enrichmentStateService.empty(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
+                    skipped++;
+                    continue;
+                }
+
+                persistMatchStatistics(match, providerSnapshot);
+                enrichmentStateService.succeed(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
                 persisted++;
             } catch (RuntimeException exception) {
-                markAttempt(match);
+                enrichmentStateService.failed(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS, exception);
                 failed++;
                 log.warn("SofaScore statistics sync failed for matchId={}: {}",
                         match.getId(), exception.getMessage(), exception);
@@ -97,7 +114,6 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
 
     private void persistMatchStatistics(Match match, ProviderMatchAdvancedStatistics snapshot) {
         Instant now = Instant.now();
-        match.setStatisticsLastAttemptAt(now);
 
         BigDecimal homeXg = statisticValue(snapshot.home(), "expectedGoals", "xg");
         BigDecimal awayXg = statisticValue(snapshot.away(), "expectedGoals", "xg");
@@ -127,6 +143,8 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
     private MatchAdvancedStats upsertTeamStatistics(
             Match match, Team team, Map<String, BigDecimal> values, Instant syncedAt) {
         if (team == null) return null;
+
+        snapshotPersistenceService.upsert(match, team, MatchProvider.SOFA_SCORE, values);
 
         MatchAdvancedStats stats = matchAdvancedStatsRepository
                 .findByMatchIdAndTeamId(match.getId(), team.getId())
@@ -169,14 +187,12 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
         setIntegerIfPresent(values, stats::setGoalkeeperSaves, "goalkeeperSaves", "saves");
         setIntegerIfPresent(values, stats::setBigChancesCreated, "bigChancesCreated");
         setIntegerIfPresent(values, stats::setBigChancesMissed, "bigChancesMissed");
-        stats.setStatisticsProvider(Provider.SOFA_SCORE.name());
-        stats.setStatisticsSyncedAt(syncedAt);
+        // The source-specific payload and fetched timestamp are stored in the snapshot table.
         return stats;
     }
 
-    private void markAttempt(Match match) {
-        match.setStatisticsLastAttemptAt(Instant.now());
-        matchRepository.save(match);
+    private boolean hasStatistics(Map<String, BigDecimal> values) {
+        return values != null && !values.isEmpty();
     }
 
     private boolean hasAdvancedMetrics(MatchAdvancedStats stats) {

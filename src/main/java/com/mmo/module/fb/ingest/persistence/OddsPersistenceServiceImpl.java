@@ -8,6 +8,9 @@ import com.mmo.module.fb.match.repository.BookmakerRepository;
 import com.mmo.module.fb.match.repository.MatchOddsRepository;
 import com.mmo.module.fb.match.repository.MatchRepository;
 import com.mmo.module.fb.match.repository.OddsHistoryRepository;
+import com.mmo.module.fb.match.service.MatchOddsQuotePersistenceService;
+import com.mmo.module.fb.match.enums.MatchProvider;
+import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import com.mmo.module.fb.ingest.service.OddsPersistenceService;
 import lombok.RequiredArgsConstructor;
@@ -31,9 +34,17 @@ public class OddsPersistenceServiceImpl implements OddsPersistenceService {
     private final BookmakerRepository bookmakerRepository;
     private final MatchOddsRepository matchOddsRepository;
     private final OddsHistoryRepository oddsHistoryRepository;
+    private final MatchOddsQuotePersistenceService quotePersistenceService;
 
+    @Override
     @Transactional
     public void persistOdds(Long matchId, List<ProviderOdds> values) {
+        persistOdds(matchId, Provider.API_FOOTBALL, values);
+    }
+
+    @Override
+    @Transactional
+    public void persistOdds(Long matchId, Provider provider, List<ProviderOdds> values) {
         Match match = matchRepository.findById(matchId)
                 .orElseThrow(() -> new IllegalArgumentException("Match not found: " + matchId));
 
@@ -62,6 +73,8 @@ public class OddsPersistenceServiceImpl implements OddsPersistenceService {
 
             for (ProviderOdds value : entry.getValue()) {
                 applyOdd(odds, value.market(), value.outcome(), value.odd());
+                quotePersistenceService.upsert(match, bookmaker, MatchProvider.fromName(provider.name()),
+                        value.market(), value.outcome(), null, value.odd());
             }
 
             boolean resultOddsChanged = !sameOdd(previousHome, odds.getHomeWinOdds())
@@ -81,9 +94,7 @@ public class OddsPersistenceServiceImpl implements OddsPersistenceService {
             }
         }
 
-        // An empty but successful provider response still counts as a successful sync.
-        match.setLastOddsSyncedAt(Instant.now());
-        matchRepository.save(match);
+        // Sync lifecycle is stored in MatchEnrichmentState, not on the canonical fixture.
     }
 
     private static boolean sameOdd(BigDecimal left, BigDecimal right) {

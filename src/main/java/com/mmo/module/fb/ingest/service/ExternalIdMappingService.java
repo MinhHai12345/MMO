@@ -4,6 +4,7 @@ import com.mmo.module.fb.league.entity.League;
 import com.mmo.module.fb.league.entity.LeagueExternalId;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchExternalId;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.player.entity.Player;
 import com.mmo.module.fb.player.entity.PlayerExternalId;
 import com.mmo.module.fb.league.entity.Season;
@@ -74,7 +75,7 @@ public class ExternalIdMappingService {
     @Transactional(readOnly = true)
     public Optional<Match> findMatch(Provider provider, String externalId) {
         requireIdentity(provider, externalId);
-        return matchExternalIds.findByProviderAndExternalId(provider, externalId.trim())
+        return matchExternalIds.findByProviderAndExternalId(MatchProvider.fromName(provider.name()), externalId.trim())
                 .map(MatchExternalId::getMatch);
     }
 
@@ -126,9 +127,9 @@ public class ExternalIdMappingService {
             throw new IllegalArgumentException("Match must be persisted before registering an external ID");
         }
         requireIdentity(provider, externalId);
-        return register(matchExternalIds.findByMatchIdAndProvider(match.getId(), provider),
+        return register(matchExternalIds.findByMatchIdAndProvider(match.getId(), MatchProvider.fromName(provider.name())),
                 matchExternalIds.findByProviderAndExternalId(provider, externalId.trim()),
-                () -> MatchExternalId.builder().match(match).provider(provider)
+                () -> MatchExternalId.builder().match(match).provider(MatchProvider.fromName(provider.name()))
                         .externalId(externalId.trim()).build(),
                 MatchExternalId::getMatch, MatchExternalId::getExternalId, match, "match", provider, externalId);
     }

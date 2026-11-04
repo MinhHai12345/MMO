@@ -5,6 +5,7 @@ import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchOdds;
 import com.mmo.module.fb.match.repository.BookmakerRepository;
 import com.mmo.module.fb.match.repository.MatchOddsRepository;
+import com.mmo.module.fb.match.service.MatchOddsQuotePersistenceService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -29,7 +30,8 @@ class FootballDataUkOddsPersistenceServiceTest {
 
         Match match = new Match();
         match.setId(99L);
-        FootballDataUkOddsPersistenceService mapper = new FootballDataUkOddsPersistenceService(bookmakers, oddsRepository);
+        FootballDataUkOddsPersistenceService mapper = new FootballDataUkOddsPersistenceService(
+                bookmakers, oddsRepository, mock(MatchOddsQuotePersistenceService.class));
         Map<String, String> row = Map.ofEntries(
                 Map.entry("B365H", "2.10"), Map.entry("B365D", "3.30"), Map.entry("B365A", "3.60"),
                 Map.entry("B365CH", "2.00"), Map.entry("B365CD", "3.40"), Map.entry("B365CA", "3.80"),
@@ -81,7 +83,8 @@ class FootballDataUkOddsPersistenceServiceTest {
 
         Match match = new Match();
         match.setId(101L);
-        FootballDataUkOddsPersistenceService mapper = new FootballDataUkOddsPersistenceService(bookmakers, oddsRepository);
+        FootballDataUkOddsPersistenceService mapper = new FootballDataUkOddsPersistenceService(
+                bookmakers, oddsRepository, mock(MatchOddsQuotePersistenceService.class));
 
         mapper.persist(match, Map.of("B365H", "2.1"));
 

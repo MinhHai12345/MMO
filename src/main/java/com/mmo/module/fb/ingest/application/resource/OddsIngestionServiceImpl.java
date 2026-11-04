@@ -9,6 +9,9 @@ import com.mmo.module.fb.match.enums.MatchStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.match.repository.MatchRepository;
+import com.mmo.module.fb.match.enums.MatchEnrichmentResource;
+import com.mmo.module.fb.match.enums.MatchProvider;
+import com.mmo.module.fb.match.service.MatchEnrichmentStateService;
 import com.mmo.module.fb.ingest.provider.model.OddsQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
@@ -43,6 +46,7 @@ public class OddsIngestionServiceImpl implements OddsIngestionService {
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final OddsPersistenceService oddsPersistenceService;
+    private final MatchEnrichmentStateService enrichmentStateService;
 
     /**
      * Coordinates provider I/O and database work without holding a transaction open
@@ -73,7 +77,10 @@ public class OddsIngestionServiceImpl implements OddsIngestionService {
         }
 
         List<Match> upcoming = matchRepository.findUpcomingWithProviderMapping(
-                MatchStatus.SCHEDULED, now, until, selectedProvider, PageRequest.of(0, MAX_FIXTURES_PER_RUN));
+                MatchStatus.SCHEDULED, now, until, MatchProvider.fromName(selectedProvider.name()), MatchEnrichmentResource.ODDS,
+                com.mmo.module.fb.match.enums.MatchEnrichmentStatus.SUCCEEDED,
+                com.mmo.module.fb.match.enums.MatchEnrichmentStatus.IN_PROGRESS,
+                now.minus(30, ChronoUnit.MINUTES), PageRequest.of(0, MAX_FIXTURES_PER_RUN));
 
         int processed = 0;
         for (Match match : upcoming) {
@@ -84,13 +91,20 @@ public class OddsIngestionServiceImpl implements OddsIngestionService {
                 continue;
             }
 
+            enrichmentStateService.start(match, MatchProvider.fromName(selectedProvider.name()), MatchEnrichmentResource.ODDS);
             try {
                 // Network call deliberately happens before entering the persistence transaction.
                 List<ProviderOdds> values = providerRegistry.odds(selectedProvider)
                         .fetchOdds(new OddsQuery(fixtureId));
-                oddsPersistenceService.persistOdds(match.getId(), values);
+                oddsPersistenceService.persistOdds(match.getId(), selectedProvider, values);
+                if (values == null || values.isEmpty()) {
+                    enrichmentStateService.empty(match, MatchProvider.fromName(selectedProvider.name()), MatchEnrichmentResource.ODDS);
+                } else {
+                    enrichmentStateService.succeed(match, MatchProvider.fromName(selectedProvider.name()), MatchEnrichmentResource.ODDS);
+                }
                 processed++;
             } catch (Exception ex) {
+                enrichmentStateService.failed(match, MatchProvider.fromName(selectedProvider.name()), MatchEnrichmentResource.ODDS, ex);
                 log.warn("Could not sync odds for match {}: {}", match.getId(), ex.getMessage());
             }
         }
@@ -98,7 +112,7 @@ public class OddsIngestionServiceImpl implements OddsIngestionService {
     }
 
     private Map<Long, String> loadFixtureIds(Provider provider) {
-        List<MatchExternalId> mappings = matchExternalIdRepository.findAllByProvider(provider);
+        List<MatchExternalId> mappings = matchExternalIdRepository.findAllByProvider(MatchProvider.fromName(provider.name()));
         Map<Long, String> fixtureIdsByMatchId = new HashMap<>();
         mappings.forEach(mapping -> {
             Long matchId = mapping.getMatch().getId();
