@@ -11,7 +11,6 @@ import com.mmo.module.fb.analytics.job.WalkForwardBackTestJob;
 import com.mmo.module.fb.ingest.job.FootballDataBootstrapJob;
 import com.mmo.module.fb.ingest.job.FootballDataSyncJob;
 import com.mmo.module.fb.ingest.job.MatchEnrichmentJob;
-import com.mmo.module.fb.ingest.service.FootballDataSyncService;
 import com.mmo.module.fb.monetization.job.SubscriptionExpiryCheckJob;
 import com.mmo.module.fb.content.job.ContentGenerationJob;
 import com.mmo.module.fb.workflow.job.PublicationWorkerQuartzJob;
@@ -27,22 +26,19 @@ public class FBCronjobInitial implements DataInitializer {
 
     private final CronJobRepository cronJobRepository;
     private final CronJobService cronJobService;
-    private final FootballDataSyncService footballDataSyncService;
 
     @Override
     public void initialize() {
         log.info("Initializing Football Analytics CronJobs (UTC timezone)...");
 
-        // Provider bootstrap is an application use case, not a provider/job dependency.
-        footballDataSyncService.initializeProviderMappings();
-
         deleteLegacyJob("FootballWorkflowOrchestrationJob");
         createOrUpdateJob(ContentGenerationJob.class,
                 "0 30 11 * * ?", "Generate PRE_MATCH content drafts daily at 11:30 UTC");
 
-        // Historical bootstrap is an explicit recovery/backfill workflow.
+        // The first execution performs the historical backfill. Once its durable provider
+        // checkpoints exist, the same job automatically switches to current-season-only sync.
         createOrUpdateJob(FootballDataBootstrapJob.class,
-                "0 0 1 1 * ?", "Bootstrap configured leagues, teams, fixtures and standings monthly at 01:00 UTC");
+                "0 0 1 * * ?", "Initial historical Core backfill, then current-season Core sync daily at 01:00 UTC");
         createOrUpdateJob(FootballDataSyncJob.class,
                 "0 0 0/6 * * ?", "Incrementally synchronize canonical football data every 6 hours");
         createOrUpdateJob(MatchEnrichmentJob.class,

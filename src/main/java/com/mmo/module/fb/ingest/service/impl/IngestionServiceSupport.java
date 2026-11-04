@@ -57,6 +57,23 @@ public class IngestionServiceSupport {
         return List.copyOf(mapped.values());
     }
 
+    /**
+     * Historical scope used only by the initial backfill. Unlike incremental scope,
+     * this includes inactive seasons as long as this provider has its own season mapping.
+     */
+    public List<Season> allMappedSeasonsToSync(Provider provider) {
+        Map<Long, Season> mapped = new LinkedHashMap<>();
+        for (SeasonExternalId mapping : seasonExternalIdRepository.findAllByProvider(provider)) {
+            Season season = mapping.getSeason();
+            if (season != null && season.getId() != null && season.getYear() != null
+                    && season.getLeague() != null
+                    && Boolean.TRUE.equals(season.getLeague().getIsActive())) {
+                mapped.putIfAbsent(season.getId(), season);
+            }
+        }
+        return List.copyOf(mapped.values());
+    }
+
     public List<Season> standingsSeasonsToSync(Provider provider) {
         return seasonRepository.findAllForActiveLeagues();
     }

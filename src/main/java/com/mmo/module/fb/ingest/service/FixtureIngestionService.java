@@ -7,4 +7,5 @@ import java.time.LocalDate;
 public interface FixtureIngestionService {
     void syncCurrentSeasonFixtures(LocalDate from, LocalDate to);
     void syncFixturesForProvider(Provider selectedProvider, LocalDate from, LocalDate to);
+    void syncAllSeasonsForProvider(Provider selectedProvider, LocalDate from, LocalDate to);
 }

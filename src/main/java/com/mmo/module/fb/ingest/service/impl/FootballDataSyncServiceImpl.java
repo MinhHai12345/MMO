@@ -8,13 +8,15 @@ import com.mmo.module.fb.ingest.service.LeagueIngestionService;
 import com.mmo.module.fb.ingest.service.OddsIngestionService;
 import com.mmo.module.fb.ingest.service.ProviderOverrides;
 import com.mmo.module.fb.ingest.service.StandingsIngestionService;
+import com.mmo.module.fb.ingest.service.SeasonIngestionService;
 import com.mmo.module.fb.ingest.service.TeamIngestionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Coordinates provider-neutral ingestion use cases. Jobs and workflow orchestration never
@@ -27,6 +29,7 @@ public class FootballDataSyncServiceImpl implements FootballDataSyncService {
 
     private final AppProperties properties;
     private final LeagueIngestionService leagueIngestionService;
+    private final SeasonIngestionService seasonIngestionService;
     private final TeamIngestionService teamIngestionService;
     private final FixtureIngestionService fixtureIngestionService;
     private final StandingsIngestionService standingsIngestionService;
@@ -34,33 +37,33 @@ public class FootballDataSyncServiceImpl implements FootballDataSyncService {
     private final FootballDataUkSyncService footballDataUkSyncService;
 
     @Override
-    public void initializeProviderMappings() {
-        footballDataUkSyncService.initialLeagueMappings();
-    }
-
-    @Override
     public void sync(ProviderOverrides overrides, Provider oddsProviderOverride) {
         ProviderOverrides selected = overrides == null ? ProviderOverrides.defaults() : overrides;
         AppProperties.Providers defaults = properties.getIngestion().getProviders();
 
         Provider league = selected.league() == null ? defaults.getLeague() : selected.league();
+        Provider season = selected.season() == null ? defaults.getSeason() : selected.season();
         Provider team = selected.team() == null ? defaults.getTeam() : selected.team();
         Provider fixture = selected.fixture() == null ? defaults.getFixture() : selected.fixture();
         Provider standings = selected.standings() == null ? defaults.getStandings() : selected.standings();
         Provider odds = oddsProviderOverride == null ? defaults.getOdds() : oddsProviderOverride;
 
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
-        LocalDate recentFrom = today.minusDays(7);
-        LocalDate upcomingTo = today.plusDays(14);
+        log.info("Football data incremental sync started for the current active season only: "
+                        + "leagueProvider={}, teamProvider={}, fixtureProvider={}, standingsProvider={}, oddsProvider={}",
+                league, team, fixture, standings, odds);
 
-        log.info("Football data sync started: leagueProvider={}, teamProvider={}, fixtureProvider={}, "
-                        + "standingsProvider={}, oddsProvider={}, recentRange={}..{}, upcomingRange={}..{}",
-                league, team, fixture, standings, odds, recentFrom, today, today, upcomingTo);
-
-        runStage("leagues", () -> leagueIngestionService.syncLeaguesForProvider(league));
-        runStage("teams", () -> teamIngestionService.syncTeamsForProvider(team));
-        runStage("recent-results", () -> fixtureIngestionService.syncFixturesForProvider(fixture, recentFrom, today));
-        runStage("upcoming-fixtures", () -> fixtureIngestionService.syncFixturesForProvider(fixture, today, upcomingTo));
+        Set<Provider> catalogueProviders = new LinkedHashSet<>(
+                List.of(league, season, team, fixture));
+        if (standings != Provider.UNDER_STATS) catalogueProviders.add(standings);
+        for (Provider provider : catalogueProviders) {
+            runStage("leagues/" + provider,
+                    () -> leagueIngestionService.syncLeaguesForProvider(provider));
+        }
+        runStage("seasons/" + season,
+                () -> seasonIngestionService.syncSeasonsForProvider(season));
+        runStage("teams/" + team, () -> teamIngestionService.syncTeamsForProvider(team));
+        runStage("current-season-fixtures",
+                () -> fixtureIngestionService.syncFixturesForProvider(fixture, null, null));
 
         if (standings == Provider.UNDER_STATS) {
             log.info("Skipping standings: UNDER_STATS does not expose canonical standings");
@@ -70,8 +73,9 @@ public class FootballDataSyncServiceImpl implements FootballDataSyncService {
 
         runStage("upcoming-odds", () -> oddsIngestionService.syncUpcomingOdds(odds));
 
-        // CSV enrichment is a separate source with its own import checkpoint and mapping rules.
-        runStage("football-data-uk", footballDataUkSyncService::syncAllData);
+        // The initial 2014+ CSV backfill belongs to FootballDataBootstrapService.
+        // The frequent sync job must fetch only the current Football-Data UK season.
+        runStage("football-data-uk-current-season", footballDataUkSyncService::syncCurrentSeasonData);
         log.info("Football data sync completed");
     }
 

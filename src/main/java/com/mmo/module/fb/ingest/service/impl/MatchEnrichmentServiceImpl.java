@@ -2,6 +2,8 @@ package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.entity.ProviderSyncCheckpoint;
+import com.mmo.module.fb.ingest.repository.ProviderSyncCheckpointRepository;
 import com.mmo.module.fb.ingest.service.MatchEnrichmentService;
 import com.mmo.module.fb.ingest.service.SofaScoreBootstrapService;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +16,12 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class MatchEnrichmentServiceImpl implements MatchEnrichmentService {
 
+    private static final String CORE_INITIAL_CHECKPOINT = "CORE_INITIAL_BACKFILL";
+    private static final String ENRICHMENT_INITIAL_CHECKPOINT = "MATCH_ENRICHMENT_INITIAL";
+
     private final AppProperties properties;
+    private final ProviderSyncCheckpointRepository checkpointRepository;
+    private final FootballDataUkSyncService footballDataUkSyncService;
     private final UnderStatSyncService underStatSyncService;
     private final SofaScoreBootstrapService sofaScoreBootstrapService;
     private final SofaScoreMatchStatisticsIngestionService sofaScoreMatchStatisticsIngestionService;
@@ -24,6 +31,8 @@ public class MatchEnrichmentServiceImpl implements MatchEnrichmentService {
     public void enrichFinishedMatches() {
         Provider selected = properties.getIngestion().getProviders().getHistoricalStats();
         log.info("Match enrichment started: historicalStatsProvider={}", selected);
+
+        runStage("football-data-uk-enrichment", this::syncFootballDataUkEnrichment);
 
         if (selected == Provider.UNDER_STATS) {
             runStage("understat-historical-statistics", underStatSyncService::syncActiveSeasons);
@@ -36,6 +45,32 @@ public class MatchEnrichmentServiceImpl implements MatchEnrichmentService {
 
         runStage("player-statistics", playerStatisticsIngestionService::syncFinishedMatchPlayerStatistics);
         log.info("Match enrichment completed: historicalStatsProvider={}", selected);
+    }
+
+    private void syncFootballDataUkEnrichment() {
+        boolean coreReady = checkpointRepository.existsByProviderAndCheckpointKey(
+                Provider.FOOTBALL_DATA_UK, CORE_INITIAL_CHECKPOINT);
+        if (!coreReady) {
+            log.info("Skipping Football-Data UK match enrichment until the 2014+ Core CSV import is complete");
+            return;
+        }
+
+        boolean initialEnrichmentComplete = checkpointRepository.existsByProviderAndCheckpointKey(
+                Provider.FOOTBALL_DATA_UK, ENRICHMENT_INITIAL_CHECKPOINT);
+        if (!initialEnrichmentComplete) {
+            if (footballDataUkSyncService.syncInitialEnrichment()) {
+                ProviderSyncCheckpoint checkpoint = checkpointRepository
+                        .findByProviderAndCheckpointKey(Provider.FOOTBALL_DATA_UK, ENRICHMENT_INITIAL_CHECKPOINT)
+                        .orElseGet(ProviderSyncCheckpoint::new);
+                checkpoint.setProvider(Provider.FOOTBALL_DATA_UK);
+                checkpoint.setCheckpointKey(ENRICHMENT_INITIAL_CHECKPOINT);
+                checkpoint.setCompletedAt(java.time.Instant.now());
+                checkpointRepository.save(checkpoint);
+            }
+            return;
+        }
+
+        footballDataUkSyncService.syncCurrentSeasonEnrichment();
     }
 
     private void runStage(String name, Runnable operation) {

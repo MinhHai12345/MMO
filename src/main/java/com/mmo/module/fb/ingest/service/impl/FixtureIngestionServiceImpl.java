@@ -47,6 +47,16 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
      */
     @Override
     public void syncFixturesForProvider(Provider selectedProvider, LocalDate from, LocalDate to) {
+        syncFixtures(selectedProvider, from, to, false);
+    }
+
+    @Override
+    public void syncAllSeasonsForProvider(Provider selectedProvider, LocalDate from, LocalDate to) {
+        syncFixtures(selectedProvider, from, to, true);
+    }
+
+    private void syncFixtures(Provider selectedProvider, LocalDate from, LocalDate to,
+                              boolean includeHistoricalSeasons) {
         ingestionSupport.requireProviderEnabled(selectedProvider, "fixture");
         if (from != null && to != null && from.isAfter(to)) {
             throw new IllegalArgumentException("'from' must be before or equal to 'to'");
@@ -54,10 +64,19 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
 
         // Recover from a cold start, but do not re-fetch every team's roster on each fixture poll.
         if (teamExternalIdRepository.findAllByProvider(selectedProvider).isEmpty()) {
-            teamIngestionService.syncTeamsForProvider(selectedProvider);
+            if (includeHistoricalSeasons) {
+                teamIngestionService.syncAllSeasonsForProvider(selectedProvider);
+            } else {
+                teamIngestionService.syncTeamsForProvider(selectedProvider);
+            }
         }
 
-        List<Season> seasons = ingestionSupport.seasonsToSync(selectedProvider);
+        List<Season> seasons = includeHistoricalSeasons
+                ? ingestionSupport.allMappedSeasonsToSync(selectedProvider)
+                : ingestionSupport.seasonsToSync(selectedProvider);
+        if (seasons.isEmpty() && selectedProvider == Provider.FOOTBALL_DATA) {
+            throw new IllegalStateException("No mapped seasons available for Football-Data fixture ingestion");
+        }
         Map<Long, com.mmo.module.fb.league.entity.LeagueExternalId> leagueMappingsByLeagueId = new HashMap<>();
         leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
                 leagueMappingsByLeagueId.put(mapping.getLeague().getId(), mapping));
@@ -76,6 +95,7 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
             if (externalLeagueId == null) {
                 log.warn("Skipping season {} for league {} because provider {} has no league ID mapping",
                         season.getYear(), season.getLeague().getId(), selectedProvider);
+                if (selectedProvider == Provider.FOOTBALL_DATA) failed++;
                 continue;
             }
 
@@ -109,6 +129,7 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
             fetched += fixtures.size();
             log.info("Fetched {} fixtures for league {} season {} from {}",
                     fixtures.size(), externalLeagueId, season.getYear(), selectedProvider);
+            if (fixtures.isEmpty()) continue;
 
             for (ProviderFixture fixture : fixtures) {
                 if (fixture.externalId() == null || fixture.externalId().isBlank()) {
@@ -141,6 +162,9 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
 
         log.info("Fixture ingestion via {} finished. fetched={}, saved/updated={}, skipped={}, failed={}; date range {} to {}",
                 selectedProvider, fetched, saved, skipped, failed, from, to);
+        if (selectedProvider == Provider.FOOTBALL_DATA && failed > 0) {
+            throw new IllegalStateException("Football-Data fixture ingestion incomplete: failed=" + failed);
+        }
     }
 
 
