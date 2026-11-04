@@ -70,7 +70,9 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
             }
             if (league == null) {
                 league = new League();
-                league.setIsActive(false);
+                // The Football-Data competition allow-list is curated for MMO Core.
+                // Newly discovered entries from this source are therefore eligible for ingestion.
+                league.setIsActive(selectedProvider == Provider.FOOTBALL_DATA);
             }
 
             LeagueExternalId existingLeagueMapping = league.getId() == null ? null

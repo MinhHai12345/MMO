@@ -39,6 +39,15 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
 
     @Override
     public void syncTeamsForProvider(Provider selectedProvider) {
+        syncTeams(selectedProvider, false);
+    }
+
+    @Override
+    public void syncAllSeasonsForProvider(Provider selectedProvider) {
+        syncTeams(selectedProvider, true);
+    }
+
+    private void syncTeams(Provider selectedProvider, boolean includeHistoricalSeasons) {
         ingestionSupport.requireProviderEnabled(selectedProvider, "team");
 
         // Team sync can run independently on a cold start, but should not refetch every
@@ -53,7 +62,14 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
 
         int fetched = 0;
         int failed = 0;
-        for (Season season : ingestionSupport.seasonsToSync(selectedProvider)) {
+        int skipped = 0;
+        List<Season> seasons = includeHistoricalSeasons
+                ? ingestionSupport.allMappedSeasonsToSync(selectedProvider)
+                : ingestionSupport.seasonsToSync(selectedProvider);
+        if (seasons.isEmpty() && selectedProvider == Provider.FOOTBALL_DATA) {
+            throw new IllegalStateException("No mapped seasons available for Football-Data team ingestion");
+        }
+        for (Season season : seasons) {
             LeagueExternalId leagueMapping = leagueMappingsByLeagueId.get(season.getLeague().getId());
             String externalLeagueId = leagueMapping == null ? null : leagueMapping.getExternalId();
             if (externalLeagueId == null || externalLeagueId.isBlank()) {
@@ -82,17 +98,20 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
                 fetched += teams.size();
             } catch (FootballDataRestrictedResourceException ex) {
                 if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
-                failed++;
+                skipped++;
                 log.warn("Skipping teams for league {} season {} because football-data.org restricts this resource: {}",
                         externalLeagueId, season.getYear(), ex.getMessage());
             } catch (ApiFootballPlanRestrictionException ex) {
-                failed++;
+                skipped++;
                 log.warn("Skipping teams for league {} season {} because the API-Football plan does not include it: {}",
                         externalLeagueId, season.getYear(), ex.getMessage());
             }
         }
-        log.info("Team ingestion via {} completed. fetched={}, failed/skipped={}",
-                selectedProvider, fetched, failed);
+        log.info("Team ingestion via {} completed. fetched={}, failed={}, restricted/skipped={}",
+                selectedProvider, fetched, failed, skipped);
+        if (selectedProvider == Provider.FOOTBALL_DATA && failed > 0) {
+            throw new IllegalStateException("Football-Data team ingestion incomplete: failed=" + failed);
+        }
     }
 
 
