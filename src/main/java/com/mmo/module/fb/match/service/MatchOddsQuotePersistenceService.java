@@ -75,13 +75,13 @@ public class MatchOddsQuotePersistenceService {
         if (value.contains("match winner") || value.contains("1x2") || value.contains("full time result")) {
             return MatchOddsMarketType.MATCH_RESULT;
         }
-        if (value.contains("over") || value.contains("under") || value.contains("goals")) {
+        if (value.contains("over") || value.contains("under") || value.contains("goals") || value.contains("ou25")) {
             return MatchOddsMarketType.OVER_UNDER;
         }
         if (value.contains("both teams") || value.contains("btts")) {
             return MatchOddsMarketType.BOTH_TEAMS_TO_SCORE;
         }
-        if (value.contains("handicap")) {
+        if (value.contains("handicap") || value.contains("ah_") || value.equals("ah")) {
             return MatchOddsMarketType.ASIAN_HANDICAP;
         }
         if (value.contains("double chance")) {
