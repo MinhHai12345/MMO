@@ -1,7 +1,7 @@
 package com.mmo.module.fb.match.entity;
 
 import com.mmo.core.entity.AbstractEntity;
-import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.match.enums.MatchEnrichmentResource;
 import com.mmo.module.fb.match.enums.MatchEnrichmentStatus;
 import jakarta.persistence.*;
@@ -36,7 +36,7 @@ public class MatchEnrichmentState extends AbstractEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
-    private Provider provider;
+    private MatchProvider provider;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
