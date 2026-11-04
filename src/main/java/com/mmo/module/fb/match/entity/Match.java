@@ -2,19 +2,19 @@ package com.mmo.module.fb.match.entity;
 
 import com.mmo.core.entity.AbstractEntity;
 import com.mmo.module.fb.league.entity.Season;
-import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.match.enums.MatchStatus;
+import com.mmo.module.fb.team.entity.Team;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Canonical fixture aggregate. Provider IDs and enrichment execution state are separate
+ * records; the legacy sync timestamps remain temporarily for backward compatibility.
+ */
 @Entity
 @Table(name = "fb_matches",
         indexes = {
@@ -23,6 +23,7 @@ import java.util.List;
                 @Index(name = "idx_match_season_teams_time",
                         columnList = "season_id, home_team_id, away_team_id, match_time")
         })
+@org.hibernate.annotations.Check(constraints = "home_team_id <> away_team_id")
 @Getter
 @Setter
 @Builder
@@ -45,13 +46,18 @@ public class Match extends AbstractEntity {
     @Column(name = "match_time", nullable = false)
     private Instant matchTime;
 
+    /** @deprecated use MatchEnrichmentState(provider, ODDS) */
+    @Deprecated
     @Column(name = "last_odds_synced_at")
     private Instant lastOddsSyncedAt;
 
+    /** @deprecated use MatchEnrichmentState(provider, TEAM_STATISTICS) */
+    @Deprecated
     @Column(name = "statistics_last_attempt_at")
     private Instant statisticsLastAttemptAt;
 
-    /** Independent throttle so player-lineup retries do not block team-level match statistics. */
+    /** @deprecated use MatchEnrichmentState(provider, PLAYER_STATISTICS) */
+    @Deprecated
     @Column(name = "player_statistics_last_attempt_at")
     private Instant playerStatisticsLastAttemptAt;
 
@@ -87,6 +93,7 @@ public class Match extends AbstractEntity {
     @Column(name = "full_time_result", length = 1)
     private String fullTimeResult;
 
+    /** Canonical fixture-level xG projection; provider-specific values are retained in source snapshots. */
     @Column(name = "home_xg")
     private Double homeXG;
 
@@ -101,4 +108,28 @@ public class Match extends AbstractEntity {
     @OneToMany(mappedBy = "match", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<MatchExternalId> externalIds = new ArrayList<>();
+
+    @Version
+    @Column(name = "version")
+    private Long version;
+
+    public boolean hasFinalScore() {
+        return homeScore != null && awayScore != null;
+    }
+
+    public boolean isFinished() {
+        return status == MatchStatus.FINISHED && hasFinalScore();
+    }
+
+    public void addExternalId(MatchExternalId externalId) {
+        if (externalId == null) return;
+        externalIds.add(externalId);
+        externalId.setMatch(this);
+    }
+
+    public void removeExternalId(MatchExternalId externalId) {
+        if (externalId == null) return;
+        externalIds.remove(externalId);
+        externalId.setMatch(null);
+    }
 }
