@@ -8,6 +8,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 
 /**
@@ -60,7 +61,7 @@ public class MatchOddsQuote extends AbstractEntity {
 
     @Column(name = "line_value", nullable = false, precision = 10, scale = 3)
     @Builder.Default
-    private BigDecimal line = BigDecimal.ZERO;
+    private BigDecimal line = BigDecimal.ZERO.setScale(3);
 
     @Column(nullable = false, length = 40)
     private String outcome;
@@ -70,4 +71,22 @@ public class MatchOddsQuote extends AbstractEntity {
 
     @Column(name = "fetched_at", nullable = false)
     private Instant fetchedAt;
+
+    @Version
+    @Column(name = "version")
+    private Long version;
+
+    @PrePersist
+    @PreUpdate
+    private void validateQuote() {
+        if (match == null || bookmaker == null || provider == null || marketType == null
+                || marketPeriod == null || outcome == null || outcome.isBlank()
+                || odd == null || odd.signum() <= 0) {
+            throw new IllegalStateException("Odds quote identity and a positive decimal odd are required");
+        }
+        outcome = outcome.trim().toUpperCase(java.util.Locale.ROOT);
+        if (outcome.length() > 40) outcome = outcome.substring(0, 40);
+        line = (line == null ? BigDecimal.ZERO : line).setScale(3, RoundingMode.HALF_UP);
+        if (fetchedAt == null) fetchedAt = Instant.now();
+    }
 }
