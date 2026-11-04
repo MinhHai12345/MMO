@@ -112,7 +112,7 @@ public class OddsIngestionServiceImpl implements OddsIngestionService {
     }
 
     private Map<Long, String> loadFixtureIds(Provider provider) {
-        List<MatchExternalId> mappings = matchExternalIdRepository.findAllByProvider(provider);
+        List<MatchExternalId> mappings = matchExternalIdRepository.findAllByProvider(MatchProvider.fromName(provider.name()));
         Map<Long, String> fixtureIdsByMatchId = new HashMap<>();
         mappings.forEach(mapping -> {
             Long matchId = mapping.getMatch().getId();
