@@ -209,6 +209,10 @@ public class FootballDataBootstrapUseCase implements FootballDataBootstrapServic
         return config != null && config.isEnabled();
     }
 
+    private boolean isInitialBackfillCompleted(Provider provider) {
+        return checkpointStore.isCompleted(provider, INITIAL_CORE_CHECKPOINT);
+    }
+
     private boolean isResourceBackfillCompleted(
             Provider provider, String checkpointKey, boolean legacyCheckpointCompatible) {
         boolean resourceCheckpoint = checkpointStore.isCompleted(provider, checkpointKey);
