@@ -83,7 +83,7 @@ All three top-level use cases acquire the same MySQL advisory lock, `mmo:fb:inge
 - Unit tests cover lock acquired/busy/error/release paths.
 - Use-case tests cover bootstrap checkpoint isolation, retry boundaries, no-op after completion, lock contention, and Core/Enrichment stage selection.
 - Provider adapter tests cover provider DTO mapping, HTTP retry/classification and CSV parsing independently.
-- Before production rollout, run a MySQL integration smoke test with two independent application connections: first connection acquires the lock, second connection must fail to acquire it, then must succeed after the first connection releases/closes.
+- GitHub Actions starts a MySQL 8 service and runs the two-connection advisory-lock integration test. Local runs can enable the same test with MMO_MYSQL_TEST_URL, MMO_MYSQL_TEST_USERNAME and MMO_MYSQL_TEST_PASSWORD. The first connection must acquire the lock, the second must fail, then must succeed after the first connection releases/closes.
 - Run `mvn clean verify` and inspect Quartz/job logs before enabling the recurring schedules.
 
 ## Remaining migration boundary
