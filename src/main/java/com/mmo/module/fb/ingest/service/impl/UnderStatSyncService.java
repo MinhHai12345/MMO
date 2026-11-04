@@ -276,8 +276,6 @@ public class UnderStatSyncService implements HistoricalStatisticsIngestionPort {
         stats.setNpxGoalDifference(source.npxGoalDifference());
         // Keep the canonical analytics projection separate from Understat provenance.
         matchAdvancedStatsRepository.save(stats);
-        match.setStatisticsLastAttemptAt(Instant.now());
-        matchRepository.save(match);
     }
 
     private static int parseSeasonYear(String year) {
