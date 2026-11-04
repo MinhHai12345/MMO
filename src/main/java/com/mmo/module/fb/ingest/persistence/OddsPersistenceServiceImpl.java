@@ -93,9 +93,7 @@ public class OddsPersistenceServiceImpl implements OddsPersistenceService {
             }
         }
 
-        // An empty but successful provider response still counts as a successful sync.
-        match.setLastOddsSyncedAt(Instant.now());
-        matchRepository.save(match);
+        // Sync lifecycle is stored in MatchEnrichmentState, not on the canonical fixture.
     }
 
     private static boolean sameOdd(BigDecimal left, BigDecimal right) {
