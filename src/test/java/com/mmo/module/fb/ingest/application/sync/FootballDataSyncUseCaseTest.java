@@ -44,7 +44,7 @@ class FootballDataSyncUseCaseTest {
         uk = mock(FootballDataUkIngestionPort.class);
         properties = new AppProperties();
         useCase = new FootballDataSyncUseCase(lock, properties,
-                leagues, seasons, teams, fixtures, standings, odds, uk);
+                leagues, seasons, teams, fixtures, standings, uk);
     }
 
     @Test

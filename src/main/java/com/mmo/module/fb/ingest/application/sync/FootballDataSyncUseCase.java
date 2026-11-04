@@ -7,7 +7,6 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.service.FixtureIngestionService;
 import com.mmo.module.fb.ingest.service.FootballDataSyncService;
 import com.mmo.module.fb.ingest.service.LeagueIngestionService;
-import com.mmo.module.fb.ingest.service.OddsIngestionService;
 import com.mmo.module.fb.ingest.service.ProviderOverrides;
 import com.mmo.module.fb.ingest.service.StandingsIngestionService;
 import com.mmo.module.fb.ingest.service.SeasonIngestionService;
@@ -36,7 +35,6 @@ public class FootballDataSyncUseCase implements FootballDataSyncService {
     private final TeamIngestionService teamIngestionService;
     private final FixtureIngestionService fixtureIngestionService;
     private final StandingsIngestionService standingsIngestionService;
-    private final OddsIngestionService oddsIngestionService;
     private final FootballDataUkIngestionPort footballDataUkSyncService;
 
     @Override
@@ -86,11 +84,7 @@ public class FootballDataSyncUseCase implements FootballDataSyncService {
         runStage("current-season-fixtures",
                 () -> fixtureIngestionService.syncFixturesForProvider(fixture, null, null));
 
-        if (standings == Provider.UNDER_STATS) {
-            log.info("Skipping standings: UNDER_STATS does not expose canonical standings");
-        } else {
-            runStage("standings", () -> standingsIngestionService.syncStandingsForProvider(standings));
-        }
+        runStage("standings", () -> standingsIngestionService.syncStandingsForProvider(standings));
 
         if (odds == null) {
             log.info("Skipping upcoming odds: no upcoming-odds provider is active in Phase 1");
