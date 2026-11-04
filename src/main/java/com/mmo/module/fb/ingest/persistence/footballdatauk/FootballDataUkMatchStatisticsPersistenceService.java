@@ -8,6 +8,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.team.entity.Team;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -26,6 +27,7 @@ public class FootballDataUkMatchStatisticsPersistenceService {
     private final MatchAdvancedStatsRepository statsRepository;
     private final MatchStatisticsSnapshotPersistenceService snapshotPersistenceService;
 
+    @Transactional
     public int persist(Match match, Map<String, String> row) {
         int saved = 0;
         if (persistSide(match, match.getHomeTeam(), row, "H")) saved++;
