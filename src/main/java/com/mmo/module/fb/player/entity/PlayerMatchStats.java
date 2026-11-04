@@ -98,4 +98,8 @@ public class PlayerMatchStats extends AbstractEntity {
     @Column(name = "red_cards")
     @Builder.Default
     private Integer redCards = 0;
+
+    @Version
+    @Column(name = "version")
+    private Long version;
 }
