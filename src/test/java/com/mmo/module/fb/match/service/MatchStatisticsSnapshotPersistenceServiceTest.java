@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchStatisticsSourceSnapshot;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.match.repository.MatchStatisticsSourceSnapshotRepository;
 import com.mmo.module.fb.team.entity.Team;
 import org.junit.jupiter.api.Test;
@@ -47,7 +48,7 @@ class MatchStatisticsSnapshotPersistenceServiceTest {
         MatchStatisticsSourceSnapshot saved = captor.getValue();
         assertEquals(match, saved.getMatch());
         assertEquals(team, saved.getTeam());
-        assertEquals(Provider.SOFA_SCORE, saved.getProvider());
+        assertEquals(MatchProvider.SOFA_SCORE, saved.getProvider());
         assertTrue(saved.getSnapshotJson().contains("\"expectedGoals\":\"1.25\""));
         assertNotNull(saved.getFetchedAt());
     }
