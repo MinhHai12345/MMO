@@ -409,7 +409,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 Match match = matchExternalIdRepository.findByProviderAndExternalId(MATCH_PROVIDER, externalId)
                         .map(MatchExternalId::getMatch)
                         .orElseGet(() -> matchExternalIdRepository.findByProviderAndExternalId(
-                                        PROVIDER, legacyFixtureExternalId(
+                                        MATCH_PROVIDER, legacyFixtureExternalId(
                                                 leagueMapping.getIdentify(), season, homeName, awayName))
                                 .map(MatchExternalId::getMatch)
                                 .orElseGet(() -> findFixtureCandidate(season, home, away, kickoff)));
@@ -512,7 +512,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 String fixtureExternalId = fixtureExternalId(leagueMapping.getIdentify(), season, home, away);
 
                 Optional<MatchExternalId> existingExternalId = matchExternalIdRepository
-                        .findByProviderAndExternalId(PROVIDER, fixtureExternalId);
+                        .findByProviderAndExternalId(MATCH_PROVIDER, fixtureExternalId);
                 Match match = existingExternalId.map(MatchExternalId::getMatch)
                         .orElseGet(() -> resolveOrCreateFixture(season, home, away, kickoff));
                 boolean footballDataOwnsCore = match.getId() != null
