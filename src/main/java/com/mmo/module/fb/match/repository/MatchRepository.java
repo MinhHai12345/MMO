@@ -193,6 +193,50 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             @Param("retryBefore") Instant retryBefore,
             Pageable pageable);
 
+    @Query("""
+            SELECT DISTINCT m FROM Match m
+            JOIN FETCH m.homeTeam
+            JOIN FETCH m.awayTeam
+            JOIN m.externalIds externalId
+            LEFT JOIN MatchEnrichmentState state
+              ON state.match = m
+             AND state.provider = :provider
+             AND state.resource = :resource
+            WHERE m.status = :finished
+              AND m.homeScore IS NOT NULL
+              AND m.awayScore IS NOT NULL
+              AND externalId.provider = :provider
+              AND NOT EXISTS (
+                    SELECT playerStats.id FROM com.mmo.module.fb.player.entity.PlayerMatchStats playerStats
+                    WHERE playerStats.match = m
+              )
+              AND (
+                    state.id IS NULL
+                    OR (
+                        state.status <> :succeeded
+                        AND (
+                            (
+                                state.status <> :inProgress
+                                AND (state.nextRetryAt IS NULL OR state.nextRetryAt <= CURRENT_TIMESTAMP)
+                            )
+                            OR (
+                                state.status = :inProgress
+                                AND (state.lastAttemptAt IS NULL OR state.lastAttemptAt < :retryBefore)
+                            )
+                        )
+                    )
+              )
+            ORDER BY m.matchTime DESC, m.id DESC
+            """)
+    List<Match> findFinishedMatchesMissingPlayerStatistics(
+            @Param("finished") MatchStatus finished,
+            @Param("provider") Provider provider,
+            @Param("resource") MatchEnrichmentResource resource,
+            @Param("succeeded") MatchEnrichmentStatus succeeded,
+            @Param("inProgress") MatchEnrichmentStatus inProgress,
+            @Param("retryBefore") Instant retryBefore,
+            Pageable pageable);
+
     /**
      * Aggregated data coverage by league and season. Uses a projection to avoid loading
      * every Match entity just to build a readiness report.
