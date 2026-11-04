@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.AppProperties;
+import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.entity.ProviderSyncCheckpoint;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.client.ProviderTransportException;
@@ -39,6 +40,7 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
     private static final String TEAM_BACKFILL_CHECKPOINT = "CORE_BACKFILL_TEAMS";
     private static final String FIXTURE_BACKFILL_CHECKPOINT = "CORE_BACKFILL_FIXTURES";
 
+    private final IngestionDistributedLock distributedLock;
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
     private final ProviderSyncCheckpointRepository checkpointRepository;
@@ -56,6 +58,14 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
 
     @Override
     public void syncCoreData(ProviderOverrides overrides) {
+        boolean executed = distributedLock.execute(IngestionDistributedLock.GLOBAL_INGEST_LOCK,
+                () -> syncCoreDataLocked(overrides));
+        if (!executed) {
+            log.warn("Bootstrap skipped because another ingestion workflow is running");
+        }
+    }
+
+    private void syncCoreDataLocked(ProviderOverrides overrides) {
         ProviderOverrides selected = overrides == null ? ProviderOverrides.defaults() : overrides;
         AppProperties.Providers defaults = appProperties.getIngestion().getProviders();
 
@@ -145,6 +155,14 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
      */
     @Override
     public void syncCoreDataForProviders(List<Provider> providers) {
+        boolean executed = distributedLock.execute(IngestionDistributedLock.GLOBAL_INGEST_LOCK,
+                () -> syncCoreDataForProvidersLocked(providers));
+        if (!executed) {
+            log.warn("Multi-provider bootstrap skipped because another ingestion workflow is running");
+        }
+    }
+
+    private void syncCoreDataForProvidersLocked(List<Provider> providers) {
         if (providers == null || providers.isEmpty()) {
             throw new IllegalArgumentException("At least one ingestion provider is required");
         }
