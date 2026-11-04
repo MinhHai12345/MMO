@@ -1,7 +1,7 @@
 package com.mmo.module.fb.match.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchStatisticsSourceSnapshot;
 import com.mmo.module.fb.match.enums.MatchProvider;
@@ -22,7 +22,7 @@ class MatchStatisticsSnapshotPersistenceServiceTest {
     void upsertsLatestPayloadPerMatchTeamAndProvider() {
         MatchStatisticsSourceSnapshotRepository repository =
                 mock(MatchStatisticsSourceSnapshotRepository.class);
-        when(repository.findByMatchIdAndTeamIdAndProvider(10L, 20L, Provider.SOFA_SCORE))
+        when(repository.findByMatchIdAndTeamIdAndProvider(10L, 20L, MatchProvider.SOFA_SCORE))
                 .thenReturn(Optional.empty());
         when(repository.save(any(MatchStatisticsSourceSnapshot.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
