@@ -9,6 +9,25 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: mmo_test
+          MYSQL_USER: mmo
+          MYSQL_PASSWORD: mmo
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      MMO_MYSQL_TEST_URL: "jdbc:mysql://127.0.0.1:3306/mmo_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+      MMO_MYSQL_TEST_USERNAME: mmo
+      MMO_MYSQL_TEST_PASSWORD: mmo
     steps:
       - name: Checkout
         uses: actions/checkout@v4
