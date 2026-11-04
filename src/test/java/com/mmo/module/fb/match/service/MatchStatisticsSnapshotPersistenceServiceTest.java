@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchStatisticsSourceSnapshot;
-import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.match.repository.MatchStatisticsSourceSnapshotRepository;
 import com.mmo.module.fb.team.entity.Team;
 import org.junit.jupiter.api.Test;
@@ -22,7 +21,7 @@ class MatchStatisticsSnapshotPersistenceServiceTest {
     void upsertsLatestPayloadPerMatchTeamAndProvider() {
         MatchStatisticsSourceSnapshotRepository repository =
                 mock(MatchStatisticsSourceSnapshotRepository.class);
-        when(repository.findByMatchIdAndTeamIdAndProvider(10L, 20L, MatchProvider.SOFA_SCORE))
+        when(repository.findByMatchIdAndTeamIdAndProvider(10L, 20L, MatchMatchProvider.SOFA_SCORE))
                 .thenReturn(Optional.empty());
         when(repository.save(any(MatchStatisticsSourceSnapshot.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -38,7 +37,7 @@ class MatchStatisticsSnapshotPersistenceServiceTest {
 
         MatchStatisticsSnapshotPersistenceService service =
                 new MatchStatisticsSnapshotPersistenceService(repository, new ObjectMapper());
-        service.upsert(match, team, Provider.SOFA_SCORE, Map.of(
+        service.upsert(match, team, MatchProvider.SOFA_SCORE, Map.of(
                 "expectedGoals", "1.25",
                 "totalShots", 14
         ));
@@ -48,7 +47,7 @@ class MatchStatisticsSnapshotPersistenceServiceTest {
         MatchStatisticsSourceSnapshot saved = captor.getValue();
         assertEquals(match, saved.getMatch());
         assertEquals(team, saved.getTeam());
-        assertEquals(MatchProvider.SOFA_SCORE, saved.getProvider());
+        assertEquals(MatchMatchProvider.SOFA_SCORE, saved.getProvider());
         assertTrue(saved.getSnapshotJson().contains("\"expectedGoals\":\"1.25\""));
         assertNotNull(saved.getFetchedAt());
     }
@@ -72,7 +71,7 @@ class MatchStatisticsSnapshotPersistenceServiceTest {
                 new MatchStatisticsSnapshotPersistenceService(repository, new ObjectMapper());
 
         assertThrows(IllegalArgumentException.class,
-                () -> service.upsert(match, unrelated, Provider.SOFA_SCORE, Map.of("xg", 1)));
+                () -> service.upsert(match, unrelated, MatchProvider.SOFA_SCORE, Map.of("xg", 1)));
         verifyNoInteractions(repository);
     }
 
@@ -83,7 +82,7 @@ class MatchStatisticsSnapshotPersistenceServiceTest {
         MatchStatisticsSnapshotPersistenceService service =
                 new MatchStatisticsSnapshotPersistenceService(repository, new ObjectMapper());
 
-        service.upsert(new Match(), new Team(), Provider.SOFA_SCORE, Map.of("xg", 1));
+        service.upsert(new Match(), new Team(), MatchProvider.SOFA_SCORE, Map.of("xg", 1));
 
         verifyNoInteractions(repository);
     }
