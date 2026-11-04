@@ -1,6 +1,5 @@
 package com.mmo.module.fb.match.repository;
 
-import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.match.entity.MatchEnrichmentState;
 import com.mmo.module.fb.match.enums.MatchEnrichmentResource;
 import com.mmo.module.fb.match.enums.MatchEnrichmentStatus;
@@ -42,19 +41,5 @@ public interface MatchEnrichmentStateRepository extends JpaRepository<MatchEnric
             @Param("staleBefore") Instant staleBefore,
             @Param("succeeded") MatchEnrichmentStatus succeeded);
 
-    default Optional<MatchEnrichmentState> findByMatchIdAndProviderAndResource(
-            Long matchId, Provider provider, MatchEnrichmentResource resource) {
-        return findByMatchIdAndProviderAndResource(matchId, MatchProvider.from(provider), resource);
-    }
 
-    default List<MatchEnrichmentState> findByProviderAndResourceAndStatus(
-            Provider provider, MatchEnrichmentResource resource, MatchEnrichmentStatus status) {
-        return findByProviderAndResourceAndStatus(MatchProvider.from(provider), resource, status);
-    }
-
-    default List<MatchEnrichmentState> findDue(
-            Provider provider, MatchEnrichmentResource resource, Instant now,
-            MatchEnrichmentStatus inProgress, Instant staleBefore, MatchEnrichmentStatus succeeded) {
-        return findDue(MatchProvider.from(provider), resource, now, inProgress, staleBefore, succeeded);
-    }
 }
