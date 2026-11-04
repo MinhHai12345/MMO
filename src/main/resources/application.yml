@@ -134,7 +134,7 @@ app:
         web-url: ${UNDER_STAT_WEB_URL}
 
       FOOTBALL_DATA_UK:
-        enabled: ${FOOTBALL_DATA_UK_ENABLED:false}
+        enabled: ${FOOTBALL_DATA_UK_ENABLED:true}
         uri: ${FOOTBALL_DATA_UK_URI:https://www.football-data.co.uk}
 
   sync:

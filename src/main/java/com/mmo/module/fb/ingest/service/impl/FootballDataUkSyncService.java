@@ -308,10 +308,10 @@ public class FootballDataUkSyncService {
         }
 
         Season season = existing.get();
-        if (season.isCurrent() != current) {
-            season.setCurrent(current);
-            season = seasonRepository.save(season);
-        }
+//        if (season.isCurrent() != current) {
+//            season.setCurrent(current);
+//            season = seasonRepository.save(season);
+//        }
         return season;
     }
 
