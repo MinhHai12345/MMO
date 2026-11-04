@@ -63,12 +63,9 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         Provider seasonProvider = selected.season() == null ? defaults.getSeason() : selected.season();
         Provider teamProvider = selected.team() == null ? defaults.getTeam() : selected.team();
         Provider fixtureProvider = selected.fixture() == null ? defaults.getFixture() : selected.fixture();
-        Provider standingsProvider = selected.standings() == null ? defaults.getStandings() : selected.standings();
 
         Set<Provider> coreProviders = new LinkedHashSet<>(List.of(
                 leagueProvider, seasonProvider, teamProvider, fixtureProvider));
-        coreProviders.forEach(provider -> validateProvider(provider));
-        if (standingsProvider != Provider.UNDER_STATS) validateProvider(standingsProvider);
 
         // A legacy provider-level checkpoint is safe to reuse only when the old and new
         // configurations have one unambiguous Core provider for every resource.
@@ -81,9 +78,8 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         boolean csvBackfillCompleted = !csvProviderEnabled
                 || isInitialBackfillCompleted(Provider.FOOTBALL_DATA_UK);
 
-        // Bootstrap is a recovery entry point, not a second incremental-sync scheduler.
-        // Once every historical resource has its own durable checkpoint, recurring updates
-        // belong exclusively to FootballDataSyncJob.
+        // Bootstrap is a historical initialization/recovery path only. Current-season
+        // refreshes, standings and odds belong exclusively to FootballDataSyncJob.
         if (!teamsBackfillRequired && !fixturesBackfillRequired && csvBackfillCompleted) {
             log.info("Historical Core backfill already completed. providers: teams={}, fixtures={}, csv={}. "
                     + "Skipping bootstrap; recurring updates belong to FootballDataSyncJob.",
@@ -91,45 +87,41 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
             return;
         }
 
-        log.info("Core bootstrap mode: teams={}, fixtures={}, providers: league={}, season={}, team={}, "
-                        + "fixture={}, standings={}",
-                teamsBackfillRequired ? "HISTORICAL_BACKFILL" : "ACTIVE_SEASONS_ONLY",
-                fixturesBackfillRequired ? "HISTORICAL_BACKFILL" : "ACTIVE_SEASONS_ONLY",
-                leagueProvider, seasonProvider, teamProvider, fixtureProvider, standingsProvider);
+        log.info("Historical bootstrap mode: teams={}, fixtures={}, csv={}",
+                teamsBackfillRequired ? "BACKFILL" : "COMPLETED",
+                fixturesBackfillRequired ? "BACKFILL" : "COMPLETED",
+                !csvProviderEnabled ? "DISABLED" : csvBackfillCompleted ? "COMPLETED" : "BACKFILL");
 
-        Set<Provider> catalogueProviders = new LinkedHashSet<>(coreProviders);
-        if (standingsProvider != Provider.UNDER_STATS) catalogueProviders.add(standingsProvider);
+        Set<Provider> catalogueProviders = new LinkedHashSet<>();
+        if (teamsBackfillRequired || fixturesBackfillRequired) {
+            catalogueProviders.add(leagueProvider);
+            catalogueProviders.add(seasonProvider);
+            if (teamsBackfillRequired) catalogueProviders.add(teamProvider);
+            if (fixturesBackfillRequired) catalogueProviders.add(fixtureProvider);
+        }
         for (Provider provider : catalogueProviders) {
+            validateProvider(provider);
             runStage("league-catalogue/" + provider,
                     () -> leagueIngestionService.syncLeaguesForProvider(provider));
         }
 
-        runStage("season-catalogue/" + seasonProvider,
-                () -> seasonIngestionService.syncSeasonsForProvider(seasonProvider));
+        if (teamsBackfillRequired || fixturesBackfillRequired) {
+            runStage("season-catalogue/" + seasonProvider,
+                    () -> seasonIngestionService.syncSeasonsForProvider(seasonProvider));
+        }
 
         if (teamsBackfillRequired) {
+            validateProvider(teamProvider);
             runStage("teams/historical/" + teamProvider,
                     () -> teamIngestionService.syncAllSeasonsForProvider(teamProvider));
             completeResourceBackfill(teamProvider, TEAM_BACKFILL_CHECKPOINT);
-        } else {
-            runStage("teams/active-seasons/" + teamProvider,
-                    () -> teamIngestionService.syncTeamsForProvider(teamProvider));
         }
 
         if (fixturesBackfillRequired) {
+            validateProvider(fixtureProvider);
             runStage("fixtures/historical/" + fixtureProvider,
                     () -> fixtureIngestionService.syncAllSeasonsForProvider(fixtureProvider, null, null));
             completeResourceBackfill(fixtureProvider, FIXTURE_BACKFILL_CHECKPOINT);
-        } else {
-            runStage("fixtures/active-seasons/" + fixtureProvider,
-                    () -> fixtureIngestionService.syncFixturesForProvider(fixtureProvider, null, null));
-        }
-
-        if (standingsProvider == Provider.UNDER_STATS) {
-            log.info("Skipping standings: UNDER_STATS does not expose canonical standings");
-        } else {
-            runStage("standings/current/" + standingsProvider,
-                    () -> standingsIngestionService.syncStandingsForProvider(standingsProvider));
         }
 
         if (!csvProviderEnabled) {
@@ -137,14 +129,14 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         } else if (!csvBackfillCompleted && footballDataUkSyncService.syncInitialData()) {
             completeInitialBackfill(Provider.FOOTBALL_DATA_UK);
         } else if (csvBackfillCompleted) {
-            log.info("Football-Data UK historical Core backfill is already complete; "
+            log.info("Football-Data UK historical Core backfill already complete; "
                     + "current-season refresh belongs to FootballDataSyncJob");
         }
 
-        log.info("Core bootstrap completed. teamsMode={}, fixturesMode={}, csvMode={}",
-                teamsBackfillRequired ? "HISTORICAL" : "ACTIVE_SEASONS",
-                fixturesBackfillRequired ? "HISTORICAL" : "ACTIVE_SEASONS",
-                !csvProviderEnabled ? "DISABLED" : csvBackfillCompleted ? "ALREADY_COMPLETED" : "INITIAL_HISTORICAL");
+        log.info("Historical Core bootstrap completed. teams={}, fixtures={}, csv={}",
+                teamsBackfillRequired ? "BACKFILLED" : "ALREADY_COMPLETE",
+                fixturesBackfillRequired ? "BACKFILLED" : "ALREADY_COMPLETE",
+                !csvProviderEnabled ? "DISABLED" : csvBackfillCompleted ? "ALREADY_COMPLETE" : "ATTEMPTED");
     }
 
     /**
