@@ -67,7 +67,7 @@ class MatchOddsQuotePersistenceServiceTest {
         bookmaker.setId(2L);
 
         new MatchOddsQuotePersistenceService(quotes, history).upsert(
-                match, bookmaker, MatchProvider.API_FOOTBALL,
+                match, bookmaker, MatchMatchProvider.API_FOOTBALL,
                 "Match Winner", "Home", null, new BigDecimal("2.100"));
 
         verify(quotes).save(existing);
@@ -81,7 +81,7 @@ class MatchOddsQuotePersistenceServiceTest {
         OddsHistoryRepository history = mock(OddsHistoryRepository.class);
         MatchOddsQuotePersistenceService service = new MatchOddsQuotePersistenceService(quotes, history);
 
-        service.upsert(new Match(), new Bookmaker(), Provider.API_FOOTBALL,
+        service.upsert(new Match(), new Bookmaker(), MatchProvider.API_FOOTBALL,
                 "Match Winner", "Home", null, BigDecimal.ZERO);
 
         verifyNoInteractions(quotes, history);
