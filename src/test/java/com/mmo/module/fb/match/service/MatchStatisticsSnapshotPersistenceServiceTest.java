@@ -53,6 +53,29 @@ class MatchStatisticsSnapshotPersistenceServiceTest {
     }
 
     @Test
+    void rejectsTeamThatDoesNotBelongToMatch() {
+        MatchStatisticsSourceSnapshotRepository repository =
+                mock(MatchStatisticsSourceSnapshotRepository.class);
+        Match match = new Match();
+        match.setId(10L);
+        Team home = new Team();
+        home.setId(20L);
+        Team away = new Team();
+        away.setId(21L);
+        Team unrelated = new Team();
+        unrelated.setId(22L);
+        match.setHomeTeam(home);
+        match.setAwayTeam(away);
+
+        MatchStatisticsSnapshotPersistenceService service =
+                new MatchStatisticsSnapshotPersistenceService(repository, new ObjectMapper());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.upsert(match, unrelated, Provider.SOFA_SCORE, Map.of("xg", 1)));
+        verifyNoInteractions(repository);
+    }
+
+    @Test
     void ignoresIncompleteSourceIdentity() {
         MatchStatisticsSourceSnapshotRepository repository =
                 mock(MatchStatisticsSourceSnapshotRepository.class);
