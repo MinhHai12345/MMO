@@ -3,6 +3,8 @@ package com.mmo.module.fb.ingest.persistence.footballdatauk;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchAdvancedStats;
 import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
+import com.mmo.module.fb.match.service.MatchStatisticsSnapshotPersistenceService;
+import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.team.entity.Team;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,9 +23,8 @@ import java.util.function.Consumer;
 @RequiredArgsConstructor
 public class FootballDataUkMatchStatisticsPersistenceService {
 
-    private static final String PROVIDER = "FOOTBALL_DATA_UK";
-
     private final MatchAdvancedStatsRepository statsRepository;
+    private final MatchStatisticsSnapshotPersistenceService snapshotPersistenceService;
 
     public int persist(Match match, Map<String, String> row) {
         int saved = 0;
@@ -61,6 +62,8 @@ public class FootballDataUkMatchStatisticsPersistenceService {
                 && xg == null && scored == null) {
             return false;
         }
+
+        snapshotPersistenceService.upsert(match, team, Provider.FOOTBALL_DATA_UK, row);
 
         MatchAdvancedStats stats = statsRepository.findByMatchIdAndTeamId(match.getId(), team.getId())
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
@@ -103,10 +106,7 @@ public class FootballDataUkMatchStatisticsPersistenceService {
         }
 
         if (!changed) return false;
-        if (!StringUtils.hasText(stats.getStatisticsProvider())) {
-            stats.setStatisticsProvider(PROVIDER);
-        }
-        stats.setStatisticsSyncedAt(Instant.now());
+        // Canonical row is a merged analytics projection; source provenance is stored separately.
         statsRepository.save(stats);
         return true;
     }
