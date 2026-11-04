@@ -1,6 +1,5 @@
 package com.mmo.module.fb.match.repository;
 
-import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.match.entity.MatchStatisticsSourceSnapshot;
 import com.mmo.module.fb.match.enums.MatchProvider;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,8 +17,5 @@ public interface MatchStatisticsSourceSnapshotRepository
 
     List<MatchStatisticsSourceSnapshot> findAllByMatchIdAndTeamId(Long matchId, Long teamId);
 
-    default Optional<MatchStatisticsSourceSnapshot> findByMatchIdAndTeamIdAndProvider(
-            Long matchId, Long teamId, Provider provider) {
-        return findByMatchIdAndTeamIdAndProvider(matchId, teamId, MatchProvider.from(provider));
-    }
+
 }
