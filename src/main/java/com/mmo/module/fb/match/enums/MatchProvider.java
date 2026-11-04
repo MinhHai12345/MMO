@@ -1,8 +1,8 @@
 package com.mmo.module.fb.match.enums;
 
 /**
- * Provider identity used by the Match domain. This deliberately does not depend on the
- * ingestion module; adapters translate their configured provider enum at the boundary.
+ * Provider identity owned by the Match domain. Ingestion adapters translate their
+ * configured provider enum by name at the module boundary.
  */
 public enum MatchProvider {
     SOFA_SCORE,
@@ -11,7 +11,10 @@ public enum MatchProvider {
     FOOTBALL_DATA,
     FOOTBALL_DATA_UK;
 
-    public static MatchProvider from(com.mmo.module.fb.ingest.enums.Provider provider) {
-        return provider == null ? null : valueOf(provider.name());
+    public static MatchProvider fromName(String providerName) {
+        if (providerName == null || providerName.isBlank()) {
+            throw new IllegalArgumentException("Provider name must not be blank");
+        }
+        return valueOf(providerName.trim().toUpperCase(java.util.Locale.ROOT));
     }
 }
