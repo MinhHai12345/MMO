@@ -94,6 +94,13 @@ public class MatchEnrichmentState extends AbstractEntity {
         this.errorMessage = null;
     }
 
+    public void markSkipped(Instant retryAt) {
+        this.status = MatchEnrichmentStatus.SKIPPED;
+        this.nextRetryAt = retryAt;
+        this.errorCode = null;
+        this.errorMessage = null;
+    }
+
     public void markFailed(String code, String message, Instant retryAt) {
         this.status = MatchEnrichmentStatus.FAILED;
         this.errorCode = code;
