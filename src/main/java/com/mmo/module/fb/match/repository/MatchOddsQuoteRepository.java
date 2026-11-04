@@ -4,6 +4,8 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.match.entity.MatchOddsQuote;
 import com.mmo.module.fb.match.enums.MatchOddsMarketType;
 import com.mmo.module.fb.match.enums.MatchOddsPeriod;
+import com.mmo.module.fb.match.enums.MatchProvider;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.math.BigDecimal;
@@ -13,13 +15,27 @@ import java.util.Optional;
 public interface MatchOddsQuoteRepository extends JpaRepository<MatchOddsQuote, Long> {
 
     Optional<MatchOddsQuote> findByMatchIdAndBookmakerIdAndProviderAndMarketTypeAndMarketPeriodAndLineAndOutcome(
-            Long matchId, Long bookmakerId, Provider provider, MatchOddsMarketType marketType,
+            Long matchId, Long bookmakerId, MatchProvider provider, MatchOddsMarketType marketType,
             MatchOddsPeriod marketPeriod, BigDecimal line, String outcome);
 
+    @EntityGraph(attributePaths = {"bookmaker"})
     List<MatchOddsQuote> findAllByMatchId(Long matchId);
 
+    @EntityGraph(attributePaths = {"bookmaker"})
     List<MatchOddsQuote> findAllByMatchIdAndMarketTypeAndMarketPeriod(
             Long matchId, MatchOddsMarketType marketType, MatchOddsPeriod marketPeriod);
 
-    List<MatchOddsQuote> findAllByMatchIdAndProvider(Long matchId, Provider provider);
+    @EntityGraph(attributePaths = {"bookmaker"})
+    List<MatchOddsQuote> findAllByMatchIdAndProvider(Long matchId, MatchProvider provider);
+
+    default Optional<MatchOddsQuote> findByMatchIdAndBookmakerIdAndProviderAndMarketTypeAndMarketPeriodAndLineAndOutcome(
+            Long matchId, Long bookmakerId, Provider provider, MatchOddsMarketType marketType,
+            MatchOddsPeriod marketPeriod, BigDecimal line, String outcome) {
+        return findByMatchIdAndBookmakerIdAndProviderAndMarketTypeAndMarketPeriodAndLineAndOutcome(
+                matchId, bookmakerId, MatchProvider.from(provider), marketType, marketPeriod, line, outcome);
+    }
+
+    default List<MatchOddsQuote> findAllByMatchIdAndProvider(Long matchId, Provider provider) {
+        return findAllByMatchIdAndProvider(matchId, MatchProvider.from(provider));
+    }
 }
