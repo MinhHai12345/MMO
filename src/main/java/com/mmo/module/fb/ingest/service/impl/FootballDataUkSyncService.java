@@ -379,6 +379,8 @@ public class FootballDataUkSyncService {
 
     private EnrichmentResult enrichRows(
             Season season, LeagueExternalId leagueMapping, List<Map<String, String>> rows) {
+        int importedStats = 0;
+        int importedOdds = 0;
         int unmatched = 0;
         for (Map<String, String> row : rows) {
             try {
