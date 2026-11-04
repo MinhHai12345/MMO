@@ -6,7 +6,7 @@ import com.mmo.module.fb.match.entity.MatchOdds;
 import com.mmo.module.fb.match.repository.BookmakerRepository;
 import com.mmo.module.fb.match.repository.MatchOddsRepository;
 import com.mmo.module.fb.match.service.MatchOddsQuotePersistenceService;
-import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -156,7 +156,7 @@ public class FootballDataUkOddsPersistenceService {
         // Keep the normalized quote store authoritative for analytics while retaining
         // the legacy grouped row for existing API consumers.
         if (market.startsWith("1X2")) {
-            quotePersistenceService.upsert(match, bookmaker, Provider.FOOTBALL_DATA_UK,
+            quotePersistenceService.upsert(match, bookmaker, MatchProvider.FOOTBALL_DATA_UK,
                     market, "HOME", null, home);
             quotePersistenceService.upsert(match, bookmaker, Provider.FOOTBALL_DATA_UK,
                     market, "DRAW", null, draw);
