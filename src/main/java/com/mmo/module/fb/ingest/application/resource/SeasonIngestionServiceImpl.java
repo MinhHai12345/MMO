@@ -1,4 +1,6 @@
-package com.mmo.module.fb.ingest.service.impl;
+package com.mmo.module.fb.ingest.application.resource;
+
+import com.mmo.module.fb.ingest.application.support.IngestionServiceSupport;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;

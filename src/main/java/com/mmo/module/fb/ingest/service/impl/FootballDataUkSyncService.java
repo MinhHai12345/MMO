@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.AppProperties;
+import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkMatchDataProvider;
 import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkMatchStatisticsPersistenceService;
@@ -54,7 +55,7 @@ import java.util.Optional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class FootballDataUkSyncService {
+public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
     private static final Provider PROVIDER = Provider.FOOTBALL_DATA_UK;
     private static final ZoneId SOURCE_ZONE = ZoneId.of("Europe/London");
     private static final DateTimeFormatter CSV_DATE = DateTimeFormatter.ofPattern("dd/MM/yy");

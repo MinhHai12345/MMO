@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.AppProperties;
+import com.mmo.module.fb.ingest.application.port.out.HistoricalStatisticsIngestionPort;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderMatchStatistics;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeamMatchStats;
@@ -43,7 +44,7 @@ import java.util.regex.Pattern;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class UnderStatSyncService {
+public class UnderStatSyncService implements HistoricalStatisticsIngestionPort {
 
     private static final Provider PROVIDER = Provider.UNDER_STATS;
     private static final Duration FIXTURE_MATCH_WINDOW = Duration.ofHours(6);

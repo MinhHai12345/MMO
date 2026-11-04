@@ -1,6 +1,8 @@
-package com.mmo.module.fb.ingest.service.impl;
+package com.mmo.module.fb.ingest.application.sync;
 
 import com.mmo.AppProperties;
+import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
+import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.service.FixtureIngestionService;
 import com.mmo.module.fb.ingest.service.FootballDataSyncService;
@@ -25,8 +27,9 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class FootballDataSyncServiceImpl implements FootballDataSyncService {
+public class FootballDataSyncUseCase implements FootballDataSyncService {
 
+    private final IngestionDistributedLock distributedLock;
     private final AppProperties properties;
     private final LeagueIngestionService leagueIngestionService;
     private final SeasonIngestionService seasonIngestionService;
@@ -34,10 +37,18 @@ public class FootballDataSyncServiceImpl implements FootballDataSyncService {
     private final FixtureIngestionService fixtureIngestionService;
     private final StandingsIngestionService standingsIngestionService;
     private final OddsIngestionService oddsIngestionService;
-    private final FootballDataUkSyncService footballDataUkSyncService;
+    private final FootballDataUkIngestionPort footballDataUkSyncService;
 
     @Override
     public void sync(ProviderOverrides overrides, Provider oddsProviderOverride) {
+        boolean executed = distributedLock.execute(IngestionDistributedLock.GLOBAL_INGEST_LOCK,
+                () -> syncLocked(overrides, oddsProviderOverride));
+        if (!executed) {
+            log.warn("Core sync skipped because another ingestion workflow is running");
+        }
+    }
+
+    private void syncLocked(ProviderOverrides overrides, Provider oddsProviderOverride) {
         ProviderOverrides selected = overrides == null ? ProviderOverrides.defaults() : overrides;
         AppProperties.Providers defaults = properties.getIngestion().getProviders();
 
@@ -59,8 +70,12 @@ public class FootballDataSyncServiceImpl implements FootballDataSyncService {
             runStage("leagues/" + provider,
                     () -> leagueIngestionService.syncLeaguesForProvider(provider));
         }
-        runStage("seasons/" + season,
-                () -> seasonIngestionService.syncSeasonsForProvider(season));
+        // Team and fixture fetches resolve provider-specific season IDs, not the
+        // external season ID belonging to an unrelated catalogue provider.
+        for (Provider provider : catalogueProviders) {
+            runStage("seasons/" + provider,
+                    () -> seasonIngestionService.syncSeasonsForProvider(provider));
+        }
         runStage("teams/" + team, () -> teamIngestionService.syncTeamsForProvider(team));
         runStage("current-season-fixtures",
                 () -> fixtureIngestionService.syncFixturesForProvider(fixture, null, null));

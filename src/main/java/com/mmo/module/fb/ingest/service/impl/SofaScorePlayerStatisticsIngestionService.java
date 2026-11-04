@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.application.port.out.PlayerStatisticsIngestionPort;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreLineupsClient;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreLineupsResponseDTO;
 import com.mmo.module.fb.ingest.persistence.sofascore.SofaScorePlayerStatsPersistenceService;
@@ -22,7 +23,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SofaScorePlayerStatisticsIngestionService {
+public class SofaScorePlayerStatisticsIngestionService implements PlayerStatisticsIngestionPort {
     private static final int MATCH_BATCH_SIZE = 20;
 
     private final MatchRepository matchRepository;

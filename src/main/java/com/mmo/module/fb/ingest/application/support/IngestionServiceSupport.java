@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.service.impl;
+package com.mmo.module.fb.ingest.application.support;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;

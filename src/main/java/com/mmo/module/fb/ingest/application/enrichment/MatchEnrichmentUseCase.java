@@ -1,9 +1,14 @@
-package com.mmo.module.fb.ingest.service.impl;
+package com.mmo.module.fb.ingest.application.enrichment;
 
 import com.mmo.AppProperties;
+import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.entity.ProviderSyncCheckpoint;
-import com.mmo.module.fb.ingest.repository.ProviderSyncCheckpointRepository;
+import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
+import com.mmo.module.fb.ingest.application.port.out.HistoricalStatisticsIngestionPort;
+import com.mmo.module.fb.ingest.application.port.out.MatchStatisticsIngestionPort;
+import com.mmo.module.fb.ingest.application.port.out.PlayerStatisticsIngestionPort;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+
 import com.mmo.module.fb.ingest.service.MatchEnrichmentService;
 import com.mmo.module.fb.ingest.service.SofaScoreBootstrapService;
 import lombok.RequiredArgsConstructor;
@@ -14,21 +19,30 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class MatchEnrichmentServiceImpl implements MatchEnrichmentService {
+public class MatchEnrichmentUseCase implements MatchEnrichmentService {
 
     private static final String CORE_INITIAL_CHECKPOINT = "CORE_INITIAL_BACKFILL";
     private static final String ENRICHMENT_INITIAL_CHECKPOINT = "MATCH_ENRICHMENT_INITIAL";
 
+    private final IngestionDistributedLock distributedLock;
     private final AppProperties properties;
-    private final ProviderSyncCheckpointRepository checkpointRepository;
-    private final FootballDataUkSyncService footballDataUkSyncService;
-    private final UnderStatSyncService underStatSyncService;
+    private final ProviderCheckpointStore checkpointStore;
+    private final FootballDataUkIngestionPort footballDataUkSyncService;
+    private final HistoricalStatisticsIngestionPort underStatSyncService;
     private final SofaScoreBootstrapService sofaScoreBootstrapService;
-    private final SofaScoreMatchStatisticsIngestionService sofaScoreMatchStatisticsIngestionService;
-    private final SofaScorePlayerStatisticsIngestionService playerStatisticsIngestionService;
+    private final MatchStatisticsIngestionPort sofaScoreMatchStatisticsIngestionService;
+    private final PlayerStatisticsIngestionPort playerStatisticsIngestionService;
 
     @Override
     public void enrichFinishedMatches() {
+        boolean executed = distributedLock.execute(IngestionDistributedLock.GLOBAL_INGEST_LOCK,
+                this::enrichFinishedMatchesLocked);
+        if (!executed) {
+            log.warn("Match enrichment skipped because another ingestion workflow is running");
+        }
+    }
+
+    private void enrichFinishedMatchesLocked() {
         Provider selected = properties.getIngestion().getProviders().getHistoricalStats();
         log.info("Match enrichment started: historicalStatsProvider={}", selected);
 
@@ -48,24 +62,18 @@ public class MatchEnrichmentServiceImpl implements MatchEnrichmentService {
     }
 
     private void syncFootballDataUkEnrichment() {
-        boolean coreReady = checkpointRepository.existsByProviderAndCheckpointKey(
+        boolean coreReady = checkpointStore.isCompleted(
                 Provider.FOOTBALL_DATA_UK, CORE_INITIAL_CHECKPOINT);
         if (!coreReady) {
             log.info("Skipping Football-Data UK match enrichment until the 2014+ Core CSV import is complete");
             return;
         }
 
-        boolean initialEnrichmentComplete = checkpointRepository.existsByProviderAndCheckpointKey(
+        boolean initialEnrichmentComplete = checkpointStore.isCompleted(
                 Provider.FOOTBALL_DATA_UK, ENRICHMENT_INITIAL_CHECKPOINT);
         if (!initialEnrichmentComplete) {
             if (footballDataUkSyncService.syncInitialEnrichment()) {
-                ProviderSyncCheckpoint checkpoint = checkpointRepository
-                        .findByProviderAndCheckpointKey(Provider.FOOTBALL_DATA_UK, ENRICHMENT_INITIAL_CHECKPOINT)
-                        .orElseGet(ProviderSyncCheckpoint::new);
-                checkpoint.setProvider(Provider.FOOTBALL_DATA_UK);
-                checkpoint.setCheckpointKey(ENRICHMENT_INITIAL_CHECKPOINT);
-                checkpoint.setCompletedAt(java.time.Instant.now());
-                checkpointRepository.save(checkpoint);
+                checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK, ENRICHMENT_INITIAL_CHECKPOINT);
             }
             return;
         }

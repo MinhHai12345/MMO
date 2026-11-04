@@ -35,10 +35,11 @@ public class FBCronjobInitial implements DataInitializer {
         createOrUpdateJob(ContentGenerationJob.class,
                 "0 30 11 * * ?", "Generate PRE_MATCH content drafts daily at 11:30 UTC");
 
-        // The first execution performs the historical backfill. Once its durable provider
-        // checkpoints exist, the same job automatically switches to current-season-only sync.
+        // Bootstrap performs/retries the one-time historical backfill. After all provider
+        // checkpoints are complete it becomes a cheap no-op; recurring Core updates belong
+        // exclusively to FootballDataSyncJob.
         createOrUpdateJob(FootballDataBootstrapJob.class,
-                "0 0 1 * * ?", "Initial historical Core backfill, then current-season Core sync daily at 01:00 UTC");
+                "0 0 1 * * ?", "Initial historical Core backfill and daily recovery check at 01:00 UTC");
         createOrUpdateJob(FootballDataSyncJob.class,
                 "0 0 0/6 * * ?", "Incrementally synchronize canonical football data every 6 hours");
         createOrUpdateJob(MatchEnrichmentJob.class,

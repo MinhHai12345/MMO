@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.service.impl;
+package com.mmo.module.fb.ingest.persistence;
 
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.league.entity.Season;
