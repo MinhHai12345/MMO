@@ -167,7 +167,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     List<Match> findByStatus(MatchStatus status);
 
     @Query("""
-            SELECT DISTINCT m FROM Match m
+            SELECT m FROM Match m
             JOIN FETCH m.season season
             JOIN FETCH m.homeTeam
             JOIN FETCH m.awayTeam
@@ -219,7 +219,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             Pageable pageable);
 
     @Query("""
-            SELECT DISTINCT m FROM Match m
+            SELECT m FROM Match m
             JOIN FETCH m.homeTeam
             JOIN FETCH m.awayTeam
             JOIN m.externalIds externalId
