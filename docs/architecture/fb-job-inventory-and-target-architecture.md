@@ -37,7 +37,8 @@ Runs canonical Core sync in dependency order:
 3. Recent results (UTC today minus 7 days through today).
 4. Upcoming fixtures (UTC today through today plus 14 days).
 5. Canonical standings (skipped for providers without standings).
-6. Football-Data.co.uk import, enriching canonical matches with CSV results, statistics and odds.
+6. Upcoming odds through the configured odds provider.
+7. Football-Data.co.uk import, enriching canonical matches with CSV results, statistics and odds.
 
 Provider-specific services remain independent and are selected through existing provider routing and one-execution provider overrides.
 

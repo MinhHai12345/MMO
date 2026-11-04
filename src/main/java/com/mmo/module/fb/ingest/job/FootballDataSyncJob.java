@@ -5,6 +5,7 @@ import com.mmo.core.cronjob.job.AbstractJob;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.service.FixtureIngestionService;
 import com.mmo.module.fb.ingest.service.LeagueIngestionService;
+import com.mmo.module.fb.ingest.service.OddsIngestionService;
 import com.mmo.module.fb.ingest.service.StandingsIngestionService;
 import com.mmo.module.fb.ingest.service.TeamIngestionService;
 import com.mmo.module.fb.ingest.service.impl.FootballDataUkSyncService;
@@ -28,6 +29,7 @@ public class FootballDataSyncJob extends AbstractJob<CronJob> {
     private final TeamIngestionService teamIngestionService;
     private final FixtureIngestionService fixtureIngestionService;
     private final StandingsIngestionService standingsIngestionService;
+    private final OddsIngestionService oddsIngestionService;
     private final FootballDataUkSyncService footballDataUkSyncService;
 
     @Override
@@ -36,13 +38,14 @@ public class FootballDataSyncJob extends AbstractJob<CronJob> {
         Provider teamProvider = IngestionJobParameters.provider(context, "team");
         Provider fixtureProvider = IngestionJobParameters.provider(context, "fixture");
         Provider standingsProvider = IngestionJobParameters.provider(context, "standings");
+        Provider oddsProvider = IngestionJobParameters.provider(context, "odds");
 
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         LocalDate recentFrom = today.minusDays(7);
         LocalDate upcomingTo = today.plusDays(14);
 
-        log.info("Football data sync started: leagueProvider={}, teamProvider={}, fixtureProvider={}, standingsProvider={}, range={}..{}",
-                leagueProvider, teamProvider, fixtureProvider, standingsProvider, recentFrom, upcomingTo);
+        log.info("Football data sync started: leagueProvider={}, teamProvider={}, fixtureProvider={}, standingsProvider={}, oddsProvider={}, range={}..{}",
+                leagueProvider, teamProvider, fixtureProvider, standingsProvider, oddsProvider, recentFrom, upcomingTo);
 
         runStage("leagues", () -> {
             if (leagueProvider == null) leagueIngestionService.syncLeagues();
@@ -76,6 +79,12 @@ public class FootballDataSyncJob extends AbstractJob<CronJob> {
                 else standingsIngestionService.syncStandingsForProvider(standingsProvider);
             });
         }
+        checkStop();
+
+        runStage("upcoming-odds", () -> {
+            if (oddsProvider == null) oddsIngestionService.syncUpcomingOdds();
+            else oddsIngestionService.syncUpcomingOdds(oddsProvider);
+        });
         checkStop();
 
         // Football-Data.co.uk is the single scheduled entry point for its CSV import.
