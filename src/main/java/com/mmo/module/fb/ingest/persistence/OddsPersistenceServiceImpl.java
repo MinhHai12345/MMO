@@ -73,7 +73,7 @@ public class OddsPersistenceServiceImpl implements OddsPersistenceService {
 
             for (ProviderOdds value : entry.getValue()) {
                 applyOdd(odds, value.market(), value.outcome(), value.odd());
-                quotePersistenceService.upsert(match, bookmaker, MatchProvider.from(provider),
+                quotePersistenceService.upsert(match, bookmaker, MatchProvider.fromName(provider.name()),
                         value.market(), value.outcome(), null, value.odd());
             }
 
