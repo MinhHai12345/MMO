@@ -1,6 +1,5 @@
 package com.mmo.module.fb.match.repository;
 
-import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.match.entity.MatchOddsQuote;
 import com.mmo.module.fb.match.enums.MatchOddsMarketType;
 import com.mmo.module.fb.match.enums.MatchOddsPeriod;
@@ -28,14 +27,5 @@ public interface MatchOddsQuoteRepository extends JpaRepository<MatchOddsQuote, 
     @EntityGraph(attributePaths = {"bookmaker"})
     List<MatchOddsQuote> findAllByMatchIdAndProvider(Long matchId, MatchProvider provider);
 
-    default Optional<MatchOddsQuote> findByMatchIdAndBookmakerIdAndProviderAndMarketTypeAndMarketPeriodAndLineAndOutcome(
-            Long matchId, Long bookmakerId, Provider provider, MatchOddsMarketType marketType,
-            MatchOddsPeriod marketPeriod, BigDecimal line, String outcome) {
-        return findByMatchIdAndBookmakerIdAndProviderAndMarketTypeAndMarketPeriodAndLineAndOutcome(
-                matchId, bookmakerId, MatchProvider.from(provider), marketType, marketPeriod, line, outcome);
-    }
 
-    default List<MatchOddsQuote> findAllByMatchIdAndProvider(Long matchId, Provider provider) {
-        return findAllByMatchIdAndProvider(matchId, MatchProvider.from(provider));
-    }
 }
