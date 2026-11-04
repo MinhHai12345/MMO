@@ -37,7 +37,7 @@ Current odds/team-statistics/player-statistics candidate queries use provider/re
 
 - `MatchAdvancedStats` remains the merged, analytics-facing projection, unique by
   `(match_id, team_id)`.
-- `MatchStatisticsSourceSnapshot` stores the latest raw JSON payload independently for
+- `MatchStatisticsSourceSnapshot` stores the latest provider payload representation as JSON independently for
   each `(match_id, team_id, provider)`. This preserves provenance when Football-Data UK,
   SofaScore and Understat contribute different metrics to the same canonical projection.
 - Legacy provider/timestamp fields on `MatchAdvancedStats` remain readable during
