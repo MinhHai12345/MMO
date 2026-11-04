@@ -72,7 +72,9 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
 
         boolean teamsBackfillRequired = !isResourceBackfillCompleted(teamProvider, TEAM_BACKFILL_CHECKPOINT);
         boolean fixturesBackfillRequired = !isResourceBackfillCompleted(fixtureProvider, FIXTURE_BACKFILL_CHECKPOINT);
-        boolean csvBackfillCompleted = isInitialBackfillCompleted(Provider.FOOTBALL_DATA_UK);
+        boolean csvProviderEnabled = isProviderEnabled(Provider.FOOTBALL_DATA_UK);
+        boolean csvBackfillCompleted = !csvProviderEnabled
+                || isInitialBackfillCompleted(Provider.FOOTBALL_DATA_UK);
 
         // Bootstrap is a recovery entry point, not a second incremental-sync scheduler.
         // Once every historical resource has its own durable checkpoint, recurring updates
@@ -125,7 +127,9 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
                     () -> standingsIngestionService.syncStandingsForProvider(standingsProvider));
         }
 
-        if (csvBackfillCompleted) {
+        if (!csvProviderEnabled) {
+            log.info("Skipping Football-Data UK bootstrap because the provider is disabled");
+        } else if (csvBackfillCompleted) {
             runStage("football-data-uk/current-season", footballDataUkSyncService::syncCurrentSeasonData);
         } else if (footballDataUkSyncService.syncInitialData()) {
             completeInitialBackfill(Provider.FOOTBALL_DATA_UK);
@@ -181,6 +185,11 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
                     () -> standingsIngestionService.syncStandingsForProvider(Provider.FOOTBALL_DATA));
         }
         log.info("Multi-provider historical Core import completed: {}", ordered);
+    }
+
+    private boolean isProviderEnabled(Provider provider) {
+        AppProperties.ProviderConfig config = appProperties.getIngestion().getProviderConfig().get(provider);
+        return config != null && config.isEnabled();
     }
 
     private boolean isResourceBackfillCompleted(Provider provider, String checkpointKey) {
