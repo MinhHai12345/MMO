@@ -53,7 +53,9 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
 
     public void storeMatchStatistics() {
         List<Match> targetMatches = matchRepository.findFinishedMatchesMissingAdvancedStats(
-                MatchStatus.FINISHED, Provider.SOFA_SCORE,
+                MatchStatus.FINISHED, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS,
+                com.mmo.module.fb.match.enums.MatchEnrichmentStatus.SUCCEEDED,
+                com.mmo.module.fb.match.enums.MatchEnrichmentStatus.IN_PROGRESS,
                 Instant.now().minus(RETRY_HOURS, ChronoUnit.HOURS), PageRequest.of(0, BATCH_SIZE));
 
         if (targetMatches == null || targetMatches.isEmpty()) {
