@@ -24,6 +24,7 @@ public interface MatchEnrichmentStateRepository extends JpaRepository<MatchEnric
             SELECT state FROM MatchEnrichmentState state
             WHERE state.provider = :provider
               AND state.resource = :resource
+              AND state.status <> :succeeded
               AND (state.nextRetryAt IS NULL OR state.nextRetryAt <= :now)
               AND (
                     state.status <> :inProgress
@@ -37,5 +38,6 @@ public interface MatchEnrichmentStateRepository extends JpaRepository<MatchEnric
             @Param("resource") MatchEnrichmentResource resource,
             @Param("now") Instant now,
             @Param("inProgress") MatchEnrichmentStatus inProgress,
-            @Param("staleBefore") Instant staleBefore);
+            @Param("staleBefore") Instant staleBefore,
+            @Param("succeeded") MatchEnrichmentStatus succeeded);
 }
