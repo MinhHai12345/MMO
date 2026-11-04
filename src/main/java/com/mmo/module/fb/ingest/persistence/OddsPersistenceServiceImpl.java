@@ -9,6 +9,7 @@ import com.mmo.module.fb.match.repository.MatchOddsRepository;
 import com.mmo.module.fb.match.repository.MatchRepository;
 import com.mmo.module.fb.match.repository.OddsHistoryRepository;
 import com.mmo.module.fb.match.service.MatchOddsQuotePersistenceService;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import com.mmo.module.fb.ingest.service.OddsPersistenceService;
@@ -72,7 +73,7 @@ public class OddsPersistenceServiceImpl implements OddsPersistenceService {
 
             for (ProviderOdds value : entry.getValue()) {
                 applyOdd(odds, value.market(), value.outcome(), value.odd());
-                quotePersistenceService.upsert(match, bookmaker, provider,
+                quotePersistenceService.upsert(match, bookmaker, MatchProvider.from(provider),
                         value.market(), value.outcome(), null, value.odd());
             }
 
