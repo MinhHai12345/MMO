@@ -138,6 +138,15 @@ public class MatchAdvancedStats extends AbstractEntity {
     @Column(name = "offsides")
     private Integer offsides;
 
+    @Column(name = "hit_woodwork")
+    private Integer hitWoodwork;
+
+    @Column(name = "free_kicks_conceded")
+    private Integer freeKicksConceded;
+
+    @Column(name = "booking_points")
+    private Integer bookingPoints;
+
     @Column(name = "total_passes")
     private Integer totalPasses;
 
