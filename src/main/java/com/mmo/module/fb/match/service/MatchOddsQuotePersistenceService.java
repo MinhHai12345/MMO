@@ -54,6 +54,8 @@ public class MatchOddsQuotePersistenceService {
 
         BigDecimal previous = quote.getOdd();
         if (previous != null && previous.compareTo(odd) == 0) {
+            quote.setFetchedAt(now);
+            quoteRepository.save(quote);
             return;
         }
 
