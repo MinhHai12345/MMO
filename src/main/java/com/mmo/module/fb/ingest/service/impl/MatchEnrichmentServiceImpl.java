@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.AppProperties;
+import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.entity.ProviderSyncCheckpoint;
 import com.mmo.module.fb.ingest.repository.ProviderSyncCheckpointRepository;
@@ -19,6 +20,7 @@ public class MatchEnrichmentServiceImpl implements MatchEnrichmentService {
     private static final String CORE_INITIAL_CHECKPOINT = "CORE_INITIAL_BACKFILL";
     private static final String ENRICHMENT_INITIAL_CHECKPOINT = "MATCH_ENRICHMENT_INITIAL";
 
+    private final IngestionDistributedLock distributedLock;
     private final AppProperties properties;
     private final ProviderSyncCheckpointRepository checkpointRepository;
     private final FootballDataUkSyncService footballDataUkSyncService;
@@ -29,6 +31,14 @@ public class MatchEnrichmentServiceImpl implements MatchEnrichmentService {
 
     @Override
     public void enrichFinishedMatches() {
+        boolean executed = distributedLock.execute(IngestionDistributedLock.GLOBAL_INGEST_LOCK,
+                this::enrichFinishedMatchesLocked);
+        if (!executed) {
+            log.warn("Match enrichment skipped because another ingestion workflow is running");
+        }
+    }
+
+    private void enrichFinishedMatchesLocked() {
         Provider selected = properties.getIngestion().getProviders().getHistoricalStats();
         log.info("Match enrichment started: historicalStatsProvider={}", selected);
 
