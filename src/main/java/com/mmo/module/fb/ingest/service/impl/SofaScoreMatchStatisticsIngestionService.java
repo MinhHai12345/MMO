@@ -88,7 +88,15 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
                     continue;
                 }
 
-                persistMatchStatistics(match, snapshot.get());
+                ProviderMatchAdvancedStatistics providerSnapshot = snapshot.get();
+                if (!hasStatistics(providerSnapshot.home()) && !hasStatistics(providerSnapshot.away())) {
+                    markAttempt(match);
+                    enrichmentStateService.empty(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
+                    skipped++;
+                    continue;
+                }
+
+                persistMatchStatistics(match, providerSnapshot);
                 enrichmentStateService.succeed(match, Provider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
                 persisted++;
             } catch (RuntimeException exception) {
@@ -185,6 +193,10 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
         setIntegerIfPresent(values, stats::setBigChancesMissed, "bigChancesMissed");
         // The source-specific payload and fetched timestamp are stored in the snapshot table.
         return stats;
+    }
+
+    private boolean hasStatistics(Map<String, BigDecimal> values) {
+        return values != null && !values.isEmpty();
     }
 
     private void markAttempt(Match match) {
