@@ -1,18 +1,17 @@
 package com.mmo.module.fb.match.entity;
 
 import com.mmo.core.entity.AbstractEntity;
-import com.mmo.module.fb.match.entity.Bookmaker;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Legacy grouped odds projection retained for existing API/report consumers.
+ * New ingestion writes normalized one-outcome MatchOddsQuote rows as well.
+ */
 @Entity
 @Table(name = "fb_match_odds",
         uniqueConstraints = @UniqueConstraint(name = "uk_fb_match_bookmaker_market",
@@ -25,11 +24,11 @@ import java.util.List;
 @Builder
 public class MatchOdds extends AbstractEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "match_id", nullable = false)
     private Match match;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "bookmaker_id", nullable = false)
     private Bookmaker bookmaker;
 
@@ -38,22 +37,16 @@ public class MatchOdds extends AbstractEntity {
 
     @Column(precision = 8, scale = 3)
     private BigDecimal homeWinOdds;
-
     @Column(precision = 8, scale = 3)
     private BigDecimal drawOdds;
-
     @Column(precision = 8, scale = 3)
     private BigDecimal awayWinOdds;
-
     @Column(precision = 8, scale = 3)
     private BigDecimal over25Odds;
-
     @Column(precision = 8, scale = 3)
     private BigDecimal under25Odds;
-
     @Column(precision = 8, scale = 3)
     private BigDecimal bttsYesOdds;
-
     @Column(precision = 8, scale = 3)
     private BigDecimal bttsNoOdds;
 
@@ -63,10 +56,8 @@ public class MatchOdds extends AbstractEntity {
 
     @Column(name = "asian_handicap_line", precision = 8, scale = 3)
     private BigDecimal asianHandicapLine;
-
     @Column(precision = 8, scale = 3)
     private BigDecimal asianHandicapHome;
-
     @Column(precision = 8, scale = 3)
     private BigDecimal asianHandicapAway;
 
@@ -74,4 +65,13 @@ public class MatchOdds extends AbstractEntity {
     @OneToMany(mappedBy = "matchOdds", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OddsHistory> history = new ArrayList<>();
 
+    @Version
+    @Column(name = "version")
+    private Long version;
+
+    public void addHistory(OddsHistory snapshot) {
+        if (snapshot == null) return;
+        history.add(snapshot);
+        snapshot.setMatchOdds(this);
+    }
 }
