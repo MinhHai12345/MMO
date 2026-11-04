@@ -98,6 +98,25 @@ class FootballDataBootstrapUseCaseTest {
     }
 
     @Test
+    void createsSeasonMappingsForEverySelectedResourceProvider() {
+        AppProperties.ProviderConfig sofaConfig = new AppProperties.ProviderConfig();
+        sofaConfig.setEnabled(true);
+        AppProperties.ProviderConfig understatConfig = new AppProperties.ProviderConfig();
+        understatConfig.setEnabled(true);
+        properties.getIngestion().getProviderConfig().put(Provider.SOFA_SCORE, sofaConfig);
+        properties.getIngestion().getProviderConfig().put(Provider.UNDER_STATS, understatConfig);
+
+        service.syncCoreData(new ProviderOverrides(
+                Provider.SOFA_SCORE, Provider.UNDER_STATS,
+                Provider.SOFA_SCORE, Provider.UNDER_STATS, null));
+
+        verify(seasons).syncSeasonsForProvider(Provider.SOFA_SCORE);
+        verify(seasons).syncSeasonsForProvider(Provider.UNDER_STATS);
+        verify(teams).syncAllSeasonsForProvider(Provider.SOFA_SCORE);
+        verify(fixtures).syncAllSeasonsForProvider(Provider.UNDER_STATS, null, null);
+    }
+
+    @Test
     void doesNotStartWorkflowWhenGlobalLockIsBusy() {
         doReturn(false).when(lock).execute(eq(IngestionDistributedLock.GLOBAL_INGEST_LOCK), any(Runnable.class));
 
