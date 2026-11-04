@@ -136,7 +136,7 @@ public class UnderStatSyncService implements HistoricalStatisticsIngestionPort {
             for (ProviderTeamMatchStats stats : history) {
                 if (stats == null || !StringUtils.hasText(stats.externalMatchId())) continue;
                 Match match = matchExternalIdRepository
-                        .findByProviderAndExternalId(MatchProvider.from(PROVIDER), stats.externalMatchId())
+                        .findByProviderAndExternalId(MatchProvider.fromName(PROVIDER.name()), stats.externalMatchId())
                         .map(MatchExternalId::getMatch)
                         .orElse(null);
                 if (match == null || match.getSeason() == null
@@ -153,7 +153,7 @@ public class UnderStatSyncService implements HistoricalStatisticsIngestionPort {
     }
 
     private Match persistMatchIdentityAndXg(Season season, ProviderMatchStatistics source) {
-        Match match = matchExternalIdRepository.findByProviderAndExternalId(MatchProvider.from(PROVIDER), source.externalMatchId())
+        Match match = matchExternalIdRepository.findByProviderAndExternalId(MatchProvider.fromName(PROVIDER.name()), source.externalMatchId())
                 .map(MatchExternalId::getMatch)
                 .orElse(null);
         Instant kickoff = source.kickoff() == null ? null : source.kickoff().toInstant(ZoneOffset.UTC);
@@ -251,7 +251,7 @@ public class UnderStatSyncService implements HistoricalStatisticsIngestionPort {
     }
 
     private void persistTeamStats(Match match, Team team, ProviderTeamMatchStats source) {
-        snapshotPersistenceService.upsert(match, team, MatchProvider.from(PROVIDER), source);
+        snapshotPersistenceService.upsert(match, team, MatchProvider.fromName(PROVIDER.name()), source);
         MatchAdvancedStats stats = matchAdvancedStatsRepository
                 .findByMatchIdAndTeamId(match.getId(), team.getId())
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
