@@ -75,7 +75,7 @@ public class ExternalIdMappingService {
     @Transactional(readOnly = true)
     public Optional<Match> findMatch(Provider provider, String externalId) {
         requireIdentity(provider, externalId);
-        return matchExternalIds.findByProviderAndExternalId(MatchProvider.from(provider), externalId.trim())
+        return matchExternalIds.findByProviderAndExternalId(MatchProvider.fromName(provider.name()), externalId.trim())
                 .map(MatchExternalId::getMatch);
     }
 
@@ -127,9 +127,9 @@ public class ExternalIdMappingService {
             throw new IllegalArgumentException("Match must be persisted before registering an external ID");
         }
         requireIdentity(provider, externalId);
-        return register(matchExternalIds.findByMatchIdAndProvider(match.getId(), MatchProvider.from(provider)),
+        return register(matchExternalIds.findByMatchIdAndProvider(match.getId(), MatchProvider.fromName(provider.name())),
                 matchExternalIds.findByProviderAndExternalId(provider, externalId.trim()),
-                () -> MatchExternalId.builder().match(match).provider(MatchProvider.from(provider))
+                () -> MatchExternalId.builder().match(match).provider(MatchProvider.fromName(provider.name()))
                         .externalId(externalId.trim()).build(),
                 MatchExternalId::getMatch, MatchExternalId::getExternalId, match, "match", provider, externalId);
     }
