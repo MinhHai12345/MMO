@@ -70,7 +70,8 @@ class MatchOddsQuotePersistenceServiceTest {
                 match, bookmaker, Provider.API_FOOTBALL,
                 "Match Winner", "Home", null, new BigDecimal("2.100"));
 
-        verify(quotes, never()).save(any());
+        verify(quotes).save(existing);
+        assertNotNull(existing.getFetchedAt());
         verify(history, never()).save(any());
     }
 
