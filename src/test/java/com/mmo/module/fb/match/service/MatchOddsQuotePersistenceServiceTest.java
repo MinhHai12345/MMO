@@ -41,7 +41,7 @@ class MatchOddsQuotePersistenceServiceTest {
         MatchOddsQuote saved = captor.getValue();
         assertEquals(MatchOddsMarketType.OVER_UNDER, saved.getMarketType());
         assertEquals(MatchOddsPeriod.PRE_MATCH_OPEN, saved.getMarketPeriod());
-        assertEquals("OVER_2.5", saved.getOutcome());
+        assertEquals("OVER", saved.getOutcome());
         assertEquals(0, new BigDecimal("2.500").compareTo(saved.getLine()));
         assertEquals(0, new BigDecimal("1.91").compareTo(saved.getOdd()));
         verify(history).save(any());
