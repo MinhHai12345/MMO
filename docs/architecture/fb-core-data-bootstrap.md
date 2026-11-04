@@ -12,7 +12,7 @@ Football-Data free-tier season discovery is intentionally restricted by `Footbal
 
 ## First bootstrap
 
-`FootballDataBootstrapJob` invokes `FootballDataBootstrapServiceImpl`. The service checks durable `fb_provider_sync_checkpoints` rows before choosing a mode.
+`FootballDataBootstrapJob` invokes the `FootballDataBootstrapService` inbound contract, implemented by `FootballDataBootstrapUseCase`. The service checks durable `fb_provider_sync_checkpoints` rows before choosing a mode.
 
 Historical backfill decisions are made independently for the selected team and fixture providers:
 
