@@ -69,7 +69,7 @@ public class MatchEnrichmentUseCase implements MatchEnrichmentService {
             return;
         }
 
-        boolean initialEnrichmentComplete = checkpointRepository.existsByProviderAndCheckpointKey(
+        boolean initialEnrichmentComplete = checkpointStore.isCompleted(
                 Provider.FOOTBALL_DATA_UK, ENRICHMENT_INITIAL_CHECKPOINT);
         if (!initialEnrichmentComplete) {
             if (footballDataUkSyncService.syncInitialEnrichment()) {
