@@ -77,7 +77,7 @@ public class OddsIngestionServiceImpl implements OddsIngestionService {
         }
 
         List<Match> upcoming = matchRepository.findUpcomingWithProviderMapping(
-                MatchStatus.SCHEDULED, now, until, MatchProvider.from(selectedProvider), MatchEnrichmentResource.ODDS,
+                MatchStatus.SCHEDULED, now, until, MatchProvider.fromName(selectedProvider.name()), MatchEnrichmentResource.ODDS,
                 com.mmo.module.fb.match.enums.MatchEnrichmentStatus.SUCCEEDED,
                 com.mmo.module.fb.match.enums.MatchEnrichmentStatus.IN_PROGRESS,
                 now.minus(30, ChronoUnit.MINUTES), PageRequest.of(0, MAX_FIXTURES_PER_RUN));
@@ -91,20 +91,20 @@ public class OddsIngestionServiceImpl implements OddsIngestionService {
                 continue;
             }
 
-            enrichmentStateService.start(match, MatchProvider.from(selectedProvider), MatchEnrichmentResource.ODDS);
+            enrichmentStateService.start(match, MatchProvider.fromName(selectedProvider.name()), MatchEnrichmentResource.ODDS);
             try {
                 // Network call deliberately happens before entering the persistence transaction.
                 List<ProviderOdds> values = providerRegistry.odds(selectedProvider)
                         .fetchOdds(new OddsQuery(fixtureId));
                 oddsPersistenceService.persistOdds(match.getId(), selectedProvider, values);
                 if (values == null || values.isEmpty()) {
-                    enrichmentStateService.empty(match, MatchProvider.from(selectedProvider), MatchEnrichmentResource.ODDS);
+                    enrichmentStateService.empty(match, MatchProvider.fromName(selectedProvider.name()), MatchEnrichmentResource.ODDS);
                 } else {
-                    enrichmentStateService.succeed(match, MatchProvider.from(selectedProvider), MatchEnrichmentResource.ODDS);
+                    enrichmentStateService.succeed(match, MatchProvider.fromName(selectedProvider.name()), MatchEnrichmentResource.ODDS);
                 }
                 processed++;
             } catch (Exception ex) {
-                enrichmentStateService.failed(match, MatchProvider.from(selectedProvider), MatchEnrichmentResource.ODDS, ex);
+                enrichmentStateService.failed(match, MatchProvider.fromName(selectedProvider.name()), MatchEnrichmentResource.ODDS, ex);
                 log.warn("Could not sync odds for match {}: {}", match.getId(), ex.getMessage());
             }
         }
