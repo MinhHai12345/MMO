@@ -3,6 +3,7 @@ package com.mmo.module.fb.ingest.persistence.footballdatauk;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchAdvancedStats;
 import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
+import com.mmo.module.fb.match.service.MatchStatisticsSnapshotPersistenceService;
 import com.mmo.module.fb.team.entity.Team;
 import org.junit.jupiter.api.Test;
 
@@ -31,7 +32,8 @@ class FootballDataUkMatchStatisticsPersistenceServiceTest {
         match.setHomeTeam(home);
         match.setAwayTeam(away);
 
-        FootballDataUkMatchStatisticsPersistenceService mapper = new FootballDataUkMatchStatisticsPersistenceService(repository);
+        FootballDataUkMatchStatisticsPersistenceService mapper = new FootballDataUkMatchStatisticsPersistenceService(
+                repository, mock(MatchStatisticsSnapshotPersistenceService.class));
         Map<String, String> row = Map.ofEntries(
                 Map.entry("FTHG", "2"), Map.entry("FTAG", "1"),
                 Map.entry("HS", "14"), Map.entry("HST", "6"), Map.entry("HHW", "1"),
