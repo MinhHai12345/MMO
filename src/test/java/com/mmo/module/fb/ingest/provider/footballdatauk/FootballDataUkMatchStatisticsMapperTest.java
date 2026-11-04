@@ -37,7 +37,7 @@ class FootballDataUkMatchStatisticsMapperTest {
                 Map.entry("HS", "14"), Map.entry("HST", "6"), Map.entry("HHW", "1"),
                 Map.entry("HC", "7"), Map.entry("HF", "9"), Map.entry("HFKC", "13"),
                 Map.entry("HO", "2"), Map.entry("HY", "3"), Map.entry("HR", "0"),
-                Map.entry("HBP", "30"), Map.entry("HxG", "1.85"), Map.entry("AxG", "0.75")
+                Map.entry("HBP", "30"), Map.entry("HXG", "1.85"), Map.entry("AXG", "0.75")
         );
 
         assertEquals(2, mapper.persist(match, row));
