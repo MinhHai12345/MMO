@@ -70,8 +70,12 @@ public class FootballDataSyncUseCase implements FootballDataSyncService {
             runStage("leagues/" + provider,
                     () -> leagueIngestionService.syncLeaguesForProvider(provider));
         }
-        runStage("seasons/" + season,
-                () -> seasonIngestionService.syncSeasonsForProvider(season));
+        // Team and fixture fetches resolve provider-specific season IDs, not the
+        // external season ID belonging to an unrelated catalogue provider.
+        for (Provider provider : catalogueProviders) {
+            runStage("seasons/" + provider,
+                    () -> seasonIngestionService.syncSeasonsForProvider(provider));
+        }
         runStage("teams/" + team, () -> teamIngestionService.syncTeamsForProvider(team));
         runStage("current-season-fixtures",
                 () -> fixtureIngestionService.syncFixturesForProvider(fixture, null, null));
