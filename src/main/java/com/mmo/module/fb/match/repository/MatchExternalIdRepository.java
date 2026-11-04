@@ -1,6 +1,5 @@
 package com.mmo.module.fb.match.repository;
 
-import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.match.entity.MatchExternalId;
 import com.mmo.module.fb.match.enums.MatchProvider;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -43,31 +42,5 @@ public interface MatchExternalIdRepository extends JpaRepository<MatchExternalId
 
     boolean existsByProviderAndExternalId(MatchProvider provider, String externalId);
 
-    default List<MatchExternalId> findAllByProvider(Provider provider) {
-        return findAllByProvider(MatchProvider.from(provider));
-    }
 
-    default long countCurrentSeasonByProvider(Provider provider) {
-        return countCurrentSeasonByProvider(MatchProvider.from(provider));
-    }
-
-    default List<Long> findMappedCurrentSeasonIdsByProvider(Provider provider) {
-        return findMappedCurrentSeasonIdsByProvider(MatchProvider.from(provider));
-    }
-
-    default Optional<MatchExternalId> findByMatchIdAndProvider(Long matchId, Provider provider) {
-        return findByMatchIdAndProvider(matchId, MatchProvider.from(provider));
-    }
-
-    default Optional<MatchExternalId> findByProviderAndExternalId(Provider provider, String externalId) {
-        return findByProviderAndExternalId(MatchProvider.from(provider), externalId);
-    }
-
-    default boolean existsByMatchIdAndProvider(Long matchId, Provider provider) {
-        return existsByMatchIdAndProvider(matchId, MatchProvider.from(provider));
-    }
-
-    default boolean existsByProviderAndExternalId(Provider provider, String externalId) {
-        return existsByProviderAndExternalId(MatchProvider.from(provider), externalId);
-    }
 }
