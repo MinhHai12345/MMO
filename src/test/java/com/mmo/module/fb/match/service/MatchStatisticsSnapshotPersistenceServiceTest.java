@@ -21,7 +21,7 @@ class MatchStatisticsSnapshotPersistenceServiceTest {
     void upsertsLatestPayloadPerMatchTeamAndProvider() {
         MatchStatisticsSourceSnapshotRepository repository =
                 mock(MatchStatisticsSourceSnapshotRepository.class);
-        when(repository.findByMatchIdAndTeamIdAndProvider(10L, 20L, MatchMatchProvider.SOFA_SCORE))
+        when(repository.findByMatchIdAndTeamIdAndProvider(10L, 20L, MatchProvider.SOFA_SCORE))
                 .thenReturn(Optional.empty());
         when(repository.save(any(MatchStatisticsSourceSnapshot.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -47,7 +47,7 @@ class MatchStatisticsSnapshotPersistenceServiceTest {
         MatchStatisticsSourceSnapshot saved = captor.getValue();
         assertEquals(match, saved.getMatch());
         assertEquals(team, saved.getTeam());
-        assertEquals(MatchMatchProvider.SOFA_SCORE, saved.getProvider());
+        assertEquals(MatchProvider.SOFA_SCORE, saved.getProvider());
         assertTrue(saved.getSnapshotJson().contains("\"expectedGoals\":\"1.25\""));
         assertNotNull(saved.getFetchedAt());
     }
