@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Coordinates the one-time historical Core backfill and subsequent current-season sync.
+ * Coordinates the one-time historical Core backfill and recovery workflow.
  *
  * <p>Football-Data free tier owns seasons from 2023 onward. Football-Data.co.uk is imported
  * separately from 2014 onward. Completion is persisted per resource/provider so a provider
@@ -211,8 +211,7 @@ public class FootballDataBootstrapUseCase implements FootballDataBootstrapServic
 
     private boolean isResourceBackfillCompleted(
             Provider provider, String checkpointKey, boolean legacyCheckpointCompatible) {
-        boolean resourceCheckpoint = checkpointRepository
-                .existsByProviderAndCheckpointKey(provider, checkpointKey);
+        boolean resourceCheckpoint = checkpointStore.isCompleted(provider, checkpointKey);
         if (resourceCheckpoint || !legacyCheckpointCompatible) return resourceCheckpoint;
 
         // The legacy provider-level checkpoint is safe only for the old default topology,
