@@ -12,6 +12,7 @@ import java.time.Instant;
  * history uses quote/outcome/line/odd so every market can be audited.
  */
 @Entity
+@org.hibernate.annotations.Immutable
 @Table(name = "fb_odds_history",
         indexes = {
                 @Index(name = "idx_fb_odds_history_snapshot", columnList = "match_odds_id, recorded_at"),
@@ -53,7 +54,6 @@ public class OddsHistory extends AbstractEntity {
     private Instant recordedAt;
 
     @PrePersist
-    @PreUpdate
     private void validateSnapshot() {
         if (matchOdds == null && quote == null) {
             throw new IllegalStateException("Odds history must reference a legacy odds row or normalized quote");
