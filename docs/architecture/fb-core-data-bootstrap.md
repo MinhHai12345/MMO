@@ -14,7 +14,7 @@ Football-Data free-tier season discovery is intentionally restricted by `Footbal
 
 `FootballDataBootstrapJob` invokes `FootballDataBootstrapServiceImpl`. The service checks durable `fb_provider_sync_checkpoints` rows before choosing a mode.
 
-For a provider without the `CORE_INITIAL_BACKFILL` checkpoint:
+Historical backfill decisions are made independently for the selected team and fixture providers:
 
 1. Fetch that provider's league catalogue and persist provider-specific league IDs.
 2. Persist season mappings (Football-Data returns seasons as part of its competition payload).
@@ -31,7 +31,7 @@ The free-tier mapper exposes 2023-current seasons only; the CSV importer creates
 
 The jobs have strict ownership:
 
-- `FootballDataBootstrapJob` is the historical initialization/recovery entry point. It retries incomplete historical work and writes durable checkpoints only after successful stages. Once the configured team and fixture providers have separate historical resource checkpoints and Football-Data UK has completed its CSV checkpoint (or is disabled), the job exits immediately. It does not refresh catalogues, teams, fixtures or standings.
+- `FootballDataBootstrapJob` is the historical initialization/recovery entry point. It retries incomplete historical team/fixture resources and writes their provider-specific checkpoints only after successful stages. It never performs current-season refreshes. Once the configured team and fixture providers have separate historical resource checkpoints and Football-Data UK has completed its CSV checkpoint (or is disabled), the job exits immediately. It does not refresh catalogues, teams, fixtures or standings.
 - `FootballDataSyncJob` is the only recurring Core synchronization path (every six hours). It refreshes provider catalogues, active seasons' teams and fixtures, standings and upcoming odds. It also calls Football-Data UK current-season Core import only.
 - `MatchEnrichmentJob` is independent of Core synchronization. It imports match statistics, xG, odds and player statistics through configured enrichment providers. Historical enrichment and Core fixture identity must never be coupled.
 - `Season.current` describes the provider's current season. `Season.active` is the MMO operational selection used by recurring jobs; it is initialized from the provider's current flag when a season is first created, but must not be overwritten on every catalogue refresh because operators may intentionally activate a historical season.
