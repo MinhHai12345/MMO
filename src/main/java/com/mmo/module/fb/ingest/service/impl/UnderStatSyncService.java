@@ -18,6 +18,7 @@ import com.mmo.module.fb.match.entity.MatchExternalId;
 import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
 import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.match.repository.MatchRepository;
+import com.mmo.module.fb.match.service.MatchStatisticsSnapshotPersistenceService;
 import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.team.entity.TeamExternalId;
 import com.mmo.module.fb.team.repository.TeamExternalIdRepository;
@@ -58,6 +59,7 @@ public class UnderStatSyncService implements HistoricalStatisticsIngestionPort {
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final MatchAdvancedStatsRepository matchAdvancedStatsRepository;
+    private final MatchStatisticsSnapshotPersistenceService snapshotPersistenceService;
     private final ExternalIdMappingService externalIdMappingService;
 
     public void syncActiveSeasons() {
@@ -248,6 +250,7 @@ public class UnderStatSyncService implements HistoricalStatisticsIngestionPort {
     }
 
     private void persistTeamStats(Match match, Team team, ProviderTeamMatchStats source) {
+        snapshotPersistenceService.upsert(match, team, PROVIDER, source);
         MatchAdvancedStats stats = matchAdvancedStatsRepository
                 .findByMatchIdAndTeamId(match.getId(), team.getId())
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
@@ -271,12 +274,7 @@ public class UnderStatSyncService implements HistoricalStatisticsIngestionPort {
         stats.setLosses(source.losses());
         stats.setPoints(source.points());
         stats.setNpxGoalDifference(source.npxGoalDifference());
-        Instant syncedAt = Instant.now();
-        if (stats.getId() == null || !StringUtils.hasText(stats.getStatisticsProvider())) {
-            stats.setStatisticsProvider(PROVIDER.name());
-            stats.setStatisticsSyncedAt(syncedAt);
-        }
-        stats.setUnderstatSyncedAt(syncedAt);
+        // Keep the canonical analytics projection separate from Understat provenance.
         matchAdvancedStatsRepository.save(stats);
         match.setStatisticsLastAttemptAt(Instant.now());
         matchRepository.save(match);
