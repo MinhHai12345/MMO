@@ -246,6 +246,10 @@ public class FootballDataBootstrapUseCase implements FootballDataBootstrapServic
     }
 
     private void validateProvider(Provider provider) {
+        if (provider != Provider.FOOTBALL_DATA) {
+            throw new IllegalStateException("Phase 1 historical API bootstrap supports FOOTBALL_DATA only; "
+                    + provider + " is temporarily disabled. Football-Data UK uses its dedicated CSV importer.");
+        }
         AppProperties.ProviderConfig config = appProperties.getIngestion().getProviderConfig().get(provider);
         if (config == null || !config.isEnabled()) {
             throw new IllegalStateException(provider + " is disabled or not configured for bootstrap");

@@ -6,6 +6,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.repository.ProviderSyncCheckpointRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 
@@ -17,11 +18,13 @@ public class ProviderCheckpointJpaAdapter implements ProviderCheckpointStore {
     private final ProviderSyncCheckpointRepository repository;
 
     @Override
+    @Transactional(readOnly = true)
     public boolean isCompleted(Provider provider, String checkpointKey) {
         return repository.existsByProviderAndCheckpointKey(provider, checkpointKey);
     }
 
     @Override
+    @Transactional
     public void markCompleted(Provider provider, String checkpointKey) {
         ProviderSyncCheckpoint checkpoint = repository.findByProviderAndCheckpointKey(provider, checkpointKey)
                 .orElseGet(ProviderSyncCheckpoint::new);

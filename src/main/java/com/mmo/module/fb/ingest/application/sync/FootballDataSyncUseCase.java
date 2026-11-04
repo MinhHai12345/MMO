@@ -59,6 +59,12 @@ public class FootballDataSyncUseCase implements FootballDataSyncService {
         Provider standings = selected.standings() == null ? defaults.getStandings() : selected.standings();
         Provider odds = oddsProviderOverride == null ? defaults.getOdds() : oddsProviderOverride;
 
+        requireFootballDataProvider(league, "league");
+        requireFootballDataProvider(season, "season");
+        requireFootballDataProvider(team, "team");
+        requireFootballDataProvider(fixture, "fixture");
+        requireFootballDataProvider(standings, "standings");
+
         log.info("Football data incremental sync started for the current active season only: "
                         + "leagueProvider={}, teamProvider={}, fixtureProvider={}, standingsProvider={}, oddsProvider={}",
                 league, team, fixture, standings, odds);
@@ -86,12 +92,31 @@ public class FootballDataSyncUseCase implements FootballDataSyncService {
             runStage("standings", () -> standingsIngestionService.syncStandingsForProvider(standings));
         }
 
-        runStage("upcoming-odds", () -> oddsIngestionService.syncUpcomingOdds(odds));
+        if (odds == null) {
+            log.info("Skipping upcoming odds: no active odds provider is configured");
+        } else if (!isProviderEnabled(odds)) {
+            log.warn("Skipping upcoming odds because selected provider {} is disabled or not configured", odds);
+        } else {
+            runStage("upcoming-odds/" + odds, () -> oddsIngestionService.syncUpcomingOdds(odds));
+        }
 
         // The initial 2014+ CSV backfill belongs to FootballDataBootstrapService.
         // The frequent sync job must fetch only the current Football-Data UK season.
         runStage("football-data-uk-current-season", footballDataUkSyncService::syncCurrentSeasonData);
         log.info("Football data sync completed");
+    }
+
+    private void requireFootballDataProvider(Provider provider, String resource) {
+        if (provider != Provider.FOOTBALL_DATA) {
+            throw new IllegalStateException("Phase 1 supports FOOTBALL_DATA for " + resource
+                    + " ingestion; " + provider + " is temporarily disabled. "
+                    + "Football-Data UK is orchestrated through its dedicated CSV workflow.");
+        }
+    }
+
+    private boolean isProviderEnabled(Provider provider) {
+        AppProperties.ProviderConfig config = properties.getIngestion().getProviderConfig().get(provider);
+        return config != null && config.isEnabled();
     }
 
     private void runStage(String name, Runnable operation) {

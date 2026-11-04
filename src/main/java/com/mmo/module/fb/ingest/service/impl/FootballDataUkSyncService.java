@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkMatchDataProvider;
 import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkMatchStatisticsPersistenceService;
@@ -63,6 +64,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
     private static final DateTimeFormatter CSV_DATE = DateTimeFormatter.ofPattern("dd/MM/yy");
 
     private final AppProperties properties;
+    private final ProviderCheckpointStore checkpointStore;
     private final FootballDataUkMatchDataProvider matchDataProvider;
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
@@ -193,11 +195,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
             for (int startYear = 2014; startYear <= today.getYear(); startYear++) {
                 Season season = getOrCreateSeason(league, startYear, today);
                 boolean current = season.isCurrent();
-                Optional<SeasonExternalId> seasonMapping = seasonExternalIdRepository
-                        .findBySeasonIdAndProvider(season.getId(), PROVIDER);
-                boolean alreadyImported = seasonMapping
-                        .map(mappingRow -> mappingRow.getExternalId().endsWith(":CORE2"))
-                        .orElse(false);
+                boolean alreadyImported = isHistoricalSeasonImported(season, mapping);
                 if (!current && alreadyImported) {
                     continue;
                 }
@@ -206,6 +204,8 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     importedFixtures += result.createdFixtures();
                     if (result.unmatchedRows() == 0 && result.csvRows() > 0) {
                         saveSeasonMapping(season, mapping);
+                        checkpointStore.markCompleted(PROVIDER,
+                                seasonCheckpointKey(league, startYear));
                     } else {
                         incompleteSeasons++;
                         log.warn("Football-Data.co.uk season remains pending because rows were unmatched or CSV was empty: league={}, season={}, unmatched={}, rows={}",
@@ -565,23 +565,48 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 .orElseGet(() -> Season.builder()
                         .league(league).year(year).startDate(start).endDate(end).build());
 
-        // Historical seasons are backfill-only; scheduled jobs must see only the current season.
+        // isCurrent is derived from the calendar. isActive is an operator-controlled
+        // ingestion selector and must never be overwritten by provider synchronization.
         season.setCurrent(current);
-        season.setActive(current);
         if (season.getStartDate() == null) season.setStartDate(start);
         if (season.getEndDate() == null) season.setEndDate(end);
         return seasonRepository.save(season);
     }
 
     private void saveSeasonMapping(Season season, LeagueExternalId leagueMapping) {
+        // SeasonExternalId stores provider identity only. Import completion belongs in
+        // fb_provider_sync_checkpoints, never in a synthetic ":CORE2" suffix.
         String externalId = leagueMapping.getIdentify().trim().toUpperCase(Locale.ROOT)
-                + ":" + seasonCode(season.getYear()) + ":CORE2";
+                + ":" + seasonCode(season.getYear());
         SeasonExternalId mapping = seasonExternalIdRepository
                 .findBySeasonIdAndProvider(season.getId(), PROVIDER)
                 .orElseGet(() -> SeasonExternalId.builder()
                         .season(season).provider(PROVIDER).build());
         mapping.setExternalId(externalId);
         seasonExternalIdRepository.save(mapping);
+    }
+
+    private boolean isHistoricalSeasonImported(Season season, LeagueExternalId leagueMapping) {
+        int startYear = seasonStartYear(season.getYear());
+        String checkpointKey = seasonCheckpointKey(leagueMapping.getLeague(), startYear);
+        if (checkpointStore.isCompleted(PROVIDER, checkpointKey)) return true;
+
+        // Migrate legacy databases that stored completion in the provider season ID.
+        Optional<SeasonExternalId> legacy = seasonExternalIdRepository
+                .findBySeasonIdAndProvider(season.getId(), PROVIDER);
+        if (legacy.isPresent() && legacy.get().getExternalId() != null
+                && legacy.get().getExternalId().endsWith(":CORE2")) {
+            saveSeasonMapping(season, leagueMapping);
+            checkpointStore.markCompleted(PROVIDER, checkpointKey);
+            log.info("Migrated legacy Football-Data UK import marker: league={}, season={}",
+                    leagueMapping.getLeague().getName(), season.getYear());
+            return true;
+        }
+        return false;
+    }
+
+    private static String seasonCheckpointKey(League league, int startYear) {
+        return "UK_CORE_" + league.getId() + "_" + startYear;
     }
 
     private Team resolveTeam(String leagueCode, String providerName) {
