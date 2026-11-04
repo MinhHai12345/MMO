@@ -57,6 +57,10 @@ public class MatchOdds extends AbstractEntity {
     @Column(precision = 8, scale = 3)
     private BigDecimal bttsNoOdds;
 
+    /** Number of source bookmakers used to calculate aggregate odds, when supplied. */
+    @Column(name = "bookmaker_count")
+    private Integer bookmakerCount;
+
     @Column(name = "asian_handicap_line", precision = 8, scale = 3)
     private BigDecimal asianHandicapLine;
 

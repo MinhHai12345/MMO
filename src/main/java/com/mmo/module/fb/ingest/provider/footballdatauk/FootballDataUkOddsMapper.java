@@ -1,0 +1,263 @@
+package com.mmo.module.fb.ingest.provider.footballdatauk;
+
+import com.mmo.module.fb.match.entity.Bookmaker;
+import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.match.entity.MatchOdds;
+import com.mmo.module.fb.match.repository.BookmakerRepository;
+import com.mmo.module.fb.match.repository.MatchOddsRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+
+/**
+ * Maps Football-Data.co.uk bookmaker and market-aggregate prices into MMO Core.
+ * Opening and closing prices are separate markets; Max/Avg values are not bookmakers.
+ */
+@Component
+@RequiredArgsConstructor
+public class FootballDataUkOddsMapper {
+
+    private static final List<BookmakerSource> BOOKMAKERS = List.of(
+            new BookmakerSource("1XBet", List.of("1XB"), List.of("1XB"), List.of("1XB")),
+            new BookmakerSource("Bet365", List.of("B365"), List.of("B365"), List.of("B365")),
+            new BookmakerSource("Betfair", List.of("BF"), List.of("BF"), List.of("BF")),
+            new BookmakerSource("Betfred", List.of("BFD"), List.of("BFD"), List.of("BFD")),
+            new BookmakerSource("BetMGM", List.of("BMGM"), List.of("BMGM"), List.of("BMGM")),
+            new BookmakerSource("BetVictor", List.of("BV", "VC"), List.of("BV", "VC"), List.of("BV", "VC")),
+            new BookmakerSource("Blue Square", List.of("BS"), List.of("BS"), List.of("BS")),
+            new BookmakerSource("Bet&Win", List.of("BW"), List.of("BW"), List.of("BW")),
+            new BookmakerSource("Coral", List.of("CL"), List.of("CL"), List.of("CL")),
+            new BookmakerSource("Gamebookers", List.of("GB"), List.of("GB"), List.of("GB")),
+            new BookmakerSource("Interwetten", List.of("IW"), List.of("IW"), List.of("IW")),
+            new BookmakerSource("Ladbrokes", List.of("LB"), List.of("LB"), List.of("LB")),
+            new BookmakerSource("Paddy Power", List.of("PP"), List.of("PP"), List.of("PP")),
+            new BookmakerSource("Pinnacle", List.of("PS", "P"), List.of("P"), List.of("P")),
+            new BookmakerSource("Skybet", List.of("SK"), List.of("SK"), List.of("SK")),
+            new BookmakerSource("Sporting Odds", List.of("SO"), List.of("SO"), List.of("SO")),
+            new BookmakerSource("Sportingbet", List.of("SB"), List.of("SB"), List.of("SB")),
+            new BookmakerSource("Stan James", List.of("SJ"), List.of("SJ"), List.of("SJ")),
+            new BookmakerSource("Stanleybet", List.of("SY"), List.of("SY"), List.of("SY")),
+            new BookmakerSource("William Hill", List.of("WH"), List.of("WH"), List.of("WH")),
+            new BookmakerSource("Betfair Exchange", List.of("BFE"), List.of("BFE"), List.of("BFE"))
+    );
+
+    private static final List<AggregateSource> AGGREGATES = List.of(
+            new AggregateSource("BetBrain Max", "BBMX", true),
+            new AggregateSource("BetBrain Average", "BBAV", true),
+            new AggregateSource("Market Max", "MAX", false),
+            new AggregateSource("Market Average", "AVG", false)
+    );
+
+    private final BookmakerRepository bookmakerRepository;
+    private final MatchOddsRepository matchOddsRepository;
+
+    public int persist(Match match, Map<String, String> row) {
+        int saved = 0;
+        for (BookmakerSource source : BOOKMAKERS) {
+            saved += persistBookmaker(match, row, source, false);
+            saved += persistBookmaker(match, row, source, true);
+        }
+        for (AggregateSource source : AGGREGATES) {
+            saved += persistAggregate(match, row, source);
+        }
+        return saved;
+    }
+
+    private int persistBookmaker(Match match, Map<String, String> row,
+                                 BookmakerSource source, boolean closing) {
+        String period = closing ? "C" : "";
+        BigDecimal home = firstOdds(row, source.oneXTwoPrefixes(), period, "H");
+        BigDecimal draw = firstOdds(row, source.oneXTwoPrefixes(), period, "D");
+        BigDecimal away = firstOdds(row, source.oneXTwoPrefixes(), period, "A");
+        int saved = persistIfPresent(match, source.name(), false,
+                closing ? "1X2_CLOSE" : "1X2_OPEN", null,
+                home, draw, away, null, null, null, null, null);
+
+        BigDecimal over = firstOdds(row, source.totalsPrefixes(), period, ">2.5");
+        BigDecimal under = firstOdds(row, source.totalsPrefixes(), period, "<2.5");
+        saved += persistIfPresent(match, source.name(), false,
+                closing ? "OU25_CLOSE" : "OU25_OPEN", null,
+                null, null, null, over, under, null, null, null);
+
+        BigDecimal line = firstSigned(row, source.handicapPrefixes(), period, "AH");
+        BigDecimal handicapHome = firstOdds(row, source.handicapPrefixes(), period, "AHH");
+        BigDecimal handicapAway = firstOdds(row, source.handicapPrefixes(), period, "AHA");
+        saved += persistIfPresent(match, source.name(), false,
+                closing ? "AH_CLOSE" : "AH_OPEN", line,
+                null, null, null, null, null, handicapHome, handicapAway, null);
+        return saved;
+    }
+
+    private int persistAggregate(Match match, Map<String, String> row, AggregateSource source) {
+        String prefix = source.prefix();
+        Integer oneXTwoCount = source.betBrain() ? integer(value(row, "BB1X2")) : null;
+        BigDecimal home = decimalOdds(value(row, prefix + "H"));
+        BigDecimal draw = decimalOdds(value(row, prefix + "D"));
+        BigDecimal away = decimalOdds(value(row, prefix + "A"));
+        int saved = persistIfPresent(match, source.name(), true, "1X2_OPEN", null,
+                home, draw, away, null, null, null, null, oneXTwoCount);
+
+        BigDecimal over = decimalOdds(value(row, prefix + ">2.5"));
+        BigDecimal under = decimalOdds(value(row, prefix + "<2.5"));
+        Integer totalsCount = source.betBrain() ? integer(value(row, "BBOU")) : null;
+        saved += persistIfPresent(match, source.name(), true, "OU25_OPEN", null,
+                null, null, null, over, under, null, null, totalsCount);
+
+        BigDecimal ahHome = decimalOdds(value(row, prefix + "AHH"));
+        BigDecimal ahAway = decimalOdds(value(row, prefix + "AHA"));
+        BigDecimal ahLine = source.betBrain()
+                ? decimalSigned(value(row, "BBAHH"))
+                : decimalSigned(value(row, "AHH"));
+        Integer ahCount = source.betBrain() ? integer(value(row, "BBAH")) : null;
+        saved += persistIfPresent(match, source.name(), true, "AH_OPEN", ahLine,
+                null, null, null, null, null, ahHome, ahAway, ahCount);
+        return saved;
+    }
+
+    private int persistIfPresent(Match match, String bookmakerName, boolean aggregate,
+                                 String market, BigDecimal line,
+                                 BigDecimal home, BigDecimal draw, BigDecimal away,
+                                 BigDecimal over, BigDecimal under,
+                                 BigDecimal asianHome, BigDecimal asianAway,
+                                 Integer bookmakerCount) {
+        boolean hasOdds = home != null || draw != null || away != null || over != null || under != null
+                || asianHome != null || asianAway != null;
+        if (!hasOdds) return 0;
+
+        Bookmaker bookmaker = resolveBookmaker(bookmakerName, aggregate);
+
+        MatchOdds odds = matchOddsRepository.findByMatchIdAndBookmakerIdAndMarketName(
+                        match.getId(), bookmaker.getId(), market)
+                .orElseGet(() -> MatchOdds.builder()
+                        .match(match).bookmaker(bookmaker).marketName(market).build());
+
+        boolean changed = false;
+        changed |= setIfMissing(odds.getAsianHandicapLine(), line, odds::setAsianHandicapLine);
+        changed |= setIfMissing(odds.getHomeWinOdds(), home, odds::setHomeWinOdds);
+        changed |= setIfMissing(odds.getDrawOdds(), draw, odds::setDrawOdds);
+        changed |= setIfMissing(odds.getAwayWinOdds(), away, odds::setAwayWinOdds);
+        changed |= setIfMissing(odds.getOver25Odds(), over, odds::setOver25Odds);
+        changed |= setIfMissing(odds.getUnder25Odds(), under, odds::setUnder25Odds);
+        changed |= setIfMissing(odds.getAsianHandicapHome(), asianHome, odds::setAsianHandicapHome);
+        changed |= setIfMissing(odds.getAsianHandicapAway(), asianAway, odds::setAsianHandicapAway);
+        changed |= setIfMissing(odds.getBookmakerCount(), bookmakerCount, odds::setBookmakerCount);
+        if (changed) matchOddsRepository.save(odds);
+        return changed ? 1 : 0;
+    }
+
+    private Bookmaker resolveBookmaker(String canonicalName, boolean aggregate) {
+        String sourceType = aggregate ? "MARKET_AGGREGATE" : "BOOKMAKER";
+        Bookmaker bookmaker = bookmakerRepository.findByName(canonicalName).orElse(null);
+
+        // Rename records created by the first importer version instead of creating
+        // duplicate bookmaker identities and leaving their historical odds orphaned.
+        if (bookmaker == null) {
+            String legacyName = legacyBookmakerName(canonicalName);
+            if (legacyName != null) {
+                bookmaker = bookmakerRepository.findByName(legacyName).orElse(null);
+                if (bookmaker != null) {
+                    bookmaker.setName(canonicalName);
+                }
+            }
+        }
+
+        if (bookmaker == null) {
+            bookmaker = Bookmaker.builder()
+                    .name(canonicalName)
+                    .sourceType(sourceType)
+                    .isActive(true)
+                    .build();
+        } else if (!sourceType.equals(bookmaker.getSourceType())) {
+            bookmaker.setSourceType(sourceType);
+        }
+        return bookmakerRepository.save(bookmaker);
+    }
+
+    private String legacyBookmakerName(String canonicalName) {
+        return switch (canonicalName) {
+            case "Bet365" -> "B365";
+            case "Betfred" -> "BFD";
+            case "BetVictor" -> "BV";
+            case "Bet&Win" -> "BW";
+            case "Paddy Power" -> "PP";
+            case "Skybet" -> "SKB";
+            case "Betfair Exchange" -> "BFE";
+            case "Market Max" -> "MAX";
+            case "Market Average" -> "AVG";
+            default -> null;
+        };
+    }
+
+    private boolean setIfMissing(BigDecimal current, BigDecimal incoming,
+                                 Consumer<BigDecimal> setter) {
+        if (current != null || incoming == null) return false;
+        setter.accept(incoming);
+        return true;
+    }
+
+    private boolean setIfMissing(Integer current, Integer incoming, Consumer<Integer> setter) {
+        if (current != null || incoming == null) return false;
+        setter.accept(incoming);
+        return true;
+    }
+
+    private BigDecimal firstOdds(Map<String, String> row, List<String> prefixes,
+                                 String period, String suffix) {
+        for (String prefix : prefixes) {
+            BigDecimal candidate = decimalOdds(value(row, prefix + period + suffix));
+            if (candidate != null) return candidate;
+        }
+        return null;
+    }
+
+    private BigDecimal firstSigned(Map<String, String> row, List<String> prefixes,
+                                   String period, String suffix) {
+        for (String prefix : prefixes) {
+            BigDecimal candidate = decimalSigned(value(row, prefix + period + suffix));
+            if (candidate != null) return candidate;
+        }
+        return null;
+    }
+
+    private static BigDecimal decimalOdds(String raw) {
+        BigDecimal value = decimalSigned(raw);
+        return value != null && value.signum() > 0 ? value : null;
+    }
+
+    private static BigDecimal decimalSigned(String raw) {
+        if (!StringUtils.hasText(raw)) return null;
+        try {
+            return new BigDecimal(raw.trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private static Integer integer(String raw) {
+        if (!StringUtils.hasText(raw)) return null;
+        try {
+            double parsed = Double.parseDouble(raw.trim().replace(",", ""));
+            if (!Double.isFinite(parsed) || parsed < 0 || parsed != Math.rint(parsed)
+                    || parsed > Integer.MAX_VALUE) return null;
+            return (int) parsed;
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private static String value(Map<String, String> row, String key) {
+        return row.getOrDefault(key, "").trim();
+    }
+
+    private record BookmakerSource(String name, List<String> oneXTwoPrefixes,
+                                   List<String> totalsPrefixes, List<String> handicapPrefixes) {
+    }
+
+    private record AggregateSource(String name, String prefix, boolean betBrain) {
+    }
+}
