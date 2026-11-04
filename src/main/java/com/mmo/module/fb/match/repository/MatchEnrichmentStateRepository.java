@@ -25,12 +25,17 @@ public interface MatchEnrichmentStateRepository extends JpaRepository<MatchEnric
             WHERE state.provider = :provider
               AND state.resource = :resource
               AND (state.nextRetryAt IS NULL OR state.nextRetryAt <= :now)
-              AND state.status <> :inProgress
+              AND (
+                    state.status <> :inProgress
+                    OR state.lastAttemptAt IS NULL
+                    OR state.lastAttemptAt <= :staleBefore
+              )
             ORDER BY state.nextRetryAt ASC, state.lastAttemptAt ASC, state.id ASC
             """)
     List<MatchEnrichmentState> findDue(
             @Param("provider") Provider provider,
             @Param("resource") MatchEnrichmentResource resource,
             @Param("now") Instant now,
-            @Param("inProgress") MatchEnrichmentStatus inProgress);
+            @Param("inProgress") MatchEnrichmentStatus inProgress,
+            @Param("staleBefore") Instant staleBefore);
 }
