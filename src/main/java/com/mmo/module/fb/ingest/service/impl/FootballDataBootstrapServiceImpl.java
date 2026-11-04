@@ -71,6 +71,17 @@ public class FootballDataBootstrapServiceImpl implements FootballDataBootstrapSe
         boolean initialBackfill = coreProviders.stream()
                 .anyMatch(provider -> !isInitialBackfillCompleted(provider));
 
+        // Bootstrap is a recovery entry point, not a second incremental-sync scheduler.
+        // Once both API providers and the CSV provider have durable initial checkpoints,
+        // FootballDataSyncJob exclusively owns recurring Core refreshes.
+        boolean csvBackfillCompleted = isInitialBackfillCompleted(Provider.FOOTBALL_DATA_UK);
+        if (!initialBackfill && csvBackfillCompleted) {
+            log.info("Historical Core bootstrap already completed for providers {} and {}. "
+                    + "Skipping bootstrap; recurring updates belong to FootballDataSyncJob.",
+                    coreProviders, Provider.FOOTBALL_DATA_UK);
+            return;
+        }
+
         log.info("Core bootstrap mode={}, providers: league={}, season={}, team={}, fixture={}, standings={}",
                 initialBackfill ? "INITIAL_2014_PLUS" : "CURRENT_SEASON_ONLY",
                 leagueProvider, seasonProvider, teamProvider, fixtureProvider, standingsProvider);
