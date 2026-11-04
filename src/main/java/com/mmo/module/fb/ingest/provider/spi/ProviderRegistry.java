@@ -1,8 +1,8 @@
 package com.mmo.module.fb.ingest.provider.spi;
 
 import com.mmo.module.fb.ingest.enums.Provider;
-import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.EnumMap;
 import java.util.List;
@@ -10,10 +10,8 @@ import java.util.Map;
 import java.util.function.Function;
 
 /**
- * Typed registry of ingestion strategies.
- *
- * Each resource has its own contract, so callers cannot accidentally invoke
- * a team strategy where a fixture strategy is required.
+ * Typed provider registry. Each data capability has its own contract so a resource
+ * ingestion service cannot accidentally resolve a provider for a different resource.
  */
 @Component
 public class ProviderRegistry {
@@ -25,6 +23,7 @@ public class ProviderRegistry {
     private final Map<Provider, StandingsProvider> standingsProviders;
     private final Map<Provider, OddsProvider> oddsProviders;
     private final Map<Provider, HistoricalStatsProvider> historicalStatsProviders;
+    private final Map<Provider, MatchStatisticsProvider> matchStatisticsProviders;
 
     @Autowired
     public ProviderRegistry(
@@ -34,7 +33,8 @@ public class ProviderRegistry {
             List<FixtureProvider> fixtureProviders,
             List<StandingsProvider> standingsProviders,
             List<OddsProvider> oddsProviders,
-            List<HistoricalStatsProvider> historicalStatsProviders) {
+            List<HistoricalStatsProvider> historicalStatsProviders,
+            List<MatchStatisticsProvider> matchStatisticsProviders) {
         this.leagueProviders = index(leagueProviders, LeagueProvider::getProvider, "LeagueProvider");
         this.seasonProviders = index(seasonProviders, SeasonProvider::getProvider, "SeasonProvider");
         this.teamProviders = index(teamProviders, TeamProvider::getProvider, "TeamProvider");
@@ -43,9 +43,24 @@ public class ProviderRegistry {
         this.oddsProviders = index(oddsProviders, OddsProvider::getProvider, "OddsProvider");
         this.historicalStatsProviders = index(
                 historicalStatsProviders, HistoricalStatsProvider::getProvider, "HistoricalStatsProvider");
+        this.matchStatisticsProviders = index(
+                matchStatisticsProviders, MatchStatisticsProvider::getProvider, "MatchStatisticsProvider");
     }
 
-    /** Backward-compatible constructor for tests and integrations predating SeasonProvider. */
+    /** Backward-compatible constructor for integrations predating match-statistics SPI. */
+    public ProviderRegistry(
+            List<LeagueProvider> leagueProviders,
+            List<SeasonProvider> seasonProviders,
+            List<TeamProvider> teamProviders,
+            List<FixtureProvider> fixtureProviders,
+            List<StandingsProvider> standingsProviders,
+            List<OddsProvider> oddsProviders,
+            List<HistoricalStatsProvider> historicalStatsProviders) {
+        this(leagueProviders, seasonProviders, teamProviders, fixtureProviders,
+                standingsProviders, oddsProviders, historicalStatsProviders, List.of());
+    }
+
+    /** Backward-compatible constructor for integrations predating SeasonProvider. */
     public ProviderRegistry(
             List<LeagueProvider> leagueProviders,
             List<TeamProvider> teamProviders,
@@ -54,7 +69,7 @@ public class ProviderRegistry {
             List<OddsProvider> oddsProviders,
             List<HistoricalStatsProvider> historicalStatsProviders) {
         this(leagueProviders, List.of(), teamProviders, fixtureProviders,
-                standingsProviders, oddsProviders, historicalStatsProviders);
+                standingsProviders, oddsProviders, historicalStatsProviders, List.of());
     }
 
     public LeagueProvider league(Provider provider) {
@@ -89,15 +104,21 @@ public class ProviderRegistry {
         return get(historicalStatsProviders, provider, "HistoricalStatsProvider");
     }
 
+    public MatchStatisticsProvider matchStatistics(Provider provider) {
+        return get(matchStatisticsProviders, provider, "MatchStatisticsProvider");
+    }
+
+    public boolean hasMatchStatisticsProvider(Provider provider) {
+        return provider != null && matchStatisticsProviders.containsKey(provider);
+    }
+
     private static <T> Map<Provider, T> index(
             List<T> providers,
             Function<T, Provider> providerCode,
             String resourceName) {
         Map<Provider, T> indexed = new EnumMap<>(Provider.class);
         for (T strategy : providers) {
-            if (strategy == null) {
-                continue;
-            }
+            if (strategy == null) continue;
             Provider code = providerCode.apply(strategy);
             if (code == null) {
                 throw new IllegalStateException(resourceName + " returned a null provider code");
@@ -117,8 +138,7 @@ public class ProviderRegistry {
         }
         T strategy = strategies.get(provider);
         if (strategy == null) {
-            throw new IllegalStateException(
-                    "No " + resourceName + " configured for provider " + provider);
+            throw new IllegalStateException("No " + resourceName + " configured for provider " + provider);
         }
         return strategy;
     }
