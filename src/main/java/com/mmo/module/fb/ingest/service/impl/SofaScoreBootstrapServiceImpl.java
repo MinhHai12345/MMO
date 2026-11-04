@@ -10,6 +10,7 @@ import com.mmo.module.fb.ingest.service.TeamIngestionService;
 import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.league.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.team.repository.TeamExternalIdRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -121,12 +122,12 @@ public class SofaScoreBootstrapServiceImpl implements SofaScoreBootstrapService 
             return true;
         }
         Set<Long> mappedSeasonIds = new HashSet<>(
-                matchExternalIdRepository.findMappedCurrentSeasonIdsByProvider(PROVIDER));
+                matchExternalIdRepository.findMappedCurrentSeasonIdsByProvider(MatchProvider.fromName(PROVIDER.name())));
         return !mappedSeasonIds.containsAll(currentSeasonIds);
     }
 
     private long countCurrentSeasonFixtures() {
-        return matchExternalIdRepository.countCurrentSeasonByProvider(PROVIDER);
+        return matchExternalIdRepository.countCurrentSeasonByProvider(MatchProvider.fromName(PROVIDER.name()));
     }
 
     private void requireMappings(String resource, long count) {
