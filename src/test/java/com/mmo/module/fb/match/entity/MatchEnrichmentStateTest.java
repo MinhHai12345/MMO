@@ -1,6 +1,6 @@
 package com.mmo.module.fb.match.entity;
 
-import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.match.enums.MatchEnrichmentResource;
 import com.mmo.module.fb.match.enums.MatchEnrichmentStatus;
 import org.junit.jupiter.api.Test;
@@ -15,7 +15,7 @@ class MatchEnrichmentStateTest {
     void tracksIndependentProviderResourceAttemptLifecycle() {
         Instant now = Instant.parse("2026-11-04T10:00:00Z");
         MatchEnrichmentState state = MatchEnrichmentState.builder()
-                .provider(Provider.SOFA_SCORE)
+                .provider(MatchProvider.SOFA_SCORE)
                 .resource(MatchEnrichmentResource.TEAM_STATISTICS)
                 .build();
 
