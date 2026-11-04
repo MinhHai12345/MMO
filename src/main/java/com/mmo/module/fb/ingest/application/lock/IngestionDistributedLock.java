@@ -8,6 +8,11 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -44,8 +49,9 @@ public class IngestionDistributedLock {
         validate(lockName, operation);
 
         try (Connection connection = dataSource.getConnection()) {
-            if (!acquire(connection, lockName)) {
-                log.info("Ingestion execution skipped because lock is already held: {}", lockName);
+            String scopedLockName = scopeToCatalog(connection, lockName);
+            if (!acquire(connection, scopedLockName)) {
+                log.info("Ingestion execution skipped because lock is already held: {}", scopedLockName);
                 return false;
             }
 
@@ -53,10 +59,38 @@ public class IngestionDistributedLock {
                 operation.run();
                 return true;
             } finally {
-                release(connection, lockName);
+                release(connection, scopedLockName);
             }
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to manage MySQL ingestion lock: " + lockName, exception);
+        }
+    }
+
+    /**
+     * MySQL named locks are server-wide, not schema-wide. Include the active catalog so
+     * dev/test schemas sharing one MySQL server do not block one another.
+     */
+    private String scopeToCatalog(Connection connection, String requestedName) throws SQLException {
+        String catalog = connection.getCatalog();
+        if (catalog == null || catalog.isBlank()) {
+            return requestedName;
+        }
+
+        String normalizedCatalog = catalog.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9_-]", "_");
+        String scopedName = requestedName + ":" + normalizedCatalog;
+        if (scopedName.length() <= 64) {
+            return scopedName;
+        }
+
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(catalog.getBytes(StandardCharsets.UTF_8));
+            String suffix = HexFormat.of().formatHex(digest).substring(0, 16);
+            String prefix = requestedName.substring(0, Math.min(requestedName.length(), 46));
+            return prefix + ":" + suffix;
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable for MySQL lock-name scoping", exception);
         }
     }
 
