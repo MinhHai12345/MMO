@@ -5,6 +5,8 @@ import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchOdds;
 import com.mmo.module.fb.match.repository.BookmakerRepository;
 import com.mmo.module.fb.match.repository.MatchOddsRepository;
+import com.mmo.module.fb.match.service.MatchOddsQuotePersistenceService;
+import com.mmo.module.fb.ingest.enums.Provider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -55,6 +57,7 @@ public class FootballDataUkOddsPersistenceService {
 
     private final BookmakerRepository bookmakerRepository;
     private final MatchOddsRepository matchOddsRepository;
+    private final MatchOddsQuotePersistenceService quotePersistenceService;
 
     public int persist(Match match, Map<String, String> row) {
         int saved = 0;
@@ -147,6 +150,27 @@ public class FootballDataUkOddsPersistenceService {
         changed |= setIfMissing(odds.getAsianHandicapAway(), asianAway, odds::setAsianHandicapAway);
         changed |= setIfMissing(odds.getBookmakerCount(), bookmakerCount, odds::setBookmakerCount);
         if (changed) matchOddsRepository.save(odds);
+
+        // Keep the normalized quote store authoritative for analytics while retaining
+        // the legacy grouped row for existing API consumers.
+        if (market.startsWith("1X2")) {
+            quotePersistenceService.upsert(match, bookmaker, Provider.FOOTBALL_DATA_UK,
+                    market, "HOME", null, home);
+            quotePersistenceService.upsert(match, bookmaker, Provider.FOOTBALL_DATA_UK,
+                    market, "DRAW", null, draw);
+            quotePersistenceService.upsert(match, bookmaker, Provider.FOOTBALL_DATA_UK,
+                    market, "AWAY", null, away);
+        } else if (market.startsWith("OU25")) {
+            quotePersistenceService.upsert(match, bookmaker, Provider.FOOTBALL_DATA_UK,
+                    market, "Over 2.5", new BigDecimal("2.5"), over);
+            quotePersistenceService.upsert(match, bookmaker, Provider.FOOTBALL_DATA_UK,
+                    market, "Under 2.5", new BigDecimal("2.5"), under);
+        } else if (market.startsWith("AH")) {
+            quotePersistenceService.upsert(match, bookmaker, Provider.FOOTBALL_DATA_UK,
+                    market, "HOME", line, asianHome);
+            quotePersistenceService.upsert(match, bookmaker, Provider.FOOTBALL_DATA_UK,
+                    market, "AWAY", line, asianAway);
+        }
         return changed ? 1 : 0;
     }
 
