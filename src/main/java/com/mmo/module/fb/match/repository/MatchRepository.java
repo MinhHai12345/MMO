@@ -170,9 +170,8 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             JOIN FETCH m.homeTeam
             JOIN FETCH m.awayTeam
             JOIN m.externalIds externalId
-            LEFT JOIN MatchEnrichmentState state
-              ON state.match = m
-             AND state.provider = :provider
+            LEFT JOIN m.enrichmentStates state
+              ON state.provider = :provider
              AND state.resource = :resource
             WHERE m.status = :status
               AND season.isCurrent = true
