@@ -16,7 +16,6 @@ import java.time.Instant;
 @Table(name = "fb_match_advanced_stats",
         uniqueConstraints = @UniqueConstraint(name = "uk_fb_advanced_stats_match_team", columnNames = {"match_id", "team_id"}),
         indexes = @Index(name = "idx_fb_advanced_stats_team", columnList = "team_id"))
-@org.hibernate.annotations.Check(constraints = "team_id IS NOT NULL")
 @Getter
 @Setter
 @Builder
