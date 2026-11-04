@@ -11,6 +11,7 @@ import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.match.repository.MatchRepository;
 import com.mmo.module.fb.match.enums.MatchEnrichmentResource;
 import com.mmo.module.fb.match.enums.MatchProvider;
+import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.match.service.MatchEnrichmentStateService;
 import com.mmo.module.fb.ingest.provider.model.OddsQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
@@ -77,7 +78,7 @@ public class OddsIngestionServiceImpl implements OddsIngestionService {
         }
 
         List<Match> upcoming = matchRepository.findUpcomingWithProviderMapping(
-                MatchStatus.SCHEDULED, now, until, selectedProvider, MatchEnrichmentResource.ODDS,
+                MatchStatus.SCHEDULED, now, until, MatchProvider.from(selectedProvider), MatchEnrichmentResource.ODDS,
                 com.mmo.module.fb.match.enums.MatchEnrichmentStatus.SUCCEEDED,
                 com.mmo.module.fb.match.enums.MatchEnrichmentStatus.IN_PROGRESS,
                 now.minus(30, ChronoUnit.MINUTES), PageRequest.of(0, MAX_FIXTURES_PER_RUN));
