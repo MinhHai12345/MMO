@@ -156,21 +156,21 @@ public class FootballDataUkOddsPersistenceService {
         // Keep the normalized quote store authoritative for analytics while retaining
         // the legacy grouped row for existing API consumers.
         if (market.startsWith("1X2")) {
-            quotePersistenceService.upsert(match, bookmaker, MatchProvider.FOOTBALL_DATA_UK,
+            quotePersistenceService.upsert(match, bookmaker, MatchMatchProvider.FOOTBALL_DATA_UK,
                     market, "HOME", null, home);
-            quotePersistenceService.upsert(match, bookmaker, Provider.FOOTBALL_DATA_UK,
+            quotePersistenceService.upsert(match, bookmaker, MatchProvider.FOOTBALL_DATA_UK,
                     market, "DRAW", null, draw);
-            quotePersistenceService.upsert(match, bookmaker, Provider.FOOTBALL_DATA_UK,
+            quotePersistenceService.upsert(match, bookmaker, MatchProvider.FOOTBALL_DATA_UK,
                     market, "AWAY", null, away);
         } else if (market.startsWith("OU25")) {
-            quotePersistenceService.upsert(match, bookmaker, Provider.FOOTBALL_DATA_UK,
+            quotePersistenceService.upsert(match, bookmaker, MatchProvider.FOOTBALL_DATA_UK,
                     market, "Over 2.5", new BigDecimal("2.5"), over);
-            quotePersistenceService.upsert(match, bookmaker, Provider.FOOTBALL_DATA_UK,
+            quotePersistenceService.upsert(match, bookmaker, MatchProvider.FOOTBALL_DATA_UK,
                     market, "Under 2.5", new BigDecimal("2.5"), under);
         } else if (market.startsWith("AH")) {
-            quotePersistenceService.upsert(match, bookmaker, Provider.FOOTBALL_DATA_UK,
+            quotePersistenceService.upsert(match, bookmaker, MatchProvider.FOOTBALL_DATA_UK,
                     market, "HOME", line, asianHome);
-            quotePersistenceService.upsert(match, bookmaker, Provider.FOOTBALL_DATA_UK,
+            quotePersistenceService.upsert(match, bookmaker, MatchProvider.FOOTBALL_DATA_UK,
                     market, "AWAY", line, asianAway);
         }
         return changed ? 1 : 0;
