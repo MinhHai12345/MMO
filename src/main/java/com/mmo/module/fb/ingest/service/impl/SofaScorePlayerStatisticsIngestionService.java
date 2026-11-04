@@ -67,7 +67,7 @@ public class SofaScorePlayerStatisticsIngestionService implements PlayerStatisti
                     enrichmentStateService.succeed(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.PLAYER_STATISTICS);
                     persisted++;
                 } else {
-                    enrichmentStateService.empty(match, Provider.SOFA_SCORE, MatchEnrichmentResource.PLAYER_STATISTICS);
+                    enrichmentStateService.empty(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.PLAYER_STATISTICS);
                     skipped++;
                 }
             } catch (Exception exception) {
