@@ -50,9 +50,14 @@ public class CronJobServiceImpl implements CronJobService {
         final CronJob cronJob = cronJobRepository.findById(jobId)
                 .orElseThrow(() -> new RuntimeException(String.format(NO_JOB_MSG, jobId)));
         try {
+            // Remove the Quartz definition first. If Quartz fails, keep the database
+            // registry row so startup can retry cleanup instead of losing the reference.
+            boolean quartzDeleted = scheduler.deleteJob(
+                    new JobKey(cronJob.getJobName(), cronJob.getJobGroup()));
             cronJobRepository.delete(cronJob);
-            LOGGER.info("Job {} was deleted.", cronJob.getJobName());
-            return scheduler.deleteJob(new JobKey(cronJob.getJobName(), cronJob.getJobGroup()));
+            LOGGER.info("Job {} registry entry deleted; quartzDeleted={}",
+                    cronJob.getJobName(), quartzDeleted);
+            return quartzDeleted;
         } catch (SchedulerException e) {
             throw new ScheduleJobException(String.format("Failed to delete job %s", cronJob.getJobName()), e);
         }
