@@ -46,21 +46,6 @@ public class Match extends AbstractEntity {
     @Column(name = "match_time", nullable = false)
     private Instant matchTime;
 
-    /** @deprecated use MatchEnrichmentState(provider, ODDS) */
-    @Deprecated
-    @Column(name = "last_odds_synced_at")
-    private Instant lastOddsSyncedAt;
-
-    /** @deprecated use MatchEnrichmentState(provider, TEAM_STATISTICS) */
-    @Deprecated
-    @Column(name = "statistics_last_attempt_at")
-    private Instant statisticsLastAttemptAt;
-
-    /** @deprecated use MatchEnrichmentState(provider, PLAYER_STATISTICS) */
-    @Deprecated
-    @Column(name = "player_statistics_last_attempt_at")
-    private Instant playerStatisticsLastAttemptAt;
-
     @Column(name = "round_info", length = 160)
     private String roundInfo;
 
