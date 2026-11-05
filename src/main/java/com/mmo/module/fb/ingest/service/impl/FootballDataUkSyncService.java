@@ -195,7 +195,8 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         for (LeagueExternalId mapping : leagueExternalIdRepository.findAllByProvider(PROVIDER)) {
             League league = mapping.getLeague();
             if (!StringUtils.hasText(mapping.getIdentify())) {
-                log.warn("Skip Football-Data.co.uk league without identify mapping: leagueId={}, name={}",
+                failedSeasons++;
+                log.warn("Cannot complete Football-Data.co.uk backfill without identify mapping: leagueId={}, name={}",
                         league.getId(), league.getName());
                 continue;
             }
@@ -368,6 +369,12 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         }
 
         for (LeagueExternalId leagueMapping : leagueMappings) {
+            if (!StringUtils.hasText(leagueMapping.getIdentify())) {
+                failedSeasons++;
+                log.warn("Cannot enrich Football-Data UK league without identify mapping: league={}",
+                        leagueMapping.getLeague().getName());
+                continue;
+            }
             Long leagueId = leagueMapping.getLeague().getId();
             for (int startYear = 2014; startYear <= today.getYear(); startYear++) {
                 Season season = findSeason(leagueMapping.getLeague(), startYear);
