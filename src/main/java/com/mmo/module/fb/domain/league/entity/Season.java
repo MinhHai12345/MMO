@@ -15,7 +15,7 @@ import java.util.List;
 @Entity
 @Table(name = "fb_seasons",
         uniqueConstraints = @UniqueConstraint(name = "uk_fb_season_league_year",
-                columnNames = {"league_id", "year"}),
+                columnNames = {"league_id", "season_year"}),
         indexes = @Index(name = "idx_fb_season_current", columnList = "is_current"))
 @Getter
 @Setter
@@ -28,7 +28,7 @@ public class Season extends AbstractEntity {
     @JoinColumn(name = "league_id", nullable = false)
     private League league;
 
-    @Column(nullable = false, length = 32)
+    @Column(name = "season_year", nullable = false, length = 32)
     private String year;
 
     @Column(name = "is_current", nullable = false)
