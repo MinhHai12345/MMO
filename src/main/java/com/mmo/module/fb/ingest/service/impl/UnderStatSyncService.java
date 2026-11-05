@@ -5,6 +5,9 @@ import com.mmo.module.fb.ingest.application.port.out.HistoricalStatisticsIngesti
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderMatchStatistics;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeamMatchStats;
+import com.mmo.module.fb.ingest.policy.Dataset;
+import com.mmo.module.fb.ingest.persistence.MatchXgPersistenceService;
+import com.mmo.module.fb.ingest.persistence.SourceAwareMergeService;
 import com.mmo.module.fb.ingest.provider.spi.HistoricalStatsProvider;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import com.mmo.module.fb.ingest.service.ExternalIdMappingService;
@@ -38,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.function.Consumer;
 
 /**
  * Full persistence workflow for Understat's historical match and team-level metrics.
@@ -62,6 +66,8 @@ public class UnderStatSyncService implements HistoricalStatisticsIngestionPort {
     private final MatchAdvancedStatsRepository matchAdvancedStatsRepository;
     private final MatchStatisticsSnapshotPersistenceService snapshotPersistenceService;
     private final ExternalIdMappingService externalIdMappingService;
+    private final MatchXgPersistenceService matchXgPersistenceService;
+    private final SourceAwareMergeService sourceAwareMergeService;
 
     public void syncActiveSeasons() {
         AppProperties.ProviderConfig config = appProperties.getIngestion().getProviderConfig().get(PROVIDER);
@@ -213,10 +219,8 @@ public class UnderStatSyncService implements HistoricalStatisticsIngestionPort {
             return null;
         }
 
-        if (source.homeXg() != null) match.setHomeXG(source.homeXg().doubleValue());
-        if (source.awayXg() != null) match.setAwayXG(source.awayXg().doubleValue());
-        if (match.getHomeScore() == null && source.homeScore() != null) match.setHomeScore(source.homeScore());
-        if (match.getAwayScore() == null && source.awayScore() != null) match.setAwayScore(source.awayScore());
+        // Understat is an enrichment source, never the owner of canonical fixture scores.
+        matchXgPersistenceService.upsert(PROVIDER, match, source.homeXg(), source.awayXg());
         return matchRepository.save(match);
     }
 
@@ -255,28 +259,37 @@ public class UnderStatSyncService implements HistoricalStatisticsIngestionPort {
         MatchAdvancedStats stats = matchAdvancedStatsRepository
                 .findByMatchIdAndTeamId(match.getId(), team.getId())
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
-        stats.setXg(source.xg());
-        stats.setXga(source.xga());
-        stats.setNpxg(source.npxg());
-        stats.setNpxga(source.npxga());
-        stats.setPpdaAtt(source.ppdaAtt());
-        stats.setPpdaDef(source.ppdaDef());
-        stats.setPpda(source.ppdaDef() == null || source.ppdaDef() == 0 || source.ppdaAtt() == null
+        BigDecimal ppda = source.ppdaDef() == null || source.ppdaDef() == 0 || source.ppdaAtt() == null
                 ? null : BigDecimal.valueOf(source.ppdaAtt())
-                .divide(BigDecimal.valueOf(source.ppdaDef()), 3, RoundingMode.HALF_UP));
-        stats.setDeepCompletions(source.deep());
-        stats.setDeepAllowed(source.deepAllowed());
-        stats.setScored(source.scored());
-        stats.setMissed(source.missed());
-        stats.setExpectedPoints(source.expectedPoints());
-        stats.setResult(source.result());
-        stats.setWins(source.wins());
-        stats.setDraws(source.draws());
-        stats.setLosses(source.losses());
-        stats.setPoints(source.points());
-        stats.setNpxGoalDifference(source.npxGoalDifference());
-        // Keep the canonical analytics projection separate from Understat provenance.
-        matchAdvancedStatsRepository.save(stats);
+                .divide(BigDecimal.valueOf(source.ppdaDef()), 3, RoundingMode.HALF_UP);
+        boolean changed = false;
+        changed |= mergeMetric(match, team, "xg", stats.getXg(), source.xg(), stats::setXg);
+        changed |= mergeMetric(match, team, "xga", stats.getXga(), source.xga(), stats::setXga);
+        changed |= mergeMetric(match, team, "npxg", stats.getNpxg(), source.npxg(), stats::setNpxg);
+        changed |= mergeMetric(match, team, "npxga", stats.getNpxga(), source.npxga(), stats::setNpxga);
+        changed |= mergeMetric(match, team, "ppda_att", stats.getPpdaAtt(), source.ppdaAtt(), stats::setPpdaAtt);
+        changed |= mergeMetric(match, team, "ppda_def", stats.getPpdaDef(), source.ppdaDef(), stats::setPpdaDef);
+        changed |= mergeMetric(match, team, "ppda", stats.getPpda(), ppda, stats::setPpda);
+        changed |= mergeMetric(match, team, "deep_completions", stats.getDeepCompletions(), source.deep(), stats::setDeepCompletions);
+        changed |= mergeMetric(match, team, "deep_allowed", stats.getDeepAllowed(), source.deepAllowed(), stats::setDeepAllowed);
+        changed |= mergeMetric(match, team, "scored", stats.getScored(), source.scored(), stats::setScored);
+        changed |= mergeMetric(match, team, "missed", stats.getMissed(), source.missed(), stats::setMissed);
+        changed |= mergeMetric(match, team, "expected_points", stats.getExpectedPoints(), source.expectedPoints(), stats::setExpectedPoints);
+        changed |= mergeMetric(match, team, "result", stats.getResult(), source.result(), stats::setResult);
+        changed |= mergeMetric(match, team, "wins", stats.getWins(), source.wins(), stats::setWins);
+        changed |= mergeMetric(match, team, "draws", stats.getDraws(), source.draws(), stats::setDraws);
+        changed |= mergeMetric(match, team, "losses", stats.getLosses(), source.losses(), stats::setLosses);
+        changed |= mergeMetric(match, team, "points", stats.getPoints(), source.points(), stats::setPoints);
+        changed |= mergeMetric(match, team, "npx_goal_difference", stats.getNpxGoalDifference(),
+                source.npxGoalDifference(), stats::setNpxGoalDifference);
+        if (changed) matchAdvancedStatsRepository.save(stats);
+    }
+
+    private <T> boolean mergeMetric(Match match, Team team, String field, T current,
+                                    T incoming, Consumer<T> setter) {
+        if (incoming == null) return false;
+        return sourceAwareMergeService.merge(match, PROVIDER, Dataset.MATCH_STATISTICS,
+                "team:" + team.getId() + ":" + field, current != null, null, () -> setter.accept(incoming));
     }
 
     private static int parseSeasonYear(String year) {
