@@ -108,8 +108,6 @@ class FixturePersistenceOwnershipIntegrationTest {
                 .thenReturn(List.of(ukFallback));
         when(matchExternalIdRepository.findAllByMatchIdInAndProvider(
                 List.of(902L), MatchProvider.FOOTBALL_DATA)).thenReturn(List.of());
-        when(matchExternalIdRepository.findAllByMatchIdInAndProvider(
-                List.of(902L), MatchProvider.FOOTBALL_DATA_UK)).thenReturn(List.of());
 
         ProviderFixture footballDataFixture = new ProviderFixture("fd-fixture-1", "fd-ars", "fd-che",
                 fixture.kickoff(), "Matchday 1", null, null, "FT", 2, 1);
