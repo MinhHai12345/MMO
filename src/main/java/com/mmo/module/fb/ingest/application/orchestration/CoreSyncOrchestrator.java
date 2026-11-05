@@ -68,6 +68,7 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
         }
 
         List<String> failedStages = new java.util.ArrayList<>();
+        List<IngestionUnitResult> unitResults = new java.util.ArrayList<>();
         // League/season catalogues are provider-specific identity namespaces. They are
         // initialized before the season-scoped resources; season routing itself remains
         // controlled by the plan rather than the global resource provider properties.
@@ -96,15 +97,15 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
 
         plan.units(Dataset.TEAM, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY)
                 .forEach(unit -> runUnit(unit, () ->
-                        teamIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()), failedStages));
+                        teamIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()), failedStages, unitResults));
         plan.units(Dataset.FIXTURE, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY)
                 .forEach(unit -> runUnit(unit, () ->
                         fixtureIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId(), null, null),
-                        failedStages));
+                        failedStages, unitResults));
         plan.units(Dataset.STANDINGS, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY)
                 .forEach(unit -> runUnit(unit, () ->
                         standingsIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()),
-                        failedStages));
+                        failedStages, unitResults));
 
         // UK is both primary for 2014-2022 and an explicitly permitted fixture fallback
         // for overlap seasons. Its importer evaluates the same active-season policy and
@@ -127,30 +128,47 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
             log.info("Ignoring upcoming odds override {} because DataSourcePolicy disables UPCOMING_ODDS",
                     oddsProviderOverride);
         }
+        IngestionExecutionReport report = new IngestionExecutionReport(unitResults);
+        log.info("Active-season work-unit report: {}", report.summary());
         if (!failedStages.isEmpty()) {
-            throw new IllegalStateException("Active-season ingestion incomplete: " + failedStages);
+            throw new IllegalStateException("Active-season ingestion incomplete: " + failedStages
+                    + "; " + report.summary());
         }
-        log.info("Active-season ingestion completed");
+        log.info("Active-season ingestion completed: {}", report.summary());
     }
 
-    private void runUnit(IngestionWorkUnit unit, Runnable operation, List<String> failedStages) {
+    private void runUnit(IngestionWorkUnit unit, Runnable operation, List<String> failedStages,
+                         List<IngestionUnitResult> results) {
         String name = unit.provider() + "/" + unit.dataset() + "/league=" + unit.leagueId()
                 + "/season=" + unit.season();
-        checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
-                unit.season(), CheckpointStatus.RUNNING);
+        IngestionUnitResult result = new IngestionUnitExecutor(checkpointStore)
+                .execute(unit, false, () -> runStage(name, operation));
+        results.add(result);
+        if (!result.isSuccessful()) {
+            failedStages.add(name + " [" + result.status() + "]: " + result.message());
+            log.warn("Independent ingestion work unit finished with {}: {}", result.status(), name);
+        }
+    }
+
+    /**
+     * Catalogue synchronization is provider-wide by contract. Its season checkpoints are
+     * transitioned together because the provider API does not expose an individual season
+     * catalogue endpoint; all resource datasets below remain season-scoped.
+     */
+    private void runPlannedStage(String name, Dataset dataset, List<IngestionWorkUnit> units,
+                                 Runnable operation, List<String> failedStages) {
+        units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
+                unit.leagueId(), unit.season(), CheckpointStatus.RUNNING));
         try {
             runStage(name, operation);
-            checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
-                    unit.season(), CheckpointStatus.COMPLETED);
-        } catch (IngestionPartialException exception) {
-            checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
-                    unit.season(), CheckpointStatus.PARTIAL);
-            failedStages.add(name + ": " + exception.getMessage());
+            units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
+                    unit.leagueId(), unit.season(), CheckpointStatus.COMPLETED));
         } catch (RuntimeException exception) {
-            checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
-                    unit.season(), CheckpointStatus.FAILED);
-            failedStages.add(name + ": " + exception.getMessage());
-            log.warn("Independent ingestion work unit failed; continuing: {}", name, exception);
+            CheckpointStatus status = exception instanceof IngestionPartialException
+                    ? CheckpointStatus.PARTIAL : CheckpointStatus.FAILED;
+            units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
+                    unit.leagueId(), unit.season(), status));
+            failedStages.add(name + " [" + status + "]: " + exception.getMessage());
         }
     }
 
