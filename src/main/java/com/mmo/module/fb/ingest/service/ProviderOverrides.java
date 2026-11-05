@@ -6,6 +6,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
  * Optional per-resource provider overrides for one bootstrap execution.
  * A null value delegates to the default routing in AppProperties.
  */
+@Deprecated(forRemoval = false)
 public record ProviderOverrides(
         Provider league,
         Provider season,
