@@ -64,15 +64,20 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
         // League/season catalogues are provider-specific identity namespaces. They are
         // initialized before the season-scoped resources; season routing itself remains
         // controlled by the plan rather than the global resource provider properties.
-        Provider catalogueProvider = properties.getIngestion().getProviders().getLeague();
-        if (catalogueProvider != Provider.FOOTBALL_DATA) {
-            throw new IllegalStateException("Football-Data is the configured catalogue provider, got "
-                    + catalogueProvider);
+        boolean footballDataCatalogueRequired = plan.units().stream().anyMatch(unit ->
+                unit.provider() == Provider.FOOTBALL_DATA
+                        && unit.role() == IngestionWorkUnit.Role.PRIMARY);
+        if (footballDataCatalogueRequired) {
+            Provider catalogueProvider = properties.getIngestion().getProviders().getLeague();
+            if (catalogueProvider != Provider.FOOTBALL_DATA) {
+                throw new IllegalStateException("Football-Data is the catalogue owner in DataSourcePolicy, got "
+                        + catalogueProvider);
+            }
+            runStage("catalogue/leagues/" + catalogueProvider,
+                    () -> leagueIngestionService.syncLeaguesForProvider(catalogueProvider));
+            runStage("catalogue/seasons/" + catalogueProvider,
+                    () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider));
         }
-        runStage("catalogue/leagues/" + catalogueProvider,
-                () -> leagueIngestionService.syncLeaguesForProvider(catalogueProvider));
-        runStage("catalogue/seasons/" + catalogueProvider,
-                () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider));
 
         List<IngestionWorkUnit> footballDataTeams = plan.units(
                 Dataset.TEAM, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
