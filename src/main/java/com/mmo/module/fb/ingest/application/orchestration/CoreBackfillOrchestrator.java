@@ -7,7 +7,8 @@ import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.provider.client.ProviderTransportException;
+import com.mmo.module.fb.ingest.application.exception.ProviderTransportException;
+import com.mmo.module.fb.ingest.provider.spi.SeasonBatchProvider;
 
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.FootballDataBootstrapService;
