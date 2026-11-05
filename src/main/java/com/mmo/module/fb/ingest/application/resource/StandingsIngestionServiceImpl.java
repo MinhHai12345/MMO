@@ -65,7 +65,11 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
         // Allow standalone scheduled runs to bootstrap missing team mappings without repeating
         // the full teams endpoint on every standings refresh.
         if (teamExternalIdRepository.findAllByProvider(selectedProvider).isEmpty()) {
-            teamIngestionService.syncTeamsForProvider(selectedProvider);
+            if (onlySeasonId != null) {
+                teamIngestionService.syncSeasonForProvider(selectedProvider, onlySeasonId);
+            } else {
+                teamIngestionService.syncTeamsForProvider(selectedProvider);
+            }
         }
         StandingsProvider provider = providerRegistry.standings(selectedProvider);
 
