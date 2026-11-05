@@ -68,7 +68,7 @@ class CoreBackfillOrchestratorTest {
     @Test
     void recordsIndependentTeamAndFixtureCheckpointOutcomes() {
         doThrow(new IllegalStateException("fixture provider unavailable"))
-                .when(fixtures).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA, null, null);
+                .when(fixtures).syncSeasonForProvider(Provider.FOOTBALL_DATA, 20L, null, null);
 
         assertThrows(IllegalStateException.class, () -> service.syncCoreData(
                 new ProviderOverrides(Provider.FOOTBALL_DATA, Provider.FOOTBALL_DATA,
@@ -78,8 +78,8 @@ class CoreBackfillOrchestratorTest {
                 39L, "2024/2025", CheckpointStatus.COMPLETED);
         verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.FIXTURE,
                 39L, "2024/2025", CheckpointStatus.FAILED);
-        verify(teams).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA);
-        verify(fixtures).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA, null, null);
+        verify(teams).syncSeasonForProvider(Provider.FOOTBALL_DATA, 20L);
+        verify(fixtures).syncSeasonForProvider(Provider.FOOTBALL_DATA, 20L, null, null);
         verify(footballDataUk, never()).syncInitialData();
     }
 
@@ -100,9 +100,9 @@ class CoreBackfillOrchestratorTest {
 
     @Test
     void completedScopedCheckpointsSkipHistoricalResourceFetches() {
-        when(checkpoints.isCompleted(Provider.FOOTBALL_DATA, Dataset.TEAM,
+        when(checkpoints.isSatisfied(Provider.FOOTBALL_DATA, Dataset.TEAM,
                 39L, "2024/2025")).thenReturn(true);
-        when(checkpoints.isCompleted(Provider.FOOTBALL_DATA, Dataset.FIXTURE,
+        when(checkpoints.isSatisfied(Provider.FOOTBALL_DATA, Dataset.FIXTURE,
                 39L, "2024/2025")).thenReturn(true);
 
         service.syncCoreData(ProviderOverrides.defaults());
