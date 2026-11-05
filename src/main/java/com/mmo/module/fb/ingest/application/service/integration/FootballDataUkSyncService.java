@@ -1,7 +1,6 @@
 package com.mmo.module.fb.ingest.application.service.integration;
 
 import com.mmo.AppProperties;
-import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
 import com.mmo.module.fb.ingest.provider.spi.SeasonBatchProvider;
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
@@ -65,7 +64,7 @@ import java.util.Optional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class FootballDataUkSyncService implements FootballDataUkIngestionPort, SeasonBatchProvider {
+public class FootballDataUkSyncService implements SeasonBatchProvider {
     private static final Provider PROVIDER = Provider.FOOTBALL_DATA_UK;
     private static final MatchProvider MATCH_PROVIDER = MatchProvider.fromName(PROVIDER.name());
     private static final ZoneId SOURCE_ZONE = ZoneId.of("Europe/London");
