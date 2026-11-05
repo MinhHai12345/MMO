@@ -37,7 +37,11 @@ class ProviderCheckpointJpaAdapterIntegrationTest {
 
         assertFalse(checkpointStore.isCompleted(Provider.FOOTBALL_DATA_UK, Dataset.FIXTURE,
                 39L, "2021/2022"));
+        assertTrue(checkpointStore.isSatisfied(Provider.FOOTBALL_DATA_UK, Dataset.FIXTURE,
+                39L, "2021/2022"));
         assertFalse(checkpointStore.isCompleted(Provider.FOOTBALL_DATA_UK, Dataset.TEAM,
+                39L, "2021/2022"));
+        assertFalse(checkpointStore.isSatisfied(Provider.FOOTBALL_DATA_UK, Dataset.TEAM,
                 39L, "2021/2022"));
         assertEquals(1, checkpointRepository.count());
 

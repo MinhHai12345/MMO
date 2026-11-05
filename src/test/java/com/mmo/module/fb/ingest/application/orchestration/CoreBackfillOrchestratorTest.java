@@ -107,6 +107,21 @@ class CoreBackfillOrchestratorTest {
     }
 
     @Test
+    void revisitsUkBackfillEvenWhenLegacyGlobalCheckpointExists() {
+        AppProperties.ProviderConfig ukConfig = new AppProperties.ProviderConfig();
+        ukConfig.setEnabled(true);
+        properties.getIngestion().getProviderConfig().put(Provider.FOOTBALL_DATA_UK, ukConfig);
+        when(checkpoints.isCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL"))
+                .thenReturn(true);
+        when(footballDataUk.syncInitialData()).thenReturn(true);
+
+        service.syncCoreData(ProviderOverrides.defaults());
+
+        verify(footballDataUk).syncInitialData();
+        verify(checkpoints).markCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL");
+    }
+
+    @Test
     void doesNotStartWorkflowWhenGlobalLockIsBusy() {
         doReturn(false).when(lock).execute(eq(IngestionDistributedLock.GLOBAL_INGEST_LOCK), any(Runnable.class));
 

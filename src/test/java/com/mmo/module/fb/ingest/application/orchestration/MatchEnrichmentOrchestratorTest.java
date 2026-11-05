@@ -37,39 +37,41 @@ class MatchEnrichmentOrchestratorTest {
     }
 
     @Test
-    void skipsAllEnrichmentUntilFootballDataUkCoreBackfillIsComplete() {
+    void runsHistoricalRecoveryAndActiveRefreshWithoutLegacyGlobalGates() {
+        when(footballDataUk.syncInitialEnrichment()).thenReturn(true);
+
         useCase.enrichFinishedMatches();
 
         verify(lock).execute(eq(IngestionDistributedLock.GLOBAL_INGEST_LOCK), any(Runnable.class));
         verify(planFactory).historicalPlan();
-        verify(footballDataUk, never()).syncInitialEnrichment();
-        verify(footballDataUk, never()).syncActiveSeasonsEnrichment();
+        verify(footballDataUk).syncInitialEnrichment();
+        verify(footballDataUk).syncActiveSeasonsEnrichment();
+        verify(checkpoints).markCompleted(Provider.FOOTBALL_DATA_UK, "MATCH_ENRICHMENT_INITIAL");
+        verify(checkpoints, never()).isCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL");
     }
 
     @Test
-    void performsHistoricalFootballDataUkEnrichmentOnceCoreBackfillIsComplete() {
-        when(checkpoints.isCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL"))
+    void retriesHistoricalEnrichmentEvenWhenLegacyEnrichmentMarkerExists() {
+        when(checkpoints.isCompleted(Provider.FOOTBALL_DATA_UK, "MATCH_ENRICHMENT_INITIAL"))
                 .thenReturn(true);
         when(footballDataUk.syncInitialEnrichment()).thenReturn(true);
 
         useCase.enrichFinishedMatches();
 
         verify(footballDataUk).syncInitialEnrichment();
-        verify(footballDataUk, never()).syncActiveSeasonsEnrichment();
-        verify(checkpoints).markCompleted(Provider.FOOTBALL_DATA_UK, "MATCH_ENRICHMENT_INITIAL");
+        verify(footballDataUk).syncActiveSeasonsEnrichment();
     }
 
     @Test
-    void refreshesOnlyActiveSeasonsAfterHistoricalFootballDataUkEnrichmentIsComplete() {
-        when(checkpoints.isCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL"))
-                .thenReturn(true);
-        when(checkpoints.isCompleted(Provider.FOOTBALL_DATA_UK, "MATCH_ENRICHMENT_INITIAL"))
-                .thenReturn(true);
+    void doesNotRunActiveRefreshWhenHistoricalRecoveryFails() {
+        doThrow(new IllegalStateException("historical import partial"))
+                .when(footballDataUk).syncInitialEnrichment();
 
-        useCase.enrichFinishedMatches();
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> useCase.enrichFinishedMatches());
 
-        verify(footballDataUk, never()).syncInitialEnrichment();
-        verify(footballDataUk).syncActiveSeasonsEnrichment();
+        verify(footballDataUk).syncInitialEnrichment();
+        verify(footballDataUk, never()).syncActiveSeasonsEnrichment();
     }
 
     @Test
