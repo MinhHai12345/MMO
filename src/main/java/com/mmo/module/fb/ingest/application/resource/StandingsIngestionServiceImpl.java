@@ -121,10 +121,10 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
         if (rateLimitInterrupted) {
             log.warn("Standings ingestion via {} partially completed. {} rows upserted, {} rows skipped.",
                     selectedProvider, saved, skipped);
-        } else {
-            log.info("Standings ingestion via {} completed. {} rows upserted, {} rows skipped.",
-                    selectedProvider, saved, skipped);
+            throw new IngestionPartialException("Standings ingestion interrupted by provider rate limiting");
         }
+        log.info("Standings ingestion via {} completed. {} rows upserted, {} rows skipped.",
+                selectedProvider, saved, skipped);
     }
 
 

@@ -124,6 +124,10 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
             runStage(name, operation);
             units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
                     unit.leagueId(), unit.season(), CheckpointStatus.COMPLETED));
+        } catch (IngestionPartialException exception) {
+            units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
+                    unit.leagueId(), unit.season(), CheckpointStatus.PARTIAL));
+            log.warn("Ingestion stage completed partially: {} reason={}", name, exception.getMessage());
         } catch (RuntimeException exception) {
             units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
                     unit.leagueId(), unit.season(), CheckpointStatus.FAILED));
