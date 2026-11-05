@@ -1,14 +1,9 @@
 package com.mmo.module.fb.ingest.service;
 
 /**
- * Coordinates the initial SofaScore import through the shared provider-neutral ingestion
- * and persistence pipeline.
+ * @deprecated Use {@code application.port.in.SofaScoreBootstrapService}.
  */
-public interface SofaScoreBootstrapService {
-
-    /**
-     * Imports SofaScore leagues/seasons, current-season teams and fixtures when the local
-     * provider mappings have not been initialized yet.
-     */
-    void syncInitialDataIfRequired();
+@Deprecated(forRemoval = false)
+public interface SofaScoreBootstrapService
+        extends com.mmo.module.fb.ingest.application.port.in.SofaScoreBootstrapService {
 }
