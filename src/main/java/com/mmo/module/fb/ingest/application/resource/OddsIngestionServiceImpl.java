@@ -16,13 +16,13 @@ import com.mmo.module.fb.domain.match.service.MatchEnrichmentStateService;
 import com.mmo.module.fb.ingest.provider.model.OddsQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
-import com.mmo.module.fb.ingest.service.OddsIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.OddsIngestionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import com.mmo.module.fb.ingest.service.FixtureIngestionService;
-import com.mmo.module.fb.ingest.service.OddsPersistenceService;
+import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
+import com.mmo.module.fb.ingest.application.port.out.OddsPersistenceService;
 
 import java.time.Instant;
 import java.time.LocalDate;
