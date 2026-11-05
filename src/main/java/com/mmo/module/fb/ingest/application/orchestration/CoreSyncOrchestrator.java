@@ -51,6 +51,11 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
     }
 
     private void syncLocked(ProviderOverrides overrides, Provider oddsProviderOverride) {
+        if (overrides != null && (overrides.league() != null || overrides.season() != null
+                || overrides.team() != null || overrides.fixture() != null || overrides.standings() != null)) {
+            log.info("Ignoring resource provider overrides for incremental sync; "
+                    + "DataSourcePolicy is authoritative per dataset and season");
+        }
         IngestionPlan plan = planFactory.activeSeasonPlan();
         log.info("Active-season ingestion plan created: workUnits={}, datasets={}, providers={}",
                 plan.units().size(),
@@ -119,8 +124,7 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
             runStage("football-data-uk/active-seasons", footballDataUkSyncService::syncActiveSeasonsData);
         }
 
-        if (plan.has(Dataset.UPCOMING_ODDS, Provider.API_FOOTBALL, IngestionWorkUnit.Role.PRIMARY)
-                || plan.has(Dataset.UPCOMING_ODDS, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY)) {
+        if (!plan.units(Dataset.UPCOMING_ODDS, IngestionWorkUnit.Role.PRIMARY).isEmpty()) {
             throw new IllegalStateException("Upcoming odds are disabled by DataSourcePolicy");
         }
         if (oddsProviderOverride != null) {
