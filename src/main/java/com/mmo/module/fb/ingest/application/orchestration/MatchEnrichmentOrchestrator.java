@@ -2,7 +2,7 @@ package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.in.MatchEnrichmentService;
-import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 import com.mmo.module.fb.ingest.application.registry.SeasonBatchIngestionRegistry;
 import com.mmo.module.fb.ingest.enums.Provider;
@@ -23,7 +23,7 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
     private static final String ENRICHMENT_INITIAL_CHECKPOINT = "MATCH_ENRICHMENT_INITIAL";
 
     private final IngestionDistributedLock distributedLock;
-    private final ProviderCheckpointStore checkpointStore;
+    private final ProviderCheckpointPort checkpointStore;
     private final IngestionPlanFactory planFactory;
     private final SeasonBatchIngestionRegistry seasonBatchRegistry;
 

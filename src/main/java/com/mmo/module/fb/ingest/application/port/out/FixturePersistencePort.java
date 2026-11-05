@@ -6,7 +6,7 @@ import com.mmo.module.fb.ingest.application.model.ResolvedProviderFixture;
 
 import java.util.List;
 
-public interface FixturePersistenceService {
+public interface FixturePersistencePort {
     boolean persistFixture(Long seasonId, Long homeTeamId, Long awayTeamId,
                            Provider provider, ProviderFixture fixture);
 

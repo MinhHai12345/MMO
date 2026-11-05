@@ -2,7 +2,7 @@ package com.mmo.module.fb.ingest.application.service.integration;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.application.model.SofaScoreExternalMappingResult;
-import com.mmo.module.fb.ingest.application.port.in.SofaScoreExternalMappingUseCase;
+import com.mmo.module.fb.ingest.application.port.in.SofaScoreExternalMappingService;
 import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SofaScoreExternalMappingService implements SofaScoreExternalMappingUseCase {
+public class SofaScoreExternalMappingService implements SofaScoreExternalMappingService {
 
     private final LeagueIngestionService leagueIngestionService;
     private final TeamIngestionService teamIngestionService;

@@ -8,7 +8,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
-import com.mmo.module.fb.ingest.application.port.out.LeaguePersistenceService;
+import com.mmo.module.fb.ingest.application.port.out.LeaguePersistencePort;
 import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +23,7 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
     private final ProviderIngestionRegistry providerRegistry;
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
-    private final LeaguePersistenceService leaguePersistenceService;
+    private final LeaguePersistencePort leaguePersistenceService;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
 
     @Override
@@ -38,7 +38,7 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
         try {
             // Football-Data competition IDs and SofaScore tournament IDs belong to different
             // namespaces. Never pass the Football-Data allow-list to SofaScore: discover its
-            // tournament catalogue and let LeaguePersistenceService match canonical leagues by
+            // tournament catalogue and let LeaguePersistencePort match canonical leagues by
             // name/country before creating provider mappings.
             List<Long> externalLeagueIds = selectedProvider == Provider.SOFA_SCORE
                     || selectedProvider == Provider.UNDER_STATS
