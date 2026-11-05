@@ -87,13 +87,15 @@ public class IngestionServiceSupport {
         return List.copyOf(mapped.values());
     }
 
-    public boolean hasMappedSeasons(Provider provider, boolean includeHistorical) {
-        return seasonExternalIdRepository.findAllByProvider(provider).stream()
-                .map(SeasonExternalId::getSeason)
-                .anyMatch(season -> season != null && season.getYear() != null
-                        && season.getLeague() != null
-                        && Boolean.TRUE.equals(season.getLeague().getIsActive())
-                        && (includeHistorical || season.isActive()));
+    public boolean hasAnySeasons(boolean includeHistorical) {
+        return seasonRepository.findAllForActiveLeagues().stream()
+                .anyMatch(season -> includeHistorical || season.isActive());
+    }
+
+    public boolean hasAnySeasonOwnedBy(Provider provider, Dataset dataset, boolean includeHistorical) {
+        return seasonRepository.findAllForActiveLeagues().stream()
+                .filter(season -> includeHistorical || season.isActive())
+                .anyMatch(season -> dataSourcePolicy.isPrimary(provider, dataset, season));
     }
 
     public List<Season> standingsSeasonsToSync(Provider provider) {

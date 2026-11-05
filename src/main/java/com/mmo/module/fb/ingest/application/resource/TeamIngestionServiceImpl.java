@@ -70,13 +70,17 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
                 ? ingestionSupport.allMappedSeasonsToSync(selectedProvider, Dataset.TEAM)
                 : ingestionSupport.seasonsToSync(selectedProvider, Dataset.TEAM);
         if (seasons.isEmpty()) {
-            if (!ingestionSupport.hasMappedSeasons(selectedProvider, includeHistoricalSeasons)) {
-                throw new IllegalStateException("No mapped seasons available for " + selectedProvider
-                        + " team ingestion");
+            if (!ingestionSupport.hasAnySeasons(includeHistoricalSeasons)) {
+                throw new IllegalStateException("No canonical seasons available for team ingestion");
             }
-            log.info("Skipping team ingestion via {}: no selected season is owned by this provider",
-                    selectedProvider);
-            return;
+            if (!ingestionSupport.hasAnySeasonOwnedBy(
+                    selectedProvider, Dataset.TEAM, includeHistoricalSeasons)) {
+                log.info("Skipping team ingestion via {}: selected seasons are owned by another provider",
+                        selectedProvider);
+                return;
+            }
+            throw new IllegalStateException("Missing " + selectedProvider
+                    + " season mappings for a season it owns in team ingestion");
         }
         for (Season season : seasons) {
             LeagueExternalId leagueMapping = leagueMappingsByLeagueId.get(season.getLeague().getId());

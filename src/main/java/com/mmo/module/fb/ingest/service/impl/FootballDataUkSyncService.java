@@ -239,7 +239,11 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         syncInitialData();
     }
 
-    /** Incremental CSV sync: fetches only the current season for every mapped league. */
+    /**
+     * Incremental CSV sync for operator-selected active seasons that Football-Data UK
+     * is allowed to contribute to. The policy makes UK primary through 2022 and a
+     * fixture fallback from 2023 onward.
+     */
     public void syncCurrentSeasonData() {
         initialLeagueMappings();
         AppProperties.ProviderConfig config = properties.getIngestion().getProviderConfig().get(PROVIDER);
@@ -248,38 +252,47 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
             return;
         }
 
-        if (leagueExternalIdRepository.findAllByProvider(PROVIDER).isEmpty()) {
-            log.warn("Football-Data.co.uk current-season sync skipped: no provider league mappings exist");
+        List<LeagueExternalId> leagueMappings = leagueExternalIdRepository.findAllByProvider(PROVIDER);
+        if (leagueMappings.isEmpty()) {
+            log.warn("Football-Data.co.uk active-season sync skipped: no provider league mappings exist");
             return;
         }
 
-        LocalDate today = LocalDate.now(SOURCE_ZONE);
-        int startYear = currentSeasonStartYear(today);
+        int importedSeasons = 0;
         int failedSeasons = 0;
-        for (LeagueExternalId mapping : leagueExternalIdRepository.findAllByProvider(PROVIDER)) {
+        for (LeagueExternalId mapping : leagueMappings) {
             if (!StringUtils.hasText(mapping.getIdentify())) continue;
             League league = mapping.getLeague();
-            Season season = getOrCreateSeason(league, startYear, today);
-            try {
-                ImportResult result = syncSeason(season, mapping, config);
-                if (result.csvRows() == 0 || result.unmatchedRows() > 0) {
+            List<Season> activeSeasons = seasonRepository.findByLeague_Id(league.getId()).stream()
+                    .filter(Season::isActive)
+                    .filter(season -> dataSourcePolicy.isAllowed(PROVIDER, Dataset.FIXTURE, season))
+                    .toList();
+
+            for (Season season : activeSeasons) {
+                try {
+                    ImportResult result = syncSeason(season, mapping, config);
+                    if (result.csvRows() == 0 || result.unmatchedRows() > 0) {
+                        failedSeasons++;
+                        log.warn("Football-Data.co.uk active-season sync remains incomplete: league={}, season={}, rows={}, unmatched={}",
+                                league.getName(), season.getYear(), result.csvRows(), result.unmatchedRows());
+                        continue;
+                    }
+                    saveSeasonMapping(season, mapping);
+                    importedSeasons++;
+                    log.info("Football-Data.co.uk active-season Core sync: league={}, season={}, rows={}, createdFixtures={}",
+                            league.getName(), season.getYear(), result.csvRows(), result.createdFixtures());
+                } catch (RuntimeException exception) {
                     failedSeasons++;
-                    log.warn("Football-Data.co.uk current season remains incomplete: league={}, season={}, rows={}, unmatched={}",
-                            league.getName(), season.getYear(), result.csvRows(), result.unmatchedRows());
-                    continue;
+                    log.error("Football-Data.co.uk active-season sync failed: league={}, season={}, reason={}",
+                            league.getName(), season.getYear(), exception.getMessage(), exception);
                 }
-                saveSeasonMapping(season, mapping);
-                log.info("Football-Data.co.uk current-season Core sync: league={}, season={}, rows={}, createdFixtures={}",
-                        league.getName(), season.getYear(), result.csvRows(), result.createdFixtures());
-            } catch (RuntimeException exception) {
-                failedSeasons++;
-                log.error("Football-Data.co.uk current-season sync failed: league={}, season={}, reason={}",
-                        league.getName(), season.getYear(), exception.getMessage(), exception);
             }
         }
+        log.info("Football-Data.co.uk active-season sync completed: importedSeasons={}, failedSeasons={}",
+                importedSeasons, failedSeasons);
         if (failedSeasons > 0) {
-            throw new IllegalStateException("Football-Data.co.uk current-season sync failed for "
-                    + failedSeasons + " league(s)");
+            throw new IllegalStateException("Football-Data.co.uk active-season sync failed for "
+                    + failedSeasons + " season(s)");
         }
     }
 
