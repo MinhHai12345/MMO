@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 
-/** Persists the latest provider payload representation independently for every provider and team side. */
+/** Appends immutable provider payload snapshots; canonical statistics are merged separately. */
 @Service
 @RequiredArgsConstructor
 public class MatchStatisticsSnapshotPersistenceService {
@@ -23,10 +23,14 @@ public class MatchStatisticsSnapshotPersistenceService {
 
     @Transactional
     public void upsert(Match match, Team team, MatchProvider provider, Object sourcePayload) {
+        upsert(match, team, provider, sourcePayload, null);
+    }
+
+    @Transactional
+    public void upsert(Match match, Team team, MatchProvider provider,
+                       Object sourcePayload, Instant sourceUpdatedAt) {
         if (match == null || match.getId() == null || team == null || team.getId() == null
-                || provider == null || sourcePayload == null) {
-            return;
-        }
+                || provider == null || sourcePayload == null) return;
 
         Long homeTeamId = match.getHomeTeam() == null ? null : match.getHomeTeam().getId();
         Long awayTeamId = match.getAwayTeam() == null ? null : match.getAwayTeam().getId();
@@ -41,12 +45,8 @@ public class MatchStatisticsSnapshotPersistenceService {
             throw new IllegalStateException("Could not serialize match statistics source snapshot", exception);
         }
 
-        MatchStatisticsSourceSnapshot snapshot = snapshotRepository
-                .findByMatchIdAndTeamIdAndProvider(match.getId(), team.getId(), provider)
-                .orElseGet(() -> MatchStatisticsSourceSnapshot.builder()
-                        .match(match).team(team).provider(provider).build());
-        snapshot.setSnapshotJson(json);
-        snapshot.setFetchedAt(Instant.now());
-        snapshotRepository.save(snapshot);
+        snapshotRepository.save(MatchStatisticsSourceSnapshot.builder()
+                .match(match).team(team).provider(provider).snapshotJson(json)
+                .sourceUpdatedAt(sourceUpdatedAt).fetchedAt(Instant.now()).build());
     }
 }
