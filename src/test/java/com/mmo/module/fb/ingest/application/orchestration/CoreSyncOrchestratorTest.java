@@ -90,7 +90,7 @@ class CoreSyncOrchestratorTest {
     }
 
     @Test
-    void recordsFailedScopedCheckpointAndRethrowsWhenDatasetStageFails() {
+    void recordsFailedScopedCheckpointAndContinuesIndependentDatasetStages() {
         doThrow(new IllegalStateException("provider down"))
                 .when(teams).syncTeamsForProvider(Provider.FOOTBALL_DATA);
 
@@ -98,7 +98,10 @@ class CoreSyncOrchestratorTest {
 
         verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.TEAM,
                 39L, "2025/2026", CheckpointStatus.FAILED);
-        verify(fixtures, never()).syncFixturesForProvider(any(), any(), any());
+        verify(fixtures).syncFixturesForProvider(Provider.FOOTBALL_DATA, null, null);
+        verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.FIXTURE,
+                39L, "2025/2026", CheckpointStatus.COMPLETED);
+        verify(uk).syncActiveSeasonsData();
     }
 
     @Test
@@ -106,10 +109,11 @@ class CoreSyncOrchestratorTest {
         doThrow(new IngestionPartialException("rate limited"))
                 .when(standings).syncStandingsForProvider(Provider.FOOTBALL_DATA);
 
-        useCase.sync(null, null);
+        assertThrows(IllegalStateException.class, () -> useCase.sync(null, null));
 
         verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.STANDINGS,
                 39L, "2025/2026", CheckpointStatus.PARTIAL);
+        verify(uk).syncActiveSeasonsData();
     }
 
     @Test

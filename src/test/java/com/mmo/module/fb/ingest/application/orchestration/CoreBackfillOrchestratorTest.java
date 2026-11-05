@@ -84,6 +84,21 @@ class CoreBackfillOrchestratorTest {
     }
 
     @Test
+    void continuesUkBackfillWhenFootballDataFixtureStageFails() {
+        AppProperties.ProviderConfig ukConfig = new AppProperties.ProviderConfig();
+        ukConfig.setEnabled(true);
+        properties.getIngestion().getProviderConfig().put(Provider.FOOTBALL_DATA_UK, ukConfig);
+        doThrow(new IllegalStateException("fixture provider unavailable"))
+                .when(fixtures).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA, null, null);
+        when(footballDataUk.syncInitialData()).thenReturn(true);
+
+        assertThrows(IllegalStateException.class, () -> service.syncCoreData(ProviderOverrides.defaults()));
+
+        verify(footballDataUk).syncInitialData();
+        verify(checkpoints).markCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL");
+    }
+
+    @Test
     void completedScopedCheckpointsSkipHistoricalResourceFetches() {
         when(checkpoints.isCompleted(Provider.FOOTBALL_DATA, Dataset.TEAM,
                 39L, "2024/2025")).thenReturn(true);

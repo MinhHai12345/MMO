@@ -63,7 +63,7 @@ class MatchEnrichmentOrchestratorTest {
     }
 
     @Test
-    void doesNotRunActiveRefreshWhenHistoricalRecoveryFails() {
+    void continuesActiveRefreshWhenHistoricalRecoveryFails() {
         doThrow(new IllegalStateException("historical import partial"))
                 .when(footballDataUk).syncInitialEnrichment();
 
@@ -71,7 +71,7 @@ class MatchEnrichmentOrchestratorTest {
                 () -> useCase.enrichFinishedMatches());
 
         verify(footballDataUk).syncInitialEnrichment();
-        verify(footballDataUk, never()).syncActiveSeasonsEnrichment();
+        verify(footballDataUk).syncActiveSeasonsEnrichment();
     }
 
     @Test
