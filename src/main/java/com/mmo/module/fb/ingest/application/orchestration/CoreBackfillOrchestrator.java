@@ -82,6 +82,17 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
                     + "DataSourcePolicy is authoritative per dataset and season");
         }
 
+        boolean ukCoreRequired = isProviderEnabled(Provider.FOOTBALL_DATA_UK);
+        List<String> failedStages = new ArrayList<>();
+        if (ukCoreRequired) {
+            try {
+                footballDataUkSyncService.prepareHistoricalSeasons();
+            } catch (RuntimeException exception) {
+                failedStages.add("football-data-uk/prepare-seasons: " + exception.getMessage());
+                log.error("Unable to prepare Football-Data UK historical seasons", exception);
+            }
+        }
+
         IngestionPlan plan = planFactory.historicalPlan();
         List<IngestionWorkUnit> footballDataSeasons = plan.units(
                 Dataset.SEASON, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
@@ -91,10 +102,6 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
                 Dataset.TEAM, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
         List<IngestionWorkUnit> footballDataFixtures = plan.units(
                 Dataset.FIXTURE, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
-        // UK creates historical Season rows while importing its CSV catalogue, so its
-        // historical work cannot depend on those rows already existing in the plan.
-        boolean ukCoreRequired = isProviderEnabled(Provider.FOOTBALL_DATA_UK);
-
         log.info("Historical Core plan created: units={}, footballDataTeams={}, "
                         + "footballDataFixtures={}, footballDataUkRequired={}",
                 plan.units().size(), footballDataTeams.size(), footballDataFixtures.size(), ukCoreRequired);
@@ -104,7 +111,6 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
             return;
         }
 
-        List<String> failedStages = new ArrayList<>();
         List<IngestionUnitResult> unitResults = new ArrayList<>();
         footballDataTeams.forEach(unit -> runUnit(unit, () ->
                 teamIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()), failedStages, unitResults));
@@ -113,17 +119,26 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
                 failedStages, unitResults));
 
         if (ukCoreRequired) {
-            // The UK importer owns recovery at provider + dataset + league + season scope.
-            // Always revisit its catalogue: completed/unavailable historical units are skipped
-            // by scoped checkpoints, partial/failed units are retried, and the current season
-            // is refreshed. The legacy provider-wide marker must never suppress new work.
-            try {
-                if (footballDataUkSyncService.syncInitialData()) {
-                    checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK, INITIAL_CORE_CHECKPOINT);
+            // The CSV endpoint is season-scoped. A single request imports one season only;
+            // its TEAM/SEASON/FIXTURE checkpoint outcomes are persisted independently.
+            List<Long> ukSeasonIds = plan.units().stream()
+                    .filter(unit -> unit.provider() == Provider.FOOTBALL_DATA_UK
+                            && (unit.dataset() == Dataset.SEASON || unit.dataset() == Dataset.TEAM
+                            || unit.dataset() == Dataset.FIXTURE))
+                    .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
+            for (Long seasonId : ukSeasonIds) {
+                try {
+                    runStage("football-data-uk/core/season=" + seasonId,
+                            () -> footballDataUkSyncService.syncCoreSeason(seasonId, true));
+                } catch (RuntimeException exception) {
+                    failedStages.add("football-data-uk/core/season=" + seasonId
+                            + ": " + exception.getMessage());
+                    log.warn("Football-Data UK season failed; continuing with remaining seasons: {}",
+                            seasonId, exception);
                 }
-            } catch (RuntimeException exception) {
-                failedStages.add("football-data-uk/historical: " + exception.getMessage());
-                log.error("Historical Core stage failed: football-data-uk/historical", exception);
+            }
+            if (failedStages.stream().noneMatch(error -> error.startsWith("football-data-uk/"))) {
+                checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK, INITIAL_CORE_CHECKPOINT);
             }
         }
 
