@@ -8,31 +8,32 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkMatchDataProvider;
-import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkCsvException;
-import com.mmo.module.fb.ingest.persistence.MatchXgPersistenceService;
-import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkMatchStatisticsPersistenceService;
-import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkOddsPersistenceService;
-import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
-import com.mmo.module.fb.ingest.service.ExternalIdMappingService;
+import com.mmo.module.fb.ingest.application.port.out.FootballDataUkSeasonDataPort;
+import com.mmo.module.fb.ingest.application.exception.ProviderDataException;
+import com.mmo.module.fb.ingest.application.port.out.MatchXgPersistencePort;
+import com.mmo.module.fb.ingest.application.port.out.FootballDataUkMatchStatisticsPersistencePort;
+import com.mmo.module.fb.ingest.application.port.out.FootballDataUkOddsPersistencePort;
+import com.mmo.module.fb.ingest.application.port.out.MmoDataStandardizationPort;
+import com.mmo.module.fb.ingest.application.port.out.FootballDataUkImportPersistencePort;
+
 import com.mmo.module.fb.domain.league.entity.League;
 import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
 import com.mmo.module.fb.domain.league.entity.Season;
 import com.mmo.module.fb.domain.league.entity.SeasonExternalId;
-import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
-import com.mmo.module.fb.domain.league.repository.LeagueRepository;
-import com.mmo.module.fb.domain.league.repository.SeasonRepository;
-import com.mmo.module.fb.domain.league.repository.SeasonExternalIdRepository;
+
+
+
+
 import com.mmo.module.fb.domain.match.entity.Match;
 import com.mmo.module.fb.domain.match.entity.MatchExternalId;
 import com.mmo.module.fb.domain.match.enums.MatchStatus;
-import com.mmo.module.fb.domain.match.repository.MatchExternalIdRepository;
+
 import com.mmo.module.fb.domain.match.enums.MatchProvider;
-import com.mmo.module.fb.domain.match.repository.MatchRepository;
+
 import com.mmo.module.fb.domain.team.entity.Team;
 import com.mmo.module.fb.domain.team.entity.TeamExternalId;
-import com.mmo.module.fb.domain.team.repository.TeamExternalIdRepository;
-import com.mmo.module.fb.domain.team.repository.TeamRepository;
+
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -71,19 +72,12 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
     private final AppProperties properties;
     private final ProviderCheckpointStore checkpointStore;
     private final DataSourcePolicy dataSourcePolicy;
-    private final FootballDataUkMatchDataProvider matchDataProvider;
-    private final LeagueRepository leagueRepository;
-    private final SeasonRepository seasonRepository;
-    private final SeasonExternalIdRepository seasonExternalIdRepository;
-    private final LeagueExternalIdRepository leagueExternalIdRepository;
-    private final TeamRepository teamRepository;
-    private final TeamExternalIdRepository teamExternalIdRepository;
-    private final ExternalIdMappingService externalIdMappingService;
-    private final MatchRepository matchRepository;
-    private final MatchExternalIdRepository matchExternalIdRepository;
-    private final MatchXgPersistenceService matchXgPersistenceService;
-    private final FootballDataUkMatchStatisticsPersistenceService statisticsMapper;
-    private final FootballDataUkOddsPersistenceService oddsMapper;
+    private final FootballDataUkSeasonDataPort matchDataProvider;
+    private final MmoDataStandardizationPort dataStandardizer;
+    private final FootballDataUkImportPersistencePort persistencePort;
+    private final MatchXgPersistencePort matchXgPersistenceService;
+    private final FootballDataUkMatchStatisticsPersistencePort statisticsMapper;
+    private final FootballDataUkOddsPersistencePort oddsMapper;
 
     /**
      * Initialize Football-Data.co.uk league mappings for leagues already present in MMO core.
@@ -107,10 +101,10 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         int skipped = 0;
 
         for (LeagueMappingDefinition definition : definitions) {
-            String canonicalLeagueName = MmoProviderDataStandardizer.leagueName(definition.leagueName());
-            List<League> leagues = leagueRepository.findAll().stream()
+            String canonicalLeagueName = dataStandardizer.leagueName(definition.leagueName());
+            List<League> leagues = persistencePort.findAllLeagues().stream()
                     .filter(candidate -> canonicalLeagueName.equalsIgnoreCase(
-                            MmoProviderDataStandardizer.leagueName(candidate.getName())))
+                            dataStandardizer.leagueName(candidate.getName())))
                     .toList();
             if (leagues.size() != 1) {
                 skipped++;
@@ -120,8 +114,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
             }
 
             League league = leagues.get(0);
-            Optional<LeagueExternalId> existing = leagueExternalIdRepository
-                    .findByLeagueIdAndProvider(league.getId(), PROVIDER);
+            Optional<LeagueExternalId> existing = persistencePort.findLeagueMapping(league.getId(), PROVIDER);
 
             if (existing.isPresent()) {
                 LeagueExternalId mapping = existing.get();
@@ -130,14 +123,13 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 if (changed) {
                     mapping.setExternalId(definition.externalId());
                     mapping.setIdentify(definition.identify());
-                    leagueExternalIdRepository.save(mapping);
+                    persistencePort.saveLeagueMapping(mapping);
                     updated++;
                 }
                 continue;
             }
 
-            Optional<LeagueExternalId> conflicting = leagueExternalIdRepository
-                    .findByProviderAndExternalId(PROVIDER, definition.externalId());
+            Optional<LeagueExternalId> conflicting = persistencePort.findLeagueMappingByExternalId(PROVIDER, definition.externalId());
             if (conflicting.isPresent()) {
                 log.error("Cannot initialize Football-Data UK mapping: provider externalId={} already belongs to leagueId={}",
                         definition.externalId(), conflicting.get().getLeague().getId());
@@ -145,7 +137,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 continue;
             }
 
-            leagueExternalIdRepository.save(LeagueExternalId.builder()
+            persistencePort.saveLeagueMapping(LeagueExternalId.builder()
                     .league(league)
                     .provider(PROVIDER)
                     .externalId(definition.externalId())
@@ -175,7 +167,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         if (config == null || !config.isEnabled()) return;
 
         LocalDate today = LocalDate.now(SOURCE_ZONE);
-        for (LeagueExternalId mapping : leagueExternalIdRepository.findAllByProvider(PROVIDER)) {
+        for (LeagueExternalId mapping : persistencePort.findLeagueMappings(PROVIDER)) {
             if (!StringUtils.hasText(mapping.getIdentify())) continue;
             for (int startYear = 2014; startYear <= today.getYear(); startYear++) {
                 getOrCreateSeason(mapping.getLeague(), startYear, today);
@@ -194,14 +186,13 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         AppProperties.ProviderConfig config = properties.getIngestion().getProviderConfig().get(PROVIDER);
         if (config == null || !config.isEnabled()) return;
 
-        Season season = seasonRepository.findById(seasonId)
+        Season season = persistencePort.findSeasonById(seasonId)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown season id: " + seasonId));
         if (!historical && !season.isActive()) {
             log.debug("Skipping non-active Football-Data UK season {}", season.getYear());
             return;
         }
-        LeagueExternalId mapping = leagueExternalIdRepository
-                .findByLeagueIdAndProvider(season.getLeague().getId(), PROVIDER)
+        LeagueExternalId mapping = persistencePort.findLeagueMapping(season.getLeague().getId(), PROVIDER)
                 .orElseThrow(() -> new IllegalStateException("Missing Football-Data UK league mapping for "
                         + season.getLeague().getName()));
         if (historical && isHistoricalSeasonImported(season, mapping)) {
@@ -228,7 +219,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 throw new IngestionPartialException("Football-Data UK season has "
                         + result.unmatchedRows() + " unmatched CSV rows");
             }
-        } catch (FootballDataUkCsvException exception) {
+        } catch (ProviderDataException exception) {
             if (exception.isNotAvailable()) {
                 markCoreCheckpoint(leagueId, season.getYear(), CheckpointStatus.NOT_AVAILABLE);
                 return;
@@ -253,13 +244,12 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         AppProperties.ProviderConfig config = properties.getIngestion().getProviderConfig().get(PROVIDER);
         if (config == null || !config.isEnabled()) return;
 
-        Season season = seasonRepository.findById(seasonId)
+        Season season = persistencePort.findSeasonById(seasonId)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown season id: " + seasonId));
         if (historical && season.isActive()) return;
         if (!historical && !season.isActive()) return;
 
-        LeagueExternalId mapping = leagueExternalIdRepository
-                .findByLeagueIdAndProvider(season.getLeague().getId(), PROVIDER)
+        LeagueExternalId mapping = persistencePort.findLeagueMapping(season.getLeague().getId(), PROVIDER)
                 .orElseThrow(() -> new IllegalStateException("Missing Football-Data UK league mapping for "
                         + season.getLeague().getName()));
         Long leagueId = season.getLeague().getId();
@@ -279,7 +269,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 throw new IngestionPartialException("Football-Data UK enrichment has "
                         + result.unmatchedRows() + " unmatched rows");
             }
-        } catch (FootballDataUkCsvException exception) {
+        } catch (ProviderDataException exception) {
             if (exception.isNotAvailable()) {
                 markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.NOT_AVAILABLE);
                 return;
@@ -319,7 +309,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
             return false;
         }
 
-        if (leagueExternalIdRepository.findAllByProvider(PROVIDER).isEmpty()) {
+        if (persistencePort.findLeagueMappings(PROVIDER).isEmpty()) {
             throw new IllegalStateException("No Football-Data.co.uk league mappings are available after initialization");
         }
 
@@ -329,7 +319,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         int incompleteSeasons = 0;
         int unavailableSeasons = 0;
 
-        for (LeagueExternalId mapping : leagueExternalIdRepository.findAllByProvider(PROVIDER)) {
+        for (LeagueExternalId mapping : persistencePort.findLeagueMappings(PROVIDER)) {
             League league = mapping.getLeague();
             if (!StringUtils.hasText(mapping.getIdentify())) {
                 failedSeasons++;
@@ -372,7 +362,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     log.info("Football-Data.co.uk imported league={}, season={}, current={}, rows={}, createdFixtures={}, unmatched={}",
                             league.getName(), season.getYear(), current, result.csvRows(),
                             result.createdFixtures(), result.unmatchedRows());
-                } catch (FootballDataUkCsvException exception) {
+                } catch (ProviderDataException exception) {
                     if (exception.isNotAvailable()) {
                         unavailableSeasons++;
                         markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.NOT_AVAILABLE);
@@ -422,7 +412,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
             return;
         }
 
-        List<LeagueExternalId> leagueMappings = leagueExternalIdRepository.findAllByProvider(PROVIDER);
+        List<LeagueExternalId> leagueMappings = persistencePort.findLeagueMappings(PROVIDER);
         if (leagueMappings.isEmpty()) {
             log.warn("Football-Data.co.uk active-season sync skipped: no provider league mappings exist");
             return;
@@ -433,7 +423,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         for (LeagueExternalId mapping : leagueMappings) {
             if (!StringUtils.hasText(mapping.getIdentify())) continue;
             League league = mapping.getLeague();
-            List<Season> activeSeasons = seasonRepository.findByLeague_Id(league.getId()).stream()
+            List<Season> activeSeasons = persistencePort.findSeasonsByLeagueId(league.getId()).stream()
                     .filter(Season::isActive)
                     .filter(season -> dataSourcePolicy.isAllowed(PROVIDER, Dataset.FIXTURE, season))
                     .toList();
@@ -463,7 +453,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     importedSeasons++;
                     log.info("Football-Data.co.uk active-season Core sync: league={}, season={}, rows={}, createdFixtures={}",
                             league.getName(), season.getYear(), result.csvRows(), result.createdFixtures());
-                } catch (FootballDataUkCsvException exception) {
+                } catch (ProviderDataException exception) {
                     if (exception.isNotAvailable()) {
                         markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.NOT_AVAILABLE);
                         log.info("Football-Data.co.uk active-season CSV not published: league={}, season={}",
@@ -509,7 +499,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         int unavailableSeasons = 0;
         int importedStats = 0;
         int importedOdds = 0;
-        List<LeagueExternalId> leagueMappings = leagueExternalIdRepository.findAllByProvider(PROVIDER);
+        List<LeagueExternalId> leagueMappings = persistencePort.findLeagueMappings(PROVIDER);
         if (leagueMappings.isEmpty()) {
             throw new IllegalStateException("No Football-Data.co.uk league mappings are available for enrichment");
         }
@@ -549,7 +539,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     importedOdds += result.importedOdds();
                     unmatchedRows += result.unmatchedRows();
                     markEnrichmentCheckpoint(leagueId, season.getYear(), result);
-                } catch (FootballDataUkCsvException exception) {
+                } catch (ProviderDataException exception) {
                     if (exception.isNotAvailable()) {
                         unavailableSeasons++;
                         markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.NOT_AVAILABLE);
@@ -588,8 +578,8 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
 
         int failed = 0;
         int enrichedSeasons = 0;
-        for (LeagueExternalId leagueMapping : leagueExternalIdRepository.findAllByProvider(PROVIDER)) {
-            List<Season> activeSeasons = seasonRepository.findByLeague_Id(
+        for (LeagueExternalId leagueMapping : persistencePort.findLeagueMappings(PROVIDER)) {
+            List<Season> activeSeasons = persistencePort.findSeasonsByLeagueId(
                             leagueMapping.getLeague().getId()).stream()
                     .filter(Season::isActive)
                     .filter(season -> dataSourcePolicy.isPrimary(
@@ -616,7 +606,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     log.info("Football-Data UK active-season enrichment: league={}, season={}, rows={}, stats={}, odds={}, unmatched={}",
                             leagueMapping.getLeague().getName(), season.getYear(), rows.size(),
                             result.importedTeamStats(), result.importedOdds(), result.unmatchedRows());
-                } catch (FootballDataUkCsvException exception) {
+                } catch (ProviderDataException exception) {
                     if (exception.isNotAvailable()) {
                         markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.NOT_AVAILABLE);
                         log.info("Football-Data UK active-season enrichment CSV not published: league={}, season={}",
@@ -644,7 +634,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
     }
 
     private Season findSeason(League league, int startYear) {
-        return seasonRepository.findByLeague_Id(league.getId()).stream()
+        return persistencePort.findSeasonsByLeagueId(league.getId()).stream()
                 .filter(candidate -> seasonStartYear(candidate.getYear()) == startYear)
                 .findFirst()
                 .orElse(null);
@@ -677,9 +667,9 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 Instant kickoff = date.atTime(time == null ? LocalTime.NOON : time)
                         .atZone(SOURCE_ZONE).toInstant();
                 String externalId = fixtureExternalId(leagueMapping.getIdentify(), season, home, away);
-                Match match = matchExternalIdRepository.findByProviderAndExternalId(MATCH_PROVIDER, externalId)
+                Match match = persistencePort.findMatchMappingByProvider(MATCH_PROVIDER, externalId)
                         .map(MatchExternalId::getMatch)
-                        .orElseGet(() -> matchExternalIdRepository.findByProviderAndExternalId(
+                        .orElseGet(() -> persistencePort.findMatchMappingByProvider(
                                         MATCH_PROVIDER, legacyFixtureExternalId(
                                                 leagueMapping.getIdentify(), season, homeName, awayName))
                                 .map(MatchExternalId::getMatch)
@@ -712,16 +702,16 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
     private Team findExistingTeam(String leagueCode, String providerName) {
         String legacyExternalId = normalize(leagueCode) + ":" + normalize(providerName);
         Optional<TeamExternalId> legacy =
-                teamExternalIdRepository.findByProviderAndExternalId(PROVIDER, legacyExternalId);
+                persistencePort.findTeamMapping(PROVIDER, legacyExternalId);
         if (legacy.isPresent()) return legacy.get().getTeam();
 
-        String canonicalName = MmoProviderDataStandardizer.standardTeamName(providerName);
+        String canonicalName = dataStandardizer.teamName(providerName);
         if (!StringUtils.hasText(canonicalName)) return null;
-        Optional<TeamExternalId> canonical = teamExternalIdRepository.findByProviderAndExternalId(
+        Optional<TeamExternalId> canonical = persistencePort.findTeamMapping(
                 PROVIDER, "TEAM:" + normalize(canonicalName));
         if (canonical.isPresent()) return canonical.get().getTeam();
 
-        List<Team> exact = teamRepository.findAllByNameIgnoreCase(canonicalName);
+        List<Team> exact = persistencePort.findTeamsByName(canonicalName);
         return exact.size() == 1 ? exact.get(0) : null;
     }
 
@@ -732,7 +722,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         Instant end = season.getEndDate() == null
                 ? kickoff.plusSeconds(18 * 3600L)
                 : season.getEndDate().plusDays(1).atStartOfDay(SOURCE_ZONE).toInstant();
-        List<Match> candidates = matchRepository.findFixtureCandidates(
+        List<Match> candidates = persistencePort.findFixtureCandidates(
                 season.getId(), home.getId(), away.getId(), start, end);
         return candidates.size() == 1 ? candidates.get(0) : null;
     }
@@ -781,12 +771,11 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                         .atZone(SOURCE_ZONE).toInstant();
                 String fixtureExternalId = fixtureExternalId(leagueMapping.getIdentify(), season, home, away);
 
-                Optional<MatchExternalId> existingExternalId = matchExternalIdRepository
-                        .findByProviderAndExternalId(MATCH_PROVIDER, fixtureExternalId);
+                Optional<MatchExternalId> existingExternalId = persistencePort.findMatchMappingByProvider(MATCH_PROVIDER, fixtureExternalId);
                 Match match = existingExternalId.map(MatchExternalId::getMatch)
                         .orElseGet(() -> resolveOrCreateFixture(season, home, away, kickoff));
                 boolean footballDataOwnsCore = match.getId() != null
-                        && matchExternalIdRepository.findByMatchIdAndProvider(
+                        && persistencePort.findMatchMappingByMatchId(
                                 match.getId(), MatchProvider.fromName(Provider.FOOTBALL_DATA.name())).isPresent();
                 boolean ukOwnsFixtureCore = dataSourcePolicy.isPrimary(
                         PROVIDER, Dataset.FIXTURE, season);
@@ -804,22 +793,22 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 // only fill a missing Football-Data fixture, never replace mapped FD core fields.
                 updateFixtureResult(match, row, preservePrimaryCore);
                 Optional<MatchExternalId> mapping = match.getId() == null ? Optional.empty()
-                        : matchExternalIdRepository.findByMatchIdAndProvider(match.getId(), MatchProvider.fromName(PROVIDER.name()));
+                        : persistencePort.findMatchMappingByMatchId(match.getId(), MatchProvider.fromName(PROVIDER.name()));
                 if (mapping.isPresent()) {
                     MatchExternalId externalId = mapping.get();
                     if (!fixtureExternalId.equals(externalId.getExternalId())) {
                         externalId.setExternalId(fixtureExternalId);
-                        matchExternalIdRepository.save(externalId);
+                        persistencePort.saveMatchMapping(externalId);
                     }
                 } else if (match.getId() != null) {
-                    externalIdMappingService.registerMatch(match, PROVIDER, fixtureExternalId);
+                    persistencePort.registerMatchExternalId(match, PROVIDER, fixtureExternalId);
                 }
                 if (match.getId() == null) {
-                    match = matchRepository.save(match);
-                    externalIdMappingService.registerMatch(match, PROVIDER, fixtureExternalId);
+                    match = persistencePort.saveMatch(match);
+                    persistencePort.registerMatchExternalId(match, PROVIDER, fixtureExternalId);
                     createdFixtures++;
                 } else {
-                    matchRepository.save(match);
+                    persistencePort.saveMatch(match);
                 }
                 importedFixtures++;
                 // Core import owns fixture identity, kickoff, status and result only.
@@ -840,14 +829,13 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         LocalDate end = LocalDate.of(startYear + 1, 6, 30);
         boolean current = !today.isBefore(start) && !today.isAfter(end);
 
-        Optional<Season> existing = seasonRepository.findByLeague_Id(league.getId()).stream()
+        Optional<Season> existing = persistencePort.findSeasonsByLeagueId(league.getId()).stream()
                 .filter(candidate -> seasonStartYear(candidate.getYear()) == startYear)
                 .findFirst();
         Season season;
         if (existing.isPresent()) {
             season = existing.get();
-            boolean footballDataOwnsSeason = seasonExternalIdRepository
-                    .findBySeasonIdAndProvider(season.getId(), Provider.FOOTBALL_DATA).isPresent();
+            boolean footballDataOwnsSeason = persistencePort.findSeasonMapping(season.getId(), Provider.FOOTBALL_DATA).isPresent();
             boolean mayUpdate = dataSourcePolicy.isPrimary(PROVIDER, Dataset.SEASON, season)
                     || dataSourcePolicy.mayFallbackForCore(
                             PROVIDER, Dataset.SEASON, season, footballDataOwnsSeason);
@@ -874,7 +862,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         season.setCurrent(current);
         if (season.getStartDate() == null) season.setStartDate(start);
         if (season.getEndDate() == null) season.setEndDate(end);
-        return seasonRepository.save(season);
+        return persistencePort.saveSeason(season);
     }
 
     private void saveSeasonMapping(Season season, LeagueExternalId leagueMapping) {
@@ -882,12 +870,11 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         // fb_provider_sync_checkpoints, never in a synthetic ":CORE2" suffix.
         String externalId = leagueMapping.getIdentify().trim().toUpperCase(Locale.ROOT)
                 + ":" + seasonCode(season.getYear());
-        SeasonExternalId mapping = seasonExternalIdRepository
-                .findBySeasonIdAndProvider(season.getId(), PROVIDER)
+        SeasonExternalId mapping = persistencePort.findSeasonMapping(season.getId(), PROVIDER)
                 .orElseGet(() -> SeasonExternalId.builder()
                         .season(season).provider(PROVIDER).build());
         mapping.setExternalId(externalId);
-        seasonExternalIdRepository.save(mapping);
+        persistencePort.saveSeasonMapping(mapping);
     }
 
     private boolean isHistoricalSeasonImported(Season season, LeagueExternalId leagueMapping) {
@@ -902,8 +889,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         // structured dataset/league/season checkpoint namespace.
         String legacyKey = seasonCheckpointKey(leagueMapping.getLeague(), seasonStartYear(seasonYear));
         boolean legacyCheckpoint = checkpointStore.isCompleted(PROVIDER, legacyKey);
-        Optional<SeasonExternalId> legacyMapping = seasonExternalIdRepository
-                .findBySeasonIdAndProvider(season.getId(), PROVIDER);
+        Optional<SeasonExternalId> legacyMapping = persistencePort.findSeasonMapping(season.getId(), PROVIDER);
         boolean legacyCore2 = legacyMapping.isPresent()
                 && legacyMapping.get().getExternalId() != null
                 && legacyMapping.get().getExternalId().endsWith(":CORE2");
@@ -960,20 +946,20 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
     private Team resolveTeam(String leagueCode, String providerName, Season season) {
         String legacyExternalId = normalize(leagueCode) + ":" + normalize(providerName);
         Optional<TeamExternalId> legacyMapping =
-                teamExternalIdRepository.findByProviderAndExternalId(PROVIDER, legacyExternalId);
+                persistencePort.findTeamMapping(PROVIDER, legacyExternalId);
         if (legacyMapping.isPresent()) return legacyMapping.get().getTeam();
 
-        String canonicalName = MmoProviderDataStandardizer.standardTeamName(providerName);
+        String canonicalName = dataStandardizer.teamName(providerName);
         if (!StringUtils.hasText(canonicalName)) {
             throw new IllegalArgumentException("Football-Data UK team name is blank");
         }
 
         String canonicalExternalId = "TEAM:" + normalize(canonicalName);
         Optional<TeamExternalId> canonicalMapping =
-                teamExternalIdRepository.findByProviderAndExternalId(PROVIDER, canonicalExternalId);
+                persistencePort.findTeamMapping(PROVIDER, canonicalExternalId);
         if (canonicalMapping.isPresent()) return canonicalMapping.get().getTeam();
 
-        List<Team> exact = teamRepository.findAllByNameIgnoreCase(canonicalName);
+        List<Team> exact = persistencePort.findTeamsByName(canonicalName);
         if (exact.size() > 1) {
             throw new IllegalStateException("Ambiguous canonical team name from Football-Data UK: "
                     + canonicalName + " (matches=" + exact.size() + ")");
@@ -981,7 +967,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
 
         Team team = exact.isEmpty() ? null : exact.get(0);
         boolean footballDataOwnsTeam = team != null
-                && teamExternalIdRepository.findByTeamIdAndProvider(
+                && persistencePort.findTeamMappingByTeamId(
                         team.getId(), Provider.FOOTBALL_DATA).isPresent();
         boolean ukOwnsTeam = dataSourcePolicy.isPrimary(PROVIDER, Dataset.TEAM, season);
         boolean mayUseUkFallback = dataSourcePolicy.mayFallbackForCore(
@@ -991,7 +977,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 throw new IllegalStateException("Football-Data UK is not allowed to create team "
                         + canonicalName + " for season " + season.getYear());
             }
-            team = teamRepository.save(Team.builder()
+            team = persistencePort.saveTeam(Team.builder()
                     .name(canonicalName)
                     .shortName(canonicalName.length() > 80 ? canonicalName.substring(0, 80) : canonicalName)
                     .slug(slug(canonicalName))
@@ -1000,9 +986,9 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         }
 
         Optional<TeamExternalId> existingForTeam =
-                teamExternalIdRepository.findByTeamIdAndProvider(team.getId(), PROVIDER);
+                persistencePort.findTeamMappingByTeamId(team.getId(), PROVIDER);
         if (existingForTeam.isEmpty()) {
-            externalIdMappingService.registerTeam(team, PROVIDER, canonicalExternalId);
+            persistencePort.registerTeamExternalId(team, PROVIDER, canonicalExternalId);
         } else {
             // Existing legacy mappings remain valid; do not reassign another provider ID.
             log.debug("Team already has a Football-Data UK mapping: teamId={}, externalId={}",
@@ -1018,7 +1004,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         Instant seasonEnd = season.getEndDate() == null
                 ? kickoff.plusSeconds(18 * 3600L)
                 : season.getEndDate().plusDays(1).atStartOfDay(SOURCE_ZONE).toInstant();
-        List<Match> candidates = matchRepository.findFixtureCandidates(
+        List<Match> candidates = persistencePort.findFixtureCandidates(
                 season.getId(), home.getId(), away.getId(), seasonStart, seasonEnd);
         if (candidates.size() == 1) return candidates.get(0);
         if (candidates.size() > 1) {

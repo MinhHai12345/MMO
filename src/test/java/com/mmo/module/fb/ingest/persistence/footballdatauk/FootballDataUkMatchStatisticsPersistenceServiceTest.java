@@ -38,7 +38,7 @@ class FootballDataUkMatchStatisticsPersistenceServiceTest {
 
         FootballDataUkMatchStatisticsPersistenceService mapper = new FootballDataUkMatchStatisticsPersistenceService(
                 repository, mock(MatchStatisticsSnapshotPersistenceService.class), new DataSourcePolicy(),
-                new com.mmo.module.fb.ingest.persistence.SourceAwareMergeService(new DataSourcePolicy(),
+                new com.mmo.module.fb.ingest.adapter.out.persistence.core.SourceAwareMergeService(new DataSourcePolicy(),
                         mock(com.mmo.module.fb.domain.match.repository.MatchFieldProvenanceRepository.class)));
         Map<String, String> row = Map.ofEntries(
                 Map.entry("FTHG", "2"), Map.entry("FTAG", "1"),

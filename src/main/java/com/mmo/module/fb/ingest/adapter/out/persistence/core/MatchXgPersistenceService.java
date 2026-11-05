@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.adapter.out.persistence.core;
 
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.application.port.out.MatchXgPersistencePort;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.domain.match.entity.Match;
@@ -14,12 +15,13 @@ import java.math.BigDecimal;
 /** Persistence boundary for canonical fixture-level xG with field-level source ownership. */
 @Service
 @RequiredArgsConstructor
-public class MatchXgPersistenceService {
+public class MatchXgPersistenceService implements MatchXgPersistencePort {
 
     private final MatchRepository matchRepository;
     private final DataSourcePolicy dataSourcePolicy;
     private final SourceAwareMergeService sourceAwareMergeService;
 
+    @Override
     @Transactional
     public boolean upsert(Provider provider, Match match, BigDecimal homeXg, BigDecimal awayXg) {
         if (match == null || match.getSeason() == null || (homeXg == null && awayXg == null)

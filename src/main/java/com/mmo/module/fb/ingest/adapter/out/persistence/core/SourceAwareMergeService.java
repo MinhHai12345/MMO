@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.adapter.out.persistence.core;
 
 import com.mmo.module.fb.domain.match.entity.Match;
+import com.mmo.module.fb.ingest.application.port.out.SourceAwareMergePort;
 import com.mmo.module.fb.domain.match.entity.MatchFieldProvenance;
 import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import com.mmo.module.fb.domain.match.repository.MatchFieldProvenanceRepository;
@@ -21,11 +22,12 @@ import java.time.Instant;
  */
 @Service
 @RequiredArgsConstructor
-public class SourceAwareMergeService {
+public class SourceAwareMergeService implements SourceAwareMergePort {
 
     private final DataSourcePolicy dataSourcePolicy;
     private final MatchFieldProvenanceRepository provenanceRepository;
 
+    @Override
     @Transactional
     public boolean merge(Match match, Provider provider, Dataset dataset, String fieldKey,
                          boolean currentValuePresent, Instant sourceUpdatedAt, Runnable applyValue) {

@@ -1,5 +1,6 @@
 package com.mmo.module.fb.ingest.provider.footballdatauk;
 
+import com.mmo.module.fb.ingest.application.port.out.FootballDataUkSeasonDataPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -14,11 +15,12 @@ import java.util.Map;
  */
 @Component
 @RequiredArgsConstructor
-public class FootballDataUkMatchDataProvider {
+public class FootballDataUkMatchDataProvider implements FootballDataUkSeasonDataPort {
 
     private final FootballDataUkCsvClient csvClient;
     private final FootballDataUkCsvParser csvParser;
 
+    @Override
     public List<Map<String, String>> fetchSeason(
             String baseUri, String season, String leagueCode) {
         String url = buildCsvUrl(baseUri, season, leagueCode);
