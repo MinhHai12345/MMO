@@ -686,10 +686,20 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         if (existing.isPresent()) {
             season = existing.get();
         } else {
+            // UK may create a season only when it owns the season dataset or is the
+            // explicitly permitted fallback because the primary provider has no identity.
+            Season candidate = Season.builder()
+                    .league(league).year(year).startDate(start).endDate(end).build();
+            boolean mayCreate = dataSourcePolicy.isPrimary(PROVIDER, Dataset.SEASON, candidate)
+                    || dataSourcePolicy.mayFallbackForCore(
+                            PROVIDER, Dataset.SEASON, candidate, false);
+            if (!mayCreate) {
+                throw new IllegalStateException("Football-Data UK is not allowed to create season "
+                        + year + " for league " + league.getName());
+            }
             // Default a newly discovered current season to active. Once persisted, the
             // active flag is operator-controlled and later syncs never change it.
-            season = Season.builder()
-                    .league(league).year(year).startDate(start).endDate(end).build();
+            season = candidate;
             season.setActive(current);
         }
 
