@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.adapter.out.persistence.provider.footballdatauk;
 
 import com.mmo.module.fb.domain.match.entity.Match;
+import com.mmo.module.fb.ingest.application.port.out.FootballDataUkMatchStatisticsPersistencePort;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
@@ -25,13 +26,14 @@ import java.util.function.Consumer;
  */
 @Service
 @RequiredArgsConstructor
-public class FootballDataUkMatchStatisticsPersistenceService {
+public class FootballDataUkMatchStatisticsPersistenceService implements FootballDataUkMatchStatisticsPersistencePort {
 
     private final MatchAdvancedStatsRepository statsRepository;
     private final MatchStatisticsSnapshotPersistenceService snapshotPersistenceService;
     private final DataSourcePolicy dataSourcePolicy;
     private final SourceAwareMergeService sourceAwareMergeService;
 
+    @Override
     @Transactional
     public int persist(Match match, Map<String, String> row) {
         if (match == null || match.getSeason() == null
