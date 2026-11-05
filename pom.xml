@@ -30,7 +30,7 @@
         <java.version>17</java.version>
         <jakarta.validation.version>3.0.2</jakarta.validation.version>
         <org.hibernate.validator.version>8.0.0.Final</org.hibernate.validator.version>
-        <org.projectlombok.version>1.18.32</org.projectlombok.version>
+        <org.projectlombok.version>1.18.42</org.projectlombok.version>
     </properties>
     <dependencies>
         <dependency>
@@ -185,6 +185,10 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
+                    <release>${java.version}</release>
+                    <annotationProcessors>
+                        <annotationProcessor>lombok.launch.AnnotationProcessorHider$AnnotationProcessor</annotationProcessor>
+                    </annotationProcessors>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>

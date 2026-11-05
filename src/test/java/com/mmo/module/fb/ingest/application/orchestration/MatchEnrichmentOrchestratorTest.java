@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
-import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 import com.mmo.module.fb.ingest.application.registry.SeasonBatchIngestionRegistry;
 import com.mmo.module.fb.ingest.enums.Provider;
@@ -15,7 +15,7 @@ import static org.mockito.Mockito.*;
 class MatchEnrichmentOrchestratorTest {
 
     private IngestionDistributedLock lock;
-    private ProviderCheckpointStore checkpoints;
+    private ProviderCheckpointPort checkpoints;
     private IngestionPlanFactory planFactory;
     private SeasonBatchIngestionPort footballDataUk;
     private SeasonBatchIngestionRegistry seasonBatchRegistry;
@@ -28,7 +28,7 @@ class MatchEnrichmentOrchestratorTest {
             ((Runnable) invocation.getArgument(1)).run();
             return true;
         }).when(lock).execute(anyString(), any(Runnable.class));
-        checkpoints = mock(ProviderCheckpointStore.class);
+        checkpoints = mock(ProviderCheckpointPort.class);
         when(checkpoints.isCompleted(any(), anyString())).thenReturn(false);
         planFactory = mock(IngestionPlanFactory.class);
         when(planFactory.historicalPlan()).thenReturn(enrichmentPlan());

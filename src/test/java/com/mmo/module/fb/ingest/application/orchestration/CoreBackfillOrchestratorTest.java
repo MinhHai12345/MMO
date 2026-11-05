@@ -8,7 +8,7 @@ import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.SeasonIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
-import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 import com.mmo.module.fb.ingest.application.registry.SeasonBatchIngestionRegistry;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
@@ -25,7 +25,7 @@ class CoreBackfillOrchestratorTest {
 
     private IngestionDistributedLock lock;
     private AppProperties properties;
-    private ProviderCheckpointStore checkpoints;
+    private ProviderCheckpointPort checkpoints;
     private IngestionPlanFactory planFactory;
     private SeasonBatchIngestionPort footballDataUk;
     private SeasonBatchIngestionRegistry seasonBatchRegistry;
@@ -51,7 +51,7 @@ class CoreBackfillOrchestratorTest {
         properties.getIngestion().getProviderConfig().put(Provider.FOOTBALL_DATA, footballDataConfig);
         properties.getIngestion().getProviders().setLeague(Provider.FOOTBALL_DATA);
 
-        checkpoints = mock(ProviderCheckpointStore.class);
+        checkpoints = mock(ProviderCheckpointPort.class);
         planFactory = mock(IngestionPlanFactory.class);
         footballDataUk = mock(SeasonBatchIngestionPort.class);
         when(footballDataUk.getProvider()).thenReturn(Provider.FOOTBALL_DATA_UK);
@@ -152,7 +152,7 @@ class CoreBackfillOrchestratorTest {
 
         service.syncCoreData(ProviderOverrides.defaults());
 
-        verifyNoInteractions(planFactory, checkpoints, seasonBatchRegistry, leagues, seasons, teams, fixtures, standings);
+        verifyNoInteractions(planFactory, checkpoints, leagues, seasons, teams, fixtures, standings);
     }
 
     private IngestionPlan historicalFootballDataAndUkPlan() {

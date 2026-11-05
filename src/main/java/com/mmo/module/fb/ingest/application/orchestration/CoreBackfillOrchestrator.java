@@ -70,8 +70,9 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
         // Bootstrap catalogue providers come from the configured resource routes.
         // Season-batch providers prepare their own season catalogue from their source format.
         Provider leagueCatalogueProvider = appProperties.getIngestion().getProviders().getLeague();
-        Provider seasonCatalogueProvider = appProperties.getIngestion().getProviders().getSeason();
-        if (seasonCatalogueProvider == null) seasonCatalogueProvider = leagueCatalogueProvider;
+        Provider configuredSeasonCatalogueProvider = appProperties.getIngestion().getProviders().getSeason();
+        Provider seasonCatalogueProvider = configuredSeasonCatalogueProvider == null
+                ? leagueCatalogueProvider : configuredSeasonCatalogueProvider;
         validateProvider(leagueCatalogueProvider);
         validateProvider(seasonCatalogueProvider);
         if (!seasonBatchRegistry.supports(leagueCatalogueProvider, Dataset.LEAGUE)) {

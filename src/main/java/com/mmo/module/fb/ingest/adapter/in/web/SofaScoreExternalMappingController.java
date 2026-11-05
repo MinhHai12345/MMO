@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class SofaScoreExternalMappingController {
 
-    private final SofaScoreExternalMappingUseCase mappingService;
+    private final SofaScoreExternalMappingService mappingService;
 
     @PostMapping("/sofascore")
     public SofaScoreExternalMappingResult mapSofaScoreIds() {

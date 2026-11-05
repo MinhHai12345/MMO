@@ -1,10 +1,10 @@
 package com.mmo.module.fb.ingest.adapter.out.persistence.core;
 
-import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.repository.ProviderSyncCheckpointRepository;
+import com.mmo.module.fb.ingest.adapter.out.persistence.repository.ProviderSyncCheckpointRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ProviderCheckpointJpaAdapterIntegrationTest {
 
     @Autowired
-    private ProviderCheckpointStore checkpointStore;
+    private ProviderCheckpointPort checkpointStore;
 
     @Autowired
     private ProviderSyncCheckpointRepository checkpointRepository;
@@ -59,7 +59,7 @@ class ProviderCheckpointJpaAdapterIntegrationTest {
 
     @Test
     void legacyCheckpointWithoutStatusRemainsCompleted() {
-        var legacy = new com.mmo.module.fb.ingest.entity.ProviderSyncCheckpoint();
+        var legacy = new com.mmo.module.fb.ingest.adapter.out.persistence.entity.ProviderSyncCheckpoint();
         legacy.setProvider(Provider.FOOTBALL_DATA_UK);
         legacy.setCheckpointKey("CORE_INITIAL_BACKFILL");
         legacy.setCompletedAt(java.time.Instant.now());

@@ -1,6 +1,6 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
-import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
@@ -14,13 +14,13 @@ import static org.mockito.Mockito.*;
 
 class IngestionUnitExecutorTest {
 
-    private ProviderCheckpointStore checkpoints;
+    private ProviderCheckpointPort checkpoints;
     private IngestionUnitExecutor executor;
     private IngestionWorkUnit unit;
 
     @BeforeEach
     void setUp() {
-        checkpoints = mock(ProviderCheckpointStore.class);
+        checkpoints = mock(ProviderCheckpointPort.class);
         executor = new IngestionUnitExecutor(checkpoints);
         unit = new IngestionWorkUnit(Dataset.FIXTURE, 12L, 34L, "2024/2025",
                 Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);

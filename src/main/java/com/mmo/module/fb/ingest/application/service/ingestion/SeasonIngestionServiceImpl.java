@@ -7,7 +7,7 @@ import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
 import com.mmo.module.fb.ingest.provider.model.SeasonQuery;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
-import com.mmo.module.fb.ingest.application.port.out.LeaguePersistenceService;
+import com.mmo.module.fb.ingest.application.port.out.LeaguePersistencePort;
 import com.mmo.module.fb.ingest.application.port.in.SeasonIngestionService;
 import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
 import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
@@ -26,7 +26,7 @@ public class SeasonIngestionServiceImpl implements SeasonIngestionService {
     private final ProviderIngestionRegistry providerRegistry;
     private final IngestionServiceSupport ingestionSupport;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
-    private final LeaguePersistenceService leaguePersistenceService;
+    private final LeaguePersistencePort leaguePersistencePort;
 
     @Override
     public void syncSeasonsForProvider(Provider selectedProvider) {
@@ -59,7 +59,7 @@ public class SeasonIngestionServiceImpl implements SeasonIngestionService {
                 ProviderLeague sourceLeague = new ProviderLeague(
                         mapping.getExternalId(), mapping.getIdentify(), league.getName(),
                         league.getCountry(), league.getLogoUrl(), seasons);
-                leaguePersistenceService.persistLeagues(selectedProvider, List.of(sourceLeague));
+                leaguePersistencePort.persistLeagues(selectedProvider, List.of(sourceLeague));
                 discovered += seasons.size();
             } catch (RuntimeException ex) {
                 failed++;

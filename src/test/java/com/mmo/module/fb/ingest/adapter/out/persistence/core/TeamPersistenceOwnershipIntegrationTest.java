@@ -52,7 +52,7 @@ class TeamPersistenceOwnershipIntegrationTest {
                 .thenReturn(Optional.empty(), Optional.of(footballDataId));
         when(teamRepository.save(any(Team.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        TeamPersistenceServiceImpl persistence = new TeamPersistenceServiceImpl(
+        TeamPersistencePortImpl persistence = new TeamPersistencePortImpl(
                 teamRepository, teamExternalIdRepository, externalIdMappingService, new DataSourcePolicy());
         persistence.persistTeamsForSeason(Provider.FOOTBALL_DATA, season,
                 List.of(new ProviderTeam("66", "Manchester United", "Man Utd",
@@ -92,7 +92,7 @@ class TeamPersistenceOwnershipIntegrationTest {
         when(teamExternalIdRepository.findByTeamIdAndProvider(10L, Provider.FOOTBALL_DATA_UK))
                 .thenReturn(Optional.of(ukId));
 
-        TeamPersistenceServiceImpl persistence = new TeamPersistenceServiceImpl(
+        TeamPersistencePortImpl persistence = new TeamPersistencePortImpl(
                 teamRepository, teamExternalIdRepository, externalIdMappingService, new DataSourcePolicy());
 
         persistence.persistTeamsForSeason(Provider.FOOTBALL_DATA_UK, season,

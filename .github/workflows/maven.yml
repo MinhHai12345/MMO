@@ -38,4 +38,4 @@ jobs:
           java-version: '17'
           cache: maven
       - name: Compile and test
-        run: mvn -B -ntp clean verify
+        run: mvn -B -ntp clean install

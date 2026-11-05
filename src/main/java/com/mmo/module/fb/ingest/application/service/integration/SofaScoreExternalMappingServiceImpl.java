@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SofaScoreExternalMappingService implements SofaScoreExternalMappingService {
+public class SofaScoreExternalMappingServiceImpl implements SofaScoreExternalMappingService {
 
     private final LeagueIngestionService leagueIngestionService;
     private final TeamIngestionService teamIngestionService;

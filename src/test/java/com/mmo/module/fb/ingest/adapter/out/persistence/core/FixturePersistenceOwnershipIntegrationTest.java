@@ -37,7 +37,7 @@ class FixturePersistenceOwnershipIntegrationTest {
     @Mock private MatchExternalIdRepository matchExternalIdRepository;
     @Mock private MatchFieldProvenanceRepository provenanceRepository;
 
-    private FixturePersistenceServiceImpl persistence;
+    private FixturePersistencePortImpl persistence;
     private Season season;
     private Team home;
     private Team away;
@@ -46,7 +46,7 @@ class FixturePersistenceOwnershipIntegrationTest {
     @BeforeEach
     void setUp() {
         DataSourcePolicy policy = new DataSourcePolicy();
-        persistence = new FixturePersistenceServiceImpl(seasonRepository, teamRepository,
+        persistence = new FixturePersistencePortImpl(seasonRepository, teamRepository,
                 matchRepository, matchExternalIdRepository, policy,
                 new SourceAwareMergeService(policy, provenanceRepository));
 
