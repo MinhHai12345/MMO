@@ -1,6 +1,8 @@
 package com.mmo.module.fb.ingest.persistence;
 
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
+import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
 import com.mmo.module.fb.ingest.service.ExternalIdMappingService;
@@ -28,6 +30,7 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
     private final SeasonRepository seasonRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final ExternalIdMappingService externalIdMappingService;
+    private final DataSourcePolicy dataSourcePolicy;
 
     /**
      * Provider IDs identify mapping rows; provider-specific identify values are retained
@@ -38,6 +41,10 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
     @Override
     @Transactional
     public void persistLeagues(Provider selectedProvider, List<ProviderLeague> sources) {
+        if (selectedProvider != dataSourcePolicy.route(Dataset.LEAGUE, -1).primary()) {
+            log.debug("Skipping league catalogue persistence from non-owner provider {}", selectedProvider);
+            return;
+        }
         int synced = 0;
         for (ProviderLeague source : sources) {
             if (source == null || source.externalId() == null || source.externalId().isBlank()
@@ -114,6 +121,12 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
 
                 Season season = seasonRepository.findByLeague_IdAndYear(league.getId(), sourceSeason.year())
                         .orElse(null);
+
+                if (!dataSourcePolicy.isPrimary(selectedProvider, Dataset.SEASON, sourceSeason.year())) {
+                    log.debug("Skipping non-owner season metadata: provider={}, league={}, season={}",
+                            selectedProvider, league.getId(), sourceSeason.year());
+                    continue;
+                }
 
                 if (season == null && selectedProvider != Provider.FOOTBALL_DATA
                         && selectedProvider != Provider.UNDER_STATS) {

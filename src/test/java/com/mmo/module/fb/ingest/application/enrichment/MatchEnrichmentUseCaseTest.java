@@ -36,7 +36,7 @@ class MatchEnrichmentUseCaseTest {
 
         verify(lock).execute(eq(IngestionDistributedLock.GLOBAL_INGEST_LOCK), any(Runnable.class));
         verify(footballDataUk, never()).syncInitialEnrichment();
-        verify(footballDataUk, never()).syncCurrentSeasonEnrichment();
+        verify(footballDataUk, never()).syncActiveSeasonsEnrichment();
     }
 
     @Test
@@ -48,12 +48,12 @@ class MatchEnrichmentUseCaseTest {
         useCase.enrichFinishedMatches();
 
         verify(footballDataUk).syncInitialEnrichment();
-        verify(footballDataUk, never()).syncCurrentSeasonEnrichment();
+        verify(footballDataUk, never()).syncActiveSeasonsEnrichment();
         verify(checkpoints).markCompleted(Provider.FOOTBALL_DATA_UK, "MATCH_ENRICHMENT_INITIAL");
     }
 
     @Test
-    void refreshesOnlyCurrentSeasonAfterHistoricalFootballDataUkEnrichmentIsComplete() {
+    void refreshesOnlyActiveSeasonsAfterHistoricalFootballDataUkEnrichmentIsComplete() {
         when(checkpoints.isCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL"))
                 .thenReturn(true);
         when(checkpoints.isCompleted(Provider.FOOTBALL_DATA_UK, "MATCH_ENRICHMENT_INITIAL"))
@@ -62,7 +62,7 @@ class MatchEnrichmentUseCaseTest {
         useCase.enrichFinishedMatches();
 
         verify(footballDataUk, never()).syncInitialEnrichment();
-        verify(footballDataUk).syncCurrentSeasonEnrichment();
+        verify(footballDataUk).syncActiveSeasonsEnrichment();
     }
 
     @Test

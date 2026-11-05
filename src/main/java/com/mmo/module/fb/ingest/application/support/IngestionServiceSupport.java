@@ -2,6 +2,8 @@ package com.mmo.module.fb.ingest.application.support;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
+import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.league.entity.Season;
 import com.mmo.module.fb.league.entity.SeasonExternalId;
 import com.mmo.module.fb.league.repository.SeasonExternalIdRepository;
@@ -24,6 +26,7 @@ public class IngestionServiceSupport {
     private final AppProperties properties;
     private final SeasonRepository seasonRepository;
     private final SeasonExternalIdRepository seasonExternalIdRepository;
+    private final DataSourcePolicy dataSourcePolicy;
 
     public void requireProviderEnabled(Provider provider, String resource) {
         if (provider == null) {
@@ -46,11 +49,16 @@ public class IngestionServiceSupport {
     }
 
     public List<Season> seasonsToSync(Provider provider) {
+        return seasonsToSync(provider, Dataset.FIXTURE);
+    }
+
+    public List<Season> seasonsToSync(Provider provider, Dataset dataset) {
         Map<Long, Season> mapped = new LinkedHashMap<>();
         for (SeasonExternalId mapping : seasonExternalIdRepository.findAllByProvider(provider)) {
             Season season = mapping.getSeason();
             if (season != null && season.isActive() && season.getYear() != null
-                && season.getLeague() != null && Boolean.TRUE.equals(season.getLeague().getIsActive())) {
+                && season.getLeague() != null && Boolean.TRUE.equals(season.getLeague().getIsActive())
+                && dataSourcePolicy.isPrimary(provider, dataset, season)) {
                 mapped.putIfAbsent(season.getId(), season);
             }
         }
@@ -62,20 +70,39 @@ public class IngestionServiceSupport {
      * this includes inactive seasons as long as this provider has its own season mapping.
      */
     public List<Season> allMappedSeasonsToSync(Provider provider) {
+        return allMappedSeasonsToSync(provider, Dataset.FIXTURE);
+    }
+
+    public List<Season> allMappedSeasonsToSync(Provider provider, Dataset dataset) {
         Map<Long, Season> mapped = new LinkedHashMap<>();
         for (SeasonExternalId mapping : seasonExternalIdRepository.findAllByProvider(provider)) {
             Season season = mapping.getSeason();
             if (season != null && season.getId() != null && season.getYear() != null
                     && season.getLeague() != null
-                    && Boolean.TRUE.equals(season.getLeague().getIsActive())) {
+                    && Boolean.TRUE.equals(season.getLeague().getIsActive())
+                    && dataSourcePolicy.isPrimary(provider, dataset, season)) {
                 mapped.putIfAbsent(season.getId(), season);
             }
         }
         return List.copyOf(mapped.values());
     }
 
+    public boolean hasAnySeasons(boolean includeHistorical) {
+        return seasonRepository.findAllForActiveLeagues().stream()
+                .anyMatch(season -> includeHistorical || season.isActive());
+    }
+
+    public boolean hasAnySeasonOwnedBy(Provider provider, Dataset dataset, boolean includeHistorical) {
+        return seasonRepository.findAllForActiveLeagues().stream()
+                .filter(season -> includeHistorical || season.isActive())
+                .anyMatch(season -> dataSourcePolicy.isPrimary(provider, dataset, season));
+    }
+
     public List<Season> standingsSeasonsToSync(Provider provider) {
-        return seasonRepository.findAllForActiveLeagues();
+        return seasonRepository.findAllForActiveLeagues().stream()
+                .filter(Season::isActive)
+                .filter(season -> dataSourcePolicy.isPrimary(provider, Dataset.STANDINGS, season))
+                .toList();
     }
 
     public static Long parseExternalId(String value) {

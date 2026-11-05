@@ -6,6 +6,7 @@ import com.mmo.AppProperties;
 import com.mmo.module.fb.league.entity.Season;
 import com.mmo.module.fb.league.entity.LeagueExternalId;
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballPlanRestrictionException;
 import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
@@ -66,10 +67,20 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
         int failed = 0;
         int skipped = 0;
         List<Season> seasons = includeHistoricalSeasons
-                ? ingestionSupport.allMappedSeasonsToSync(selectedProvider)
-                : ingestionSupport.seasonsToSync(selectedProvider);
-        if (seasons.isEmpty() && selectedProvider == Provider.FOOTBALL_DATA) {
-            throw new IllegalStateException("No mapped seasons available for Football-Data team ingestion");
+                ? ingestionSupport.allMappedSeasonsToSync(selectedProvider, Dataset.TEAM)
+                : ingestionSupport.seasonsToSync(selectedProvider, Dataset.TEAM);
+        if (seasons.isEmpty()) {
+            if (!ingestionSupport.hasAnySeasons(includeHistoricalSeasons)) {
+                throw new IllegalStateException("No canonical seasons available for team ingestion");
+            }
+            if (!ingestionSupport.hasAnySeasonOwnedBy(
+                    selectedProvider, Dataset.TEAM, includeHistoricalSeasons)) {
+                log.info("Skipping team ingestion via {}: selected seasons are owned by another provider",
+                        selectedProvider);
+                return;
+            }
+            throw new IllegalStateException("Missing " + selectedProvider
+                    + " season mappings for a season it owns in team ingestion");
         }
         for (Season season : seasons) {
             LeagueExternalId leagueMapping = leagueMappingsByLeagueId.get(season.getLeague().getId());

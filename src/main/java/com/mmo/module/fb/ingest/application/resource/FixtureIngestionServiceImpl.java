@@ -5,6 +5,7 @@ import com.mmo.module.fb.ingest.application.support.IngestionServiceSupport;
 import com.mmo.AppProperties;
 import com.mmo.module.fb.league.entity.Season;
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.team.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballPlanRestrictionException;
@@ -74,10 +75,20 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
         }
 
         List<Season> seasons = includeHistoricalSeasons
-                ? ingestionSupport.allMappedSeasonsToSync(selectedProvider)
-                : ingestionSupport.seasonsToSync(selectedProvider);
-        if (seasons.isEmpty() && selectedProvider == Provider.FOOTBALL_DATA) {
-            throw new IllegalStateException("No mapped seasons available for Football-Data fixture ingestion");
+                ? ingestionSupport.allMappedSeasonsToSync(selectedProvider, Dataset.FIXTURE)
+                : ingestionSupport.seasonsToSync(selectedProvider, Dataset.FIXTURE);
+        if (seasons.isEmpty()) {
+            if (!ingestionSupport.hasAnySeasons(includeHistoricalSeasons)) {
+                throw new IllegalStateException("No canonical seasons available for fixture ingestion");
+            }
+            if (!ingestionSupport.hasAnySeasonOwnedBy(
+                    selectedProvider, Dataset.FIXTURE, includeHistoricalSeasons)) {
+                log.info("Skipping fixture ingestion via {}: selected seasons are owned by another provider",
+                        selectedProvider);
+                return;
+            }
+            throw new IllegalStateException("Missing " + selectedProvider
+                    + " season mappings for a season it owns in fixture ingestion");
         }
         Map<Long, com.mmo.module.fb.league.entity.LeagueExternalId> leagueMappingsByLeagueId = new HashMap<>();
         leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->

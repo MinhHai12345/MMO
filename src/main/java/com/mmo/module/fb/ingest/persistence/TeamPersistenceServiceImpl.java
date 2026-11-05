@@ -1,6 +1,8 @@
 package com.mmo.module.fb.ingest.persistence;
 
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
+import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.service.ExternalIdMappingService;
@@ -30,10 +32,16 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
     private final TeamRepository teamRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;
     private final ExternalIdMappingService externalIdMappingService;
+    private final DataSourcePolicy dataSourcePolicy;
 
     @Override
     @Transactional
     public void persistTeamsForSeason(Provider selectedProvider, Season season, List<ProviderTeam> teams) {
+        if (season == null || !dataSourcePolicy.isPrimary(selectedProvider, Dataset.TEAM, season)) {
+            log.debug("Rejecting non-owner team write: provider={}, season={}, dataset=TEAM",
+                    selectedProvider, season == null ? null : season.getYear());
+            return;
+        }
         int synced = 0;
         Map<String, Team> teamsByExternalId = new HashMap<>();
         Map<Long, TeamExternalId> mappingByTeamId = new HashMap<>();
@@ -43,10 +51,11 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
             mappingByTeamId.put(mapping.getTeam().getId(), mapping);
         });
 
-        // Build one in-memory index of canonical teams. This lets UnderStat names
-        // match teams already imported from Football-Data/API-Football/SofaScore.
-        Map<String, List<Team>> teamsByNameKey = selectedProvider == Provider.UNDER_STATS
-                ? indexCanonicalTeams(teamRepository.findAll()) : Map.of();
+        // A Football-Data API team can arrive after the UK CSV fallback created the
+        // canonical team. Match a unique standardized name before creating another row.
+        Map<String, List<Team>> teamsByNameKey =
+                selectedProvider == Provider.FOOTBALL_DATA || selectedProvider == Provider.UNDER_STATS
+                        ? indexCanonicalTeams(teamRepository.findAll()) : Map.of();
 
         for (ProviderTeam source : teams == null ? List.<ProviderTeam>of() : teams) {
             if (source == null || source.externalId() == null || source.externalId().isBlank()
@@ -56,23 +65,24 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
             }
 
             Team team = teamsByExternalId.get(source.externalId());
-            if (team == null && selectedProvider == Provider.UNDER_STATS) {
+            if (team == null && (selectedProvider == Provider.FOOTBALL_DATA
+                    || selectedProvider == Provider.UNDER_STATS)) {
                 List<Team> candidates = findNameMatches(source, teamsByNameKey);
                 if (candidates.size() == 1) {
                     Team candidate = candidates.get(0);
                     if (!mappingByTeamId.containsKey(candidate.getId())) {
                         team = candidate;
-                        log.debug("Matched UnderStat team '{}' ({}) to existing MMO team '{}' (id={})",
+                        log.debug("Matched provider team '{}' ({}) to existing MMO team '{}' (id={})",
                                 source.name(), source.externalId(), candidate.getName(), candidate.getId());
                     } else {
-                        log.warn("Skipping UnderStat team '{}' ({}): matched MMO team '{}' (id={}) "
-                                        + "already has an UnderStat external ID {}",
+                        log.warn("Skipping provider team '{}' ({}): matched MMO team '{}' (id={}) "
+                                        + "already has a {} external ID {}",
                                 source.name(), source.externalId(), candidate.getName(), candidate.getId(),
-                                mappingByTeamId.get(candidate.getId()).getExternalId());
+                                selectedProvider, mappingByTeamId.get(candidate.getId()).getExternalId());
                         continue;
                     }
                 } else if (candidates.size() > 1) {
-                    log.warn("Skipping ambiguous UnderStat team '{}' ({}): matched MMO teams {}",
+                    log.warn("Skipping ambiguous provider team '{}' ({}): matched MMO teams {}",
                             source.name(), source.externalId(),
                             candidates.stream().map(candidate -> candidate.getId() + ":" + candidate.getName()).toList());
                     continue;

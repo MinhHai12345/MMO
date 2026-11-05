@@ -4,6 +4,8 @@ import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
+import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkMatchDataProvider;
 import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkMatchStatisticsPersistenceService;
 import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkOddsPersistenceService;
@@ -65,6 +67,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
 
     private final AppProperties properties;
     private final ProviderCheckpointStore checkpointStore;
+    private final DataSourcePolicy dataSourcePolicy;
     private final FootballDataUkMatchDataProvider matchDataProvider;
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
@@ -236,8 +239,12 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         syncInitialData();
     }
 
-    /** Incremental CSV sync: fetches only the current season for every mapped league. */
-    public void syncCurrentSeasonData() {
+    /**
+     * Incremental CSV sync for operator-selected active seasons that Football-Data UK
+     * is allowed to contribute to. The policy makes UK primary through 2022 and a
+     * fixture fallback from 2023 onward.
+     */
+    public void syncActiveSeasonsData() {
         initialLeagueMappings();
         AppProperties.ProviderConfig config = properties.getIngestion().getProviderConfig().get(PROVIDER);
         if (config == null || !config.isEnabled()) {
@@ -245,38 +252,47 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
             return;
         }
 
-        if (leagueExternalIdRepository.findAllByProvider(PROVIDER).isEmpty()) {
-            log.warn("Football-Data.co.uk current-season sync skipped: no provider league mappings exist");
+        List<LeagueExternalId> leagueMappings = leagueExternalIdRepository.findAllByProvider(PROVIDER);
+        if (leagueMappings.isEmpty()) {
+            log.warn("Football-Data.co.uk active-season sync skipped: no provider league mappings exist");
             return;
         }
 
-        LocalDate today = LocalDate.now(SOURCE_ZONE);
-        int startYear = currentSeasonStartYear(today);
+        int importedSeasons = 0;
         int failedSeasons = 0;
-        for (LeagueExternalId mapping : leagueExternalIdRepository.findAllByProvider(PROVIDER)) {
+        for (LeagueExternalId mapping : leagueMappings) {
             if (!StringUtils.hasText(mapping.getIdentify())) continue;
             League league = mapping.getLeague();
-            Season season = getOrCreateSeason(league, startYear, today);
-            try {
-                ImportResult result = syncSeason(season, mapping, config);
-                if (result.csvRows() == 0 || result.unmatchedRows() > 0) {
+            List<Season> activeSeasons = seasonRepository.findByLeague_Id(league.getId()).stream()
+                    .filter(Season::isActive)
+                    .filter(season -> dataSourcePolicy.isAllowed(PROVIDER, Dataset.FIXTURE, season))
+                    .toList();
+
+            for (Season season : activeSeasons) {
+                try {
+                    ImportResult result = syncSeason(season, mapping, config);
+                    if (result.csvRows() == 0 || result.unmatchedRows() > 0) {
+                        failedSeasons++;
+                        log.warn("Football-Data.co.uk active-season sync remains incomplete: league={}, season={}, rows={}, unmatched={}",
+                                league.getName(), season.getYear(), result.csvRows(), result.unmatchedRows());
+                        continue;
+                    }
+                    saveSeasonMapping(season, mapping);
+                    importedSeasons++;
+                    log.info("Football-Data.co.uk active-season Core sync: league={}, season={}, rows={}, createdFixtures={}",
+                            league.getName(), season.getYear(), result.csvRows(), result.createdFixtures());
+                } catch (RuntimeException exception) {
                     failedSeasons++;
-                    log.warn("Football-Data.co.uk current season remains incomplete: league={}, season={}, rows={}, unmatched={}",
-                            league.getName(), season.getYear(), result.csvRows(), result.unmatchedRows());
-                    continue;
+                    log.error("Football-Data.co.uk active-season sync failed: league={}, season={}, reason={}",
+                            league.getName(), season.getYear(), exception.getMessage(), exception);
                 }
-                saveSeasonMapping(season, mapping);
-                log.info("Football-Data.co.uk current-season Core sync: league={}, season={}, rows={}, createdFixtures={}",
-                        league.getName(), season.getYear(), result.csvRows(), result.createdFixtures());
-            } catch (RuntimeException exception) {
-                failedSeasons++;
-                log.error("Football-Data.co.uk current-season sync failed: league={}, season={}, reason={}",
-                        league.getName(), season.getYear(), exception.getMessage(), exception);
             }
         }
+        log.info("Football-Data.co.uk active-season sync completed: importedSeasons={}, failedSeasons={}",
+                importedSeasons, failedSeasons);
         if (failedSeasons > 0) {
-            throw new IllegalStateException("Football-Data.co.uk current-season sync failed for "
-                    + failedSeasons + " league(s)");
+            throw new IllegalStateException("Football-Data.co.uk active-season sync failed for "
+                    + failedSeasons + " season(s)");
         }
     }
 
@@ -338,38 +354,43 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         return true;
     }
 
-    /** Incremental match enrichment is restricted to the current CSV season. */
-    public void syncCurrentSeasonEnrichment() {
+    /** Incremental match enrichment refreshes only operator-selected active UK-covered seasons. */
+    public void syncActiveSeasonsEnrichment() {
         initialLeagueMappings();
         AppProperties.ProviderConfig config = properties.getIngestion().getProviderConfig().get(PROVIDER);
         if (config == null || !config.isEnabled()) return;
 
-        LocalDate today = LocalDate.now(SOURCE_ZONE);
-        int startYear = currentSeasonStartYear(today);
         int failed = 0;
+        int enrichedSeasons = 0;
         for (LeagueExternalId leagueMapping : leagueExternalIdRepository.findAllByProvider(PROVIDER)) {
-            Season season = findSeason(leagueMapping.getLeague(), startYear);
-            if (season == null) {
-                failed++;
-                continue;
-            }
-            try {
-                List<Map<String, String>> rows = matchDataProvider.fetchSeason(
-                        config.getUri(), season.getYear(), leagueMapping.getIdentify());
-                EnrichmentResult result = enrichRows(season, leagueMapping, rows);
-                if (rows.isEmpty() || result.unmatchedRows() > 0) failed++;
-                log.info("Football-Data UK current-season enrichment: league={}, season={}, rows={}, stats={}, odds={}, unmatched={}",
-                        leagueMapping.getLeague().getName(), season.getYear(), rows.size(),
-                        result.importedTeamStats(), result.importedOdds(), result.unmatchedRows());
-            } catch (RuntimeException exception) {
-                failed++;
-                log.error("Football-Data UK current-season enrichment failed: league={}, season={}",
-                        leagueMapping.getLeague().getName(), season.getYear(), exception);
+            List<Season> activeSeasons = seasonRepository.findByLeague_Id(
+                            leagueMapping.getLeague().getId()).stream()
+                    .filter(Season::isActive)
+                    .filter(season -> dataSourcePolicy.isPrimary(
+                            PROVIDER, Dataset.MATCH_STATISTICS, season))
+                    .toList();
+            for (Season season : activeSeasons) {
+                try {
+                    List<Map<String, String>> rows = matchDataProvider.fetchSeason(
+                            config.getUri(), season.getYear(), leagueMapping.getIdentify());
+                    EnrichmentResult result = enrichRows(season, leagueMapping, rows);
+                    if (rows.isEmpty() || result.unmatchedRows() > 0) failed++;
+                    else enrichedSeasons++;
+                    log.info("Football-Data UK active-season enrichment: league={}, season={}, rows={}, stats={}, odds={}, unmatched={}",
+                            leagueMapping.getLeague().getName(), season.getYear(), rows.size(),
+                            result.importedTeamStats(), result.importedOdds(), result.unmatchedRows());
+                } catch (RuntimeException exception) {
+                    failed++;
+                    log.error("Football-Data UK active-season enrichment failed: league={}, season={}",
+                            leagueMapping.getLeague().getName(), season.getYear(), exception);
+                }
             }
         }
+        log.info("Football-Data UK active-season enrichment completed: enrichedSeasons={}, failedSeasons={}",
+                enrichedSeasons, failed);
         if (failed > 0) {
-            throw new IllegalStateException("Football-Data UK current-season enrichment failed for "
-                    + failed + " league(s)");
+            throw new IllegalStateException("Football-Data UK active-season enrichment failed for "
+                    + failed + " season(s)");
         }
     }
 
@@ -419,20 +440,19 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     continue;
                 }
 
-                boolean footballDataOwnsCore = match.getId() != null
-                        && matchExternalIdRepository.findByMatchIdAndProvider(
-                                match.getId(), MatchProvider.fromName(Provider.FOOTBALL_DATA.name())).isPresent();
                 BigDecimal homeXg = decimalMetric(value(row, "HXG"));
                 BigDecimal awayXg = decimalMetric(value(row, "AXG"));
-                if ((!footballDataOwnsCore || match.getHomeXG() == null) && homeXg != null) {
-                    match.setHomeXG(homeXg.doubleValue());
-                }
-                if ((!footballDataOwnsCore || match.getAwayXG() == null) && awayXg != null) {
-                    match.setAwayXG(awayXg.doubleValue());
+                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_XG, season)) {
+                    if (homeXg != null) match.setHomeXG(homeXg.doubleValue());
+                    if (awayXg != null) match.setAwayXG(awayXg.doubleValue());
                 }
                 matchRepository.save(match);
-                importedStats += statisticsMapper.persist(match, row);
-                importedOdds += oddsMapper.persist(match, row);
+                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_STATISTICS, season)) {
+                    importedStats += statisticsMapper.persist(match, row);
+                }
+                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.HISTORICAL_ODDS, season)) {
+                    importedOdds += oddsMapper.persist(match, row);
+                }
             } catch (RuntimeException exception) {
                 unmatched++;
                 log.debug("Skip unmatched Football-Data UK enrichment row: season={}, reason={}",
@@ -499,8 +519,8 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     continue;
                 }
 
-                Team home = resolveTeam(leagueMapping.getIdentify(), homeName);
-                Team away = resolveTeam(leagueMapping.getIdentify(), awayName);
+                Team home = resolveTeam(leagueMapping.getIdentify(), homeName, season);
+                Team away = resolveTeam(leagueMapping.getIdentify(), awayName, season);
                 if (home.getId().equals(away.getId())) {
                     unmatched++;
                     continue;
@@ -518,12 +538,21 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 boolean footballDataOwnsCore = match.getId() != null
                         && matchExternalIdRepository.findByMatchIdAndProvider(
                                 match.getId(), MatchProvider.fromName(Provider.FOOTBALL_DATA.name())).isPresent();
-                if (!footballDataOwnsCore || match.getMatchTime() == null) {
+                boolean ukOwnsFixtureCore = dataSourcePolicy.isPrimary(
+                        PROVIDER, Dataset.FIXTURE, season);
+                boolean mayUseUkFallback = dataSourcePolicy.mayFallbackForCore(
+                        PROVIDER, Dataset.FIXTURE, season, footballDataOwnsCore);
+                boolean preservePrimaryCore = !ukOwnsFixtureCore && !mayUseUkFallback;
+                if (!ukOwnsFixtureCore && !mayUseUkFallback && !footballDataOwnsCore) {
+                    unmatched++;
+                    continue;
+                }
+                if (!preservePrimaryCore || match.getMatchTime() == null) {
                     match.setMatchTime(kickoff);
                 }
-                // Football-Data is the primary Core source for overlapping seasons.
-                // UK refreshes its own matches and fills gaps on Football-Data-owned matches.
-                updateFixtureResult(match, row, footballDataOwnsCore);
+                // Season-aware ownership: UK is primary through 2022; from 2023 it may
+                // only fill a missing Football-Data fixture, never replace mapped FD core fields.
+                updateFixtureResult(match, row, preservePrimaryCore);
                 Optional<MatchExternalId> mapping = match.getId() == null ? Optional.empty()
                         : matchExternalIdRepository.findByMatchIdAndProvider(match.getId(), MatchProvider.fromName(PROVIDER.name()));
                 if (mapping.isPresent()) {
@@ -559,14 +588,21 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         LocalDate end = LocalDate.of(startYear + 1, 6, 30);
         boolean current = !today.isBefore(start) && !today.isAfter(end);
 
-        Season season = seasonRepository.findByLeague_Id(league.getId()).stream()
+        Optional<Season> existing = seasonRepository.findByLeague_Id(league.getId()).stream()
                 .filter(candidate -> seasonStartYear(candidate.getYear()) == startYear)
-                .findFirst()
-                .orElseGet(() -> Season.builder()
-                        .league(league).year(year).startDate(start).endDate(end).build());
+                .findFirst();
+        Season season;
+        if (existing.isPresent()) {
+            season = existing.get();
+        } else {
+            // Default a newly discovered current season to active. Once persisted, the
+            // active flag is operator-controlled and later syncs never change it.
+            season = Season.builder()
+                    .league(league).year(year).startDate(start).endDate(end).build();
+            season.setActive(current);
+        }
 
-        // isCurrent is derived from the calendar. isActive is an operator-controlled
-        // ingestion selector and must never be overwritten by provider synchronization.
+        // isCurrent is derived from the calendar. isActive is operator-controlled after creation.
         season.setCurrent(current);
         if (season.getStartDate() == null) season.setStartDate(start);
         if (season.getEndDate() == null) season.setEndDate(end);
@@ -609,7 +645,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         return "UK_CORE_" + league.getId() + "_" + startYear;
     }
 
-    private Team resolveTeam(String leagueCode, String providerName) {
+    private Team resolveTeam(String leagueCode, String providerName, Season season) {
         String legacyExternalId = normalize(leagueCode) + ":" + normalize(providerName);
         Optional<TeamExternalId> legacyMapping =
                 teamExternalIdRepository.findByProviderAndExternalId(PROVIDER, legacyExternalId);
@@ -631,14 +667,25 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     + canonicalName + " (matches=" + exact.size() + ")");
         }
 
-        Team team = exact.isEmpty()
-                ? teamRepository.save(Team.builder()
-                        .name(canonicalName)
-                        .shortName(canonicalName.length() > 80 ? canonicalName.substring(0, 80) : canonicalName)
-                        .slug(slug(canonicalName))
-                        .isActive(true)
-                        .build())
-                : exact.get(0);
+        Team team = exact.isEmpty() ? null : exact.get(0);
+        boolean footballDataOwnsTeam = team != null
+                && teamExternalIdRepository.findByTeamIdAndProvider(
+                        team.getId(), Provider.FOOTBALL_DATA).isPresent();
+        boolean ukOwnsTeam = dataSourcePolicy.isPrimary(PROVIDER, Dataset.TEAM, season);
+        boolean mayUseUkFallback = dataSourcePolicy.mayFallbackForCore(
+                PROVIDER, Dataset.TEAM, season, footballDataOwnsTeam);
+        if (team == null) {
+            if (!ukOwnsTeam && !mayUseUkFallback) {
+                throw new IllegalStateException("Football-Data UK is not allowed to create team "
+                        + canonicalName + " for season " + season.getYear());
+            }
+            team = teamRepository.save(Team.builder()
+                    .name(canonicalName)
+                    .shortName(canonicalName.length() > 80 ? canonicalName.substring(0, 80) : canonicalName)
+                    .slug(slug(canonicalName))
+                    .isActive(true)
+                    .build());
+        }
 
         Optional<TeamExternalId> existingForTeam =
                 teamExternalIdRepository.findByTeamIdAndProvider(team.getId(), PROVIDER);

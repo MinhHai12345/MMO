@@ -52,7 +52,7 @@ public class MatchEnrichmentUseCase implements MatchEnrichmentService {
     }
 
     /**
-     * Backfill all imported historical seasons once, then refresh only the current season.
+     * Backfill all imported historical seasons once, then refresh only operator-selected active seasons.
      * The checkpoint is marked only after the full historical enrichment succeeds.
      */
     private void syncFootballDataUkEnrichment() {
@@ -65,7 +65,7 @@ public class MatchEnrichmentUseCase implements MatchEnrichmentService {
             return;
         }
 
-        footballDataUkSyncService.syncCurrentSeasonEnrichment();
+        footballDataUkSyncService.syncActiveSeasonsEnrichment();
     }
 
     private void runStage(String name, Runnable operation) {
