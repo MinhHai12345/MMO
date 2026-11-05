@@ -21,6 +21,7 @@ import java.util.List;
 public class IngestionPlanFactory {
 
     private static final List<Dataset> SEASON_SCOPED_DATASETS = List.of(
+            Dataset.SEASON,
             Dataset.TEAM,
             Dataset.FIXTURE,
             Dataset.STANDINGS,
