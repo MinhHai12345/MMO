@@ -58,7 +58,7 @@ class FootballDataSyncUseCaseTest {
         verify(fixtures).syncFixturesForProvider(any(), isNull(), isNull());
         verify(standings).syncStandingsForProvider(any());
         verifyNoInteractions(odds);
-        verify(uk).syncCurrentSeasonData();
+        verify(uk).syncActiveSeasonsData();
     }
 
     @Test

@@ -93,8 +93,8 @@ public class FootballDataSyncUseCase implements FootballDataSyncService {
         }
 
         // The initial 2014+ CSV backfill belongs to FootballDataBootstrapService.
-        // The frequent sync job must fetch only the current Football-Data UK season.
-        runStage("football-data-uk-current-season", footballDataUkSyncService::syncCurrentSeasonData);
+        // The frequent sync job fetches only operator-selected active seasons owned by or eligible for UK fallback.
+        runStage("football-data-uk-current-season", footballDataUkSyncService::syncActiveSeasonsData);
         log.info("Football data sync completed");
     }
 

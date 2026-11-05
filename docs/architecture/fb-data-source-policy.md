@@ -61,7 +61,8 @@ duplicate canonical teams.
   `LeaguePersistenceServiceImpl` enforce ownership again at persistence boundaries.
 - `StandingsIngestionServiceImpl` only receives active seasons for which Football-Data owns standings.
 - `FootballDataUkSyncService` uses the policy for team creation, fixture fallback, fixture Core
-  updates, xG, match statistics and historical odds.
+  updates, xG, match statistics and historical odds. Its incremental job refreshes only
+  operator-selected active seasons, not every historical CSV season.
 
 The persistence checks are intentional: routing alone is not sufficient protection against
 manual provider overrides or future callers that bypass the normal orchestration.

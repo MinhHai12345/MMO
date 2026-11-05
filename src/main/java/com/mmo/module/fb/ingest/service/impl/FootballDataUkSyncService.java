@@ -244,7 +244,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
      * is allowed to contribute to. The policy makes UK primary through 2022 and a
      * fixture fallback from 2023 onward.
      */
-    public void syncCurrentSeasonData() {
+    public void syncActiveSeasonsData() {
         initialLeagueMappings();
         AppProperties.ProviderConfig config = properties.getIngestion().getProviderConfig().get(PROVIDER);
         if (config == null || !config.isEnabled()) {
