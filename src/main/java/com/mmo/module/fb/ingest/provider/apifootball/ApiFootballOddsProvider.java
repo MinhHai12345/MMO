@@ -8,7 +8,7 @@ import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
 import com.mmo.module.fb.ingest.provider.apifootball.mapper.ApiFootballOddsMapper;
 import com.mmo.module.fb.ingest.provider.model.OddsQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
-import com.mmo.module.fb.ingest.provider.spi.OddsProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.OddsIngestionPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +17,7 @@ import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
-public class ApiFootballOddsProvider implements OddsProvider {
+public class ApiFootballOddsProvider implements OddsIngestionPort {
 
     private static final TypeReference<ApiFootballResponse<OddsItem>> RESPONSE_TYPE =
             new TypeReference<>() {

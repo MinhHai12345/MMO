@@ -1,10 +1,10 @@
 package com.mmo.module.fb.ingest.application.service.integration;
 
 import com.mmo.module.fb.ingest.application.port.out.PlayerStatisticsIngestionPort;
-import com.mmo.module.fb.ingest.provider.spi.PlayerLineupsProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.PlayerLineupsIngestionPort;
 import com.mmo.module.fb.ingest.provider.model.ProviderLineups;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
+import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 
 import com.mmo.module.fb.ingest.application.port.out.PlayerMatchStatisticsPersistencePort;
 import com.mmo.module.fb.domain.match.entity.Match;
@@ -33,7 +33,7 @@ public class SofaScorePlayerStatisticsIngestionService implements PlayerStatisti
 
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
-    private final ProviderRegistry providerRegistry;
+    private final ProviderIngestionRegistry providerRegistry;
     private final PlayerMatchStatisticsPersistencePort persistenceService;
     private final MatchEnrichmentStateService enrichmentStateService;
 
@@ -57,7 +57,7 @@ public class SofaScorePlayerStatisticsIngestionService implements PlayerStatisti
                 continue;
             }
             try {
-                PlayerLineupsProvider provider = providerRegistry.playerLineups(Provider.SOFA_SCORE);
+                PlayerLineupsIngestionPort provider = providerRegistry.playerLineups(Provider.SOFA_SCORE);
                 java.util.Optional<ProviderLineups> response = provider.fetchLineups(externalId.getExternalId());
                 if (response.isEmpty() || response.get().isEmpty()) {
                     enrichmentStateService.empty(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.PLAYER_STATISTICS);

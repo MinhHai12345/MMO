@@ -7,7 +7,7 @@ import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.LeagueI
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
 import com.mmo.module.fb.ingest.provider.apifootball.mapper.ApiFootballLeagueMapper;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
-import com.mmo.module.fb.ingest.provider.spi.LeagueProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.LeagueIngestionPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -18,7 +18,7 @@ import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
-public class ApiFootballLeagueProvider implements LeagueProvider {
+public class ApiFootballLeagueProvider implements LeagueIngestionPort {
 
     private static final TypeReference<ApiFootballResponse<LeagueItem>> RESPONSE_TYPE =
             new TypeReference<>() {};

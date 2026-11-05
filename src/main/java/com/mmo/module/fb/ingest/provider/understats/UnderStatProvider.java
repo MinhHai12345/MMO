@@ -5,7 +5,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeagueMonthlyStats;
 import com.mmo.module.fb.ingest.provider.model.ProviderMatchStatistics;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeamMatchStats;
-import com.mmo.module.fb.ingest.provider.spi.HistoricalStatsProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.HistoricalStatsIngestionProviderPort;
 import com.mmo.module.fb.ingest.provider.understats.mapper.UnderStatMapper;
 import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentMap;
 
 @Component
 @RequiredArgsConstructor
-public class UnderStatProvider implements HistoricalStatsProvider {
+public class UnderStatProvider implements HistoricalStatsIngestionProviderPort {
 
     private static final TypeReference<UnderStatDtos.LeagueData> LEAGUE_DATA =
             new TypeReference<>() { };

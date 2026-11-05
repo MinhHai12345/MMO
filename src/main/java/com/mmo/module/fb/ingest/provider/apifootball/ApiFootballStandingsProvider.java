@@ -8,7 +8,7 @@ import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
 import com.mmo.module.fb.ingest.provider.apifootball.mapper.ApiFootballStandingsMapper;
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
 import com.mmo.module.fb.ingest.provider.model.StandingsQuery;
-import com.mmo.module.fb.ingest.provider.spi.StandingsProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.StandingsIngestionPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +17,7 @@ import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
-public class ApiFootballStandingsProvider implements StandingsProvider {
+public class ApiFootballStandingsProvider implements StandingsIngestionPort {
 
     private static final TypeReference<ApiFootballResponse<StandingsItem>> RESPONSE_TYPE =
             new TypeReference<>() {

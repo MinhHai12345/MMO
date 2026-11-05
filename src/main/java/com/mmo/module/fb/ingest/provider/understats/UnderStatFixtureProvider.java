@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
-import com.mmo.module.fb.ingest.provider.spi.FixtureProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.FixtureIngestionPort;
 import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
 import com.mmo.module.fb.ingest.provider.understats.mapper.UnderStatFixtureMapper;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,7 @@ import java.util.List;
 /** Fetches UnderStat matches independently for one league-season. */
 @Component
 @RequiredArgsConstructor
-public class UnderStatFixtureProvider implements FixtureProvider {
+public class UnderStatFixtureProvider implements FixtureIngestionPort {
     private static final TypeReference<UnderStatDtos.LeagueData> RESPONSE_TYPE = new TypeReference<>() { };
 
     private final UnderStatClient client;

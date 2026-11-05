@@ -13,7 +13,7 @@ import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.team.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
-import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
+import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
 import com.mmo.module.fb.ingest.application.port.out.FixturePersistenceService;
 import com.mmo.module.fb.ingest.application.model.ResolvedProviderFixture;
@@ -32,7 +32,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class FixtureIngestionServiceImpl implements FixtureIngestionService {
 
-    private final ProviderRegistry providerRegistry;
+    private final ProviderIngestionRegistry providerRegistry;
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
     private final TeamIngestionService teamIngestionService;

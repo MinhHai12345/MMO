@@ -8,7 +8,7 @@ import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
 import com.mmo.module.fb.ingest.provider.apifootball.mapper.ApiFootballTeamMapper;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.provider.model.TeamQuery;
-import com.mmo.module.fb.ingest.provider.spi.TeamProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.TeamIngestionPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -18,7 +18,7 @@ import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
-public class ApiFootballTeamProvider implements TeamProvider {
+public class ApiFootballTeamProvider implements TeamIngestionPort {
 
     private static final TypeReference<ApiFootballResponse<TeamItem>> RESPONSE_TYPE =
             new TypeReference<>() {

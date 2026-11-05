@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.provider.model.TeamQuery;
-import com.mmo.module.fb.ingest.provider.spi.TeamProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.TeamIngestionPort;
 import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
 import com.mmo.module.fb.ingest.provider.understats.mapper.UnderStatTeamMapper;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,7 @@ import java.util.List;
 /** Fetches UnderStat teams for one league-season. */
 @Component
 @RequiredArgsConstructor
-public class UnderStatTeamProvider implements TeamProvider {
+public class UnderStatTeamProvider implements TeamIngestionPort {
     private static final TypeReference<UnderStatDtos.LeagueData> RESPONSE_TYPE = new TypeReference<>() { };
 
     private final UnderStatClient client;

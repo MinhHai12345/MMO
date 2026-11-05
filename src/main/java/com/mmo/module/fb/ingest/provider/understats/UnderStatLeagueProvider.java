@@ -3,7 +3,7 @@ package com.mmo.module.fb.ingest.provider.understats;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
-import com.mmo.module.fb.ingest.provider.spi.LeagueProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.LeagueIngestionPort;
 import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
 import com.mmo.module.fb.ingest.provider.understats.mapper.UnderStatLeagueMapper;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 /** Discovers UnderStat leagues and available seasons from its monthly stat catalogue. */
 @Component
 @RequiredArgsConstructor
-public class UnderStatLeagueProvider implements LeagueProvider {
+public class UnderStatLeagueProvider implements LeagueIngestionPort {
     private static final TypeReference<UnderStatDtos.StatDataResponse> RESPONSE_TYPE =
             new TypeReference<>() { };
 
