@@ -1,6 +1,9 @@
 package com.mmo.module.fb.ingest.persistence;
 
 import com.mmo.module.fb.league.entity.LeagueStanding;
+import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
+import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.league.entity.Season;
 import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.league.enums.StandingType;
@@ -22,11 +25,13 @@ public class StandingsPersistenceServiceImpl implements StandingsPersistenceServ
     private final SeasonRepository seasonRepository;
     private final TeamRepository teamRepository;
     private final LeagueStandingRepository standingRepository;
+    private final DataSourcePolicy dataSourcePolicy;
 
     @Transactional
-    public void upsertStanding(Long seasonId, Long teamId, ProviderStanding row) {
+    public void upsertStanding(Provider provider, Long seasonId, Long teamId, ProviderStanding row) {
         Season season = seasonRepository.findById(seasonId)
                 .orElseThrow(() -> new IllegalArgumentException("Season not found: " + seasonId));
+        if (!dataSourcePolicy.isPrimary(provider, Dataset.STANDINGS, season)) return;
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new IllegalArgumentException("Team not found: " + teamId));
 
