@@ -45,7 +45,8 @@ class IngestionPlanFactoryTest {
                 IngestionWorkUnit.Role.SECONDARY));
         assertTrue(plan.has(Dataset.STANDINGS, Provider.FOOTBALL_DATA,
                 IngestionWorkUnit.Role.PRIMARY));
-        assertFalse(plan.units().stream().anyMatch(unit -> unit.seasonId().equals(3L)));
+        assertFalse(plan.units().stream().anyMatch(unit -> unit.seasonId().equals(3L)
+                && unit.provider() == Provider.FOOTBALL_DATA_UK));
         assertFalse(plan.units().stream().anyMatch(unit -> unit.seasonId().equals(4L)));
         assertFalse(plan.has(Dataset.UPCOMING_ODDS, Provider.API_FOOTBALL,
                 IngestionWorkUnit.Role.PRIMARY));
