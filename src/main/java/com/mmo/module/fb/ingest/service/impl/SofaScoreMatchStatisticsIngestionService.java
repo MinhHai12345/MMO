@@ -5,6 +5,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.persistence.MatchXgPersistenceService;
+import com.mmo.module.fb.ingest.persistence.SourceAwareMergeService;
 import com.mmo.module.fb.ingest.application.port.out.MatchStatisticsIngestionPort;
 import com.mmo.module.fb.ingest.provider.model.ProviderMatchAdvancedStatistics;
 import com.mmo.module.fb.ingest.provider.spi.MatchStatisticsProvider;
@@ -57,6 +58,7 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
     private final MatchEnrichmentStateService enrichmentStateService;
     private final DataSourcePolicy dataSourcePolicy;
     private final MatchXgPersistenceService matchXgPersistenceService;
+    private final SourceAwareMergeService sourceAwareMergeService;
 
     public void storeMatchStatistics() {
         List<Match> targetMatches = matchRepository.findFinishedMatchesMissingAdvancedStats(
@@ -152,43 +154,43 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
                 .findByMatchIdAndTeamId(match.getId(), team.getId())
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
 
-        setDecimalIfPresent(values, stats.getPpda(), stats::setPpda,
+        setDecimalIfPresent(match, team, "ppda", values, stats.getPpda(), stats::setPpda,
                 "ppda", "opponentHalfPressuresPerDefensiveAction");
-        setIntegerIfPresent(values, stats.getPpdaAtt(), stats::setPpdaAtt, "ppdaAtt");
-        setIntegerIfPresent(values, stats.getPpdaDef(), stats::setPpdaDef, "ppdaDef");
-        setDecimalIfPresent(values, stats.getFieldTilt(), stats::setFieldTilt, "fieldTilt");
-        setDecimalIfPresent(values, stats.getXgChain(), stats::setXgChain, "xgChain");
-        setDecimalIfPresent(values, stats.getXgBuildup(), stats::setXgBuildup, "xgBuildup");
-        setDecimalIfPresent(values, stats.getPossession(), stats::setPossession, "ballPossession", "possession");
-        setIntegerIfPresent(values, stats.getDeepCompletions(), stats::setDeepCompletions, "deepCompletions");
-        setIntegerIfPresent(values, stats.getFinalThirdEntries(), stats::setFinalThirdEntries, "finalThirdEntries");
-        setIntegerIfPresent(values, stats.getShotsFromBox(), stats::setShotsFromBox,
+        setIntegerIfPresent(match, team, "ppda_att", values, stats.getPpdaAtt(), stats::setPpdaAtt, "ppdaAtt");
+        setIntegerIfPresent(match, team, "ppda_def", values, stats.getPpdaDef(), stats::setPpdaDef, "ppdaDef");
+        setDecimalIfPresent(match, team, "field_tilt", values, stats.getFieldTilt(), stats::setFieldTilt, "fieldTilt");
+        setDecimalIfPresent(match, team, "xg_chain", values, stats.getXgChain(), stats::setXgChain, "xgChain");
+        setDecimalIfPresent(match, team, "xg_buildup", values, stats.getXgBuildup(), stats::setXgBuildup, "xgBuildup");
+        setDecimalIfPresent(match, team, "possession", values, stats.getPossession(), stats::setPossession, "ballPossession", "possession");
+        setIntegerIfPresent(match, team, "deep_completions", values, stats.getDeepCompletions(), stats::setDeepCompletions, "deepCompletions");
+        setIntegerIfPresent(match, team, "final_third_entries", values, stats.getFinalThirdEntries(), stats::setFinalThirdEntries, "finalThirdEntries");
+        setIntegerIfPresent(match, team, "shots_from_box", values, stats.getShotsFromBox(), stats::setShotsFromBox,
                 "shotsInsideBox", "shotsFromInsideTheBox", "shotsFromBox");
-        setIntegerIfPresent(values, stats.getShotsOutsideBox(), stats::setShotsOutsideBox,
+        setIntegerIfPresent(match, team, "shots_outside_box", values, stats.getShotsOutsideBox(), stats::setShotsOutsideBox,
                 "shotsOutsideBox", "shotsFromOutsideTheBox");
-        setDecimalIfPresent(values, stats.getSetPieceXg(), stats::setSetPieceXg,
+        setDecimalIfPresent(match, team, "set_piece_xg", values, stats.getSetPieceXg(), stats::setSetPieceXg,
                 "setPieceXg", "setPieceExpectedGoals");
-        setDecimalIfPresent(values, stats.getCounterAttackXg(), stats::setCounterAttackXg,
+        setDecimalIfPresent(match, team, "counter_attack_xg", values, stats.getCounterAttackXg(), stats::setCounterAttackXg,
                 "counterAttackXg", "counterAttackExpectedGoals");
-        setIntegerIfPresent(values, stats.getTotalShots(), stats::setTotalShots,
+        setIntegerIfPresent(match, team, "total_shots", values, stats.getTotalShots(), stats::setTotalShots,
                 "totalShots", "shotsTotal", "totalShotsAttempted");
-        setIntegerIfPresent(values, stats.getShotsOnTarget(), stats::setShotsOnTarget,
+        setIntegerIfPresent(match, team, "shots_on_target", values, stats.getShotsOnTarget(), stats::setShotsOnTarget,
                 "shotsOnTarget", "shotsOnGoal", "shotsOnTargetTotal");
-        setIntegerIfPresent(values, stats.getShotsOffTarget(), stats::setShotsOffTarget,
+        setIntegerIfPresent(match, team, "shots_off_target", values, stats.getShotsOffTarget(), stats::setShotsOffTarget,
                 "shotsOffTarget", "shotsOffGoal", "shotsOffTargetTotal");
-        setIntegerIfPresent(values, stats.getBlockedShots(), stats::setBlockedShots, "blockedShots", "blockedShotsTotal");
-        setIntegerIfPresent(values, stats.getCornerKicks(), stats::setCornerKicks, "cornerKicks", "corners", "cornerKicksTotal");
-        setIntegerIfPresent(values, stats.getFouls(), stats::setFouls, "fouls", "totalFouls");
-        setIntegerIfPresent(values, stats.getYellowCards(), stats::setYellowCards, "yellowCards", "yellowCardsTotal");
-        setIntegerIfPresent(values, stats.getRedCards(), stats::setRedCards, "redCards", "redCardsTotal");
-        setIntegerIfPresent(values, stats.getOffsides(), stats::setOffsides, "offsides", "offside");
-        setIntegerIfPresent(values, stats.getTotalPasses(), stats::setTotalPasses, "totalPasses", "passes");
-        setIntegerIfPresent(values, stats.getAccuratePasses(), stats::setAccuratePasses, "accuratePasses", "passesAccurate");
-        setDecimalIfPresent(values, stats.getPassAccuracy(), stats::setPassAccuracy,
+        setIntegerIfPresent(match, team, "blocked_shots", values, stats.getBlockedShots(), stats::setBlockedShots, "blockedShots", "blockedShotsTotal");
+        setIntegerIfPresent(match, team, "corner_kicks", values, stats.getCornerKicks(), stats::setCornerKicks, "cornerKicks", "corners", "cornerKicksTotal");
+        setIntegerIfPresent(match, team, "fouls", values, stats.getFouls(), stats::setFouls, "fouls", "totalFouls");
+        setIntegerIfPresent(match, team, "yellow_cards", values, stats.getYellowCards(), stats::setYellowCards, "yellowCards", "yellowCardsTotal");
+        setIntegerIfPresent(match, team, "red_cards", values, stats.getRedCards(), stats::setRedCards, "redCards", "redCardsTotal");
+        setIntegerIfPresent(match, team, "offsides", values, stats.getOffsides(), stats::setOffsides, "offsides", "offside");
+        setIntegerIfPresent(match, team, "total_passes", values, stats.getTotalPasses(), stats::setTotalPasses, "totalPasses", "passes");
+        setIntegerIfPresent(match, team, "accurate_passes", values, stats.getAccuratePasses(), stats::setAccuratePasses, "accuratePasses", "passesAccurate");
+        setDecimalIfPresent(match, team, "pass_accuracy", values, stats.getPassAccuracy(), stats::setPassAccuracy,
                 "accuratePassesPercentage", "passAccuracy", "passesAccuracy");
-        setIntegerIfPresent(values, stats.getGoalkeeperSaves(), stats::setGoalkeeperSaves, "goalkeeperSaves", "saves");
-        setIntegerIfPresent(values, stats.getBigChancesCreated(), stats::setBigChancesCreated, "bigChancesCreated");
-        setIntegerIfPresent(values, stats.getBigChancesMissed(), stats::setBigChancesMissed, "bigChancesMissed");
+        setIntegerIfPresent(match, team, "goalkeeper_saves", values, stats.getGoalkeeperSaves(), stats::setGoalkeeperSaves, "goalkeeperSaves", "saves");
+        setIntegerIfPresent(match, team, "big_chances_created", values, stats.getBigChancesCreated(), stats::setBigChancesCreated, "bigChancesCreated");
+        setIntegerIfPresent(match, team, "big_chances_missed", values, stats.getBigChancesMissed(), stats::setBigChancesMissed, "bigChancesMissed");
         // The source-specific payload and fetched timestamp are stored in the snapshot table.
         return stats;
     }
@@ -215,20 +217,22 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
     }
 
     private void setDecimalIfPresent(
-            Map<String, BigDecimal> values, BigDecimal current,
+            Match match, Team team, String field, Map<String, BigDecimal> values, BigDecimal current,
             Consumer<BigDecimal> setter, String... aliases) {
-        if (current != null) return;
         BigDecimal value = statisticValue(values, aliases);
-        if (value != null) setter.accept(value);
+        if (value == null) return;
+        sourceAwareMergeService.merge(match, Provider.SOFA_SCORE, Dataset.MATCH_STATISTICS,
+                "team:" + team.getId() + ":" + field, current != null, null, () -> setter.accept(value));
     }
 
     private void setIntegerIfPresent(
-            Map<String, BigDecimal> values, Integer current,
+            Match match, Team team, String field, Map<String, BigDecimal> values, Integer current,
             Consumer<Integer> setter, String... aliases) {
-        if (current != null) return;
         BigDecimal value = statisticValue(values, aliases);
         if (value != null && value.signum() >= 0) {
-            setter.accept(value.setScale(0, RoundingMode.HALF_UP).intValue());
+            int normalized = value.setScale(0, RoundingMode.HALF_UP).intValue();
+            sourceAwareMergeService.merge(match, Provider.SOFA_SCORE, Dataset.MATCH_STATISTICS,
+                    "team:" + team.getId() + ":" + field, current != null, null, () -> setter.accept(normalized));
         }
     }
 
