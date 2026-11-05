@@ -75,8 +75,10 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
         if (seasonCatalogueProvider == null) seasonCatalogueProvider = leagueCatalogueProvider;
         validateProvider(leagueCatalogueProvider);
         validateProvider(seasonCatalogueProvider);
-        runStageCollecting("league-catalogue/" + leagueCatalogueProvider,
-                () -> leagueIngestionService.syncLeaguesForProvider(leagueCatalogueProvider), failedStages);
+        if (!seasonBatchProviderRegistry.supports(leagueCatalogueProvider, Dataset.LEAGUE)) {
+            runStageCollecting("league-catalogue/" + leagueCatalogueProvider,
+                    () -> leagueIngestionService.syncLeaguesForProvider(leagueCatalogueProvider), failedStages);
+        }
         if (!seasonBatchProviderRegistry.supports(seasonCatalogueProvider, Dataset.SEASON)) {
             runStageCollecting("season-catalogue/" + seasonCatalogueProvider,
                     () -> seasonIngestionService.syncSeasonsForProvider(seasonCatalogueProvider), failedStages);
@@ -215,8 +217,10 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
 
         log.info("Starting multi-provider historical Core import: {}", ordered);
         for (Provider provider : ordered) {
-            runStage("multi-provider/leagues/" + provider,
-                    () -> leagueIngestionService.syncLeaguesForProvider(provider));
+            if (!seasonBatchProviderRegistry.supports(provider, Dataset.LEAGUE)) {
+                runStage("multi-provider/leagues/" + provider,
+                        () -> leagueIngestionService.syncLeaguesForProvider(provider));
+            }
         }
         for (Provider provider : ordered) {
             if (seasonBatchProviderRegistry.supports(provider, Dataset.SEASON)) {
