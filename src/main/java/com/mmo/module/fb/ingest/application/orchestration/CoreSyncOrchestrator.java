@@ -2,7 +2,7 @@ package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
-import com.mmo.module.fb.ingest.application.port.in.FootballDataUkIngestionUseCase;
+import com.mmo.module.fb.ingest.provider.spi.SeasonBatchProvider;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
@@ -39,7 +39,7 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
     private final TeamIngestionService teamIngestionService;
     private final FixtureIngestionService fixtureIngestionService;
     private final StandingsIngestionService standingsIngestionService;
-    private final FootballDataUkIngestionUseCase footballDataUkSyncService;
+    private final SeasonBatchProviderRegistry seasonBatchProviderRegistry;
 
     @Override
     public void sync(ProviderOverrides overrides, Provider oddsProviderOverride) {
@@ -121,7 +121,7 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
             for (Long seasonId : ukActiveSeasonIds) {
                 try {
                     runStage("football-data-uk/active/season=" + seasonId,
-                            () -> footballDataUkSyncService.syncCoreSeason(seasonId, false));
+                            () -> seasonBatchProviderRegistry.require(Provider.FOOTBALL_DATA_UK).syncCoreSeason(seasonId, false));
                 } catch (RuntimeException exception) {
                     failedStages.add("football-data-uk/active/season=" + seasonId
                             + ": " + exception.getMessage());
