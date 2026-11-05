@@ -59,8 +59,19 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
         syncFixtures(selectedProvider, from, to, true);
     }
 
+    @Override
+    public void syncSeasonForProvider(Provider selectedProvider, Long seasonId, LocalDate from, LocalDate to) {
+        if (seasonId == null) throw new IllegalArgumentException("seasonId must not be null");
+        syncFixtures(selectedProvider, from, to, true, seasonId);
+    }
+
     private void syncFixtures(Provider selectedProvider, LocalDate from, LocalDate to,
                               boolean includeHistoricalSeasons) {
+        syncFixtures(selectedProvider, from, to, includeHistoricalSeasons, null);
+    }
+
+    private void syncFixtures(Provider selectedProvider, LocalDate from, LocalDate to,
+                              boolean includeHistoricalSeasons, Long onlySeasonId) {
         ingestionSupport.requireProviderEnabled(selectedProvider, "fixture");
         if (from != null && to != null && from.isAfter(to)) {
             throw new IllegalArgumentException("'from' must be before or equal to 'to'");
@@ -78,6 +89,7 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
         List<Season> seasons = includeHistoricalSeasons
                 ? ingestionSupport.allMappedSeasonsToSync(selectedProvider, Dataset.FIXTURE)
                 : ingestionSupport.seasonsToSync(selectedProvider, Dataset.FIXTURE);
+        if (onlySeasonId != null) seasons = seasons.stream().filter(s -> onlySeasonId.equals(s.getId())).toList();
         if (seasons.isEmpty()) {
             if (!ingestionSupport.hasAnySeasons(includeHistoricalSeasons)) {
                 throw new IllegalStateException("No canonical seasons available for fixture ingestion");
