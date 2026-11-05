@@ -36,7 +36,7 @@ class MatchEnrichmentUseCaseTest {
 
         verify(lock).execute(eq(IngestionDistributedLock.GLOBAL_INGEST_LOCK), any(Runnable.class));
         verify(footballDataUk, never()).syncInitialEnrichment();
-        verify(footballDataUk, never()).syncCurrentSeasonEnrichment();
+        verify(footballDataUk, never()).syncActiveSeasonsEnrichment();
     }
 
     @Test

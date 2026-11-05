@@ -354,38 +354,43 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         return true;
     }
 
-    /** Incremental match enrichment is restricted to the current CSV season. */
-    public void syncCurrentSeasonEnrichment() {
+    /** Incremental match enrichment refreshes only operator-selected active UK-covered seasons. */
+    public void syncActiveSeasonsEnrichment() {
         initialLeagueMappings();
         AppProperties.ProviderConfig config = properties.getIngestion().getProviderConfig().get(PROVIDER);
         if (config == null || !config.isEnabled()) return;
 
-        LocalDate today = LocalDate.now(SOURCE_ZONE);
-        int startYear = currentSeasonStartYear(today);
         int failed = 0;
+        int enrichedSeasons = 0;
         for (LeagueExternalId leagueMapping : leagueExternalIdRepository.findAllByProvider(PROVIDER)) {
-            Season season = findSeason(leagueMapping.getLeague(), startYear);
-            if (season == null) {
-                failed++;
-                continue;
-            }
-            try {
-                List<Map<String, String>> rows = matchDataProvider.fetchSeason(
-                        config.getUri(), season.getYear(), leagueMapping.getIdentify());
-                EnrichmentResult result = enrichRows(season, leagueMapping, rows);
-                if (rows.isEmpty() || result.unmatchedRows() > 0) failed++;
-                log.info("Football-Data UK current-season enrichment: league={}, season={}, rows={}, stats={}, odds={}, unmatched={}",
-                        leagueMapping.getLeague().getName(), season.getYear(), rows.size(),
-                        result.importedTeamStats(), result.importedOdds(), result.unmatchedRows());
-            } catch (RuntimeException exception) {
-                failed++;
-                log.error("Football-Data UK current-season enrichment failed: league={}, season={}",
-                        leagueMapping.getLeague().getName(), season.getYear(), exception);
+            List<Season> activeSeasons = seasonRepository.findByLeague_Id(
+                            leagueMapping.getLeague().getId()).stream()
+                    .filter(Season::isActive)
+                    .filter(season -> dataSourcePolicy.isPrimary(
+                            PROVIDER, Dataset.MATCH_STATISTICS, season))
+                    .toList();
+            for (Season season : activeSeasons) {
+                try {
+                    List<Map<String, String>> rows = matchDataProvider.fetchSeason(
+                            config.getUri(), season.getYear(), leagueMapping.getIdentify());
+                    EnrichmentResult result = enrichRows(season, leagueMapping, rows);
+                    if (rows.isEmpty() || result.unmatchedRows() > 0) failed++;
+                    else enrichedSeasons++;
+                    log.info("Football-Data UK active-season enrichment: league={}, season={}, rows={}, stats={}, odds={}, unmatched={}",
+                            leagueMapping.getLeague().getName(), season.getYear(), rows.size(),
+                            result.importedTeamStats(), result.importedOdds(), result.unmatchedRows());
+                } catch (RuntimeException exception) {
+                    failed++;
+                    log.error("Football-Data UK active-season enrichment failed: league={}, season={}",
+                            leagueMapping.getLeague().getName(), season.getYear(), exception);
+                }
             }
         }
+        log.info("Football-Data UK active-season enrichment completed: enrichedSeasons={}, failedSeasons={}",
+                enrichedSeasons, failed);
         if (failed > 0) {
-            throw new IllegalStateException("Football-Data UK current-season enrichment failed for "
-                    + failed + " league(s)");
+            throw new IllegalStateException("Football-Data UK active-season enrichment failed for "
+                    + failed + " season(s)");
         }
     }
 

@@ -11,5 +11,11 @@ public interface FootballDataUkIngestionPort {
         syncActiveSeasonsData();
     }
     boolean syncInitialEnrichment();
-    void syncCurrentSeasonEnrichment();
+    void syncActiveSeasonsEnrichment();
+
+    /** @deprecated use {@link #syncActiveSeasonsEnrichment()} */
+    @Deprecated
+    default void syncCurrentSeasonEnrichment() {
+        syncActiveSeasonsEnrichment();
+    }
 }
