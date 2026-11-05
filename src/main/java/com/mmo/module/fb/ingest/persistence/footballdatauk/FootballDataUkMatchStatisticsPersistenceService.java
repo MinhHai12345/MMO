@@ -94,32 +94,31 @@ public class FootballDataUkMatchStatisticsPersistenceService {
         changed |= setIfMissing(match, team, "xga_against", stats.getXga(), xga, stats::setXga);
         changed |= setIfMissing(match, team, "scored", stats.getScored(), scored, stats::setScored);
 
-        // "missed" means missed chances; goals conceded must not be stored in that field.
-        if (stats.getResult() == null && outcome != null) {
-            stats.setResult(outcome);
-            changed = true;
-        }
-        if (stats.getWins() == null && outcome != null) {
-            stats.setWins("W".equals(outcome) ? 1 : 0);
-            changed = true;
-        }
-        if (stats.getDraws() == null && outcome != null) {
-            stats.setDraws("D".equals(outcome) ? 1 : 0);
-            changed = true;
-        }
-        if (stats.getLosses() == null && outcome != null) {
-            stats.setLosses("L".equals(outcome) ? 1 : 0);
-            changed = true;
-        }
-        if (stats.getPoints() == null && outcome != null) {
-            stats.setPoints("W".equals(outcome) ? 3 : "D".equals(outcome) ? 1 : 0);
-            changed = true;
+        // Derived outcome metrics are also source-attributed; they must not become
+        // unattributed canonical values that later providers cannot reconcile.
+        if (outcome != null) {
+            changed |= mergeValue(match, team, "result", stats.getResult(), outcome, stats::setResult);
+            changed |= mergeValue(match, team, "wins", stats.getWins(),
+                    "W".equals(outcome) ? 1 : 0, stats::setWins);
+            changed |= mergeValue(match, team, "draws", stats.getDraws(),
+                    "D".equals(outcome) ? 1 : 0, stats::setDraws);
+            changed |= mergeValue(match, team, "losses", stats.getLosses(),
+                    "L".equals(outcome) ? 1 : 0, stats::setLosses);
+            changed |= mergeValue(match, team, "points", stats.getPoints(),
+                    "W".equals(outcome) ? 3 : "D".equals(outcome) ? 1 : 0, stats::setPoints);
         }
 
         if (!changed) return false;
         // Canonical row is a merged analytics projection; source provenance is stored separately.
         statsRepository.save(stats);
         return true;
+    }
+
+    private <T> boolean mergeValue(Match match, Team team, String field,
+                                    T current, T incoming, Consumer<T> setter) {
+        if (incoming == null) return false;
+        return sourceAwareMergeService.merge(match, Provider.FOOTBALL_DATA_UK, Dataset.MATCH_STATISTICS,
+                "team:" + team.getId() + ":" + field, current != null, null, () -> setter.accept(incoming));
     }
 
     private boolean setIfMissing(Match match, Team team, String field,
