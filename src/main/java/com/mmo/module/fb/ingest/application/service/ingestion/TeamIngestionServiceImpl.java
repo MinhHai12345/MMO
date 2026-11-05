@@ -1,5 +1,6 @@
 package com.mmo.module.fb.ingest.application.service.ingestion;
 
+import com.mmo.module.fb.ingest.application.exception.ProviderAccessException;
 import com.mmo.module.fb.ingest.application.service.support.IngestionServiceSupport;
 
 import com.mmo.AppProperties;
@@ -8,8 +9,6 @@ import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
-import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballPlanRestrictionException;
-import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.provider.model.TeamQuery;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
@@ -120,15 +119,19 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
                 }
                 teamPersistenceService.persistTeamsForSeason(selectedProvider, season, teams);
                 fetched += teams.size();
-            } catch (FootballDataRestrictedResourceException ex) {
-                if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
-                skipped++;
-                log.warn("Skipping teams for league {} season {} because football-data.org restricts this resource: {}",
-                        externalLeagueId, season.getYear(), ex.getMessage());
-            } catch (ApiFootballPlanRestrictionException ex) {
-                skipped++;
-                log.warn("Skipping teams for league {} season {} because the API-Football plan does not include it: {}",
-                        externalLeagueId, season.getYear(), ex.getMessage());
+            } catch (ProviderAccessException ex) {
+                if (ex.is(ProviderAccessException.Kind.RESOURCE_RESTRICTED)) {
+                    if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
+                    skipped++;
+                    log.warn("Skipping teams for league {} season {} because provider access is restricted: {}",
+                            externalLeagueId, season.getYear(), ex.getMessage());
+                } else if (ex.is(ProviderAccessException.Kind.PLAN_RESTRICTED)) {
+                    skipped++;
+                    log.warn("Skipping teams for league {} season {} because the provider plan does not include it: {}",
+                            externalLeagueId, season.getYear(), ex.getMessage());
+                } else {
+                    throw ex;
+                }
             }
         }
         log.info("Team ingestion via {} completed. fetched={}, failed={}, restricted/skipped={}",
