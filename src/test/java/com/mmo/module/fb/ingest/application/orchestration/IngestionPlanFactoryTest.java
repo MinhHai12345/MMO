@@ -18,12 +18,13 @@ class IngestionPlanFactoryTest {
     @Test
     void buildsPrimaryAndFallbackUnitsPerDatasetAndSeason() {
         SeasonRepository repository = mock(SeasonRepository.class);
-        when(repository.findAllForActiveLeagues()).thenReturn(List.of(
+        List<Season> seasons = List.of(
                 season(1L, 39L, "Premier League", "2021/2022", true),
                 season(2L, 39L, "Premier League", "2024/2025", true),
                 season(3L, 2L, "UEFA Champions League", "2024/2025", true),
                 season(4L, 39L, "Premier League", "2023/2024", false)
-        ));
+        );
+        when(repository.findAllForActiveLeagues()).thenReturn(seasons);
         IngestionPlanFactory factory = new IngestionPlanFactory(repository, new DataSourcePolicy());
 
         IngestionPlan plan = factory.activeSeasonPlan();
@@ -53,9 +54,10 @@ class IngestionPlanFactoryTest {
     @Test
     void historicalPlanIncludesInactiveSeasonsButStillHonorsPolicy() {
         SeasonRepository repository = mock(SeasonRepository.class);
-        when(repository.findAllForActiveLeagues()).thenReturn(List.of(
+        List<Season> seasons = List.of(
                 season(1L, 39L, "Premier League", "2018/2019", false)
-        ));
+        );
+        when(repository.findAllForActiveLeagues()).thenReturn(seasons);
         IngestionPlan plan = new IngestionPlanFactory(repository, new DataSourcePolicy()).historicalPlan();
 
         assertTrue(plan.has(Dataset.FIXTURE, Provider.FOOTBALL_DATA_UK,
