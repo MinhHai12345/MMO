@@ -68,14 +68,18 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
 
     private void syncCoreDataLocked(ProviderOverrides overrides) {
         List<String> failedStages = new ArrayList<>();
-        // Catalogue bootstrap precedes plan construction because a cold database may not
-        // contain any Season rows yet. The catalogue provider supplies identities only;
-        // DataSourcePolicy chooses the owner independently for every season/dataset.
-        validateProvider(Provider.FOOTBALL_DATA);
-        runStageCollecting("league-catalogue/FOOTBALL_DATA",
-                () -> leagueIngestionService.syncLeaguesForProvider(Provider.FOOTBALL_DATA), failedStages);
-        runStageCollecting("season-catalogue/FOOTBALL_DATA",
-                () -> seasonIngestionService.syncSeasonsForProvider(Provider.FOOTBALL_DATA), failedStages);
+        // Bootstrap catalogue providers come from the configured resource routes.
+        // Season-batch providers prepare their own season catalogue from their source format.
+        Provider leagueCatalogueProvider = appProperties.getIngestion().getProviders().getLeague();
+        Provider seasonCatalogueProvider = appProperties.getIngestion().getProviders().getSeason();
+        validateProvider(leagueCatalogueProvider);
+        validateProvider(seasonCatalogueProvider);
+        runStageCollecting("league-catalogue/" + leagueCatalogueProvider,
+                () -> leagueIngestionService.syncLeaguesForProvider(leagueCatalogueProvider), failedStages);
+        if (!seasonBatchProviderRegistry.supports(seasonCatalogueProvider, Dataset.SEASON)) {
+            runStageCollecting("season-catalogue/" + seasonCatalogueProvider,
+                    () -> seasonIngestionService.syncSeasonsForProvider(seasonCatalogueProvider), failedStages);
+        }
 
         if (overrides != null && (overrides.team() != null || overrides.fixture() != null
                 || overrides.standings() != null)) {
@@ -102,10 +106,12 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
         }
 
         IngestionPlan plan = planFactory.historicalPlan();
-        List<IngestionWorkUnit> footballDataSeasons = plan.units(
-                Dataset.SEASON, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
-        if (failedStages.stream().noneMatch(error -> error.startsWith("season-catalogue/"))) {
-            footballDataSeasons.forEach(unit -> checkpointStore.markStatus(unit.provider(), Dataset.SEASON,
+        List<IngestionWorkUnit> catalogueSeasonUnits = plan.units(
+                Dataset.SEASON, seasonCatalogueProvider, IngestionWorkUnit.Role.PRIMARY);
+        String seasonCatalogueFailurePrefix = seasonCatalogueProvider + "/prepare-historical-seasons";
+        if (failedStages.stream().noneMatch(error -> error.startsWith("season-catalogue/")
+                || error.startsWith(seasonCatalogueFailurePrefix))) {
+            catalogueSeasonUnits.forEach(unit -> checkpointStore.markStatus(unit.provider(), Dataset.SEASON,
                     unit.leagueId(), unit.season(), CheckpointStatus.COMPLETED));
         }
         List<IngestionWorkUnit> nonBatchTeams = plan.units(
@@ -203,12 +209,7 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
         }
 
         List<Provider> ordered = new ArrayList<>(new LinkedHashSet<>(providers));
-        ordered.sort((left, right) -> {
-            if (left == right) return 0;
-            if (left == Provider.FOOTBALL_DATA) return -1;
-            if (right == Provider.FOOTBALL_DATA) return 1;
-            return left.name().compareTo(right.name());
-        });
+        ordered.sort(java.util.Comparator.comparing(Enum::name));
         ordered.forEach(this::validateProvider);
 
         log.info("Starting multi-provider historical Core import: {}", ordered);
@@ -217,22 +218,47 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
                     () -> leagueIngestionService.syncLeaguesForProvider(provider));
         }
         for (Provider provider : ordered) {
-            runStage("multi-provider/seasons/" + provider,
-                    () -> seasonIngestionService.syncSeasonsForProvider(provider));
+            if (seasonBatchProviderRegistry.supports(provider, Dataset.SEASON)) {
+                runStage("multi-provider/prepare-seasons/" + provider,
+                        () -> seasonBatchProviderRegistry.require(provider).prepareHistoricalSeasons());
+            } else {
+                runStage("multi-provider/seasons/" + provider,
+                        () -> seasonIngestionService.syncSeasonsForProvider(provider));
+            }
         }
         IngestionPlan plan = planFactory.historicalPlan();
         List<String> failedStages = new ArrayList<>();
         List<IngestionUnitResult> results = new ArrayList<>();
         for (Provider provider : ordered) {
-            plan.units(Dataset.TEAM, provider, IngestionWorkUnit.Role.PRIMARY)
+            List<Long> batchSeasonIds = plan.units().stream()
+                    .filter(unit -> unit.provider() == provider
+                            && (unit.dataset() == Dataset.SEASON || unit.dataset() == Dataset.TEAM
+                            || unit.dataset() == Dataset.FIXTURE)
+                            && seasonBatchProviderRegistry.supports(provider, unit.dataset()))
+                    .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
+            if (!batchSeasonIds.isEmpty()) {
+                SeasonBatchProvider batchProvider = seasonBatchProviderRegistry.require(provider);
+                batchSeasonIds.forEach(seasonId -> runUnit(
+                        new IngestionWorkUnit(Dataset.FIXTURE, seasonId,
+                                plan.units().stream().filter(unit -> unit.provider() == provider
+                                        && unit.seasonId().equals(seasonId)).findFirst().orElseThrow().leagueId(),
+                                plan.units().stream().filter(unit -> unit.provider() == provider
+                                        && unit.seasonId().equals(seasonId)).findFirst().orElseThrow().season(),
+                                provider, IngestionWorkUnit.Role.PRIMARY),
+                        () -> batchProvider.syncCoreSeason(seasonId, true), failedStages, results));
+            }
+            plan.units(Dataset.TEAM, provider, IngestionWorkUnit.Role.PRIMARY).stream()
+                    .filter(unit -> !seasonBatchProviderRegistry.supports(provider, Dataset.TEAM))
                     .forEach(unit -> runUnit(unit, () ->
                             teamIngestionService.syncSeasonForProvider(provider, unit.seasonId()),
                             failedStages, results));
-            plan.units(Dataset.FIXTURE, provider, IngestionWorkUnit.Role.PRIMARY)
+            plan.units(Dataset.FIXTURE, provider, IngestionWorkUnit.Role.PRIMARY).stream()
+                    .filter(unit -> !seasonBatchProviderRegistry.supports(provider, Dataset.FIXTURE))
                     .forEach(unit -> runUnit(unit, () ->
                             fixtureIngestionService.syncSeasonForProvider(provider, unit.seasonId(), null, null),
                             failedStages, results));
-            plan.units(Dataset.STANDINGS, provider, IngestionWorkUnit.Role.PRIMARY)
+            plan.units(Dataset.STANDINGS, provider, IngestionWorkUnit.Role.PRIMARY).stream()
+                    .filter(unit -> !seasonBatchProviderRegistry.supports(provider, Dataset.STANDINGS))
                     .forEach(unit -> runUnit(unit, () ->
                             standingsIngestionService.syncSeasonForProvider(provider, unit.seasonId()),
                             failedStages, results));
@@ -280,20 +306,21 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
     }
 
     private void validateProvider(Provider provider) {
-        if (provider != Provider.FOOTBALL_DATA) {
-            throw new IllegalStateException("Phase 1 historical API bootstrap supports FOOTBALL_DATA only; "
-                    + provider + " is temporarily disabled. Football-Data UK uses its dedicated CSV importer.");
-        }
+        if (provider == null) throw new IllegalStateException("Ingestion provider is not configured");
         AppProperties.ProviderConfig config = appProperties.getIngestion().getProviderConfig().get(provider);
         if (config == null || !config.isEnabled()) {
             throw new IllegalStateException(provider + " is disabled or not configured for bootstrap");
         }
-        if (provider == Provider.API_FOOTBALL || provider == Provider.FOOTBALL_DATA) {
-            String variableName = provider == Provider.API_FOOTBALL
-                    ? "API_FOOTBALL_API_KEY" : "FOOTBALL_DATA_API_KEY";
-            String token = config == null ? null : config.getApiKey();
+        String requiredTokenVariable = switch (provider) {
+            case API_FOOTBALL -> "API_FOOTBALL_API_KEY";
+            case FOOTBALL_DATA -> "FOOTBALL_DATA_API_KEY";
+            default -> null;
+        };
+        if (requiredTokenVariable != null) {
+            String token = config.getApiKey();
             if (!StringUtils.hasText(token) || "mock".equalsIgnoreCase(token.trim())) {
-                throw new IllegalStateException("Provider API token is not configured. Set " + variableName + ".");
+                throw new IllegalStateException("Provider API token is not configured. Set "
+                        + requiredTokenVariable + ".");
             }
         }
     }
