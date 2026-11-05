@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -36,19 +37,24 @@ public class StandingsPersistenceServiceImpl implements StandingsPersistenceServ
                 .orElseThrow(() -> new IllegalArgumentException("Team not found: " + teamId));
 
         StandingType type = row.standingType() == null ? StandingType.TOTAL : row.standingType();
+        String groupName = row.groupName();
+        String groupKey = normalizeGroupKey(groupName);
         LeagueStanding standing = standingRepository
-                .findBySeasonIdAndTeamIdAndStandingType(seasonId, teamId, type)
+                .findBySeasonIdAndTeamIdAndStandingTypeAndGroupKey(seasonId, teamId, type, groupKey)
                 .orElseGet(() -> LeagueStanding.builder()
                         .season(season)
                         .team(team)
                         .standingType(type)
+                        .groupName(groupName)
+                        .groupKey(groupKey)
                         .build());
 
         standing.setPosition(row.position());
         standing.setPoints(row.points());
         standing.setGoalDifference(row.goalDifference());
         standing.setForm(row.form());
-        standing.setGroupName(row.groupName());
+        standing.setGroupName(groupName);
+        standing.setGroupKey(groupKey);
         standing.setPlayed(row.played());
         standing.setWon(row.won());
         standing.setDrawn(row.drawn());
@@ -57,5 +63,10 @@ public class StandingsPersistenceServiceImpl implements StandingsPersistenceServ
         standing.setGoalsAgainst(row.goalsAgainst());
         standing.setLastSyncedAt(Instant.now());
         standingRepository.save(standing);
+    }
+
+    static String normalizeGroupKey(String groupName) {
+        return groupName == null || groupName.isBlank()
+                ? "" : groupName.trim().toUpperCase(Locale.ROOT);
     }
 }
