@@ -81,13 +81,13 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
                 throw new IllegalStateException("Football-Data is the catalogue owner in DataSourcePolicy, got "
                         + catalogueProvider);
             }
-            runStage("catalogue/leagues/" + catalogueProvider,
-                    () -> leagueIngestionService.syncLeaguesForProvider(catalogueProvider));
+            runStageCollecting("catalogue/leagues/" + catalogueProvider,
+                    () -> leagueIngestionService.syncLeaguesForProvider(catalogueProvider), failedStages);
             List<IngestionWorkUnit> footballDataSeasons = plan.units(
                     Dataset.SEASON, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
             if (footballDataSeasons.isEmpty()) {
-                runStage("catalogue/seasons/" + catalogueProvider,
-                        () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider));
+                runStageCollecting("catalogue/seasons/" + catalogueProvider,
+                        () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider), failedStages);
             } else {
                 runPlannedStage("catalogue/seasons/" + catalogueProvider, Dataset.SEASON,
                         footballDataSeasons,
@@ -178,6 +178,15 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
             units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
                     unit.leagueId(), unit.season(), status));
             failedStages.add(name + " [" + status + "]: " + exception.getMessage());
+        }
+    }
+
+    private void runStageCollecting(String name, Runnable operation, List<String> failedStages) {
+        try {
+            runStage(name, operation);
+        } catch (RuntimeException exception) {
+            failedStages.add(name + ": " + exception.getMessage());
+            log.warn("Catalogue stage failed; continuing independent work units: {}", name, exception);
         }
     }
 
