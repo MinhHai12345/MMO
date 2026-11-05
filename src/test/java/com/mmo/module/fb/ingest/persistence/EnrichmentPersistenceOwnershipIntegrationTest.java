@@ -5,6 +5,8 @@ import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.league.entity.League;
 import com.mmo.module.fb.league.entity.Season;
 import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
+import com.mmo.module.fb.match.repository.MatchRepository;
+import com.mmo.module.fb.ingest.persistence.MatchXgPersistenceService;
 import com.mmo.module.fb.match.repository.BookmakerRepository;
 import com.mmo.module.fb.match.repository.MatchOddsRepository;
 import com.mmo.module.fb.match.service.MatchStatisticsSnapshotPersistenceService;
@@ -16,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.util.Map;
+import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
@@ -51,7 +54,12 @@ class EnrichmentPersistenceOwnershipIntegrationTest {
         assertEquals(0, statsService.persist(match, Map.of("HS", "10", "AS", "8")));
         assertEquals(0, oddsService.persist(match, Map.of("B365H", "2.0", "B365D", "3.0", "B365A", "4.0")));
 
+        MatchRepository matchRepository = mock(MatchRepository.class);
+        MatchXgPersistenceService xgService = new MatchXgPersistenceService(matchRepository, new DataSourcePolicy());
+        assertFalse(xgService.upsert(Provider.FOOTBALL_DATA_UK, match,
+                new BigDecimal("0.75"), new BigDecimal("0.25")));
+
         verifyNoInteractions(statsRepository, snapshotService);
-        verifyNoInteractions(bookmakerRepository, oddsRepository, quoteService);
+        verifyNoInteractions(bookmakerRepository, oddsRepository, quoteService, matchRepository);
     }
 }
