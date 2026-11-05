@@ -22,7 +22,7 @@ public class FootballDataUkCsvException extends ProviderDataException {
     }
 
     public FootballDataUkCsvException(Reason reason, String message, Throwable cause, boolean retryable) {
-        super(message, cause, reason == Reason.NOT_AVAILABLE, retryable);
+        super(message, cause, reason == null ? null : reason.name(), reason == Reason.NOT_AVAILABLE, retryable);
         this.reason = reason;
         this.retryable = retryable;
     }

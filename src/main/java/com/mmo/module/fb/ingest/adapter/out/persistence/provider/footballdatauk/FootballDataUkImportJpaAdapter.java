@@ -19,7 +19,7 @@ import com.mmo.module.fb.domain.team.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.domain.team.repository.TeamRepository;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkImportPersistencePort;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.service.ExternalIdMappingService;
+import com.mmo.module.fb.ingest.application.port.out.ExternalIdMappingPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -39,7 +39,7 @@ public class FootballDataUkImportJpaAdapter implements FootballDataUkImportPersi
     private final TeamExternalIdRepository teamExternalIdRepository;
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
-    private final ExternalIdMappingService externalIdMappingService;
+    private final ExternalIdMappingPort externalIdMappingService;
 
     @Override public List<League> findAllLeagues() { return leagueRepository.findAll(); }
     @Override public Optional<LeagueExternalId> findLeagueMapping(Long id, Provider provider) {

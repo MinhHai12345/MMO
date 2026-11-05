@@ -1,10 +1,10 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
-import com.mmo.module.fb.ingest.application.port.in.FootballDataUkIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
+import com.mmo.module.fb.ingest.provider.spi.SeasonBatchProvider;
 import com.mmo.module.fb.ingest.application.port.in.MatchEnrichmentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +24,7 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
     private final IngestionDistributedLock distributedLock;
     private final ProviderCheckpointStore checkpointStore;
     private final IngestionPlanFactory planFactory;
-    private final FootballDataUkIngestionUseCase footballDataUkSyncService;
+    private final SeasonBatchProviderRegistry seasonBatchProviderRegistry;
 
     @Override
     public void enrichFinishedMatches() {
@@ -36,66 +36,71 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
     }
 
     private void enrichFinishedMatchesLocked() {
-        IngestionPlan plan = planFactory.historicalPlan();
-        boolean ukEnrichmentRequired = plan.units().stream().anyMatch(unit ->
-                unit.provider() == Provider.FOOTBALL_DATA_UK
-                        && unit.role() == IngestionWorkUnit.Role.PRIMARY
-                        && (unit.dataset() == Dataset.MATCH_STATISTICS
-                        || unit.dataset() == Dataset.MATCH_XG
-                        || unit.dataset() == Dataset.HISTORICAL_ODDS));
-        if (!ukEnrichmentRequired) {
-            log.info("Match enrichment skipped: DataSourcePolicy has no historical Football-Data UK work units");
+        IngestionPlan historicalPlan = planFactory.historicalPlan();
+        java.util.List<SeasonBatchProvider> enrichmentProviders = seasonBatchProviderRegistry.all().stream()
+                .filter(provider -> supportsAnyEnrichmentDataset(provider.getProvider()))
+                .filter(provider -> !seasonIdsForProvider(historicalPlan, provider.getProvider()).isEmpty())
+                .toList();
+        if (enrichmentProviders.isEmpty()) {
+            log.info("Match enrichment skipped: no registered season-batch provider supports enrichment datasets");
             return;
         }
 
-        log.info("Match enrichment plan: provider={}, workUnits={}",
-                Provider.FOOTBALL_DATA_UK, plan.units().stream()
-                        .filter(unit -> unit.provider() == Provider.FOOTBALL_DATA_UK
-                                && (unit.dataset() == Dataset.MATCH_STATISTICS
-                                || unit.dataset() == Dataset.MATCH_XG
-                                || unit.dataset() == Dataset.HISTORICAL_ODDS))
-                        .count());
-
-        java.util.List<String> failedStages = new java.util.ArrayList<>();
-        java.util.List<Long> historicalSeasonIds = plan.units().stream()
-                .filter(unit -> unit.provider() == Provider.FOOTBALL_DATA_UK
-                        && unit.role() == IngestionWorkUnit.Role.PRIMARY
-                        && (unit.dataset() == Dataset.MATCH_STATISTICS
-                        || unit.dataset() == Dataset.MATCH_XG
-                        || unit.dataset() == Dataset.HISTORICAL_ODDS))
-                .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
-        for (Long seasonId : historicalSeasonIds) {
-            try {
-                runStage("football-data-uk/historical-enrichment/season=" + seasonId,
-                        () -> footballDataUkSyncService.syncEnrichmentSeason(seasonId, true));
-            } catch (RuntimeException exception) {
-                failedStages.add("historical/season=" + seasonId + ": " + exception.getMessage());
-            }
-        }
-
         IngestionPlan activePlan = planFactory.activeSeasonPlan();
-        java.util.List<Long> activeSeasonIds = activePlan.units().stream()
-                .filter(unit -> unit.provider() == Provider.FOOTBALL_DATA_UK
-                        && unit.role() == IngestionWorkUnit.Role.PRIMARY
-                        && (unit.dataset() == Dataset.MATCH_STATISTICS
-                        || unit.dataset() == Dataset.MATCH_XG
-                        || unit.dataset() == Dataset.HISTORICAL_ODDS))
-                .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
-        for (Long seasonId : activeSeasonIds) {
-            try {
-                runStage("football-data-uk/active-enrichment/season=" + seasonId,
-                        () -> footballDataUkSyncService.syncEnrichmentSeason(seasonId, false));
-            } catch (RuntimeException exception) {
-                failedStages.add("active/season=" + seasonId + ": " + exception.getMessage());
+        java.util.List<String> failedStages = new java.util.ArrayList<>();
+        for (SeasonBatchProvider provider : enrichmentProviders) {
+            Provider providerId = provider.getProvider();
+            java.util.List<String> providerFailures = new java.util.ArrayList<>();
+            java.util.List<Long> historicalSeasonIds = seasonIdsForProvider(historicalPlan, providerId);
+            java.util.List<Long> activeSeasonIds = seasonIdsForProvider(activePlan, providerId);
+
+            log.info("Match enrichment plan: provider={}, historicalSeasons={}, activeSeasons={}",
+                    providerId, historicalSeasonIds.size(), activeSeasonIds.size());
+            for (Long seasonId : historicalSeasonIds) {
+                try {
+                    runStage(providerId + "/historical-enrichment/season=" + seasonId,
+                            () -> provider.syncEnrichmentSeason(seasonId, true));
+                } catch (RuntimeException exception) {
+                    providerFailures.add(providerId + "/historical/season=" + seasonId
+                            + ": " + exception.getMessage());
+                }
             }
-        }
-        if (failedStages.isEmpty()) {
-            checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK, ENRICHMENT_INITIAL_CHECKPOINT);
+            for (Long seasonId : activeSeasonIds) {
+                try {
+                    runStage(providerId + "/active-enrichment/season=" + seasonId,
+                            () -> provider.syncEnrichmentSeason(seasonId, false));
+                } catch (RuntimeException exception) {
+                    providerFailures.add(providerId + "/active/season=" + seasonId
+                            + ": " + exception.getMessage());
+                }
+            }
+            failedStages.addAll(providerFailures);
+            if (providerFailures.isEmpty()) {
+                checkpointStore.markCompleted(providerId, ENRICHMENT_INITIAL_CHECKPOINT);
+            }
         }
         if (!failedStages.isEmpty()) {
             throw new IllegalStateException("Match enrichment incomplete: " + failedStages);
         }
-        log.info("Match enrichment completed: provider={}", Provider.FOOTBALL_DATA_UK);
+        log.info("Match enrichment completed for providers={}",
+                enrichmentProviders.stream().map(SeasonBatchProvider::getProvider).toList());
+    }
+
+    private boolean supportsAnyEnrichmentDataset(Provider provider) {
+        return seasonBatchProviderRegistry.supports(provider, Dataset.MATCH_STATISTICS)
+                || seasonBatchProviderRegistry.supports(provider, Dataset.MATCH_XG)
+                || seasonBatchProviderRegistry.supports(provider, Dataset.HISTORICAL_ODDS);
+    }
+
+    private java.util.List<Long> seasonIdsForProvider(IngestionPlan plan, Provider provider) {
+        return plan.units().stream()
+                .filter(unit -> unit.provider() == provider
+                        && unit.role() == IngestionWorkUnit.Role.PRIMARY
+                        && (unit.dataset() == Dataset.MATCH_STATISTICS
+                        || unit.dataset() == Dataset.MATCH_XG
+                        || unit.dataset() == Dataset.HISTORICAL_ODDS)
+                        && seasonBatchProviderRegistry.supports(provider, unit.dataset()))
+                .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
     }
 
     private void runStage(String name, Runnable operation) {

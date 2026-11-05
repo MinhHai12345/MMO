@@ -1,5 +1,7 @@
 package com.mmo.module.fb.ingest.application.service.ingestion;
 
+import com.mmo.module.fb.ingest.application.exception.ProviderAccessException;
+import com.mmo.module.fb.ingest.application.exception.ProviderTransportException;
 import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
 import com.mmo.module.fb.ingest.application.service.support.IngestionServiceSupport;
 
@@ -9,9 +11,6 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.team.repository.TeamExternalIdRepository;
-import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballPlanRestrictionException;
-import com.mmo.module.fb.ingest.provider.client.ProviderTransportException;
-import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
@@ -134,17 +133,21 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
                 fixtures = providerRegistry.fixture(selectedProvider).fetchFixtures(
                         new FixtureQuery(externalLeagueId, season.getYear(), from, to,
                                 leagueMapping == null ? null : leagueMapping.getIdentify()));
-            } catch (FootballDataRestrictedResourceException ex) {
-                if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
-                skipped++;
-                log.warn("Skipping fixtures for league {} season {} because football-data.org restricts this resource: {}",
-                        externalLeagueId, season.getYear(), ex.getMessage());
-                continue;
-            } catch (ApiFootballPlanRestrictionException ex) {
-                skipped++;
-                log.warn("Skipping fixtures for league {} season {} because the API-Football plan does not include it: {}",
-                        externalLeagueId, season.getYear(), ex.getMessage());
-                continue;
+            } catch (ProviderAccessException ex) {
+                if (ex.is(ProviderAccessException.Kind.RESOURCE_RESTRICTED)) {
+                    if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
+                    skipped++;
+                    log.warn("Skipping fixtures for league {} season {} because provider access is restricted: {}",
+                            externalLeagueId, season.getYear(), ex.getMessage());
+                    continue;
+                }
+                if (ex.is(ProviderAccessException.Kind.PLAN_RESTRICTED)) {
+                    skipped++;
+                    log.warn("Skipping fixtures for league {} season {} because the provider plan does not include it: {}",
+                            externalLeagueId, season.getYear(), ex.getMessage());
+                    continue;
+                }
+                throw ex;
             } catch (ProviderTransportException ex) {
                 if (selectedProvider == Provider.FOOTBALL_DATA) {
                     throw ex;

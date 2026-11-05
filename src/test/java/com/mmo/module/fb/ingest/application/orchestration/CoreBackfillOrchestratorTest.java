@@ -2,7 +2,7 @@ package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
-import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
+import com.mmo.module.fb.ingest.provider.spi.SeasonBatchProvider;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
@@ -28,7 +28,8 @@ class CoreBackfillOrchestratorTest {
     private AppProperties properties;
     private ProviderCheckpointStore checkpoints;
     private IngestionPlanFactory planFactory;
-    private FootballDataUkIngestionPort footballDataUk;
+    private SeasonBatchProvider footballDataUk;
+    private SeasonBatchProviderRegistry seasonBatchProviderRegistry;
     private LeagueIngestionService leagues;
     private SeasonIngestionService seasons;
     private TeamIngestionService teams;
@@ -53,7 +54,13 @@ class CoreBackfillOrchestratorTest {
 
         checkpoints = mock(ProviderCheckpointStore.class);
         planFactory = mock(IngestionPlanFactory.class);
-        footballDataUk = mock(FootballDataUkIngestionPort.class);
+        footballDataUk = mock(SeasonBatchProvider.class);
+        when(footballDataUk.getProvider()).thenReturn(Provider.FOOTBALL_DATA_UK);
+        when(footballDataUk.supportedDatasets()).thenReturn(java.util.Set.of(
+                Dataset.SEASON, Dataset.TEAM, Dataset.FIXTURE, Dataset.MATCH_STATISTICS,
+                Dataset.MATCH_XG, Dataset.HISTORICAL_ODDS));
+        seasonBatchProviderRegistry = new SeasonBatchProviderRegistry(List.of(footballDataUk));
+        clearInvocations(footballDataUk);
         leagues = mock(LeagueIngestionService.class);
         seasons = mock(SeasonIngestionService.class);
         teams = mock(TeamIngestionService.class);
@@ -62,7 +69,7 @@ class CoreBackfillOrchestratorTest {
         when(planFactory.historicalPlan()).thenReturn(historicalFootballDataPlan());
 
         service = new CoreBackfillOrchestrator(lock, properties, checkpoints, planFactory,
-                footballDataUk, leagues, seasons, teams, fixtures, standings);
+                seasonBatchProviderRegistry, leagues, seasons, teams, fixtures, standings);
     }
 
     @Test
@@ -80,7 +87,7 @@ class CoreBackfillOrchestratorTest {
                 39L, "2024/2025", CheckpointStatus.FAILED);
         verify(teams).syncSeasonForProvider(Provider.FOOTBALL_DATA, 20L);
         verify(fixtures).syncSeasonForProvider(Provider.FOOTBALL_DATA, 20L, null, null);
-        verify(footballDataUk, never()).syncInitialData();
+        verify(footballDataUk, never()).prepareHistoricalSeasons();
     }
 
     @Test
@@ -110,7 +117,9 @@ class CoreBackfillOrchestratorTest {
 
         verify(leagues).syncLeaguesForProvider(Provider.FOOTBALL_DATA);
         verify(seasons).syncSeasonsForProvider(Provider.FOOTBALL_DATA);
-        verifyNoInteractions(teams, fixtures, footballDataUk);
+        verifyNoInteractions(teams, fixtures);
+        verify(footballDataUk, never()).prepareHistoricalSeasons();
+        verify(footballDataUk, never()).syncCoreSeason(anyLong(), anyBoolean());
     }
 
     @Test
@@ -144,7 +153,7 @@ class CoreBackfillOrchestratorTest {
 
         service.syncCoreData(ProviderOverrides.defaults());
 
-        verifyNoInteractions(planFactory, checkpoints, footballDataUk, leagues, seasons, teams, fixtures, standings);
+        verifyNoInteractions(planFactory, checkpoints, seasonBatchProviderRegistry, leagues, seasons, teams, fixtures, standings);
     }
 
     private IngestionPlan historicalFootballDataAndUkPlan() {

@@ -1,6 +1,6 @@
-package com.mmo.module.fb.ingest.repository;
+package com.mmo.module.fb.ingest.adapter.out.persistence.repository;
 
-import com.mmo.module.fb.ingest.entity.CrawlerHealth;
+import com.mmo.module.fb.ingest.adapter.out.persistence.entity.CrawlerHealth;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

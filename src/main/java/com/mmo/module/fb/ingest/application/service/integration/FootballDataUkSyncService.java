@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.application.service.integration;
 
 import com.mmo.AppProperties;
-import com.mmo.module.fb.ingest.application.port.in.FootballDataUkIngestionUseCase;
+import com.mmo.module.fb.ingest.provider.spi.SeasonBatchProvider;
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
@@ -49,6 +49,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Set;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -63,7 +64,7 @@ import java.util.Optional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class FootballDataUkSyncService implements FootballDataUkIngestionUseCase {
+public class FootballDataUkSyncService implements SeasonBatchProvider {
     private static final Provider PROVIDER = Provider.FOOTBALL_DATA_UK;
     private static final MatchProvider MATCH_PROVIDER = MatchProvider.fromName(PROVIDER.name());
     private static final ZoneId SOURCE_ZONE = ZoneId.of("Europe/London");
@@ -160,6 +161,17 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionUseCase
      * Creates the canonical season rows needed by the historical plan without importing CSVs.
      * The orchestrator can then schedule and checkpoint each league/season independently.
      */
+    @Override
+    public Provider getProvider() {
+        return Provider.FOOTBALL_DATA_UK;
+    }
+
+    @Override
+    public Set<Dataset> supportedDatasets() {
+        return Set.of(Dataset.LEAGUE, Dataset.SEASON, Dataset.TEAM, Dataset.FIXTURE,
+                Dataset.MATCH_STATISTICS, Dataset.MATCH_XG, Dataset.HISTORICAL_ODDS);
+    }
+
     @Override
     public void prepareHistoricalSeasons() {
         initialLeagueMappings();
@@ -372,7 +384,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionUseCase
                         failedSeasons++;
                         markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.FAILED);
                         log.error("Football-Data.co.uk CSV failure: league={}, season={}, reason={}, retryable={}",
-                                league.getName(), season.getYear(), exception.getReason(),
+                                league.getName(), season.getYear(), exception.getFailureCode(),
                                 exception.isRetryable(), exception);
                     }
                 } catch (RuntimeException exception) {
@@ -462,7 +474,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionUseCase
                         failedSeasons++;
                         markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.FAILED);
                         log.error("Football-Data.co.uk active-season CSV failure: league={}, season={}, reason={}",
-                                league.getName(), season.getYear(), exception.getReason(), exception);
+                                league.getName(), season.getYear(), exception.getFailureCode(), exception);
                     }
                 } catch (RuntimeException exception) {
                     failedSeasons++;
@@ -550,7 +562,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionUseCase
                         markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.FAILED);
                         log.error("Football-Data UK historical enrichment CSV failure: league={}, season={}, reason={}",
                                 leagueMapping.getLeague().getName(), season.getYear(),
-                                exception.getReason(), exception);
+                                exception.getFailureCode(), exception);
                     }
                 } catch (RuntimeException exception) {
                     failedSeasons++;
@@ -615,7 +627,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionUseCase
                         failed++;
                         markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.FAILED);
                         log.error("Football-Data UK active-season enrichment CSV failure: league={}, season={}, reason={}",
-                                leagueMapping.getLeague().getName(), season.getYear(), exception.getReason(), exception);
+                                leagueMapping.getLeague().getName(), season.getYear(), exception.getFailureCode(), exception);
                     }
                 } catch (RuntimeException exception) {
                     failed++;

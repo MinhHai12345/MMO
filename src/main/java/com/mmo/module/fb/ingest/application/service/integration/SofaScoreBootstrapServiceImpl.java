@@ -1,8 +1,7 @@
 package com.mmo.module.fb.ingest.application.service.integration;
 
-import com.mmo.module.fb.ingest.entity.CrawlerHealth;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.repository.CrawlerHealthRepository;
+import com.mmo.module.fb.ingest.application.port.out.CrawlerHealthStatePort;
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.SofaScoreBootstrapService;
@@ -36,9 +35,6 @@ public class SofaScoreBootstrapServiceImpl implements SofaScoreBootstrapService 
 
     private static final Provider PROVIDER = Provider.SOFA_SCORE;
     private static final String BOOTSTRAP_STATE_NAME = "SOFA_SCORE_CORE_BOOTSTRAP";
-    private static final String RUNNING = "RUNNING";
-    private static final String SUCCESS = "SUCCESS";
-    private static final String FAILED = "FAILED";
 
     private final LeagueIngestionService leagueIngestionService;
     private final TeamIngestionService teamIngestionService;
@@ -47,7 +43,7 @@ public class SofaScoreBootstrapServiceImpl implements SofaScoreBootstrapService 
     private final SeasonExternalIdRepository seasonExternalIdRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
-    private final CrawlerHealthRepository crawlerHealthRepository;
+    private final CrawlerHealthStatePort crawlerHealthStatePort;
 
     @Override
     public void syncInitialDataIfRequired() {
@@ -56,16 +52,7 @@ public class SofaScoreBootstrapServiceImpl implements SofaScoreBootstrapService 
             return;
         }
 
-        CrawlerHealth state = crawlerHealthRepository.findByCrawlerName(BOOTSTRAP_STATE_NAME)
-                .orElseGet(() -> CrawlerHealth.builder()
-                        .crawlerName(BOOTSTRAP_STATE_NAME)
-                        .status(RUNNING)
-                        .errorCount(0)
-                        .build());
-        state.setStatus(RUNNING);
-        state.setLastRun(Instant.now());
-        state.setLastErrorMessage(null);
-        crawlerHealthRepository.save(state);
+        crawlerHealthStatePort.markRunning(BOOTSTRAP_STATE_NAME, Instant.now());
 
         try {
             log.info("Starting SofaScore cold-start import: leagues/seasons -> current-season teams -> fixtures");
@@ -82,10 +69,7 @@ public class SofaScoreBootstrapServiceImpl implements SofaScoreBootstrapService 
             long currentSeasonFixtures = countCurrentSeasonFixtures();
             requireMappings("current-season fixture", currentSeasonFixtures);
 
-            state.setStatus(SUCCESS);
-            state.setLastSuccess(Instant.now());
-            state.setLastErrorMessage(null);
-            crawlerHealthRepository.save(state);
+            crawlerHealthStatePort.markSucceeded(BOOTSTRAP_STATE_NAME, Instant.now());
 
             log.info("SofaScore cold-start import completed. leagues={}, seasons={}, teams={}, current-season fixtures={}",
                     leagueExternalIdRepository.findAllByProvider(PROVIDER).size(),
@@ -93,10 +77,7 @@ public class SofaScoreBootstrapServiceImpl implements SofaScoreBootstrapService 
                     teamExternalIdRepository.findAllByProvider(PROVIDER).size(),
                     currentSeasonFixtures);
         } catch (RuntimeException exception) {
-            state.setStatus(FAILED);
-            state.setErrorCount((state.getErrorCount() == null ? 0 : state.getErrorCount()) + 1);
-            state.setLastErrorMessage(exception.getMessage());
-            crawlerHealthRepository.save(state);
+            crawlerHealthStatePort.markFailed(BOOTSTRAP_STATE_NAME, Instant.now(), exception.getMessage());
             log.error("SofaScore bootstrap failed and remains retryable: {}", exception.getMessage(), exception);
             throw exception;
         }
@@ -110,8 +91,7 @@ public class SofaScoreBootstrapServiceImpl implements SofaScoreBootstrapService 
             return true;
         }
 
-        CrawlerHealth state = crawlerHealthRepository.findByCrawlerName(BOOTSTRAP_STATE_NAME).orElse(null);
-        return state == null || !SUCCESS.equalsIgnoreCase(state.getStatus())
+        return !crawlerHealthStatePort.isSuccessful(BOOTSTRAP_STATE_NAME)
                 || hasCurrentSeasonWithoutSofaScoreFixtures();
     }
 

@@ -1,8 +1,10 @@
 package com.mmo.module.fb.ingest.provider.footballdata.client;
 
-/** Indicates that the configured football-data.org subscription cannot access a resource. */
-public class FootballDataRestrictedResourceException extends IllegalStateException {
+import com.mmo.module.fb.ingest.application.exception.ProviderAccessException;
+
+/** Provider-neutral classification of a resource unavailable to the current subscription. */
+public class FootballDataRestrictedResourceException extends ProviderAccessException {
     public FootballDataRestrictedResourceException(String message, Throwable cause) {
-        super(message, cause);
+        super(Kind.RESOURCE_RESTRICTED, message, cause);
     }
 }

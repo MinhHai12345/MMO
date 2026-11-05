@@ -27,7 +27,7 @@ public class SofaScoreLineupsMapper {
             if (lineupPlayer == null || lineupPlayer.player() == null
                     || lineupPlayer.player().id() == null || lineupPlayer.player().name() == null) continue;
             var player = lineupPlayer.player();
-            String position = hasText(lineupPlayer.position()) ? lineupPlayer.position() : player.position();
+            String position = hasText(player.position()) ? player.position() : lineupPlayer.position();
             result.add(new ProviderLineupPlayer(
                     player.id().toString(), player.name(), position, player.nationality(),
                     player.height(), player.weight(), mapStatistics(lineupPlayer.statistics())));

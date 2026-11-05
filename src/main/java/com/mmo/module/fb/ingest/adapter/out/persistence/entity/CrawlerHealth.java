@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.entity;
+package com.mmo.module.fb.ingest.adapter.out.persistence.entity;
 
 import com.mmo.core.entity.AbstractEntity;
 import jakarta.persistence.*;

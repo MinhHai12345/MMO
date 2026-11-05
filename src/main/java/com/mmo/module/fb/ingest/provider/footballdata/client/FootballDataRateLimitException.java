@@ -1,11 +1,10 @@
 package com.mmo.module.fb.ingest.provider.footballdata.client;
 
-/**
- * Signals that football-data.org rejected a request because the API quota was exceeded.
- */
-public class FootballDataRateLimitException extends IllegalStateException {
+import com.mmo.module.fb.ingest.application.exception.ProviderAccessException;
 
+/** Provider-neutral classification of a provider quota/rate-limit response. */
+public class FootballDataRateLimitException extends ProviderAccessException {
     public FootballDataRateLimitException(String message, Throwable cause) {
-        super(message, cause);
+        super(Kind.RATE_LIMITED, message, cause);
     }
 }
