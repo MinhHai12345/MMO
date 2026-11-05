@@ -4,6 +4,7 @@ import com.mmo.module.fb.domain.match.entity.Match;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
+import com.mmo.module.fb.ingest.persistence.SourceAwareMergeService;
 import com.mmo.module.fb.domain.match.entity.MatchAdvancedStats;
 import com.mmo.module.fb.domain.match.repository.MatchAdvancedStatsRepository;
 import com.mmo.module.fb.domain.match.service.MatchStatisticsSnapshotPersistenceService;
@@ -29,6 +30,7 @@ public class FootballDataUkMatchStatisticsPersistenceService {
     private final MatchAdvancedStatsRepository statsRepository;
     private final MatchStatisticsSnapshotPersistenceService snapshotPersistenceService;
     private final DataSourcePolicy dataSourcePolicy;
+    private final SourceAwareMergeService sourceAwareMergeService;
 
     @Transactional
     public int persist(Match match, Map<String, String> row) {
@@ -78,19 +80,19 @@ public class FootballDataUkMatchStatisticsPersistenceService {
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
         boolean changed = false;
 
-        changed |= setIfMissing(stats.getTotalShots(), shots, stats::setTotalShots);
-        changed |= setIfMissing(stats.getShotsOnTarget(), onTarget, stats::setShotsOnTarget);
-        changed |= setIfMissing(stats.getHitWoodwork(), hitWoodwork, stats::setHitWoodwork);
-        changed |= setIfMissing(stats.getCornerKicks(), corners, stats::setCornerKicks);
-        changed |= setIfMissing(stats.getFouls(), fouls, stats::setFouls);
-        changed |= setIfMissing(stats.getFreeKicksConceded(), freeKicksConceded, stats::setFreeKicksConceded);
-        changed |= setIfMissing(stats.getOffsides(), offsides, stats::setOffsides);
-        changed |= setIfMissing(stats.getYellowCards(), yellow, stats::setYellowCards);
-        changed |= setIfMissing(stats.getRedCards(), red, stats::setRedCards);
-        changed |= setIfMissing(stats.getBookingPoints(), bookingPoints, stats::setBookingPoints);
-        changed |= setIfMissing(stats.getXg(), xg, stats::setXg);
-        changed |= setIfMissing(stats.getXga(), xga, stats::setXga);
-        changed |= setIfMissing(stats.getScored(), scored, stats::setScored);
+        changed |= setIfMissing(match, team, "total_shots", stats.getTotalShots(), shots, stats::setTotalShots);
+        changed |= setIfMissing(match, team, "shots_on_target", stats.getShotsOnTarget(), onTarget, stats::setShotsOnTarget);
+        changed |= setIfMissing(match, team, "hit_woodwork", stats.getHitWoodwork(), hitWoodwork, stats::setHitWoodwork);
+        changed |= setIfMissing(match, team, "corner_kicks", stats.getCornerKicks(), corners, stats::setCornerKicks);
+        changed |= setIfMissing(match, team, "fouls", stats.getFouls(), fouls, stats::setFouls);
+        changed |= setIfMissing(match, team, "free_kicks_conceded", stats.getFreeKicksConceded(), freeKicksConceded, stats::setFreeKicksConceded);
+        changed |= setIfMissing(match, team, "offsides", stats.getOffsides(), offsides, stats::setOffsides);
+        changed |= setIfMissing(match, team, "yellow_cards", stats.getYellowCards(), yellow, stats::setYellowCards);
+        changed |= setIfMissing(match, team, "red_cards", stats.getRedCards(), red, stats::setRedCards);
+        changed |= setIfMissing(match, team, "booking_points", stats.getBookingPoints(), bookingPoints, stats::setBookingPoints);
+        changed |= setIfMissing(match, team, "xg", stats.getXg(), xg, stats::setXg);
+        changed |= setIfMissing(match, team, "xga_against", stats.getXga(), xga, stats::setXga);
+        changed |= setIfMissing(match, team, "scored", stats.getScored(), scored, stats::setScored);
 
         // "missed" means missed chances; goals conceded must not be stored in that field.
         if (stats.getResult() == null && outcome != null) {
@@ -120,17 +122,18 @@ public class FootballDataUkMatchStatisticsPersistenceService {
         return true;
     }
 
-    private boolean setIfMissing(Integer current, Integer incoming, Consumer<Integer> setter) {
-        if (current != null || incoming == null) return false;
-        setter.accept(incoming);
-        return true;
+    private boolean setIfMissing(Match match, Team team, String field,
+                                 Integer current, Integer incoming, Consumer<Integer> setter) {
+        if (incoming == null) return false;
+        return sourceAwareMergeService.merge(match, Provider.FOOTBALL_DATA_UK, Dataset.MATCH_STATISTICS,
+                "team:" + team.getId() + ":" + field, current != null, null, () -> setter.accept(incoming));
     }
 
-    private boolean setIfMissing(BigDecimal current, BigDecimal incoming,
-                                 Consumer<BigDecimal> setter) {
-        if (current != null || incoming == null) return false;
-        setter.accept(incoming);
-        return true;
+    private boolean setIfMissing(Match match, Team team, String field,
+                                 BigDecimal current, BigDecimal incoming, Consumer<BigDecimal> setter) {
+        if (incoming == null) return false;
+        return sourceAwareMergeService.merge(match, Provider.FOOTBALL_DATA_UK, Dataset.MATCH_STATISTICS,
+                "team:" + team.getId() + ":" + field, current != null, null, () -> setter.accept(incoming));
     }
 
     private static Integer integer(String raw) {
