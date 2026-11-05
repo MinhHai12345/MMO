@@ -5,7 +5,7 @@ import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.service.MatchEnrichmentService;
+import com.mmo.module.fb.ingest.application.port.in.MatchEnrichmentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

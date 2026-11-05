@@ -1,6 +1,9 @@
 package com.mmo.module.fb.ingest.service;
 
-/** Application use case for enriching canonical matches with historical and player statistics. */
-public interface MatchEnrichmentService {
-    void enrichFinishedMatches();
+/**
+ * @deprecated Use {@code application.port.in.MatchEnrichmentService}.
+ */
+@Deprecated(forRemoval = false)
+public interface MatchEnrichmentService
+        extends com.mmo.module.fb.ingest.application.port.in.MatchEnrichmentService {
 }

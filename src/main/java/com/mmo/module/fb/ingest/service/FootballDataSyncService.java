@@ -1,8 +1,9 @@
 package com.mmo.module.fb.ingest.service;
 
-import com.mmo.module.fb.ingest.enums.Provider;
-
-/** Application use case for the incremental football-data synchronization workflow. */
-public interface FootballDataSyncService {
-    void sync(ProviderOverrides overrides, Provider oddsProviderOverride);
+/**
+ * @deprecated Use {@code application.port.in.FootballDataSyncService}.
+ */
+@Deprecated(forRemoval = false)
+public interface FootballDataSyncService
+        extends com.mmo.module.fb.ingest.application.port.in.FootballDataSyncService {
 }

@@ -1,7 +1,9 @@
 package com.mmo.module.fb.ingest.service;
 
-import com.mmo.module.fb.ingest.enums.Provider;
-
-public interface SeasonIngestionService {
-    void syncSeasonsForProvider(Provider selectedProvider);
+/**
+ * @deprecated Use {@code application.port.in.SeasonIngestionService}.
+ */
+@Deprecated(forRemoval = false)
+public interface SeasonIngestionService
+        extends com.mmo.module.fb.ingest.application.port.in.SeasonIngestionService {
 }

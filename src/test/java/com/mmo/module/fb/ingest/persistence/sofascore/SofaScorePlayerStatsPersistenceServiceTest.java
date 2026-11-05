@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.persistence.sofascore;
+package com.mmo.module.fb.ingest.adapter.out.persistence.provider.sofascore;
 
 import com.mmo.module.fb.domain.league.entity.League;
 import com.mmo.module.fb.domain.league.entity.Season;
@@ -14,7 +14,7 @@ import com.mmo.module.fb.domain.player.repository.PlayerMatchStatsRepository;
 import com.mmo.module.fb.domain.player.repository.PlayerRepository;
 import com.mmo.module.fb.domain.team.entity.Team;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.persistence.SourceAwareMergeService;
+import com.mmo.module.fb.ingest.adapter.out.persistence.core.SourceAwareMergeService;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreLineupsResponseDTO;
 import org.junit.jupiter.api.Test;

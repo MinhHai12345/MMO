@@ -1,4 +1,6 @@
-package com.mmo.module.fb.ingest.service.impl;
+package com.mmo.module.fb.ingest.application.service.integration;
+
+import com.mmo.module.fb.ingest.application.service.integration.FootballDataUkSyncService;
 
 import org.junit.jupiter.api.Test;
 

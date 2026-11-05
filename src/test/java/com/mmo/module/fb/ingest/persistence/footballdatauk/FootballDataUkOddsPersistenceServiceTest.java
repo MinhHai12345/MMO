@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.persistence.footballdatauk;
+package com.mmo.module.fb.ingest.adapter.out.persistence.provider.footballdatauk;
 
 import com.mmo.module.fb.domain.match.entity.Bookmaker;
 import com.mmo.module.fb.domain.match.entity.Match;

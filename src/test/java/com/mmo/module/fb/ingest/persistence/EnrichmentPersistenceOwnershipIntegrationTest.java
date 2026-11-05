@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.persistence;
+package com.mmo.module.fb.ingest.adapter.out.persistence.core;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
@@ -11,8 +11,8 @@ import com.mmo.module.fb.domain.match.repository.MatchOddsRepository;
 import com.mmo.module.fb.domain.match.service.MatchStatisticsSnapshotPersistenceService;
 import com.mmo.module.fb.domain.match.service.MatchOddsQuotePersistenceService;
 import com.mmo.module.fb.domain.match.entity.Match;
-import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkMatchStatisticsPersistenceService;
-import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkOddsPersistenceService;
+import com.mmo.module.fb.ingest.adapter.out.persistence.provider.footballdatauk.FootballDataUkMatchStatisticsPersistenceService;
+import com.mmo.module.fb.ingest.adapter.out.persistence.provider.footballdatauk.FootballDataUkOddsPersistenceService;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
