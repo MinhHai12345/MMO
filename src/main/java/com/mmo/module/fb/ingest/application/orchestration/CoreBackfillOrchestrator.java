@@ -25,7 +25,6 @@ import org.springframework.util.StringUtils;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Coordinates the one-time historical Core backfill and recovery workflow.
@@ -40,8 +39,6 @@ import java.util.Set;
 public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
 
     private static final String INITIAL_CORE_CHECKPOINT = "CORE_INITIAL_BACKFILL";
-    private static final String TEAM_BACKFILL_CHECKPOINT = "CORE_BACKFILL_TEAMS";
-    private static final String FIXTURE_BACKFILL_CHECKPOINT = "CORE_BACKFILL_FIXTURES";
 
     private final IngestionDistributedLock distributedLock;
     private final AppProperties appProperties;
@@ -121,13 +118,14 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
             log.info("Football-Data fixture backfill already complete for all planned seasons");
         }
 
-        if (ukCoreRequired && !checkpointStore.isCompleted(
-                Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL")) {
+        if (ukCoreRequired) {
+            // The UK importer owns recovery at provider + dataset + league + season scope.
+            // Always revisit its catalogue: completed/unavailable historical units are skipped
+            // by scoped checkpoints, partial/failed units are retried, and the current season
+            // is refreshed. The legacy provider-wide marker must never suppress new work.
             if (footballDataUkSyncService.syncInitialData()) {
-                checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL");
+                checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK, INITIAL_CORE_CHECKPOINT);
             }
-        } else if (ukCoreRequired) {
-            log.info("Football-Data UK historical Core backfill already complete");
         }
 
         log.info("Historical Core backfill orchestration completed");
@@ -211,21 +209,6 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
     private boolean isProviderEnabled(Provider provider) {
         AppProperties.ProviderConfig config = appProperties.getIngestion().getProviderConfig().get(provider);
         return config != null && config.isEnabled();
-    }
-
-    private boolean isInitialBackfillCompleted(Provider provider) {
-        return checkpointStore.isCompleted(provider, INITIAL_CORE_CHECKPOINT);
-    }
-
-    private boolean isResourceBackfillCompleted(
-            Provider provider, String checkpointKey, boolean legacyCheckpointCompatible) {
-        boolean resourceCheckpoint = checkpointStore.isCompleted(provider, checkpointKey);
-        if (resourceCheckpoint || !legacyCheckpointCompatible) return resourceCheckpoint;
-
-        // The legacy provider-level checkpoint is safe only for the old default topology,
-        // where one provider supplied every Core resource and both historical stages ran
-        // before the checkpoint was written.
-        return checkpointStore.isCompleted(provider, INITIAL_CORE_CHECKPOINT);
     }
 
     private void runStage(String name, Runnable operation) {

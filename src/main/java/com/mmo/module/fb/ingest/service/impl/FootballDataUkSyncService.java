@@ -390,7 +390,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                             leagueMapping.getLeague().getName(), startYear);
                     continue;
                 }
-                if (isEnrichmentCheckpointCompleted(leagueId, season.getYear())) continue;
+                if (isEnrichmentCheckpointSatisfied(leagueId, season.getYear())) continue;
 
                 markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.RUNNING);
                 try {
@@ -750,10 +750,10 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
     private boolean isHistoricalSeasonImported(Season season, LeagueExternalId leagueMapping) {
         Long leagueId = leagueMapping.getLeague().getId();
         String seasonYear = season.getYear();
-        boolean teamCompleted = checkpointStore.isCompleted(PROVIDER, Dataset.TEAM, leagueId, seasonYear);
-        boolean seasonCompleted = checkpointStore.isCompleted(PROVIDER, Dataset.SEASON, leagueId, seasonYear);
-        boolean fixtureCompleted = checkpointStore.isCompleted(PROVIDER, Dataset.FIXTURE, leagueId, seasonYear);
-        if (teamCompleted && seasonCompleted && fixtureCompleted) return true;
+        boolean teamSatisfied = checkpointStore.isSatisfied(PROVIDER, Dataset.TEAM, leagueId, seasonYear);
+        boolean seasonSatisfied = checkpointStore.isSatisfied(PROVIDER, Dataset.SEASON, leagueId, seasonYear);
+        boolean fixtureSatisfied = checkpointStore.isSatisfied(PROVIDER, Dataset.FIXTURE, leagueId, seasonYear);
+        if (teamSatisfied && seasonSatisfied && fixtureSatisfied) return true;
 
         // Migrate the previous season-scoped key and legacy :CORE2 marker into the
         // structured dataset/league/season checkpoint namespace.
@@ -787,10 +787,10 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         checkpointStore.markStatus(PROVIDER, Dataset.FIXTURE, leagueId, season, fixtureStatus);
     }
 
-    private boolean isEnrichmentCheckpointCompleted(Long leagueId, String season) {
-        return checkpointStore.isCompleted(PROVIDER, Dataset.MATCH_STATISTICS, leagueId, season)
-                && checkpointStore.isCompleted(PROVIDER, Dataset.MATCH_XG, leagueId, season)
-                && checkpointStore.isCompleted(PROVIDER, Dataset.HISTORICAL_ODDS, leagueId, season);
+    private boolean isEnrichmentCheckpointSatisfied(Long leagueId, String season) {
+        return checkpointStore.isSatisfied(PROVIDER, Dataset.MATCH_STATISTICS, leagueId, season)
+                && checkpointStore.isSatisfied(PROVIDER, Dataset.MATCH_XG, leagueId, season)
+                && checkpointStore.isSatisfied(PROVIDER, Dataset.HISTORICAL_ODDS, leagueId, season);
     }
 
     private void markEnrichmentCheckpoint(Long leagueId, String season, CheckpointStatus status) {

@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
 
-    private static final String CORE_INITIAL_CHECKPOINT = "CORE_INITIAL_BACKFILL";
     private static final String ENRICHMENT_INITIAL_CHECKPOINT = "MATCH_ENRICHMENT_INITIAL";
 
     private final IngestionDistributedLock distributedLock;
@@ -57,27 +56,18 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
                                 || unit.dataset() == Dataset.HISTORICAL_ODDS))
                         .count());
 
-        boolean coreReady = checkpointStore.isCompleted(
-                Provider.FOOTBALL_DATA_UK, CORE_INITIAL_CHECKPOINT);
-        if (!coreReady) {
-            log.info("Skipping match enrichment until the 2014+ Football-Data UK Core CSV import is complete");
-            return;
-        }
-
-        runStage("football-data-uk-match-enrichment", this::syncFootballDataUkEnrichment);
+        runStage("football-data-uk-historical-enrichment",
+                () -> {
+                    // Historical recovery is driven by scoped dataset/league/season checkpoints.
+                    // Do not let a legacy provider-wide marker hide newly added or failed seasons.
+                    if (footballDataUkSyncService.syncInitialEnrichment()) {
+                        checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK,
+                                ENRICHMENT_INITIAL_CHECKPOINT);
+                    }
+                });
+        runStage("football-data-uk-active-enrichment",
+                footballDataUkSyncService::syncActiveSeasonsEnrichment);
         log.info("Match enrichment completed: provider={}", Provider.FOOTBALL_DATA_UK);
-    }
-
-    private void syncFootballDataUkEnrichment() {
-        boolean initialEnrichmentComplete = checkpointStore.isCompleted(
-                Provider.FOOTBALL_DATA_UK, ENRICHMENT_INITIAL_CHECKPOINT);
-        if (!initialEnrichmentComplete) {
-            if (footballDataUkSyncService.syncInitialEnrichment()) {
-                checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK, ENRICHMENT_INITIAL_CHECKPOINT);
-            }
-            return;
-        }
-        footballDataUkSyncService.syncActiveSeasonsEnrichment();
     }
 
     private void runStage(String name, Runnable operation) {
