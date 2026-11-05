@@ -49,6 +49,16 @@ class DataSourcePolicyTest {
     }
 
     @Test
+    void assignsSofaScoreAsOwnerForPlayerMatchStatistics() {
+        for (int year = 2014; year <= 2035; year++) {
+            assertEquals(Provider.SOFA_SCORE,
+                    policy.route(Dataset.PLAYER_STATISTICS, year).primary(), "season " + year);
+            assertTrue(policy.isAllowed(Provider.SOFA_SCORE, Dataset.PLAYER_STATISTICS,
+                    Season.builder().year(year + "/" + (year + 1)).build()));
+        }
+    }
+
+    @Test
     void upcomingOddsRemainDisabled() {
         assertNull(policy.route(Dataset.UPCOMING_ODDS, 2026).primary());
     }
