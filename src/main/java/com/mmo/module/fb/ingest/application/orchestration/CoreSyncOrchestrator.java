@@ -67,6 +67,7 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
             return;
         }
 
+        List<String> failedStages = new java.util.ArrayList<>();
         // League/season catalogues are provider-specific identity namespaces. They are
         // initialized before the season-scoped resources; season routing itself remains
         // controlled by the plan rather than the global resource provider properties.
@@ -89,11 +90,10 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
             } else {
                 runPlannedStage("catalogue/seasons/" + catalogueProvider, Dataset.SEASON,
                         footballDataSeasons,
-                        () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider));
+                        () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider), failedStages);
             }
         }
 
-        List<String> failedStages = new java.util.ArrayList<>();
         List<IngestionWorkUnit> footballDataTeams = plan.units(
                 Dataset.TEAM, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
         if (!footballDataTeams.isEmpty()) {
