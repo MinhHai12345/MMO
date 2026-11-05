@@ -13,12 +13,8 @@ public interface ProviderCheckpointStore {
         return isCompleted(provider, checkpointKey(dataset, leagueId, season));
     }
 
-    default void markStatus(Provider provider, Dataset dataset, Long leagueId,
-                            String season, CheckpointStatus status) {
-        if (status == CheckpointStatus.COMPLETED) {
-            markCompleted(provider, checkpointKey(dataset, leagueId, season));
-        }
-    }
+    void markStatus(Provider provider, Dataset dataset, Long leagueId,
+                    String season, CheckpointStatus status);
 
     static String checkpointKey(Dataset dataset, Long leagueId, String season) {
         if (dataset == null || leagueId == null || season == null || season.isBlank()) {
