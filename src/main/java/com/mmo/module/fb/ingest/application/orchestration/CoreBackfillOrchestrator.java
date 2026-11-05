@@ -30,9 +30,10 @@ import java.util.List;
 /**
  * Coordinates the one-time historical Core backfill and recovery workflow.
  *
- * <p>Football-Data free tier owns seasons from 2023 onward. Football-Data.co.uk is imported
- * separately from 2014 onward. Completion is persisted per resource/provider so a provider
- * selected for one resource cannot mark another resource's historical import as complete.</p>
+ * <p>DataSourcePolicy selects the provider owner and allowed fallbacks independently for
+ * each dataset/season. Providers that expose the optional season-batch capability may prepare
+ * and import their own historical season data without adding provider-specific branches here.
+ * Completion is persisted per resource/provider.</p>
  */
 @Slf4j
 @Service
