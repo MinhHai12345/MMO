@@ -5,7 +5,7 @@ import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
-import com.mmo.module.fb.ingest.application.service.identity.ExternalIdMappingService;
+import com.mmo.module.fb.ingest.adapter.out.persistence.identity.ExternalIdMappingService;
 import com.mmo.module.fb.ingest.application.port.out.TeamPersistenceService;
 import com.mmo.module.fb.domain.league.entity.Season;
 import com.mmo.module.fb.domain.team.entity.Team;
