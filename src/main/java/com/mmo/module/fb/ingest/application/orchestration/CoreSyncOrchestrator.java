@@ -110,7 +110,8 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
             Provider providerId = provider.getProvider();
             List<Long> activeSeasonIds = plan.units().stream()
                     .filter(unit -> unit.provider() == providerId
-                            && (unit.dataset() == Dataset.TEAM || unit.dataset() == Dataset.FIXTURE))
+                            && (unit.dataset() == Dataset.TEAM || unit.dataset() == Dataset.FIXTURE)
+                            && seasonBatchProviderRegistry.supports(providerId, unit.dataset()))
                     .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
             for (Long seasonId : activeSeasonIds) {
                 try {
