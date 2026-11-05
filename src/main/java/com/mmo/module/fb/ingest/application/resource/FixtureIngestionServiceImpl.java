@@ -77,8 +77,14 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
         List<Season> seasons = includeHistoricalSeasons
                 ? ingestionSupport.allMappedSeasonsToSync(selectedProvider, Dataset.FIXTURE)
                 : ingestionSupport.seasonsToSync(selectedProvider, Dataset.FIXTURE);
-        if (seasons.isEmpty() && selectedProvider == Provider.FOOTBALL_DATA) {
-            throw new IllegalStateException("No mapped seasons available for Football-Data fixture ingestion");
+        if (seasons.isEmpty()) {
+            if (!ingestionSupport.hasMappedSeasons(selectedProvider, includeHistoricalSeasons)) {
+                throw new IllegalStateException("No mapped seasons available for " + selectedProvider
+                        + " fixture ingestion");
+            }
+            log.info("Skipping fixture ingestion via {}: no selected season is owned by this provider",
+                    selectedProvider);
+            return;
         }
         Map<Long, com.mmo.module.fb.league.entity.LeagueExternalId> leagueMappingsByLeagueId = new HashMap<>();
         leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->

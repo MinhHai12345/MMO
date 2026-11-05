@@ -69,8 +69,14 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
         List<Season> seasons = includeHistoricalSeasons
                 ? ingestionSupport.allMappedSeasonsToSync(selectedProvider, Dataset.TEAM)
                 : ingestionSupport.seasonsToSync(selectedProvider, Dataset.TEAM);
-        if (seasons.isEmpty() && selectedProvider == Provider.FOOTBALL_DATA) {
-            throw new IllegalStateException("No mapped seasons available for Football-Data team ingestion");
+        if (seasons.isEmpty()) {
+            if (!ingestionSupport.hasMappedSeasons(selectedProvider, includeHistoricalSeasons)) {
+                throw new IllegalStateException("No mapped seasons available for " + selectedProvider
+                        + " team ingestion");
+            }
+            log.info("Skipping team ingestion via {}: no selected season is owned by this provider",
+                    selectedProvider);
+            return;
         }
         for (Season season : seasons) {
             LeagueExternalId leagueMapping = leagueMappingsByLeagueId.get(season.getLeague().getId());
