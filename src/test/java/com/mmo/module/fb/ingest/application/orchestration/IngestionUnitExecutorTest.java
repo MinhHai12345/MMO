@@ -68,6 +68,16 @@ class IngestionUnitExecutorTest {
     }
 
     @Test
+    void recordsUnavailableOutcomeAsTerminalCheckpoint() {
+        IngestionUnitResult result = executor.execute(unit, false,
+                () -> { throw new com.mmo.module.fb.ingest.application.exception.IngestionNotAvailableException("no standings"); });
+
+        assertEquals(CheckpointStatus.NOT_AVAILABLE, result.status());
+        verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.FIXTURE,
+                34L, "2024/2025", CheckpointStatus.NOT_AVAILABLE);
+    }
+
+    @Test
     void executionReportSeparatesUnavailableFromCompleted() {
         IngestionUnitResult completed = IngestionUnitResult.completed(unit, 12);
         IngestionUnitResult unavailable = IngestionUnitResult.notAvailable(unit, "not published", 4);
