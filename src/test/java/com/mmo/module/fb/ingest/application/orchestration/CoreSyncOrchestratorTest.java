@@ -71,7 +71,7 @@ class CoreSyncOrchestratorTest {
         verify(teams).syncSeasonForProvider(Provider.FOOTBALL_DATA, 100L);
         verify(fixtures).syncSeasonForProvider(Provider.FOOTBALL_DATA, 100L, null, null);
         verify(standings).syncSeasonForProvider(Provider.FOOTBALL_DATA, 100L);
-        verify(uk).syncActiveSeasonsData();
+        verify(uk).syncCoreSeason(100L, false);
         verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.TEAM,
                 39L, "2025/2026", CheckpointStatus.RUNNING);
         verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.TEAM,
