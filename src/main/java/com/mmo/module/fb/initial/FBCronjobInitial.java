@@ -1,4 +1,4 @@
-package com.mmo.module.fb.config;
+package com.mmo.module.fb.initial;
 
 import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.repository.CronJobRepository;
