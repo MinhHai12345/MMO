@@ -1,12 +1,9 @@
 package com.mmo.module.fb.ingest.service;
 
-import com.mmo.module.fb.ingest.enums.Provider;
-
-import java.time.LocalDate;
-
-public interface FixtureIngestionService {
-    void syncCurrentSeasonFixtures(LocalDate from, LocalDate to);
-    void syncFixturesForProvider(Provider selectedProvider, LocalDate from, LocalDate to);
-    void syncAllSeasonsForProvider(Provider selectedProvider, LocalDate from, LocalDate to);
-    void syncSeasonForProvider(Provider selectedProvider, Long seasonId, LocalDate from, LocalDate to);
+/**
+ * @deprecated Use {@code application.port.in.FixtureIngestionService}.
+ */
+@Deprecated(forRemoval = false)
+public interface FixtureIngestionService
+        extends com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService {
 }
