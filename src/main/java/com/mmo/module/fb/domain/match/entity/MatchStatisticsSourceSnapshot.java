@@ -18,7 +18,9 @@ import java.time.Instant;
         indexes = {
                 @Index(name = "idx_fb_match_stats_snapshot_provider",
                         columnList = "provider, fetched_at"),
-                @Index(name = "idx_fb_match_stats_snapshot_match", columnList = "match_id, team_id, provider, fetched_at")
+                @Index(name = "idx_fb_match_stats_snapshot_match", columnList = "match_id"),
+                @Index(name = "idx_fb_match_stats_snapshot_latest",
+                        columnList = "match_id, team_id, provider, fetched_at")
         })
 @Getter
 @Setter
