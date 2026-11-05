@@ -2,7 +2,7 @@ package com.mmo.module.fb.ingest.job;
 
 import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.job.AbstractJob;
-import com.mmo.module.fb.ingest.service.FootballDataBootstrapService;
+import com.mmo.module.fb.ingest.application.port.in.FootballDataBootstrapService;
 import com.mmo.module.fb.ingest.service.ProviderOverrides;
 import com.mmo.module.fb.ingest.enums.Provider;
 import lombok.RequiredArgsConstructor;
