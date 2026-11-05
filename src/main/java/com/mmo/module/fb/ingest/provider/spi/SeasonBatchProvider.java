@@ -1,18 +1,11 @@
 package com.mmo.module.fb.ingest.provider.spi;
 
-import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.policy.Dataset;
-
-import java.util.Set;
+import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 
 /**
- * Optional provider capability for importing a whole season in one batch (for example,
- * a season CSV that carries core and enrichment datasets together).
+ * @deprecated Implement the application-owned {@link SeasonBatchIngestionPort} directly.
+ * Kept temporarily so existing provider adapters can migrate independently.
  */
-public interface SeasonBatchProvider {
-    Provider getProvider();
-    Set<Dataset> supportedDatasets();
-    void prepareHistoricalSeasons();
-    void syncCoreSeason(Long seasonId, boolean historical);
-    void syncEnrichmentSeason(Long seasonId, boolean historical);
+@Deprecated(forRemoval = false)
+public interface SeasonBatchProvider extends SeasonBatchIngestionPort {
 }
