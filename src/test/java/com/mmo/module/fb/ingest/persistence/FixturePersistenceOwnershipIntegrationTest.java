@@ -92,7 +92,7 @@ class FixturePersistenceOwnershipIntegrationTest {
                 Provider.FOOTBALL_DATA_UK, ukFixture);
 
         assertTrue(saved);
-        verify(matchRepository).save(argThat(match ->
+        verify(matchRepository, times(2)).save(argThat(match ->
                 match.getHomeScore().equals(2) && match.getAwayScore().equals(1)));
         verify(externalIdMappingService).registerMatch(any(Match.class),
                 eq(Provider.FOOTBALL_DATA_UK), eq("uk-fixture-1"));
