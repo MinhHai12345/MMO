@@ -8,6 +8,7 @@ public enum Dataset {
     FIXTURE,
     STANDINGS,
     MATCH_STATISTICS,
+    PLAYER_STATISTICS,
     MATCH_XG,
     HISTORICAL_ODDS,
     UPCOMING_ODDS
