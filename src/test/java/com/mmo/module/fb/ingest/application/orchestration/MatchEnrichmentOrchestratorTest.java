@@ -40,6 +40,7 @@ class MatchEnrichmentOrchestratorTest {
                 Dataset.SEASON, Dataset.TEAM, Dataset.FIXTURE, Dataset.MATCH_STATISTICS,
                 Dataset.MATCH_XG, Dataset.HISTORICAL_ODDS));
         seasonBatchProviderRegistry = new SeasonBatchProviderRegistry(List.of(footballDataUk));
+        clearInvocations(footballDataUk);
         useCase = new MatchEnrichmentOrchestrator(lock, checkpoints, planFactory, seasonBatchProviderRegistry);
     }
 
