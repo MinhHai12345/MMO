@@ -83,7 +83,8 @@ class MatchEnrichmentOrchestratorTest {
 
         useCase.enrichFinishedMatches();
 
-        verifyNoInteractions(checkpoints, footballDataUk);
+        verifyNoInteractions(checkpoints);
+        verify(footballDataUk, never()).syncEnrichmentSeason(anyLong(), anyBoolean());
     }
 
     @Test
