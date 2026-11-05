@@ -1,6 +1,5 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
-import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.provider.spi.SeasonBatchProvider;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
@@ -25,7 +24,6 @@ import static org.mockito.Mockito.*;
 class CoreSyncOrchestratorTest {
 
     private IngestionDistributedLock lock;
-    private AppProperties properties;
     private IngestionPlanFactory planFactory;
     private ProviderCheckpointStore checkpoints;
     private LeagueIngestionService leagues;
@@ -44,8 +42,6 @@ class CoreSyncOrchestratorTest {
             ((Runnable) invocation.getArgument(1)).run();
             return true;
         }).when(lock).execute(anyString(), any(Runnable.class));
-        properties = new AppProperties();
-        properties.getIngestion().getProviders().setLeague(Provider.FOOTBALL_DATA);
         planFactory = mock(IngestionPlanFactory.class);
         checkpoints = mock(ProviderCheckpointStore.class);
         leagues = mock(LeagueIngestionService.class);
@@ -61,7 +57,7 @@ class CoreSyncOrchestratorTest {
         seasonBatchProviderRegistry = new SeasonBatchProviderRegistry(List.of(uk));
         clearInvocations(uk);
         when(planFactory.activeSeasonPlan()).thenReturn(modernSeasonPlan());
-        useCase = new CoreSyncOrchestrator(lock, properties, planFactory, checkpoints,
+        useCase = new CoreSyncOrchestrator(lock, planFactory, checkpoints,
                 leagues, seasons, teams, fixtures, standings, seasonBatchProviderRegistry);
     }
 
