@@ -1,8 +1,8 @@
 package com.mmo.module.fb.ingest.application.resource;
 
+import com.mmo.module.fb.ingest.application.exception.IngestionNotAvailableException;
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
 import com.mmo.module.fb.ingest.application.support.IngestionServiceSupport;
-
 import com.mmo.AppProperties;
 import com.mmo.module.fb.domain.league.entity.Season;
 import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRateLimitException;
@@ -22,9 +22,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -44,10 +48,6 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
         syncStandingsForProvider(appProperties.getIngestion().getProviders().getStandings());
     }
 
-    /**
-     * Fetch provider data outside a database transaction; each season's rows are persisted
-     * in a separate short transaction by StandingsPersistenceService.
-     */
     @Override
     public void syncStandingsForProvider(Provider selectedProvider) {
         syncStandingsForProvider(selectedProvider, null);
@@ -59,11 +59,13 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
         syncStandingsForProvider(selectedProvider, seasonId);
     }
 
+    /**
+     * Provider calls happen outside a transaction; each standing row is persisted in its own
+     * short transaction. All mapped seasons are audited, including historical seasons.
+     */
     private void syncStandingsForProvider(Provider selectedProvider, Long onlySeasonId) {
         ingestionSupport.requireProviderEnabled(selectedProvider, "standings");
 
-        // Allow standalone scheduled runs to bootstrap missing team mappings without repeating
-        // the full teams endpoint on every standings refresh.
         if (teamExternalIdRepository.findAllByProvider(selectedProvider).isEmpty()) {
             if (onlySeasonId != null) {
                 teamIngestionService.syncSeasonForProvider(selectedProvider, onlySeasonId);
@@ -71,8 +73,8 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
                 teamIngestionService.syncTeamsForProvider(selectedProvider);
             }
         }
-        StandingsProvider provider = providerRegistry.standings(selectedProvider);
 
+        StandingsProvider provider = providerRegistry.standings(selectedProvider);
         Map<Long, String> leagueExternalIdsByLeagueId = new HashMap<>();
         leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
                 leagueExternalIdsByLeagueId.put(mapping.getLeague().getId(), mapping.getExternalId()));
@@ -82,66 +84,138 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
             teamIdsByExternalId.put(mapping.getExternalId(), mapping.getTeam().getId());
         }
 
-        int saved = 0;
-        int skipped = 0;
-        boolean rateLimitInterrupted = false;
         List<Season> seasons = ingestionSupport.standingsSeasonsToSync(selectedProvider);
-        if (onlySeasonId != null) seasons = seasons.stream().filter(s -> onlySeasonId.equals(s.getId())).toList();
-        log.info("Fetching standings for {} season records via {}", seasons.size(), selectedProvider);
+        if (onlySeasonId != null) {
+            seasons = seasons.stream().filter(season -> onlySeasonId.equals(season.getId())).toList();
+            if (seasons.isEmpty()) {
+                throw new IllegalArgumentException("No mapped season owned by " + selectedProvider
+                        + " found for seasonId=" + onlySeasonId);
+            }
+        }
+
+        int fetchedRows = 0;
+        int persistedRows = 0;
+        int unavailableSeasons = 0;
+        int unmappedRows = 0;
+        int invalidRows = 0;
+        int duplicateRows = 0;
+        boolean rateLimitInterrupted = false;
+        boolean partial = false;
+
+        log.info("Fetching standings for {} mapped league-season records via {}",
+                seasons.size(), selectedProvider);
+
         for (Season season : seasons) {
             if (season.getLeague() == null || season.getYear() == null) continue;
-            Long externalLeagueId = IngestionServiceSupport.parseExternalId(leagueExternalIdsByLeagueId.get(season.getLeague().getId()));
+
+            Long externalLeagueId = IngestionServiceSupport.parseExternalId(
+                    leagueExternalIdsByLeagueId.get(season.getLeague().getId()));
             if (externalLeagueId == null) {
-                skipped++;
+                unavailableSeasons++;
+                log.warn("Standings NOT_AVAILABLE: provider={} league={} season={} reason=missing-league-mapping",
+                        selectedProvider, season.getLeague().getId(), season.getYear());
                 continue;
             }
 
-            // This network call happens without a transaction. If football-data.org keeps
-            // returning 429 after its retry/cooldown, stop this resource's sync but preserve
-            // already persisted core data and allow the bootstrap job to finish.
             List<ProviderStanding> rows;
             try {
                 rows = provider.fetchStandings(new StandingsQuery(externalLeagueId, season.getYear()));
             } catch (FootballDataRestrictedResourceException ex) {
                 if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
-                skipped++;
-                log.warn("Skipping standings for league {} season {} because football-data.org restricts this resource: {}",
-                        externalLeagueId, season.getYear(), ex.getMessage());
+                unavailableSeasons++;
+                log.warn("Standings NOT_AVAILABLE: provider={} league={} season={} reason=restricted-resource detail={}",
+                        selectedProvider, externalLeagueId, season.getYear(), ex.getMessage());
                 continue;
             } catch (FootballDataRateLimitException ex) {
-                if (selectedProvider != Provider.FOOTBALL_DATA) {
-                    throw ex;
-                }
+                if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
                 rateLimitInterrupted = true;
                 log.warn("Stopping standings ingestion via {} after repeated rate limiting. "
-                        + "Already persisted {} rows; remaining standings will be retried by a later sync. {}",
-                        selectedProvider, saved, ex.getMessage());
+                                + "Persisted {} rows; remaining seasons will be retried. {}",
+                        selectedProvider, persistedRows, ex.getMessage());
                 break;
             }
+
             if (rows == null || rows.isEmpty()) {
-                skipped++;
-                log.warn("Provider {} returned no standings for league {} season {}; existing standings are preserved",
-                        selectedProvider, externalLeagueId, season.getYear());
+                unavailableSeasons++;
+                String reason = season.getStartDate() != null && season.getStartDate().isAfter(LocalDate.now())
+                        ? "season-not-started" : "provider-returned-empty-standings";
+                log.info("Standings NOT_AVAILABLE: provider={} league={} season={} reason={}; existing rows preserved",
+                        selectedProvider, externalLeagueId, season.getYear(), reason);
                 continue;
             }
+
+            fetchedRows += rows.size();
+            Set<String> seenRows = new HashSet<>();
+            int seasonPersisted = 0;
+            int seasonUnmapped = 0;
+            int seasonInvalid = 0;
+            int seasonDuplicates = 0;
+
             for (ProviderStanding row : rows) {
-                Long teamId = teamIdsByExternalId.get(row.teamExternalId());
-                if (teamId == null) {
-                    skipped++;
+                if (row == null) {
+                    seasonInvalid++;
                     continue;
                 }
+                List<String> issues = row.consistencyIssues();
+                if (!issues.isEmpty()) {
+                    seasonInvalid++;
+                    log.warn("Rejecting inconsistent standings row: provider={} league={} season={} team={} type={} group={} issues={}",
+                            selectedProvider, externalLeagueId, season.getYear(), row.teamExternalId(),
+                            row.standingType(), row.groupName(), issues);
+                    continue;
+                }
+
+                String groupKey = row.groupName() == null ? ""
+                        : row.groupName().trim().toUpperCase(Locale.ROOT);
+                String rowKey = row.teamExternalId() + "|" + row.standingType() + "|" + groupKey;
+                if (!seenRows.add(rowKey)) {
+                    seasonDuplicates++;
+                    log.warn("Duplicate standings row in provider response: provider={} league={} season={} key={}",
+                            selectedProvider, externalLeagueId, season.getYear(), rowKey);
+                    continue;
+                }
+
+                Long teamId = teamIdsByExternalId.get(row.teamExternalId());
+                if (teamId == null) {
+                    seasonUnmapped++;
+                    log.warn("Standings row has no canonical team mapping: provider={} league={} season={} teamExternalId={}",
+                            selectedProvider, externalLeagueId, season.getYear(), row.teamExternalId());
+                    continue;
+                }
+
                 standingsPersistenceService.upsertStanding(selectedProvider, season.getId(), teamId, row);
-                saved++;
+                seasonPersisted++;
             }
+
+            persistedRows += seasonPersisted;
+            unmappedRows += seasonUnmapped;
+            invalidRows += seasonInvalid;
+            duplicateRows += seasonDuplicates;
+            if (seasonUnmapped > 0 || seasonInvalid > 0 || seasonDuplicates > 0) partial = true;
+
+            log.info("Standings coverage: provider={} league={} season={} fetched={} persisted={} unmappedTeams={} invalid={} duplicates={} status={}",
+                    selectedProvider, externalLeagueId, season.getYear(), rows.size(), seasonPersisted,
+                    seasonUnmapped, seasonInvalid, seasonDuplicates,
+                    seasonPersisted == 0 ? "NO_CANONICAL_ROWS" :
+                            (seasonUnmapped + seasonInvalid + seasonDuplicates > 0 ? "PARTIAL" : "COMPLETE"));
         }
+
+        log.info("Standings sync report: provider={} seasons={} unavailableSeasons={} fetchedRows={} persistedRows={} unmappedRows={} invalidRows={} duplicateRows={} rateLimited={}",
+                selectedProvider, seasons.size(), unavailableSeasons, fetchedRows, persistedRows,
+                unmappedRows, invalidRows, duplicateRows, rateLimitInterrupted);
+
         if (rateLimitInterrupted) {
-            log.warn("Standings ingestion via {} partially completed. {} rows upserted, {} rows skipped.",
-                    selectedProvider, saved, skipped);
             throw new IngestionPartialException("Standings ingestion interrupted by provider rate limiting");
         }
-        log.info("Standings ingestion via {} completed. {} rows upserted, {} rows skipped.",
-                selectedProvider, saved, skipped);
+        if (onlySeasonId != null && unavailableSeasons > 0 && fetchedRows == 0) {
+            throw new IngestionNotAvailableException("Provider " + selectedProvider
+                    + " does not currently expose standings for seasonId=" + onlySeasonId);
+        }
+        if (onlySeasonId != null && persistedRows == 0 && fetchedRows > 0) {
+            throw new IngestionPartialException("Standings response contained no persistable canonical team rows");
+        }
+        if (partial) {
+            throw new IngestionPartialException("Standings sync contains unmapped, invalid or duplicate rows");
+        }
     }
-
-
 }
