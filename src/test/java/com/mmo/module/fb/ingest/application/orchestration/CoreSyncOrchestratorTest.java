@@ -7,11 +7,11 @@ import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.service.FixtureIngestionService;
-import com.mmo.module.fb.ingest.service.LeagueIngestionService;
-import com.mmo.module.fb.ingest.service.SeasonIngestionService;
-import com.mmo.module.fb.ingest.service.StandingsIngestionService;
-import com.mmo.module.fb.ingest.service.TeamIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.SeasonIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
