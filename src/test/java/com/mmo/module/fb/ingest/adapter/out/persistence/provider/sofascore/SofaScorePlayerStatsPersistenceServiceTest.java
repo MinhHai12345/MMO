@@ -16,11 +16,13 @@ import com.mmo.module.fb.domain.team.entity.Team;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.adapter.out.persistence.core.SourceAwareMergeService;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreLineupsResponseDTO;
+import com.mmo.module.fb.ingest.provider.model.ProviderLineupPlayer;
+import com.mmo.module.fb.ingest.provider.model.ProviderLineups;
+import com.mmo.module.fb.ingest.provider.model.ProviderPlayerMatchStats;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Map;
+import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -67,13 +69,12 @@ class SofaScorePlayerStatsPersistenceServiceTest {
         SofaScorePlayerStatsPersistenceService service = new SofaScorePlayerStatsPersistenceService(
                 matchRepository, playerRepository, externalIdRepository, statsRepository, mergeService);
 
-        var playerDto = new SofaScoreLineupsResponseDTO.PlayerDTO(
-                123L, "Test Player", "Test", "test-player", "Midfielder", "XX", 180, 75, 8);
-        var lineupPlayer = new SofaScoreLineupsResponseDTO.LineupPlayerDTO(
-                playerDto, 8, "M", false, false, Map.of("goals", 2, "expectedGoals", 0.0));
-        var response = new SofaScoreLineupsResponseDTO(
-                new SofaScoreLineupsResponseDTO.LineupTeamDTO(List.of(lineupPlayer), "4-3-3"),
-                new SofaScoreLineupsResponseDTO.LineupTeamDTO(List.of(), "4-4-2"));
+        var statistics = new ProviderPlayerMatchStats(
+                null, 2, null, null, null, BigDecimal.ZERO, null, null, null,
+                null, null, null, null, null, null, null, null, null);
+        var lineupPlayer = new ProviderLineupPlayer(
+                "123", "Test Player", "Midfielder", "XX", 180, 75, statistics);
+        var response = new ProviderLineups(List.of(lineupPlayer), List.of());
 
         assertEquals(1, service.persist(55L, response));
 
