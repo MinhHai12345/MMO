@@ -1,11 +1,11 @@
 package com.mmo.module.fb.ingest.adapter.out.persistence.core;
 
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
-import com.mmo.module.fb.ingest.entity.ProviderSyncCheckpoint;
+import com.mmo.module.fb.ingest.adapter.out.persistence.entity.ProviderSyncCheckpoint;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.repository.ProviderSyncCheckpointRepository;
+import com.mmo.module.fb.ingest.adapter.out.persistence.repository.ProviderSyncCheckpointRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
