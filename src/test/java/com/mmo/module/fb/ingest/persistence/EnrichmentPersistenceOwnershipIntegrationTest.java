@@ -1,0 +1,57 @@
+package com.mmo.module.fb.ingest.persistence;
+
+import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
+import com.mmo.module.fb.league.entity.League;
+import com.mmo.module.fb.league.entity.Season;
+import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
+import com.mmo.module.fb.match.repository.BookmakerRepository;
+import com.mmo.module.fb.match.repository.MatchOddsRepository;
+import com.mmo.module.fb.match.service.MatchStatisticsSnapshotPersistenceService;
+import com.mmo.module.fb.match.service.MatchOddsQuotePersistenceService;
+import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkMatchStatisticsPersistenceService;
+import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkOddsPersistenceService;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.*;
+
+class EnrichmentPersistenceOwnershipIntegrationTest {
+
+    @Test
+    void ukStatisticsAndOddsCannotWriteUnsupportedCompetition() {
+        League league = new League();
+        league.setId(999L);
+        league.setName("UEFA Champions League");
+        Season season = new Season();
+        season.setId(2024L);
+        season.setYear("2024/2025");
+        season.setLeague(league);
+        Match match = new Match();
+        match.setId(77L);
+        match.setSeason(season);
+
+        MatchAdvancedStatsRepository statsRepository = mock(MatchAdvancedStatsRepository.class);
+        MatchStatisticsSnapshotPersistenceService snapshotService =
+                mock(MatchStatisticsSnapshotPersistenceService.class);
+        FootballDataUkMatchStatisticsPersistenceService statsService =
+                new FootballDataUkMatchStatisticsPersistenceService(
+                        statsRepository, snapshotService, new DataSourcePolicy());
+
+        BookmakerRepository bookmakerRepository = mock(BookmakerRepository.class);
+        MatchOddsRepository oddsRepository = mock(MatchOddsRepository.class);
+        MatchOddsQuotePersistenceService quoteService = mock(MatchOddsQuotePersistenceService.class);
+        FootballDataUkOddsPersistenceService oddsService = new FootballDataUkOddsPersistenceService(
+                bookmakerRepository, oddsRepository, quoteService, new DataSourcePolicy());
+
+        assertEquals(0, statsService.persist(match, Map.of("HS", "10", "AS", "8")));
+        assertEquals(0, oddsService.persist(match, Map.of("B365H", "2.0", "B365D", "3.0", "B365A", "4.0")));
+
+        verifyNoInteractions(statsRepository, snapshotService);
+        verifyNoInteractions(bookmakerRepository, oddsRepository, quoteService);
+    }
+}
