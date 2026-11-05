@@ -117,12 +117,12 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
             catalogueSeasonUnits.forEach(unit -> checkpointStore.markStatus(unit.provider(), Dataset.SEASON,
                     unit.leagueId(), unit.season(), CheckpointStatus.COMPLETED));
         }
-        List<IngestionWorkUnit> nonBatchTeams = plan.units(
-                        Dataset.TEAM, IngestionWorkUnit.Role.PRIMARY).stream()
+        List<IngestionWorkUnit> nonBatchTeams = plan.units().stream()
+                .filter(unit -> unit.dataset() == Dataset.TEAM)
                 .filter(unit -> !seasonBatchProviderRegistry.supports(unit.provider(), Dataset.TEAM))
                 .toList();
-        List<IngestionWorkUnit> nonBatchFixtures = plan.units(
-                        Dataset.FIXTURE, IngestionWorkUnit.Role.PRIMARY).stream()
+        List<IngestionWorkUnit> nonBatchFixtures = plan.units().stream()
+                .filter(unit -> unit.dataset() == Dataset.FIXTURE)
                 .filter(unit -> !seasonBatchProviderRegistry.supports(unit.provider(), Dataset.FIXTURE))
                 .toList();
         log.info("Historical Core plan created: units={}, nonBatchTeams={}, nonBatchFixtures={}, batchProviders={}",
@@ -212,7 +212,7 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
         }
 
         List<Provider> ordered = new ArrayList<>(new LinkedHashSet<>(providers));
-        ordered.sort(java.util.Comparator.comparing(Enum::name));
+        ordered.sort(java.util.Comparator.comparing(Provider::name));
         ordered.forEach(this::validateProvider);
 
         log.info("Starting multi-provider historical Core import: {}", ordered);
@@ -253,17 +253,20 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
                     }
                 }
             }
-            plan.units(Dataset.TEAM, provider, IngestionWorkUnit.Role.PRIMARY).stream()
+            plan.units().stream().filter(unit -> unit.provider() == provider
+                            && unit.dataset() == Dataset.TEAM)
                     .filter(unit -> !seasonBatchProviderRegistry.supports(provider, Dataset.TEAM))
                     .forEach(unit -> runUnit(unit, () ->
                             teamIngestionService.syncSeasonForProvider(provider, unit.seasonId()),
                             failedStages, results));
-            plan.units(Dataset.FIXTURE, provider, IngestionWorkUnit.Role.PRIMARY).stream()
+            plan.units().stream().filter(unit -> unit.provider() == provider
+                            && unit.dataset() == Dataset.FIXTURE)
                     .filter(unit -> !seasonBatchProviderRegistry.supports(provider, Dataset.FIXTURE))
                     .forEach(unit -> runUnit(unit, () ->
                             fixtureIngestionService.syncSeasonForProvider(provider, unit.seasonId(), null, null),
                             failedStages, results));
-            plan.units(Dataset.STANDINGS, provider, IngestionWorkUnit.Role.PRIMARY).stream()
+            plan.units().stream().filter(unit -> unit.provider() == provider
+                            && unit.dataset() == Dataset.STANDINGS)
                     .filter(unit -> !seasonBatchProviderRegistry.supports(provider, Dataset.STANDINGS))
                     .forEach(unit -> runUnit(unit, () ->
                             standingsIngestionService.syncSeasonForProvider(provider, unit.seasonId()),
