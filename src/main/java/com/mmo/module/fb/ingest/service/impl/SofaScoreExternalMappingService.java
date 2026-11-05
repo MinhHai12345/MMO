@@ -2,9 +2,9 @@ package com.mmo.module.fb.ingest.service.impl;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.domain.match.enums.MatchProvider;
-import com.mmo.module.fb.ingest.service.FixtureIngestionService;
-import com.mmo.module.fb.ingest.service.LeagueIngestionService;
-import com.mmo.module.fb.ingest.service.TeamIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
 import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.league.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.domain.match.repository.MatchExternalIdRepository;
