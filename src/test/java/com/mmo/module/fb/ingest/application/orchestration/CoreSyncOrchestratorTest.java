@@ -99,6 +99,17 @@ class CoreSyncOrchestratorTest {
     }
 
     @Test
+    void recordsPartialCheckpointWhenStandingsProviderIsRateLimited() {
+        doThrow(new IngestionPartialException("rate limited"))
+                .when(standings).syncStandingsForProvider(Provider.FOOTBALL_DATA);
+
+        useCase.sync(null, null);
+
+        verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.STANDINGS,
+                39L, "2025/2026", CheckpointStatus.PARTIAL);
+    }
+
+    @Test
     void neverRunsUpcomingOddsEvenWhenAnOverrideIsSupplied() {
         useCase.sync(null, Provider.API_FOOTBALL);
 
