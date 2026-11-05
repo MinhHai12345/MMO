@@ -114,10 +114,19 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
                 unit.provider() == Provider.FOOTBALL_DATA_UK
                         && (unit.dataset() == Dataset.TEAM || unit.dataset() == Dataset.FIXTURE));
         if (ukCoreRequired) {
-            try {
-                runStage("football-data-uk/active-seasons", footballDataUkSyncService::syncActiveSeasonsData);
-            } catch (RuntimeException exception) {
-                failedStages.add("football-data-uk/active-seasons: " + exception.getMessage());
+            List<Long> ukActiveSeasonIds = plan.units().stream()
+                    .filter(unit -> unit.provider() == Provider.FOOTBALL_DATA_UK
+                            && (unit.dataset() == Dataset.TEAM || unit.dataset() == Dataset.FIXTURE))
+                    .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
+            for (Long seasonId : ukActiveSeasonIds) {
+                try {
+                    runStage("football-data-uk/active/season=" + seasonId,
+                            () -> footballDataUkSyncService.syncCoreSeason(seasonId, false));
+                } catch (RuntimeException exception) {
+                    failedStages.add("football-data-uk/active/season=" + seasonId
+                            + ": " + exception.getMessage());
+                    log.warn("Football-Data UK active season failed; continuing: {}", seasonId, exception);
+                }
             }
         }
 
