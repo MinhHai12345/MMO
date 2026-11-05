@@ -4,7 +4,7 @@ import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.job.AbstractJob;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.application.port.in.FootballDataSyncService;
-import com.mmo.module.fb.ingest.service.ProviderOverrides;
+import com.mmo.module.fb.ingest.application.port.in.ProviderOverrides;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.DisallowConcurrentExecution;
