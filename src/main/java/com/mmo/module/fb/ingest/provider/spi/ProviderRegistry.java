@@ -24,6 +24,7 @@ public class ProviderRegistry {
     private final Map<Provider, OddsProvider> oddsProviders;
     private final Map<Provider, HistoricalStatsProvider> historicalStatsProviders;
     private final Map<Provider, MatchStatisticsProvider> matchStatisticsProviders;
+    private final Map<Provider, PlayerLineupsProvider> playerLineupsProviders;
 
     @Autowired
     public ProviderRegistry(
@@ -34,7 +35,8 @@ public class ProviderRegistry {
             List<StandingsProvider> standingsProviders,
             List<OddsProvider> oddsProviders,
             List<HistoricalStatsProvider> historicalStatsProviders,
-            List<MatchStatisticsProvider> matchStatisticsProviders) {
+            List<MatchStatisticsProvider> matchStatisticsProviders,
+            List<PlayerLineupsProvider> playerLineupsProviders) {
         this.leagueProviders = index(leagueProviders, LeagueProvider::getProvider, "LeagueProvider");
         this.seasonProviders = index(seasonProviders, SeasonProvider::getProvider, "SeasonProvider");
         this.teamProviders = index(teamProviders, TeamProvider::getProvider, "TeamProvider");
@@ -45,6 +47,22 @@ public class ProviderRegistry {
                 historicalStatsProviders, HistoricalStatsProvider::getProvider, "HistoricalStatsProvider");
         this.matchStatisticsProviders = index(
                 matchStatisticsProviders, MatchStatisticsProvider::getProvider, "MatchStatisticsProvider");
+        this.playerLineupsProviders = index(
+                playerLineupsProviders, PlayerLineupsProvider::getProvider, "PlayerLineupsProvider");
+    }
+
+    /** Backward-compatible constructor for integrations predating player-lineups SPI. */
+    public ProviderRegistry(
+            List<LeagueProvider> leagueProviders,
+            List<SeasonProvider> seasonProviders,
+            List<TeamProvider> teamProviders,
+            List<FixtureProvider> fixtureProviders,
+            List<StandingsProvider> standingsProviders,
+            List<OddsProvider> oddsProviders,
+            List<HistoricalStatsProvider> historicalStatsProviders,
+            List<MatchStatisticsProvider> matchStatisticsProviders) {
+        this(leagueProviders, seasonProviders, teamProviders, fixtureProviders,
+                standingsProviders, oddsProviders, historicalStatsProviders, matchStatisticsProviders, List.of());
     }
 
     /** Backward-compatible constructor for integrations predating match-statistics SPI. */
@@ -57,7 +75,7 @@ public class ProviderRegistry {
             List<OddsProvider> oddsProviders,
             List<HistoricalStatsProvider> historicalStatsProviders) {
         this(leagueProviders, seasonProviders, teamProviders, fixtureProviders,
-                standingsProviders, oddsProviders, historicalStatsProviders, List.of());
+                standingsProviders, oddsProviders, historicalStatsProviders, List.of(), List.of());
     }
 
     /** Backward-compatible constructor for integrations predating SeasonProvider. */
@@ -110,6 +128,14 @@ public class ProviderRegistry {
 
     public boolean hasMatchStatisticsProvider(Provider provider) {
         return provider != null && matchStatisticsProviders.containsKey(provider);
+    }
+
+    public PlayerLineupsProvider playerLineups(Provider provider) {
+        return get(playerLineupsProviders, provider, "PlayerLineupsProvider");
+    }
+
+    public boolean hasPlayerLineupsProvider(Provider provider) {
+        return provider != null && playerLineupsProviders.containsKey(provider);
     }
 
     private static <T> Map<Provider, T> index(

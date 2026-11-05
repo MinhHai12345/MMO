@@ -4,8 +4,8 @@ import com.mmo.module.fb.domain.match.enums.MatchEnrichmentStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.adapter.out.persistence.core.MatchXgPersistenceService;
-import com.mmo.module.fb.ingest.adapter.out.persistence.core.SourceAwareMergeService;
+import com.mmo.module.fb.ingest.application.port.out.MatchXgPersistencePort;
+import com.mmo.module.fb.ingest.application.port.out.SourceAwareMergePort;
 import com.mmo.module.fb.ingest.application.port.out.MatchStatisticsIngestionPort;
 import com.mmo.module.fb.ingest.provider.model.ProviderMatchAdvancedStatistics;
 import com.mmo.module.fb.ingest.provider.spi.MatchStatisticsProvider;
@@ -57,8 +57,8 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
     private final MatchStatisticsSnapshotPersistenceService snapshotPersistenceService;
     private final MatchEnrichmentStateService enrichmentStateService;
     private final DataSourcePolicy dataSourcePolicy;
-    private final MatchXgPersistenceService matchXgPersistenceService;
-    private final SourceAwareMergeService sourceAwareMergeService;
+    private final MatchXgPersistencePort matchXgPersistenceService;
+    private final SourceAwareMergePort sourceAwareMergeService;
 
     public void storeMatchStatistics() {
         List<Match> targetMatches = matchRepository.findFinishedMatchesMissingAdvancedStats(

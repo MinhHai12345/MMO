@@ -2,7 +2,7 @@ package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
-import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
+import com.mmo.module.fb.ingest.application.port.in.FootballDataUkIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
@@ -39,7 +39,7 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
     private final TeamIngestionService teamIngestionService;
     private final FixtureIngestionService fixtureIngestionService;
     private final StandingsIngestionService standingsIngestionService;
-    private final FootballDataUkIngestionPort footballDataUkSyncService;
+    private final FootballDataUkIngestionUseCase footballDataUkSyncService;
 
     @Override
     public void sync(ProviderOverrides overrides, Provider oddsProviderOverride) {
