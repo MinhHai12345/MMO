@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.service;
+package com.mmo.module.fb.ingest.adapter.out.persistence.identity;
 
 import com.mmo.module.fb.domain.league.entity.League;
 import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
@@ -31,7 +31,7 @@ import java.util.Optional;
  */
 @Service
 @Transactional
-public class ExternalIdMappingService {
+public class ExternalIdMappingService implements com.mmo.module.fb.ingest.application.port.out.ExternalIdMappingPort {
 
     private final LeagueExternalIdRepository leagueExternalIds;
     private final SeasonExternalIdRepository seasonExternalIds;
@@ -110,6 +110,7 @@ public class ExternalIdMappingService {
                 SeasonExternalId::getSeason, SeasonExternalId::getExternalId, season, "season", provider, externalId);
     }
 
+    @Override
     public TeamExternalId registerTeam(Team team, Provider provider, String externalId) {
         if (team == null || team.getId() == null) {
             throw new IllegalArgumentException("Team must be persisted before registering an external ID");
@@ -122,6 +123,7 @@ public class ExternalIdMappingService {
                 TeamExternalId::getTeam, TeamExternalId::getExternalId, team, "team", provider, externalId);
     }
 
+    @Override
     public MatchExternalId registerMatch(Match match, Provider provider, String externalId) {
         if (match == null || match.getId() == null) {
             throw new IllegalArgumentException("Match must be persisted before registering an external ID");

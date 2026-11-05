@@ -1,6 +1,8 @@
 package com.mmo.module.fb.ingest.application.service.integration;
 
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.application.model.SofaScoreExternalMappingResult;
+import com.mmo.module.fb.ingest.application.port.in.SofaScoreExternalMappingUseCase;
 import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
@@ -20,7 +22,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SofaScoreExternalMappingService {
+public class SofaScoreExternalMappingService implements SofaScoreExternalMappingUseCase {
 
     private final LeagueIngestionService leagueIngestionService;
     private final TeamIngestionService teamIngestionService;
@@ -30,13 +32,14 @@ public class SofaScoreExternalMappingService {
     private final TeamExternalIdRepository teamExternalIdRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
 
-    public MappingResult mapExistingCoreData() {
+    @Override
+    public SofaScoreExternalMappingResult mapExistingCoreData() {
         // Dependency order matters: team and fixture mapping requires league/season mappings.
         leagueIngestionService.syncLeaguesForProvider(Provider.SOFA_SCORE);
         teamIngestionService.syncTeamsForProvider(Provider.SOFA_SCORE);
         fixtureIngestionService.syncFixturesForProvider(Provider.SOFA_SCORE, null, null);
 
-        MappingResult result = new MappingResult(
+        SofaScoreExternalMappingResult result = new SofaScoreExternalMappingResult(
                 Provider.SOFA_SCORE.name(),
                 leagueExternalIdRepository.findAllByProvider(Provider.SOFA_SCORE).size(),
                 seasonExternalIdRepository.findAllByProvider(Provider.SOFA_SCORE).size(),
@@ -47,12 +50,4 @@ public class SofaScoreExternalMappingService {
         return result;
     }
 
-    public record MappingResult(
-            String provider,
-            int leagueMappings,
-            int seasonMappings,
-            int teamMappings,
-            int matchMappings
-    ) {
-    }
 }
