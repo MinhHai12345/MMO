@@ -20,7 +20,7 @@ public final class FootballDataUkCsvParser {
         if (rows.isEmpty()) throw invalid("CSV does not contain a header row");
 
         List<String> headers = rows.get(0).stream()
-                .map(value -> value.trim().replace("\uFEFF", "").toUpperCase(Locale.ROOT)).toList();
+                .map(value -> value.replace("\uFEFF", "").trim().toUpperCase(Locale.ROOT)).toList();
         boolean hasDate = headers.contains("DATE");
         boolean hasHome = headers.contains("HOMETEAM") || headers.contains("HOME TEAM");
         boolean hasAway = headers.contains("AWAYTEAM") || headers.contains("AWAY TEAM");
