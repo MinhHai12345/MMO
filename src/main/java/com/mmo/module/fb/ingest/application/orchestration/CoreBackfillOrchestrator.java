@@ -85,6 +85,10 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
         }
 
         IngestionPlan plan = planFactory.historicalPlan();
+        List<IngestionWorkUnit> footballDataSeasons = plan.units(
+                Dataset.SEASON, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
+        footballDataSeasons.forEach(unit -> checkpointStore.markStatus(unit.provider(), Dataset.SEASON,
+                unit.leagueId(), unit.season(), CheckpointStatus.COMPLETED));
         List<IngestionWorkUnit> footballDataTeams = plan.units(
                 Dataset.TEAM, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
         List<IngestionWorkUnit> footballDataFixtures = plan.units(
