@@ -90,11 +90,12 @@ class CoreBackfillOrchestratorTest {
         properties.getIngestion().getProviderConfig().put(Provider.FOOTBALL_DATA_UK, ukConfig);
         doThrow(new IllegalStateException("fixture provider unavailable"))
                 .when(fixtures).syncSeasonForProvider(Provider.FOOTBALL_DATA, 20L, null, null);
-        when(footballDataUk.syncInitialData()).thenReturn(true);
+        when(planFactory.historicalPlan()).thenReturn(historicalFootballDataAndUkPlan());
 
         assertThrows(IllegalStateException.class, () -> service.syncCoreData(ProviderOverrides.defaults()));
 
-        verify(footballDataUk).syncInitialData();
+        verify(footballDataUk).prepareHistoricalSeasons();
+        verify(footballDataUk).syncCoreSeason(20L, true);
         verify(checkpoints).markCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL");
     }
 
@@ -128,11 +129,12 @@ class CoreBackfillOrchestratorTest {
         properties.getIngestion().getProviderConfig().put(Provider.FOOTBALL_DATA_UK, ukConfig);
         when(checkpoints.isCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL"))
                 .thenReturn(true);
-        when(footballDataUk.syncInitialData()).thenReturn(true);
+        when(planFactory.historicalPlan()).thenReturn(historicalFootballDataAndUkPlan());
 
         service.syncCoreData(ProviderOverrides.defaults());
 
-        verify(footballDataUk).syncInitialData();
+        verify(footballDataUk).prepareHistoricalSeasons();
+        verify(footballDataUk).syncCoreSeason(20L, true);
         verify(checkpoints).markCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL");
     }
 
@@ -143,6 +145,21 @@ class CoreBackfillOrchestratorTest {
         service.syncCoreData(ProviderOverrides.defaults());
 
         verifyNoInteractions(planFactory, checkpoints, footballDataUk, leagues, seasons, teams, fixtures, standings);
+    }
+
+    private IngestionPlan historicalFootballDataAndUkPlan() {
+        return new IngestionPlan(List.of(
+                new IngestionWorkUnit(Dataset.SEASON, 20L, 39L, "2024/2025",
+                        Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY),
+                new IngestionWorkUnit(Dataset.TEAM, 20L, 39L, "2024/2025",
+                        Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY),
+                new IngestionWorkUnit(Dataset.FIXTURE, 20L, 39L, "2024/2025",
+                        Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY),
+                new IngestionWorkUnit(Dataset.TEAM, 20L, 39L, "2024/2025",
+                        Provider.FOOTBALL_DATA_UK, IngestionWorkUnit.Role.PRIMARY),
+                new IngestionWorkUnit(Dataset.FIXTURE, 20L, 39L, "2024/2025",
+                        Provider.FOOTBALL_DATA_UK, IngestionWorkUnit.Role.PRIMARY)
+        ));
     }
 
     private IngestionPlan historicalFootballDataPlan() {
