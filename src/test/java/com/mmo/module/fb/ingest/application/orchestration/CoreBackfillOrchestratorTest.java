@@ -89,7 +89,7 @@ class CoreBackfillOrchestratorTest {
         ukConfig.setEnabled(true);
         properties.getIngestion().getProviderConfig().put(Provider.FOOTBALL_DATA_UK, ukConfig);
         doThrow(new IllegalStateException("fixture provider unavailable"))
-                .when(fixtures).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA, null, null);
+                .when(fixtures).syncSeasonForProvider(Provider.FOOTBALL_DATA, 20L, null, null);
         when(footballDataUk.syncInitialData()).thenReturn(true);
 
         assertThrows(IllegalStateException.class, () -> service.syncCoreData(ProviderOverrides.defaults()));
@@ -117,8 +117,8 @@ class CoreBackfillOrchestratorTest {
         service.syncCoreData(new ProviderOverrides(Provider.FOOTBALL_DATA, Provider.SOFA_SCORE,
                 Provider.SOFA_SCORE, Provider.SOFA_SCORE, Provider.SOFA_SCORE));
 
-        verify(teams).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA);
-        verify(fixtures).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA, null, null);
+        verify(teams).syncSeasonForProvider(Provider.FOOTBALL_DATA, 20L);
+        verify(fixtures).syncSeasonForProvider(Provider.FOOTBALL_DATA, 20L, null, null);
     }
 
     @Test
