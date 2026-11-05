@@ -90,16 +90,17 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
             }
         }
 
-        plan.units(Dataset.TEAM, IngestionWorkUnit.Role.PRIMARY).stream()
+        plan.units().stream().filter(unit -> unit.dataset() == Dataset.TEAM)
                 .filter(unit -> !seasonBatchProviderRegistry.supports(unit.provider(), Dataset.TEAM))
                 .forEach(unit -> runUnit(unit, () ->
-                        teamIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()), failedStages, unitResults));
-        plan.units(Dataset.FIXTURE, IngestionWorkUnit.Role.PRIMARY).stream()
+                        teamIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()),
+                        failedStages, unitResults));
+        plan.units().stream().filter(unit -> unit.dataset() == Dataset.FIXTURE)
                 .filter(unit -> !seasonBatchProviderRegistry.supports(unit.provider(), Dataset.FIXTURE))
                 .forEach(unit -> runUnit(unit, () ->
                         fixtureIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId(), null, null),
                         failedStages, unitResults));
-        plan.units(Dataset.STANDINGS, IngestionWorkUnit.Role.PRIMARY).stream()
+        plan.units().stream().filter(unit -> unit.dataset() == Dataset.STANDINGS)
                 .filter(unit -> !seasonBatchProviderRegistry.supports(unit.provider(), Dataset.STANDINGS))
                 .forEach(unit -> runUnit(unit, () ->
                         standingsIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()),
