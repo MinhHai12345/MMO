@@ -2,7 +2,7 @@ package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
-import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
+import com.mmo.module.fb.ingest.provider.spi.SeasonBatchProvider;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
@@ -33,7 +33,8 @@ class CoreSyncOrchestratorTest {
     private TeamIngestionService teams;
     private FixtureIngestionService fixtures;
     private StandingsIngestionService standings;
-    private FootballDataUkIngestionPort uk;
+    private SeasonBatchProvider uk;
+    private SeasonBatchProviderRegistry seasonBatchProviderRegistry;
     private CoreSyncOrchestrator useCase;
 
     @BeforeEach
@@ -52,10 +53,15 @@ class CoreSyncOrchestratorTest {
         teams = mock(TeamIngestionService.class);
         fixtures = mock(FixtureIngestionService.class);
         standings = mock(StandingsIngestionService.class);
-        uk = mock(FootballDataUkIngestionPort.class);
+        uk = mock(SeasonBatchProvider.class);
+        when(uk.getProvider()).thenReturn(Provider.FOOTBALL_DATA_UK);
+        when(uk.supportedDatasets()).thenReturn(java.util.Set.of(
+                Dataset.SEASON, Dataset.TEAM, Dataset.FIXTURE, Dataset.MATCH_STATISTICS,
+                Dataset.MATCH_XG, Dataset.HISTORICAL_ODDS));
+        seasonBatchProviderRegistry = new SeasonBatchProviderRegistry(List.of(uk));
         when(planFactory.activeSeasonPlan()).thenReturn(modernSeasonPlan());
         useCase = new CoreSyncOrchestrator(lock, properties, planFactory, checkpoints,
-                leagues, seasons, teams, fixtures, standings, uk);
+                leagues, seasons, teams, fixtures, standings, seasonBatchProviderRegistry);
     }
 
     @Test
@@ -130,7 +136,7 @@ class CoreSyncOrchestratorTest {
 
         useCase.sync(null, null);
 
-        verifyNoInteractions(planFactory, checkpoints, leagues, seasons, teams, fixtures, standings, uk);
+        verifyNoInteractions(planFactory, checkpoints, leagues, seasons, teams, fixtures, standings, seasonBatchProviderRegistry);
     }
 
     private IngestionPlan modernSeasonPlan() {
