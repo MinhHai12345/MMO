@@ -105,20 +105,11 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
         }
 
         List<String> failedStages = new ArrayList<>();
-        if (!footballDataTeams.isEmpty() && !areCompleted(footballDataTeams)) {
-            runPlannedStage("teams/historical/FOOTBALL_DATA", Dataset.TEAM, footballDataTeams,
-                    () -> teamIngestionService.syncAllSeasonsForProvider(Provider.FOOTBALL_DATA), failedStages);
-        } else if (!footballDataTeams.isEmpty()) {
-            log.info("Football-Data team backfill already complete for all planned seasons");
-        }
-
-        if (!footballDataFixtures.isEmpty() && !areCompleted(footballDataFixtures)) {
-            runPlannedStage("fixtures/historical/FOOTBALL_DATA", Dataset.FIXTURE, footballDataFixtures,
-                    () -> fixtureIngestionService.syncAllSeasonsForProvider(
-                            Provider.FOOTBALL_DATA, null, null), failedStages);
-        } else if (!footballDataFixtures.isEmpty()) {
-            log.info("Football-Data fixture backfill already complete for all planned seasons");
-        }
+        footballDataTeams.forEach(unit -> runUnit(unit, () ->
+                teamIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()), failedStages));
+        footballDataFixtures.forEach(unit -> runUnit(unit, () ->
+                fixtureIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId(), null, null),
+                failedStages));
 
         if (ukCoreRequired) {
             // The UK importer owns recovery at provider + dataset + league + season scope.
@@ -141,27 +132,28 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
         log.info("Historical Core backfill orchestration completed");
     }
 
-    private boolean areCompleted(List<IngestionWorkUnit> units) {
-        return units.stream().allMatch(unit -> checkpointStore.isCompleted(
-                unit.provider(), unit.dataset(), unit.leagueId(), unit.season()));
-    }
-
-    private void runPlannedStage(String name, Dataset dataset,
-                                 List<IngestionWorkUnit> units, Runnable operation,
-                                 List<String> failedStages) {
-        units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
-                unit.leagueId(), unit.season(), CheckpointStatus.RUNNING));
+    private void runUnit(IngestionWorkUnit unit, Runnable operation, List<String> failedStages) {
+        String name = unit.provider() + "/" + unit.dataset() + "/league=" + unit.leagueId()
+                + "/season=" + unit.season();
+        if (checkpointStore.isSatisfied(unit.provider(), unit.dataset(), unit.leagueId(), unit.season())) {
+            log.debug("Skipping terminal historical work unit {}", name);
+            return;
+        }
+        checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
+                unit.season(), CheckpointStatus.RUNNING);
         try {
             runStage(name, operation);
-            units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
-                    unit.leagueId(), unit.season(), CheckpointStatus.COMPLETED));
-        } catch (RuntimeException exception) {
-            CheckpointStatus status = exception instanceof IngestionPartialException
-                    ? CheckpointStatus.PARTIAL : CheckpointStatus.FAILED;
-            units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
-                    unit.leagueId(), unit.season(), status));
+            checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
+                    unit.season(), CheckpointStatus.COMPLETED);
+        } catch (IngestionPartialException exception) {
+            checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
+                    unit.season(), CheckpointStatus.PARTIAL);
             failedStages.add(name + ": " + exception.getMessage());
-            log.warn("Historical Core stage did not complete; continuing independent datasets: {}", name);
+        } catch (RuntimeException exception) {
+            checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
+                    unit.season(), CheckpointStatus.FAILED);
+            failedStages.add(name + ": " + exception.getMessage());
+            log.warn("Independent historical work unit failed; continuing: {}", name, exception);
         }
     }
 
