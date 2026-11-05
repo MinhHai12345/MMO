@@ -1,14 +1,14 @@
 package com.mmo.module.fb.ingest.persistence.footballdatauk;
 
-import com.mmo.module.fb.match.entity.Bookmaker;
-import com.mmo.module.fb.match.entity.Match;
-import com.mmo.module.fb.league.entity.League;
-import com.mmo.module.fb.league.entity.Season;
+import com.mmo.module.fb.domain.match.entity.Bookmaker;
+import com.mmo.module.fb.domain.match.entity.Match;
+import com.mmo.module.fb.domain.league.entity.League;
+import com.mmo.module.fb.domain.league.entity.Season;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
-import com.mmo.module.fb.match.entity.MatchOdds;
-import com.mmo.module.fb.match.repository.BookmakerRepository;
-import com.mmo.module.fb.match.repository.MatchOddsRepository;
-import com.mmo.module.fb.match.service.MatchOddsQuotePersistenceService;
+import com.mmo.module.fb.domain.match.entity.MatchOdds;
+import com.mmo.module.fb.domain.match.repository.BookmakerRepository;
+import com.mmo.module.fb.domain.match.repository.MatchOddsRepository;
+import com.mmo.module.fb.domain.match.service.MatchOddsQuotePersistenceService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

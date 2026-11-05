@@ -1,5 +1,6 @@
 package com.mmo.module.fb.match.enums;
 
+import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

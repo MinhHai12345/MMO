@@ -1,13 +1,14 @@
 package com.mmo.module.fb.ingest.application.resource;
 
+import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
 import com.mmo.module.fb.ingest.application.support.IngestionServiceSupport;
 
 import com.mmo.AppProperties;
-import com.mmo.module.fb.league.entity.Season;
+import com.mmo.module.fb.domain.league.entity.Season;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
-import com.mmo.module.fb.team.repository.TeamExternalIdRepository;
+import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
+import com.mmo.module.fb.domain.team.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballPlanRestrictionException;
 import com.mmo.module.fb.ingest.provider.client.ProviderTransportException;
 import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
@@ -90,7 +91,7 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
             throw new IllegalStateException("Missing " + selectedProvider
                     + " season mappings for a season it owns in fixture ingestion");
         }
-        Map<Long, com.mmo.module.fb.league.entity.LeagueExternalId> leagueMappingsByLeagueId = new HashMap<>();
+        Map<Long, LeagueExternalId> leagueMappingsByLeagueId = new HashMap<>();
         leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
                 leagueMappingsByLeagueId.put(mapping.getLeague().getId(), mapping));
         Map<String, Long> teamIdsByExternalId = new HashMap<>();

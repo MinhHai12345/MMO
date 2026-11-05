@@ -1,13 +1,14 @@
 package com.mmo.module.fb.match.service;
 
-import com.mmo.module.fb.match.enums.MatchProvider;
-import com.mmo.module.fb.match.entity.Bookmaker;
-import com.mmo.module.fb.match.entity.Match;
-import com.mmo.module.fb.match.entity.MatchOddsQuote;
-import com.mmo.module.fb.match.enums.MatchOddsMarketType;
-import com.mmo.module.fb.match.enums.MatchOddsPeriod;
-import com.mmo.module.fb.match.repository.MatchOddsQuoteRepository;
-import com.mmo.module.fb.match.repository.OddsHistoryRepository;
+import com.mmo.module.fb.domain.match.enums.MatchProvider;
+import com.mmo.module.fb.domain.match.entity.Bookmaker;
+import com.mmo.module.fb.domain.match.entity.Match;
+import com.mmo.module.fb.domain.match.entity.MatchOddsQuote;
+import com.mmo.module.fb.domain.match.enums.MatchOddsMarketType;
+import com.mmo.module.fb.domain.match.enums.MatchOddsPeriod;
+import com.mmo.module.fb.domain.match.repository.MatchOddsQuoteRepository;
+import com.mmo.module.fb.domain.match.repository.OddsHistoryRepository;
+import com.mmo.module.fb.domain.match.service.MatchOddsQuotePersistenceService;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

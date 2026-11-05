@@ -1,12 +1,12 @@
 package com.mmo.module.fb.admin.controller;
 
-import com.mmo.module.fb.league.entity.League;
-import com.mmo.module.fb.match.entity.Match;
-import com.mmo.module.fb.team.entity.Team;
-import com.mmo.module.fb.match.enums.MatchStatus;
-import com.mmo.module.fb.league.repository.LeagueRepository;
-import com.mmo.module.fb.match.repository.MatchRepository;
-import com.mmo.module.fb.team.repository.TeamRepository;
+import com.mmo.module.fb.domain.league.entity.League;
+import com.mmo.module.fb.domain.match.entity.Match;
+import com.mmo.module.fb.domain.team.entity.Team;
+import com.mmo.module.fb.domain.match.enums.MatchStatus;
+import com.mmo.module.fb.domain.league.repository.LeagueRepository;
+import com.mmo.module.fb.domain.match.repository.MatchRepository;
+import com.mmo.module.fb.domain.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -14,7 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;

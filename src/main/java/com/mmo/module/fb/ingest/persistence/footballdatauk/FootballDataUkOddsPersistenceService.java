@@ -1,15 +1,15 @@
 package com.mmo.module.fb.ingest.persistence.footballdatauk;
 
-import com.mmo.module.fb.match.entity.Bookmaker;
+import com.mmo.module.fb.domain.match.entity.Bookmaker;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.match.entity.Match;
-import com.mmo.module.fb.match.entity.MatchOdds;
-import com.mmo.module.fb.match.repository.BookmakerRepository;
-import com.mmo.module.fb.match.repository.MatchOddsRepository;
-import com.mmo.module.fb.match.service.MatchOddsQuotePersistenceService;
-import com.mmo.module.fb.match.enums.MatchProvider;
+import com.mmo.module.fb.domain.match.entity.Match;
+import com.mmo.module.fb.domain.match.entity.MatchOdds;
+import com.mmo.module.fb.domain.match.repository.BookmakerRepository;
+import com.mmo.module.fb.domain.match.repository.MatchOddsRepository;
+import com.mmo.module.fb.domain.match.service.MatchOddsQuotePersistenceService;
+import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

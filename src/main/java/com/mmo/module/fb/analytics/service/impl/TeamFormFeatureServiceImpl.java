@@ -1,12 +1,10 @@
 package com.mmo.module.fb.analytics.service.impl;
 
 import com.mmo.module.fb.analytics.service.TeamFormFeatureService;
-import com.mmo.module.fb.analytics.service.TeamFormFeatureService.MatchFeatures;
-import com.mmo.module.fb.analytics.service.TeamFormFeatureService.TeamFeatures;
-import com.mmo.module.fb.match.entity.Match;
-import com.mmo.module.fb.team.entity.Team;
-import com.mmo.module.fb.match.enums.MatchStatus;
-import com.mmo.module.fb.match.repository.MatchRepository;
+import com.mmo.module.fb.domain.match.entity.Match;
+import com.mmo.module.fb.domain.team.entity.Team;
+import com.mmo.module.fb.domain.match.enums.MatchStatus;
+import com.mmo.module.fb.domain.match.repository.MatchRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;

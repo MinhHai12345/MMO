@@ -3,11 +3,11 @@ package com.mmo.module.fb.ingest.application.resource;
 import com.mmo.module.fb.ingest.application.support.IngestionServiceSupport;
 
 import com.mmo.AppProperties;
-import com.mmo.module.fb.league.entity.Season;
-import com.mmo.module.fb.league.entity.LeagueExternalId;
+import com.mmo.module.fb.domain.league.entity.Season;
+import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
+import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballPlanRestrictionException;
 import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;

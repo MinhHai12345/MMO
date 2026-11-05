@@ -1,21 +1,20 @@
 package com.mmo.module.fb.ingest.persistence.footballdatauk;
 
-import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.domain.match.entity.Match;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.match.entity.MatchAdvancedStats;
-import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
-import com.mmo.module.fb.match.service.MatchStatisticsSnapshotPersistenceService;
-import com.mmo.module.fb.match.enums.MatchProvider;
-import com.mmo.module.fb.team.entity.Team;
+import com.mmo.module.fb.domain.match.entity.MatchAdvancedStats;
+import com.mmo.module.fb.domain.match.repository.MatchAdvancedStatsRepository;
+import com.mmo.module.fb.domain.match.service.MatchStatisticsSnapshotPersistenceService;
+import com.mmo.module.fb.domain.match.enums.MatchProvider;
+import com.mmo.module.fb.domain.team.entity.Team;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.Map;
 import java.util.function.Consumer;
 

@@ -1,17 +1,18 @@
 package com.mmo.module.fb.ingest.persistence;
 
-import com.mmo.module.fb.match.entity.Match;
-import com.mmo.module.fb.league.entity.Season;
-import com.mmo.module.fb.team.entity.Team;
-import com.mmo.module.fb.match.enums.MatchStatus;
-import com.mmo.module.fb.match.enums.MatchProvider;
+import com.mmo.module.fb.domain.match.entity.MatchExternalId;
+import com.mmo.module.fb.domain.match.entity.Match;
+import com.mmo.module.fb.domain.league.entity.Season;
+import com.mmo.module.fb.domain.team.entity.Team;
+import com.mmo.module.fb.domain.match.enums.MatchStatus;
+import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
-import com.mmo.module.fb.match.repository.MatchRepository;
-import com.mmo.module.fb.league.repository.SeasonRepository;
-import com.mmo.module.fb.team.repository.TeamRepository;
+import com.mmo.module.fb.domain.match.repository.MatchExternalIdRepository;
+import com.mmo.module.fb.domain.match.repository.MatchRepository;
+import com.mmo.module.fb.domain.league.repository.SeasonRepository;
+import com.mmo.module.fb.domain.team.repository.TeamRepository;
 import com.mmo.module.fb.ingest.service.ExternalIdMappingService;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import com.mmo.module.fb.ingest.service.FixturePersistenceService;
@@ -50,7 +51,7 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
         Team away = teamRepository.findById(awayTeamId).orElse(null);
         if (season == null || home == null || away == null) return false;
         Match match = matchExternalIdRepository.findByProviderAndExternalId(MatchProvider.fromName(provider.name()), fixture.externalId())
-                .map(com.mmo.module.fb.match.entity.MatchExternalId::getMatch)
+                .map(MatchExternalId::getMatch)
                 .orElse(null);
 
         if (match != null && (match.getSeason() == null

@@ -1,14 +1,12 @@
 package com.mmo.module.fb.analytics.service.impl;
 
 import com.mmo.module.fb.analytics.service.WalkForwardBackTestService;
-import com.mmo.module.fb.analytics.service.WalkForwardBackTestService.GroupMetricSnapshot;
-import com.mmo.module.fb.analytics.service.WalkForwardBackTestService.MetricSnapshot;
 import com.mmo.module.fb.analytics.engine.DixonColesProbabilityCalculator;
-import com.mmo.module.fb.league.entity.League;
-import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.domain.league.entity.League;
+import com.mmo.module.fb.domain.match.entity.Match;
 import com.mmo.module.fb.analytics.entity.MatchPrediction;
-import com.mmo.module.fb.league.entity.Season;
-import com.mmo.module.fb.match.enums.MatchStatus;
+import com.mmo.module.fb.domain.league.entity.Season;
+import com.mmo.module.fb.domain.match.enums.MatchStatus;
 import com.mmo.module.fb.analytics.repository.MatchPredictionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

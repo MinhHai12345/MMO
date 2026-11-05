@@ -3,7 +3,7 @@ package com.mmo.module.fb.analytics.engine;
 import com.mmo.module.fb.analytics.service.TeamFormFeatureService;
 import com.mmo.module.fb.analytics.service.TeamFormFeatureService.MatchFeatures;
 import com.mmo.module.fb.analytics.service.TeamFormFeatureService.TeamFeatures;
-import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.domain.match.entity.Match;
 import com.mmo.module.fb.analytics.entity.MatchPrediction;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

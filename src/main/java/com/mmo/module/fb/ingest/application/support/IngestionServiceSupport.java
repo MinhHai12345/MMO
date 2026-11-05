@@ -4,10 +4,10 @@ import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.league.entity.Season;
-import com.mmo.module.fb.league.entity.SeasonExternalId;
-import com.mmo.module.fb.league.repository.SeasonExternalIdRepository;
-import com.mmo.module.fb.league.repository.SeasonRepository;
+import com.mmo.module.fb.domain.league.entity.Season;
+import com.mmo.module.fb.domain.league.entity.SeasonExternalId;
+import com.mmo.module.fb.domain.league.repository.SeasonExternalIdRepository;
+import com.mmo.module.fb.domain.league.repository.SeasonRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

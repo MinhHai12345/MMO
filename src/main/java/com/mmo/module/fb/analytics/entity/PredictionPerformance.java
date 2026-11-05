@@ -1,7 +1,6 @@
 package com.mmo.module.fb.analytics.entity;
 
 import com.mmo.core.entity.AbstractEntity;
-import com.mmo.module.fb.match.entity.Match;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

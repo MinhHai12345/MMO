@@ -1,22 +1,23 @@
 package com.mmo.module.fb.ingest.service.impl;
 
+import com.mmo.module.fb.domain.match.enums.MatchEnrichmentStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.application.port.out.MatchStatisticsIngestionPort;
 import com.mmo.module.fb.ingest.provider.model.ProviderMatchAdvancedStatistics;
 import com.mmo.module.fb.ingest.provider.spi.MatchStatisticsProvider;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
-import com.mmo.module.fb.match.entity.Match;
-import com.mmo.module.fb.match.entity.MatchAdvancedStats;
-import com.mmo.module.fb.match.entity.MatchExternalId;
-import com.mmo.module.fb.match.enums.MatchStatus;
-import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
-import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
-import com.mmo.module.fb.match.repository.MatchRepository;
-import com.mmo.module.fb.match.enums.MatchEnrichmentResource;
-import com.mmo.module.fb.match.enums.MatchProvider;
-import com.mmo.module.fb.match.service.MatchEnrichmentStateService;
-import com.mmo.module.fb.match.service.MatchStatisticsSnapshotPersistenceService;
-import com.mmo.module.fb.team.entity.Team;
+import com.mmo.module.fb.domain.match.entity.Match;
+import com.mmo.module.fb.domain.match.entity.MatchAdvancedStats;
+import com.mmo.module.fb.domain.match.entity.MatchExternalId;
+import com.mmo.module.fb.domain.match.enums.MatchStatus;
+import com.mmo.module.fb.domain.match.repository.MatchAdvancedStatsRepository;
+import com.mmo.module.fb.domain.match.repository.MatchExternalIdRepository;
+import com.mmo.module.fb.domain.match.repository.MatchRepository;
+import com.mmo.module.fb.domain.match.enums.MatchEnrichmentResource;
+import com.mmo.module.fb.domain.match.enums.MatchProvider;
+import com.mmo.module.fb.domain.match.service.MatchEnrichmentStateService;
+import com.mmo.module.fb.domain.match.service.MatchStatisticsSnapshotPersistenceService;
+import com.mmo.module.fb.domain.team.entity.Team;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -55,8 +56,8 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
     public void storeMatchStatistics() {
         List<Match> targetMatches = matchRepository.findFinishedMatchesMissingAdvancedStats(
                 MatchStatus.FINISHED, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS,
-                com.mmo.module.fb.match.enums.MatchEnrichmentStatus.SUCCEEDED,
-                com.mmo.module.fb.match.enums.MatchEnrichmentStatus.IN_PROGRESS,
+                MatchEnrichmentStatus.SUCCEEDED,
+                MatchEnrichmentStatus.IN_PROGRESS,
                 Instant.now().minus(RETRY_HOURS, ChronoUnit.HOURS), PageRequest.of(0, BATCH_SIZE));
 
         if (targetMatches == null || targetMatches.isEmpty()) {

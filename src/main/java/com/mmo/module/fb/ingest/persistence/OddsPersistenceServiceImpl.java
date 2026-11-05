@@ -1,15 +1,15 @@
 package com.mmo.module.fb.ingest.persistence;
 
-import com.mmo.module.fb.match.entity.Bookmaker;
-import com.mmo.module.fb.match.entity.Match;
-import com.mmo.module.fb.match.entity.MatchOdds;
-import com.mmo.module.fb.match.entity.OddsHistory;
-import com.mmo.module.fb.match.repository.BookmakerRepository;
-import com.mmo.module.fb.match.repository.MatchOddsRepository;
-import com.mmo.module.fb.match.repository.MatchRepository;
-import com.mmo.module.fb.match.repository.OddsHistoryRepository;
-import com.mmo.module.fb.match.service.MatchOddsQuotePersistenceService;
-import com.mmo.module.fb.match.enums.MatchProvider;
+import com.mmo.module.fb.domain.match.entity.Bookmaker;
+import com.mmo.module.fb.domain.match.entity.Match;
+import com.mmo.module.fb.domain.match.entity.MatchOdds;
+import com.mmo.module.fb.domain.match.entity.OddsHistory;
+import com.mmo.module.fb.domain.match.repository.BookmakerRepository;
+import com.mmo.module.fb.domain.match.repository.MatchOddsRepository;
+import com.mmo.module.fb.domain.match.repository.MatchRepository;
+import com.mmo.module.fb.domain.match.repository.OddsHistoryRepository;
+import com.mmo.module.fb.domain.match.service.MatchOddsQuotePersistenceService;
+import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import com.mmo.module.fb.ingest.service.OddsPersistenceService;

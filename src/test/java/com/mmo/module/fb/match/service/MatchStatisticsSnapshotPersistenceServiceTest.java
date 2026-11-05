@@ -1,11 +1,12 @@
 package com.mmo.module.fb.match.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mmo.module.fb.match.enums.MatchProvider;
-import com.mmo.module.fb.match.entity.Match;
-import com.mmo.module.fb.match.entity.MatchStatisticsSourceSnapshot;
-import com.mmo.module.fb.match.repository.MatchStatisticsSourceSnapshotRepository;
-import com.mmo.module.fb.team.entity.Team;
+import com.mmo.module.fb.domain.match.enums.MatchProvider;
+import com.mmo.module.fb.domain.match.entity.Match;
+import com.mmo.module.fb.domain.match.entity.MatchStatisticsSourceSnapshot;
+import com.mmo.module.fb.domain.match.repository.MatchStatisticsSourceSnapshotRepository;
+import com.mmo.module.fb.domain.match.service.MatchStatisticsSnapshotPersistenceService;
+import com.mmo.module.fb.domain.team.entity.Team;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;

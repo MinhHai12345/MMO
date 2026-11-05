@@ -1,17 +1,18 @@
 package com.mmo.module.fb.ingest.application.resource;
 
+import com.mmo.module.fb.domain.match.enums.MatchEnrichmentStatus;
 import com.mmo.module.fb.ingest.application.support.IngestionServiceSupport;
 
 import com.mmo.AppProperties;
-import com.mmo.module.fb.match.entity.Match;
-import com.mmo.module.fb.match.entity.MatchExternalId;
-import com.mmo.module.fb.match.enums.MatchStatus;
+import com.mmo.module.fb.domain.match.entity.Match;
+import com.mmo.module.fb.domain.match.entity.MatchExternalId;
+import com.mmo.module.fb.domain.match.enums.MatchStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
-import com.mmo.module.fb.match.repository.MatchRepository;
-import com.mmo.module.fb.match.enums.MatchEnrichmentResource;
-import com.mmo.module.fb.match.enums.MatchProvider;
-import com.mmo.module.fb.match.service.MatchEnrichmentStateService;
+import com.mmo.module.fb.domain.match.repository.MatchExternalIdRepository;
+import com.mmo.module.fb.domain.match.repository.MatchRepository;
+import com.mmo.module.fb.domain.match.enums.MatchEnrichmentResource;
+import com.mmo.module.fb.domain.match.enums.MatchProvider;
+import com.mmo.module.fb.domain.match.service.MatchEnrichmentStateService;
 import com.mmo.module.fb.ingest.provider.model.OddsQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
@@ -27,10 +28,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @Slf4j
 @Service
@@ -78,8 +77,8 @@ public class OddsIngestionServiceImpl implements OddsIngestionService {
 
         List<Match> upcoming = matchRepository.findUpcomingWithProviderMapping(
                 MatchStatus.SCHEDULED, now, until, MatchProvider.fromName(selectedProvider.name()), MatchEnrichmentResource.ODDS,
-                com.mmo.module.fb.match.enums.MatchEnrichmentStatus.SUCCEEDED,
-                com.mmo.module.fb.match.enums.MatchEnrichmentStatus.IN_PROGRESS,
+                MatchEnrichmentStatus.SUCCEEDED,
+                MatchEnrichmentStatus.IN_PROGRESS,
                 now.minus(30, ChronoUnit.MINUTES), PageRequest.of(0, MAX_FIXTURES_PER_RUN));
 
         int processed = 0;

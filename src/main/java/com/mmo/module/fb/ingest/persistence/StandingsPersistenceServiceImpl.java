@@ -1,15 +1,15 @@
 package com.mmo.module.fb.ingest.persistence;
 
-import com.mmo.module.fb.league.entity.LeagueStanding;
+import com.mmo.module.fb.domain.league.entity.LeagueStanding;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.league.entity.Season;
-import com.mmo.module.fb.team.entity.Team;
-import com.mmo.module.fb.league.enums.StandingType;
-import com.mmo.module.fb.league.repository.LeagueStandingRepository;
-import com.mmo.module.fb.league.repository.SeasonRepository;
-import com.mmo.module.fb.team.repository.TeamRepository;
+import com.mmo.module.fb.domain.league.entity.Season;
+import com.mmo.module.fb.domain.team.entity.Team;
+import com.mmo.module.fb.domain.league.enums.StandingType;
+import com.mmo.module.fb.domain.league.repository.LeagueStandingRepository;
+import com.mmo.module.fb.domain.league.repository.SeasonRepository;
+import com.mmo.module.fb.domain.team.repository.TeamRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
 import com.mmo.module.fb.ingest.service.StandingsPersistenceService;
 import lombok.RequiredArgsConstructor;

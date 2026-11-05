@@ -9,7 +9,7 @@ import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import com.mmo.module.fb.ingest.service.LeagueIngestionService;
 import com.mmo.module.fb.ingest.service.LeaguePersistenceService;
-import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
+import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

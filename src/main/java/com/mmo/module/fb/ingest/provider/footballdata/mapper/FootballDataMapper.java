@@ -14,7 +14,7 @@ import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
-import com.mmo.module.fb.league.enums.StandingType;
+import com.mmo.module.fb.domain.league.enums.StandingType;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;

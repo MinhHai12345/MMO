@@ -1,10 +1,10 @@
 package com.mmo.module.fb.analytics.service.impl;
 
 import com.mmo.module.fb.analytics.service.PredictionEvaluationService;
-import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.domain.match.entity.Match;
 import com.mmo.module.fb.analytics.entity.MatchPrediction;
 import com.mmo.module.fb.analytics.entity.PredictionPerformance;
-import com.mmo.module.fb.match.enums.MatchStatus;
+import com.mmo.module.fb.domain.match.enums.MatchStatus;
 import com.mmo.module.fb.analytics.repository.MatchPredictionRepository;
 import com.mmo.module.fb.analytics.repository.PredictionPerformanceRepository;
 import lombok.RequiredArgsConstructor;

@@ -1,8 +1,8 @@
 package com.mmo.module.fb.ingest.policy;
 
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.league.entity.Season;
-import com.mmo.module.fb.league.entity.League;
+import com.mmo.module.fb.domain.league.entity.Season;
+import com.mmo.module.fb.domain.league.entity.League;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

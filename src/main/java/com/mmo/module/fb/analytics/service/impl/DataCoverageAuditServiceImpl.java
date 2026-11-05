@@ -2,8 +2,7 @@ package com.mmo.module.fb.analytics.service.impl;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.analytics.service.DataCoverageAuditService;
-import com.mmo.module.fb.analytics.service.DataCoverageAuditService.*;
-import com.mmo.module.fb.match.enums.MatchStatus;
+import com.mmo.module.fb.domain.match.enums.MatchStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;

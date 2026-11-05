@@ -1,6 +1,6 @@
 package com.mmo.module.fb.ingest.service;
 
-import com.mmo.module.fb.league.entity.Season;
+import com.mmo.module.fb.domain.league.entity.Season;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import java.util.List;

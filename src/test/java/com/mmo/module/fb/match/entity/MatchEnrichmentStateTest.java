@@ -1,8 +1,9 @@
 package com.mmo.module.fb.match.entity;
 
-import com.mmo.module.fb.match.enums.MatchProvider;
-import com.mmo.module.fb.match.enums.MatchEnrichmentResource;
-import com.mmo.module.fb.match.enums.MatchEnrichmentStatus;
+import com.mmo.module.fb.domain.match.entity.MatchEnrichmentState;
+import com.mmo.module.fb.domain.match.enums.MatchProvider;
+import com.mmo.module.fb.domain.match.enums.MatchEnrichmentResource;
+import com.mmo.module.fb.domain.match.enums.MatchEnrichmentStatus;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
