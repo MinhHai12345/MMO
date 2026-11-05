@@ -98,6 +98,27 @@ class FixturePersistenceOwnershipIntegrationTest {
     }
 
     @Test
+    void footballDataAdoptsExistingUkFallbackFixtureInsteadOfCreatingDuplicate() {
+        Match ukFallback = Match.builder().season(season).homeTeam(home).awayTeam(away)
+                .matchTime(ukFixture.kickoff()).build();
+        ukFallback.setId(902L);
+        when(matchRepository.findFixtureCandidates(eq(2024L), eq(10L), eq(11L), any(), any()))
+                .thenReturn(List.of(ukFallback));
+        when(matchRepository.save(any(Match.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ProviderFixture footballDataFixture = new ProviderFixture("fd-fixture-1", "fd-ars", "fd-che",
+                ukFixture.kickoff(), "Matchday 1", null, null, "FT", 2, 1);
+        boolean saved = persistence.persistFixture(2024L, 10L, 11L,
+                Provider.FOOTBALL_DATA, footballDataFixture);
+
+        assertTrue(saved);
+        assertEquals(902L, ukFallback.getId());
+        verify(matchRepository, times(1)).save(ukFallback);
+        verify(externalIdMappingService).registerMatch(ukFallback,
+                Provider.FOOTBALL_DATA, "fd-fixture-1");
+    }
+
+    @Test
     void rejectsUkCoreOverwriteWhenFootballDataOwnsMatchedFixture() {
         Match canonical = Match.builder().season(season).homeTeam(home).awayTeam(away)
                 .matchTime(ukFixture.kickoff()).build();
