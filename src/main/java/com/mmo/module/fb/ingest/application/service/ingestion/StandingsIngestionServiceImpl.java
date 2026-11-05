@@ -1,12 +1,11 @@
 package com.mmo.module.fb.ingest.application.service.ingestion;
 
+import com.mmo.module.fb.ingest.application.exception.ProviderAccessException;
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
 import com.mmo.module.fb.ingest.application.service.support.IngestionServiceSupport;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.domain.league.entity.Season;
-import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRateLimitException;
-import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
 import com.mmo.module.fb.domain.team.entity.TeamExternalId;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
@@ -102,21 +101,23 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
             List<ProviderStanding> rows;
             try {
                 rows = provider.fetchStandings(new StandingsQuery(externalLeagueId, season.getYear()));
-            } catch (FootballDataRestrictedResourceException ex) {
-                if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
-                skipped++;
-                log.warn("Skipping standings for league {} season {} because football-data.org restricts this resource: {}",
-                        externalLeagueId, season.getYear(), ex.getMessage());
-                continue;
-            } catch (FootballDataRateLimitException ex) {
-                if (selectedProvider != Provider.FOOTBALL_DATA) {
-                    throw ex;
+            } catch (ProviderAccessException ex) {
+                if (ex.is(ProviderAccessException.Kind.RESOURCE_RESTRICTED)) {
+                    if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
+                    skipped++;
+                    log.warn("Skipping standings for league {} season {} because provider access is restricted: {}",
+                            externalLeagueId, season.getYear(), ex.getMessage());
+                    continue;
                 }
-                rateLimitInterrupted = true;
-                log.warn("Stopping standings ingestion via {} after repeated rate limiting. "
-                        + "Already persisted {} rows; remaining standings will be retried by a later sync. {}",
-                        selectedProvider, saved, ex.getMessage());
-                break;
+                if (ex.is(ProviderAccessException.Kind.RATE_LIMITED)) {
+                    if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
+                    rateLimitInterrupted = true;
+                    log.warn("Stopping standings ingestion via {} after repeated rate limiting. "
+                                    + "Already persisted {} rows; remaining standings will be retried by a later sync. {}",
+                            selectedProvider, saved, ex.getMessage());
+                    break;
+                }
+                throw ex;
             }
             if (rows == null || rows.isEmpty()) {
                 skipped++;
