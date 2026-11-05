@@ -36,6 +36,7 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final ExternalIdMappingService externalIdMappingService;
     private final DataSourcePolicy dataSourcePolicy;
+    private final SourceAwareMergeService mergeService;
 
     @Override
     @Transactional
@@ -123,19 +124,19 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
                 match.getMatchTime() != null && !newMatch, value -> targetMatch.setMatchTime((Instant) value));
         mergeFixtureField(targetMatch, provider, "round_info", fixture.round(),
                 hasText(match.getRoundInfo()), value -> targetMatch.setRoundInfo((String) value));
-        mergeFixtureField(match, provider, "venue", fixture.venue(),
+        mergeFixtureField(targetMatch, provider, "venue", fixture.venue(),
                 hasText(match.getVenue()), value -> targetMatch.setVenue((String) value));
-        mergeFixtureField(match, provider, "referee", fixture.referee(),
+        mergeFixtureField(targetMatch, provider, "referee", fixture.referee(),
                 hasText(match.getReferee()), value -> targetMatch.setReferee((String) value));
 
         MatchStatus incomingStatus = toMatchStatus(fixture.status());
         if (incomingStatus != null && statusTransitionAllowed(match.getStatus(), incomingStatus)) {
-            mergeFixtureField(match, provider, "status", incomingStatus,
+            mergeFixtureField(targetMatch, provider, "status", incomingStatus,
                     match.getStatus() != null && !newMatch, value -> targetMatch.setStatus((MatchStatus) value));
         }
-        if (fixture.homeScore() != null) mergeFixtureField(match, provider, "home_score",
+        if (fixture.homeScore() != null) mergeFixtureField(targetMatch, provider, "home_score",
                 fixture.homeScore(), match.getHomeScore() != null, value -> targetMatch.setHomeScore((Integer) value));
-        if (fixture.awayScore() != null) mergeFixtureField(match, provider, "away_score",
+        if (fixture.awayScore() != null) mergeFixtureField(targetMatch, provider, "away_score",
                 fixture.awayScore(), match.getAwayScore() != null, value -> targetMatch.setAwayScore((Integer) value));
 
         matchRepository.save(targetMatch);
