@@ -14,7 +14,7 @@ import com.mmo.module.fb.ingest.adapter.out.persistence.core.MatchXgPersistenceS
 import com.mmo.module.fb.ingest.adapter.out.persistence.provider.footballdatauk.FootballDataUkMatchStatisticsPersistenceService;
 import com.mmo.module.fb.ingest.adapter.out.persistence.provider.footballdatauk.FootballDataUkOddsPersistenceService;
 import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
-import com.mmo.module.fb.ingest.adapter.out.persistence.identity.ExternalIdMappingService;
+import com.mmo.module.fb.ingest.application.port.out.ExternalIdMappingPort;
 import com.mmo.module.fb.domain.league.entity.League;
 import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
 import com.mmo.module.fb.domain.league.entity.Season;
@@ -78,7 +78,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final TeamRepository teamRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;
-    private final ExternalIdMappingService externalIdMappingService;
+    private final ExternalIdMappingPort externalIdMappingService;
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final MatchXgPersistenceService matchXgPersistenceService;
