@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.application.port.in;
 
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.application.port.in.ProviderOverrides;
+import com.mmo.module.fb.ingest.application.model.ProviderOverrides;
 import java.util.List;
 
 /**

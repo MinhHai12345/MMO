@@ -6,6 +6,10 @@ public class ProviderDataException extends RuntimeException {
     private final boolean notAvailable;
     private final boolean retryable;
 
+    public ProviderDataException(String message, Throwable cause, boolean notAvailable, boolean retryable) {
+        this(message, cause, null, notAvailable, retryable);
+    }
+
     public ProviderDataException(String message, Throwable cause, String failureCode,
                                  boolean notAvailable, boolean retryable) {
         super(message, cause);

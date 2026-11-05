@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.adapter.in.web;
 
-import com.mmo.module.fb.ingest.application.service.integration.SofaScoreExternalMappingService;
+import com.mmo.module.fb.ingest.application.model.SofaScoreExternalMappingResult;
+import com.mmo.module.fb.ingest.application.port.in.SofaScoreExternalMappingUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,10 +15,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class SofaScoreExternalMappingController {
 
-    private final SofaScoreExternalMappingService mappingService;
+    private final SofaScoreExternalMappingUseCase mappingService;
 
     @PostMapping("/sofascore")
-    public SofaScoreExternalMappingService.MappingResult mapSofaScoreIds() {
+    public SofaScoreExternalMappingResult mapSofaScoreIds() {
         return mappingService.mapExistingCoreData();
     }
 }

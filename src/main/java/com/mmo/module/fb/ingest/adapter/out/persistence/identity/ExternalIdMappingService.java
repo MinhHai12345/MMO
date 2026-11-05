@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.adapter.out.persistence.core;
+package com.mmo.module.fb.ingest.adapter.out.persistence.identity;
 
 import com.mmo.module.fb.domain.league.entity.League;
 import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
@@ -12,13 +12,12 @@ import com.mmo.module.fb.domain.league.entity.SeasonExternalId;
 import com.mmo.module.fb.domain.team.entity.Team;
 import com.mmo.module.fb.domain.team.entity.TeamExternalId;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.application.port.out.ExternalIdMappingPort;
 import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.match.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.domain.player.repository.PlayerExternalIdRepository;
 import com.mmo.module.fb.domain.league.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.domain.team.repository.TeamExternalIdRepository;
-import org.springframework.stereotype.Repository;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
@@ -30,9 +29,9 @@ import java.util.Optional;
  * only in mapping tables. Legacy entity-level IDs cannot identify their source
  * provider. Existing mappings are never silently reassigned to another entity.</p>
  */
-@Repository
+@Service
 @Transactional
-public class ExternalIdMappingJpaAdapter implements ExternalIdMappingPort {
+public class ExternalIdMappingService implements com.mmo.module.fb.ingest.application.port.out.ExternalIdMappingPort {
 
     private final LeagueExternalIdRepository leagueExternalIds;
     private final SeasonExternalIdRepository seasonExternalIds;
@@ -40,7 +39,7 @@ public class ExternalIdMappingJpaAdapter implements ExternalIdMappingPort {
     private final MatchExternalIdRepository matchExternalIds;
     private final PlayerExternalIdRepository playerExternalIds;
 
-    public ExternalIdMappingJpaAdapter(LeagueExternalIdRepository leagueExternalIds,
+    public ExternalIdMappingService(LeagueExternalIdRepository leagueExternalIds,
                                     SeasonExternalIdRepository seasonExternalIds,
                                     TeamExternalIdRepository teamExternalIds,
                                     MatchExternalIdRepository matchExternalIds,
@@ -111,6 +110,7 @@ public class ExternalIdMappingJpaAdapter implements ExternalIdMappingPort {
                 SeasonExternalId::getSeason, SeasonExternalId::getExternalId, season, "season", provider, externalId);
     }
 
+    @Override
     public TeamExternalId registerTeam(Team team, Provider provider, String externalId) {
         if (team == null || team.getId() == null) {
             throw new IllegalArgumentException("Team must be persisted before registering an external ID");
@@ -123,6 +123,7 @@ public class ExternalIdMappingJpaAdapter implements ExternalIdMappingPort {
                 TeamExternalId::getTeam, TeamExternalId::getExternalId, team, "team", provider, externalId);
     }
 
+    @Override
     public MatchExternalId registerMatch(Match match, Provider provider, String externalId) {
         if (match == null || match.getId() == null) {
             throw new IllegalArgumentException("Match must be persisted before registering an external ID");

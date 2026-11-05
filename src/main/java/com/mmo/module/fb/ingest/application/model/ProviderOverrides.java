@@ -1,8 +1,11 @@
-package com.mmo.module.fb.ingest.application.port.in;
+package com.mmo.module.fb.ingest.application.model;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 
-/** Optional resource-level provider overrides for one bootstrap execution. */
+/**
+ * Optional per-resource provider overrides for one bootstrap execution.
+ * A null value delegates to the default routing in AppProperties.
+ */
 public record ProviderOverrides(
         Provider league,
         Provider season,
@@ -10,6 +13,7 @@ public record ProviderOverrides(
         Provider fixture,
         Provider standings) {
 
+    /** Backward-compatible constructor for callers that predate standalone season ingestion. */
     public ProviderOverrides(Provider league, Provider team, Provider fixture, Provider standings) {
         this(league, null, team, fixture, standings);
     }

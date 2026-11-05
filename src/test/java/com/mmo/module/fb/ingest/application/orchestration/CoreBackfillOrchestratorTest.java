@@ -9,7 +9,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
-import com.mmo.module.fb.ingest.application.port.in.ProviderOverrides;
+import com.mmo.module.fb.ingest.application.model.ProviderOverrides;
 import com.mmo.module.fb.ingest.application.port.in.SeasonIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;

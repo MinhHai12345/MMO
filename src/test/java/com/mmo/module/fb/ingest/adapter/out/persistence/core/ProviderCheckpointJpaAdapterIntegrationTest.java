@@ -4,7 +4,7 @@ import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.adapter.out.persistence.repository.ProviderSyncCheckpointRepository;
+import com.mmo.module.fb.ingest.repository.ProviderSyncCheckpointRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
