@@ -2,7 +2,7 @@ package com.mmo.module.fb.ingest.application.port.out;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
-import com.mmo.module.fb.ingest.service.ResolvedProviderFixture;
+import com.mmo.module.fb.ingest.application.model.ResolvedProviderFixture;
 
 import java.util.List;
 
