@@ -6,4 +6,5 @@ public interface TeamIngestionService {
     void syncTeams();
     void syncTeamsForProvider(Provider selectedProvider);
     void syncAllSeasonsForProvider(Provider selectedProvider);
+    void syncSeasonForProvider(Provider selectedProvider, Long seasonId);
 }
