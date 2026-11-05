@@ -2,7 +2,7 @@ package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.provider.spi.SeasonBatchProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
@@ -13,17 +13,17 @@ import java.util.Map;
 
 /** Resolves optional season-batch capabilities without coupling orchestration to a provider. */
 @Component
-public class SeasonBatchProviderRegistry {
-    private final Map<Provider, SeasonBatchProvider> providers;
+public class SeasonBatchIngestionPortRegistry {
+    private final Map<Provider, SeasonBatchIngestionPort> providers;
 
-    public SeasonBatchProviderRegistry(List<SeasonBatchProvider> providers) {
-        Map<Provider, SeasonBatchProvider> indexed = new EnumMap<>(Provider.class);
+    public SeasonBatchIngestionPortRegistry(List<SeasonBatchIngestionPort> providers) {
+        Map<Provider, SeasonBatchIngestionPort> indexed = new EnumMap<>(Provider.class);
         if (providers != null) {
-            for (SeasonBatchProvider provider : providers) {
+            for (SeasonBatchIngestionPort provider : providers) {
                 if (provider == null || provider.getProvider() == null) {
                     throw new IllegalStateException("Season batch provider and provider identity must not be null");
                 }
-                SeasonBatchProvider previous = indexed.putIfAbsent(provider.getProvider(), provider);
+                SeasonBatchIngestionPort previous = indexed.putIfAbsent(provider.getProvider(), provider);
                 if (previous != null) {
                     throw new IllegalStateException("Duplicate season batch provider: " + provider.getProvider());
                 }
@@ -33,18 +33,18 @@ public class SeasonBatchProviderRegistry {
     }
 
     public boolean supports(Provider provider, Dataset dataset) {
-        SeasonBatchProvider batchProvider = providers.get(provider);
+        SeasonBatchIngestionPort batchProvider = providers.get(provider);
         return batchProvider != null && batchProvider.supportedDatasets() != null
                 && batchProvider.supportedDatasets().contains(dataset);
     }
 
-    public SeasonBatchProvider require(Provider provider) {
-        SeasonBatchProvider result = providers.get(provider);
+    public SeasonBatchIngestionPort require(Provider provider) {
+        SeasonBatchIngestionPort result = providers.get(provider);
         if (result == null) throw new IllegalStateException("No season batch provider registered for " + provider);
         return result;
     }
 
-    public Collection<SeasonBatchProvider> all() {
+    public Collection<SeasonBatchIngestionPort> all() {
         return providers.values();
     }
 }

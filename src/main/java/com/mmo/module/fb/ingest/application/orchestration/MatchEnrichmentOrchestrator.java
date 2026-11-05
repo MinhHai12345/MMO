@@ -4,7 +4,7 @@ import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.provider.spi.SeasonBatchProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 import com.mmo.module.fb.ingest.application.port.in.MatchEnrichmentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +24,7 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
     private final IngestionDistributedLock distributedLock;
     private final ProviderCheckpointStore checkpointStore;
     private final IngestionPlanFactory planFactory;
-    private final SeasonBatchProviderRegistry seasonBatchProviderRegistry;
+    private final SeasonBatchIngestionPortRegistry seasonBatchProviderRegistry;
 
     @Override
     public void enrichFinishedMatches() {
@@ -37,7 +37,7 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
 
     private void enrichFinishedMatchesLocked() {
         IngestionPlan historicalPlan = planFactory.historicalPlan();
-        java.util.List<SeasonBatchProvider> enrichmentProviders = seasonBatchProviderRegistry.all().stream()
+        java.util.List<SeasonBatchIngestionPort> enrichmentProviders = seasonBatchProviderRegistry.all().stream()
                 .filter(provider -> supportsAnyEnrichmentDataset(provider.getProvider()))
                 .filter(provider -> !seasonIdsForProvider(historicalPlan, provider.getProvider()).isEmpty())
                 .toList();
@@ -48,7 +48,7 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
 
         IngestionPlan activePlan = planFactory.activeSeasonPlan();
         java.util.List<String> failedStages = new java.util.ArrayList<>();
-        for (SeasonBatchProvider provider : enrichmentProviders) {
+        for (SeasonBatchIngestionPort provider : enrichmentProviders) {
             Provider providerId = provider.getProvider();
             java.util.List<String> providerFailures = new java.util.ArrayList<>();
             java.util.List<Long> historicalSeasonIds = seasonIdsForProvider(historicalPlan, providerId);
@@ -83,7 +83,7 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
             throw new IllegalStateException("Match enrichment incomplete: " + failedStages);
         }
         log.info("Match enrichment completed for providers={}",
-                enrichmentProviders.stream().map(SeasonBatchProvider::getProvider).toList());
+                enrichmentProviders.stream().map(SeasonBatchIngestionPort::getProvider).toList());
     }
 
     private boolean supportsAnyEnrichmentDataset(Provider provider) {

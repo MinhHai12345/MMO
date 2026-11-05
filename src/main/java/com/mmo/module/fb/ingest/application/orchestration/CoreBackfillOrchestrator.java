@@ -8,7 +8,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.application.exception.ProviderTransportException;
-import com.mmo.module.fb.ingest.provider.spi.SeasonBatchProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.FootballDataBootstrapService;
@@ -46,7 +46,7 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
     private final AppProperties appProperties;
     private final ProviderCheckpointStore checkpointStore;
     private final IngestionPlanFactory planFactory;
-    private final SeasonBatchProviderRegistry seasonBatchProviderRegistry;
+    private final SeasonBatchIngestionPortRegistry seasonBatchProviderRegistry;
     private final LeagueIngestionService leagueIngestionService;
     private final SeasonIngestionService seasonIngestionService;
     private final TeamIngestionService teamIngestionService;
@@ -91,14 +91,14 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
                     + "DataSourcePolicy is authoritative per dataset and season");
         }
 
-        List<SeasonBatchProvider> batchProviders = seasonBatchProviderRegistry.all().stream()
+        List<SeasonBatchIngestionPort> batchProviders = seasonBatchProviderRegistry.all().stream()
                 .filter(provider -> isProviderEnabled(provider.getProvider()))
                 .toList();
         boolean batchCoreRequired = batchProviders.stream().anyMatch(provider ->
                 seasonBatchProviderRegistry.supports(provider.getProvider(), Dataset.SEASON)
                         || seasonBatchProviderRegistry.supports(provider.getProvider(), Dataset.TEAM)
                         || seasonBatchProviderRegistry.supports(provider.getProvider(), Dataset.FIXTURE));
-        for (SeasonBatchProvider provider : batchProviders) {
+        for (SeasonBatchIngestionPort provider : batchProviders) {
             if (!seasonBatchProviderRegistry.supports(provider.getProvider(), Dataset.SEASON)) continue;
             try {
                 runStage(provider.getProvider() + "/prepare-historical-seasons",
@@ -128,7 +128,7 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
                 .toList();
         log.info("Historical Core plan created: units={}, nonBatchTeams={}, nonBatchFixtures={}, batchProviders={}",
                 plan.units().size(), nonBatchTeams.size(), nonBatchFixtures.size(),
-                batchProviders.stream().map(SeasonBatchProvider::getProvider).toList());
+                batchProviders.stream().map(SeasonBatchIngestionPort::getProvider).toList());
 
         if (plan.units().isEmpty() && !batchCoreRequired) {
             if (!failedStages.isEmpty()) {
@@ -146,7 +146,7 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
                 fixtureIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId(), null, null),
                 failedStages, unitResults));
 
-        for (SeasonBatchProvider provider : batchProviders) {
+        for (SeasonBatchIngestionPort provider : batchProviders) {
             Provider providerId = provider.getProvider();
             List<Long> batchSeasonIds = plan.units().stream()
                     .filter(unit -> unit.provider() == providerId
@@ -245,7 +245,7 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
                             && seasonBatchProviderRegistry.supports(provider, unit.dataset()))
                     .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
             if (!batchSeasonIds.isEmpty()) {
-                SeasonBatchProvider batchProvider = seasonBatchProviderRegistry.require(provider);
+                SeasonBatchIngestionPort batchProvider = seasonBatchProviderRegistry.require(provider);
                 for (Long seasonId : batchSeasonIds) {
                     try {
                         runStage("multi-provider/core/" + provider + "/season=" + seasonId,

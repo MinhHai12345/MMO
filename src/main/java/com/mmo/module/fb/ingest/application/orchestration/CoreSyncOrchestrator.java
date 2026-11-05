@@ -1,5 +1,7 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
+import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
+
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
@@ -36,7 +38,7 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
     private final TeamIngestionService teamIngestionService;
     private final FixtureIngestionService fixtureIngestionService;
     private final StandingsIngestionService standingsIngestionService;
-    private final SeasonBatchProviderRegistry seasonBatchProviderRegistry;
+    private final SeasonBatchIngestionPortRegistry seasonBatchProviderRegistry;
 
     @Override
     public void sync(ProviderOverrides overrides, Provider oddsProviderOverride) {
@@ -106,7 +108,7 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
                         standingsIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()),
                         failedStages, unitResults));
 
-        for (SeasonBatchProvider provider : seasonBatchProviderRegistry.all()) {
+        for (SeasonBatchIngestionPort provider : seasonBatchProviderRegistry.all()) {
             Provider providerId = provider.getProvider();
             List<Long> activeSeasonIds = plan.units().stream()
                     .filter(unit -> unit.provider() == providerId

@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
-import com.mmo.module.fb.ingest.provider.spi.SeasonBatchProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
@@ -31,8 +31,8 @@ class CoreSyncOrchestratorTest {
     private TeamIngestionService teams;
     private FixtureIngestionService fixtures;
     private StandingsIngestionService standings;
-    private SeasonBatchProvider uk;
-    private SeasonBatchProviderRegistry seasonBatchProviderRegistry;
+    private SeasonBatchIngestionPort uk;
+    private SeasonBatchIngestionPortRegistry seasonBatchProviderRegistry;
     private CoreSyncOrchestrator useCase;
 
     @BeforeEach
@@ -49,12 +49,12 @@ class CoreSyncOrchestratorTest {
         teams = mock(TeamIngestionService.class);
         fixtures = mock(FixtureIngestionService.class);
         standings = mock(StandingsIngestionService.class);
-        uk = mock(SeasonBatchProvider.class);
+        uk = mock(SeasonBatchIngestionPort.class);
         when(uk.getProvider()).thenReturn(Provider.FOOTBALL_DATA_UK);
         when(uk.supportedDatasets()).thenReturn(java.util.Set.of(
                 Dataset.SEASON, Dataset.TEAM, Dataset.FIXTURE, Dataset.MATCH_STATISTICS,
                 Dataset.MATCH_XG, Dataset.HISTORICAL_ODDS));
-        seasonBatchProviderRegistry = new SeasonBatchProviderRegistry(List.of(uk));
+        seasonBatchProviderRegistry = new SeasonBatchIngestionPortRegistry(List.of(uk));
         clearInvocations(uk);
         when(planFactory.activeSeasonPlan()).thenReturn(modernSeasonPlan());
         useCase = new CoreSyncOrchestrator(lock, planFactory, checkpoints,

@@ -2,7 +2,7 @@ package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
-import com.mmo.module.fb.ingest.provider.spi.SeasonBatchProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
@@ -28,8 +28,8 @@ class CoreBackfillOrchestratorTest {
     private AppProperties properties;
     private ProviderCheckpointStore checkpoints;
     private IngestionPlanFactory planFactory;
-    private SeasonBatchProvider footballDataUk;
-    private SeasonBatchProviderRegistry seasonBatchProviderRegistry;
+    private SeasonBatchIngestionPort footballDataUk;
+    private SeasonBatchIngestionPortRegistry seasonBatchProviderRegistry;
     private LeagueIngestionService leagues;
     private SeasonIngestionService seasons;
     private TeamIngestionService teams;
@@ -54,12 +54,12 @@ class CoreBackfillOrchestratorTest {
 
         checkpoints = mock(ProviderCheckpointStore.class);
         planFactory = mock(IngestionPlanFactory.class);
-        footballDataUk = mock(SeasonBatchProvider.class);
+        footballDataUk = mock(SeasonBatchIngestionPort.class);
         when(footballDataUk.getProvider()).thenReturn(Provider.FOOTBALL_DATA_UK);
         when(footballDataUk.supportedDatasets()).thenReturn(java.util.Set.of(
                 Dataset.SEASON, Dataset.TEAM, Dataset.FIXTURE, Dataset.MATCH_STATISTICS,
                 Dataset.MATCH_XG, Dataset.HISTORICAL_ODDS));
-        seasonBatchProviderRegistry = new SeasonBatchProviderRegistry(List.of(footballDataUk));
+        seasonBatchProviderRegistry = new SeasonBatchIngestionPortRegistry(List.of(footballDataUk));
         clearInvocations(footballDataUk);
         leagues = mock(LeagueIngestionService.class);
         seasons = mock(SeasonIngestionService.class);

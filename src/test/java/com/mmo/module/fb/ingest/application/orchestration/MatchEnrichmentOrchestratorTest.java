@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
-import com.mmo.module.fb.ingest.provider.spi.SeasonBatchProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
@@ -18,8 +18,8 @@ class MatchEnrichmentOrchestratorTest {
     private IngestionDistributedLock lock;
     private ProviderCheckpointStore checkpoints;
     private IngestionPlanFactory planFactory;
-    private SeasonBatchProvider footballDataUk;
-    private SeasonBatchProviderRegistry seasonBatchProviderRegistry;
+    private SeasonBatchIngestionPort footballDataUk;
+    private SeasonBatchIngestionPortRegistry seasonBatchProviderRegistry;
     private MatchEnrichmentOrchestrator useCase;
 
     @BeforeEach
@@ -34,12 +34,12 @@ class MatchEnrichmentOrchestratorTest {
         planFactory = mock(IngestionPlanFactory.class);
         when(planFactory.historicalPlan()).thenReturn(enrichmentPlan());
         when(planFactory.activeSeasonPlan()).thenReturn(enrichmentPlan());
-        footballDataUk = mock(SeasonBatchProvider.class);
+        footballDataUk = mock(SeasonBatchIngestionPort.class);
         when(footballDataUk.getProvider()).thenReturn(Provider.FOOTBALL_DATA_UK);
         when(footballDataUk.supportedDatasets()).thenReturn(java.util.Set.of(
                 Dataset.SEASON, Dataset.TEAM, Dataset.FIXTURE, Dataset.MATCH_STATISTICS,
                 Dataset.MATCH_XG, Dataset.HISTORICAL_ODDS));
-        seasonBatchProviderRegistry = new SeasonBatchProviderRegistry(List.of(footballDataUk));
+        seasonBatchProviderRegistry = new SeasonBatchIngestionPortRegistry(List.of(footballDataUk));
         clearInvocations(footballDataUk);
         useCase = new MatchEnrichmentOrchestrator(lock, checkpoints, planFactory, seasonBatchProviderRegistry);
     }
