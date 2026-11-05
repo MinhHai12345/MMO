@@ -3,7 +3,7 @@ package com.mmo.module.fb.ingest.application.service.integration;
 import com.mmo.module.fb.ingest.application.port.out.PlayerStatisticsIngestionPort;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreLineupsClient;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreLineupsResponseDTO;
-import com.mmo.module.fb.ingest.persistence.sofascore.SofaScorePlayerStatsPersistenceService;
+import com.mmo.module.fb.ingest.adapter.out.persistence.provider.sofascore.SofaScorePlayerStatsPersistenceService;
 import com.mmo.module.fb.domain.match.entity.Match;
 import com.mmo.module.fb.domain.match.entity.MatchExternalId;
 import com.mmo.module.fb.domain.match.enums.MatchStatus;
