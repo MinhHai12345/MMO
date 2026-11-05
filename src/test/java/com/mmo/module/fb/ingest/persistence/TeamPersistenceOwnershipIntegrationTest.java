@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.persistence;
+package com.mmo.module.fb.ingest.adapter.out.persistence.core;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
