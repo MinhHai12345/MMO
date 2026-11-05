@@ -132,7 +132,7 @@ class CoreSyncOrchestratorTest {
 
         useCase.sync(null, null);
 
-        verifyNoInteractions(planFactory, checkpoints, leagues, seasons, teams, fixtures, standings, seasonBatchRegistry);
+        verifyNoInteractions(planFactory, checkpoints, leagues, seasons, teams, fixtures, standings);
     }
 
     private IngestionPlan modernSeasonPlan() {

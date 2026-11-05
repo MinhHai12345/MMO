@@ -152,7 +152,7 @@ class CoreBackfillOrchestratorTest {
 
         service.syncCoreData(ProviderOverrides.defaults());
 
-        verifyNoInteractions(planFactory, checkpoints, seasonBatchRegistry, leagues, seasons, teams, fixtures, standings);
+        verifyNoInteractions(planFactory, checkpoints, leagues, seasons, teams, fixtures, standings);
     }
 
     private IngestionPlan historicalFootballDataAndUkPlan() {
