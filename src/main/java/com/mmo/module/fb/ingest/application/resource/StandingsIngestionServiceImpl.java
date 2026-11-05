@@ -1,5 +1,6 @@
 package com.mmo.module.fb.ingest.application.resource;
 
+import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
 import com.mmo.module.fb.ingest.application.support.IngestionServiceSupport;
 
 import com.mmo.AppProperties;
@@ -121,10 +122,10 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
         if (rateLimitInterrupted) {
             log.warn("Standings ingestion via {} partially completed. {} rows upserted, {} rows skipped.",
                     selectedProvider, saved, skipped);
-        } else {
-            log.info("Standings ingestion via {} completed. {} rows upserted, {} rows skipped.",
-                    selectedProvider, saved, skipped);
+            throw new IngestionPartialException("Standings ingestion interrupted by provider rate limiting");
         }
+        log.info("Standings ingestion via {} completed. {} rows upserted, {} rows skipped.",
+                selectedProvider, saved, skipped);
     }
 
 

@@ -3,15 +3,22 @@ package com.mmo.module.fb.ingest.application.orchestration;
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
+import com.mmo.module.fb.ingest.enums.CheckpointStatus;
+import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.service.FixtureIngestionService;
 import com.mmo.module.fb.ingest.service.LeagueIngestionService;
-import com.mmo.module.fb.ingest.service.OddsIngestionService;
 import com.mmo.module.fb.ingest.service.SeasonIngestionService;
 import com.mmo.module.fb.ingest.service.StandingsIngestionService;
 import com.mmo.module.fb.ingest.service.TeamIngestionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -19,12 +26,13 @@ class CoreSyncOrchestratorTest {
 
     private IngestionDistributedLock lock;
     private AppProperties properties;
+    private IngestionPlanFactory planFactory;
+    private ProviderCheckpointStore checkpoints;
     private LeagueIngestionService leagues;
     private SeasonIngestionService seasons;
     private TeamIngestionService teams;
     private FixtureIngestionService fixtures;
     private StandingsIngestionService standings;
-    private OddsIngestionService odds;
     private FootballDataUkIngestionPort uk;
     private CoreSyncOrchestrator useCase;
 
@@ -35,54 +43,81 @@ class CoreSyncOrchestratorTest {
             ((Runnable) invocation.getArgument(1)).run();
             return true;
         }).when(lock).execute(anyString(), any(Runnable.class));
+        properties = new AppProperties();
+        properties.getIngestion().getProviders().setLeague(Provider.FOOTBALL_DATA);
+        planFactory = mock(IngestionPlanFactory.class);
+        checkpoints = mock(ProviderCheckpointStore.class);
         leagues = mock(LeagueIngestionService.class);
         seasons = mock(SeasonIngestionService.class);
         teams = mock(TeamIngestionService.class);
         fixtures = mock(FixtureIngestionService.class);
         standings = mock(StandingsIngestionService.class);
-        odds = mock(OddsIngestionService.class);
         uk = mock(FootballDataUkIngestionPort.class);
-        properties = new AppProperties();
-        useCase = new CoreSyncOrchestrator(lock, properties,
+        when(planFactory.activeSeasonPlan()).thenReturn(modernSeasonPlan());
+        useCase = new CoreSyncOrchestrator(lock, properties, planFactory, checkpoints,
                 leagues, seasons, teams, fixtures, standings, uk);
     }
 
     @Test
-    void runsIncrementalCoreStagesUnderGlobalLock() {
+    void executesResourcesFromDatasetSeasonPlanAndPersistsScopedCheckpoints() {
         useCase.sync(null, null);
 
         verify(lock).execute(eq(IngestionDistributedLock.GLOBAL_INGEST_LOCK), any(Runnable.class));
-        verify(leagues, atLeastOnce()).syncLeaguesForProvider(any());
-        verify(seasons).syncSeasonsForProvider(any());
-        verify(teams).syncTeamsForProvider(any());
-        verify(fixtures).syncFixturesForProvider(any(), isNull(), isNull());
-        verify(standings).syncStandingsForProvider(any());
-        verifyNoInteractions(odds);
+        verify(planFactory).activeSeasonPlan();
+        verify(leagues).syncLeaguesForProvider(Provider.FOOTBALL_DATA);
+        verify(seasons).syncSeasonsForProvider(Provider.FOOTBALL_DATA);
+        verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.SEASON,
+                39L, "2025/2026", CheckpointStatus.COMPLETED);
+        verify(teams).syncTeamsForProvider(Provider.FOOTBALL_DATA);
+        verify(fixtures).syncFixturesForProvider(Provider.FOOTBALL_DATA, null, null);
+        verify(standings).syncStandingsForProvider(Provider.FOOTBALL_DATA);
         verify(uk).syncActiveSeasonsData();
+        verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.TEAM,
+                39L, "2025/2026", CheckpointStatus.RUNNING);
+        verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.TEAM,
+                39L, "2025/2026", CheckpointStatus.COMPLETED);
+        verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.FIXTURE,
+                39L, "2025/2026", CheckpointStatus.COMPLETED);
     }
 
     @Test
-    void rejectsTemporarilyDisabledProvidersForCoreApiResources() {
-        properties.getIngestion().getProviders().setFixture(
-                com.mmo.module.fb.ingest.enums.Provider.SOFA_SCORE);
+    void skipsAllProviderStagesWhenNoSupportedSeasonRoutesExist() {
+        when(planFactory.activeSeasonPlan()).thenReturn(new IngestionPlan(List.of()));
 
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
-                () -> useCase.sync(null, null));
+        useCase.sync(null, null);
 
-        verifyNoInteractions(leagues, seasons, teams, fixtures, standings, odds, uk);
+        verifyNoInteractions(leagues, seasons, teams, fixtures, standings, uk, checkpoints);
     }
 
     @Test
-    void neverRunsUpcomingOddsDuringPhaseOneEvenWhenAnOverrideIsSupplied() {
-        AppProperties.ProviderConfig enabledButOutOfScope = new AppProperties.ProviderConfig();
-        enabledButOutOfScope.setEnabled(true);
-        properties.getIngestion().getProviderConfig().put(
-                com.mmo.module.fb.ingest.enums.Provider.API_FOOTBALL, enabledButOutOfScope);
+    void recordsFailedScopedCheckpointAndRethrowsWhenDatasetStageFails() {
+        doThrow(new IllegalStateException("provider down"))
+                .when(teams).syncTeamsForProvider(Provider.FOOTBALL_DATA);
 
-        useCase.sync(null, com.mmo.module.fb.ingest.enums.Provider.API_FOOTBALL);
+        assertThrows(IllegalStateException.class, () -> useCase.sync(null, null));
 
-        verifyNoInteractions(odds);
+        verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.TEAM,
+                39L, "2025/2026", CheckpointStatus.FAILED);
+        verify(fixtures, never()).syncFixturesForProvider(any(), any(), any());
+    }
+
+    @Test
+    void recordsPartialCheckpointWhenStandingsProviderIsRateLimited() {
+        doThrow(new IngestionPartialException("rate limited"))
+                .when(standings).syncStandingsForProvider(Provider.FOOTBALL_DATA);
+
+        useCase.sync(null, null);
+
+        verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.STANDINGS,
+                39L, "2025/2026", CheckpointStatus.PARTIAL);
+    }
+
+    @Test
+    void neverRunsUpcomingOddsEvenWhenAnOverrideIsSupplied() {
+        useCase.sync(null, Provider.API_FOOTBALL);
+
         verify(uk).syncActiveSeasonsData();
+        verify(checkpoints, never()).markStatus(any(), eq(Dataset.UPCOMING_ODDS), anyLong(), anyString(), any());
     }
 
     @Test
@@ -91,6 +126,23 @@ class CoreSyncOrchestratorTest {
 
         useCase.sync(null, null);
 
-        verifyNoInteractions(leagues, seasons, teams, fixtures, standings, odds, uk);
+        verifyNoInteractions(planFactory, checkpoints, leagues, seasons, teams, fixtures, standings, uk);
+    }
+
+    private IngestionPlan modernSeasonPlan() {
+        return new IngestionPlan(List.of(
+                unit(Dataset.SEASON, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY),
+                unit(Dataset.TEAM, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY),
+                unit(Dataset.FIXTURE, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY),
+                unit(Dataset.FIXTURE, Provider.FOOTBALL_DATA_UK, IngestionWorkUnit.Role.SECONDARY),
+                unit(Dataset.STANDINGS, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY),
+                unit(Dataset.MATCH_STATISTICS, Provider.FOOTBALL_DATA_UK, IngestionWorkUnit.Role.PRIMARY),
+                unit(Dataset.MATCH_XG, Provider.FOOTBALL_DATA_UK, IngestionWorkUnit.Role.PRIMARY),
+                unit(Dataset.HISTORICAL_ODDS, Provider.FOOTBALL_DATA_UK, IngestionWorkUnit.Role.PRIMARY)
+        ));
+    }
+
+    private IngestionWorkUnit unit(Dataset dataset, Provider provider, IngestionWorkUnit.Role role) {
+        return new IngestionWorkUnit(dataset, 100L, 39L, "2025/2026", provider, role);
     }
 }

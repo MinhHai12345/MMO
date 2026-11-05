@@ -3,7 +3,11 @@ package com.mmo.module.fb.ingest.application.orchestration;
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
+import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.service.FixtureIngestionService;
 import com.mmo.module.fb.ingest.service.FootballDataSyncService;
 import com.mmo.module.fb.ingest.service.LeagueIngestionService;
@@ -15,13 +19,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
- * Coordinates provider-neutral ingestion use cases. Jobs and workflow orchestration never
- * call provider-specific services or adapters directly.
+ * Executes the active-season plan. Provider ownership is decided per dataset/season
+ * by DataSourcePolicy; provider defaults are used only for catalogue initialization.
  */
 @Slf4j
 @Service
@@ -30,6 +32,8 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
 
     private final IngestionDistributedLock distributedLock;
     private final AppProperties properties;
+    private final IngestionPlanFactory planFactory;
+    private final ProviderCheckpointStore checkpointStore;
     private final LeagueIngestionService leagueIngestionService;
     private final SeasonIngestionService seasonIngestionService;
     private final TeamIngestionService teamIngestionService;
@@ -47,70 +51,120 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
     }
 
     private void syncLocked(ProviderOverrides overrides, Provider oddsProviderOverride) {
-        ProviderOverrides selected = overrides == null ? ProviderOverrides.defaults() : overrides;
-        AppProperties.Providers defaults = properties.getIngestion().getProviders();
-
-        Provider league = selected.league() == null ? defaults.getLeague() : selected.league();
-        Provider season = selected.season() == null ? defaults.getSeason() : selected.season();
-        Provider team = selected.team() == null ? defaults.getTeam() : selected.team();
-        Provider fixture = selected.fixture() == null ? defaults.getFixture() : selected.fixture();
-        Provider standings = selected.standings() == null ? defaults.getStandings() : selected.standings();
-        Provider odds = oddsProviderOverride == null ? defaults.getOdds() : oddsProviderOverride;
-
-        requireFootballDataProvider(league, "league");
-        requireFootballDataProvider(season, "season");
-        requireFootballDataProvider(team, "team");
-        requireFootballDataProvider(fixture, "fixture");
-        requireFootballDataProvider(standings, "standings");
-
-        log.info("Football data incremental sync started for the current active season only: "
-                        + "leagueProvider={}, teamProvider={}, fixtureProvider={}, standingsProvider={}, oddsProvider={}",
-                league, team, fixture, standings, odds);
-
-        Set<Provider> catalogueProviders = new LinkedHashSet<>(
-                List.of(league, season, team, fixture));
-        if (standings != Provider.UNDER_STATS) catalogueProviders.add(standings);
-        for (Provider provider : catalogueProviders) {
-            runStage("leagues/" + provider,
-                    () -> leagueIngestionService.syncLeaguesForProvider(provider));
+        if (overrides != null && (overrides.league() != null || overrides.season() != null
+                || overrides.team() != null || overrides.fixture() != null || overrides.standings() != null)) {
+            log.info("Ignoring resource provider overrides for incremental sync; "
+                    + "DataSourcePolicy is authoritative per dataset and season");
         }
-        // Team and fixture fetches resolve provider-specific season IDs, not the
-        // external season ID belonging to an unrelated catalogue provider.
-        for (Provider provider : catalogueProviders) {
-            runStage("seasons/" + provider,
-                    () -> seasonIngestionService.syncSeasonsForProvider(provider));
-        }
-        runStage("teams/" + team, () -> teamIngestionService.syncTeamsForProvider(team));
-        runStage("current-season-fixtures",
-                () -> fixtureIngestionService.syncFixturesForProvider(fixture, null, null));
+        IngestionPlan plan = planFactory.activeSeasonPlan();
+        log.info("Active-season ingestion plan created: workUnits={}, datasets={}, providers={}",
+                plan.units().size(),
+                plan.units().stream().map(IngestionWorkUnit::dataset).distinct().toList(),
+                plan.units().stream().map(IngestionWorkUnit::provider).distinct().toList());
 
-        runStage("standings", () -> standingsIngestionService.syncStandingsForProvider(standings));
-
-        if (odds == null) {
-            log.info("Skipping upcoming odds: no upcoming-odds provider is active in Phase 1");
-        } else {
-            log.warn("Ignoring upcoming-odds provider override {}: upcoming odds ingestion is disabled in Phase 1", odds);
+        if (plan.units().isEmpty()) {
+            log.info("No active season has a supported ingestion route; skipping Core sync");
+            return;
         }
 
-        // The initial 2014+ CSV backfill belongs to FootballDataBootstrapService.
-        // The frequent sync job fetches only operator-selected active seasons owned by or eligible for UK fallback.
-        runStage("football-data-uk-active-seasons", footballDataUkSyncService::syncActiveSeasonsData);
-        log.info("Football data sync completed");
+        // League/season catalogues are provider-specific identity namespaces. They are
+        // initialized before the season-scoped resources; season routing itself remains
+        // controlled by the plan rather than the global resource provider properties.
+        boolean footballDataCatalogueRequired = plan.units().stream().anyMatch(unit ->
+                unit.provider() == Provider.FOOTBALL_DATA
+                        && unit.role() == IngestionWorkUnit.Role.PRIMARY);
+        if (footballDataCatalogueRequired) {
+            Provider catalogueProvider = properties.getIngestion().getProviders().getLeague();
+            if (catalogueProvider != Provider.FOOTBALL_DATA) {
+                throw new IllegalStateException("Football-Data is the catalogue owner in DataSourcePolicy, got "
+                        + catalogueProvider);
+            }
+            runStage("catalogue/leagues/" + catalogueProvider,
+                    () -> leagueIngestionService.syncLeaguesForProvider(catalogueProvider));
+            List<IngestionWorkUnit> footballDataSeasons = plan.units(
+                    Dataset.SEASON, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
+            if (footballDataSeasons.isEmpty()) {
+                runStage("catalogue/seasons/" + catalogueProvider,
+                        () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider));
+            } else {
+                runPlannedStage("catalogue/seasons/" + catalogueProvider, Dataset.SEASON,
+                        footballDataSeasons,
+                        () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider));
+            }
+        }
+
+        List<IngestionWorkUnit> footballDataTeams = plan.units(
+                Dataset.TEAM, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
+        if (!footballDataTeams.isEmpty()) {
+            runPlannedStage("teams/FOOTBALL_DATA", Dataset.TEAM, footballDataTeams,
+                    () -> teamIngestionService.syncTeamsForProvider(Provider.FOOTBALL_DATA));
+        }
+
+        List<IngestionWorkUnit> footballDataFixtures = plan.units(
+                Dataset.FIXTURE, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
+        if (!footballDataFixtures.isEmpty()) {
+            runPlannedStage("fixtures/FOOTBALL_DATA", Dataset.FIXTURE, footballDataFixtures,
+                    () -> fixtureIngestionService.syncFixturesForProvider(Provider.FOOTBALL_DATA, null, null));
+        }
+
+        List<IngestionWorkUnit> footballDataStandings = plan.units(
+                Dataset.STANDINGS, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
+        if (!footballDataStandings.isEmpty()) {
+            runPlannedStage("standings/FOOTBALL_DATA", Dataset.STANDINGS, footballDataStandings,
+                    () -> standingsIngestionService.syncStandingsForProvider(Provider.FOOTBALL_DATA));
+        }
+
+        // UK is both primary for 2014-2022 and an explicitly permitted fixture fallback
+        // for overlap seasons. Its importer evaluates the same active-season policy and
+        // writes its own scoped Core checkpoints.
+        boolean ukCoreRequired = plan.units().stream().anyMatch(unit ->
+                unit.provider() == Provider.FOOTBALL_DATA_UK
+                        && (unit.dataset() == Dataset.TEAM || unit.dataset() == Dataset.FIXTURE));
+        if (ukCoreRequired) {
+            runStage("football-data-uk/active-seasons", footballDataUkSyncService::syncActiveSeasonsData);
+        }
+
+        if (!plan.units(Dataset.UPCOMING_ODDS, IngestionWorkUnit.Role.PRIMARY).isEmpty()) {
+            throw new IllegalStateException("Upcoming odds are disabled by DataSourcePolicy");
+        }
+        if (oddsProviderOverride != null) {
+            log.info("Ignoring upcoming odds override {} because DataSourcePolicy disables UPCOMING_ODDS",
+                    oddsProviderOverride);
+        }
+        log.info("Active-season ingestion completed");
     }
 
-    private void requireFootballDataProvider(Provider provider, String resource) {
-        if (provider != Provider.FOOTBALL_DATA) {
-            throw new IllegalStateException("Phase 1 supports FOOTBALL_DATA for " + resource
-                    + " ingestion; " + provider + " is temporarily disabled. "
-                    + "Football-Data UK is orchestrated through its dedicated CSV workflow.");
+    private void runPlannedStage(String name, Dataset dataset,
+                                 List<IngestionWorkUnit> units, Runnable operation) {
+        units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
+                unit.leagueId(), unit.season(), CheckpointStatus.RUNNING));
+        try {
+            runStage(name, operation);
+            units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
+                    unit.leagueId(), unit.season(), CheckpointStatus.COMPLETED));
+        } catch (IngestionPartialException exception) {
+            units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
+                    unit.leagueId(), unit.season(), CheckpointStatus.PARTIAL));
+            log.warn("Ingestion stage completed partially: {} reason={}", name, exception.getMessage());
+        } catch (RuntimeException exception) {
+            units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
+                    unit.leagueId(), unit.season(), CheckpointStatus.FAILED));
+            throw exception;
         }
     }
 
     private void runStage(String name, Runnable operation) {
         long started = System.nanoTime();
-        log.info("Football data stage STARTED: {}", name);
-        operation.run();
-        log.info("Football data stage COMPLETED: {} durationMs={}",
-                name, (System.nanoTime() - started) / 1_000_000);
+        log.info("Ingestion stage STARTED: {}", name);
+        try {
+            operation.run();
+            log.info("Ingestion stage COMPLETED: {} durationMs={}",
+                    name, (System.nanoTime() - started) / 1_000_000);
+        } catch (RuntimeException exception) {
+            log.error("Ingestion stage FAILED: {} durationMs={} errorType={} message={}",
+                    name, (System.nanoTime() - started) / 1_000_000,
+                    exception.getClass().getSimpleName(), exception.getMessage(), exception);
+            throw exception;
+        }
     }
 }

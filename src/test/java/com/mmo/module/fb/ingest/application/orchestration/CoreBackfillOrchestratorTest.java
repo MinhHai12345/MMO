@@ -4,8 +4,9 @@ import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
-
+import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.service.FixtureIngestionService;
 import com.mmo.module.fb.ingest.service.LeagueIngestionService;
 import com.mmo.module.fb.ingest.service.ProviderOverrides;
@@ -15,7 +16,7 @@ import com.mmo.module.fb.ingest.service.TeamIngestionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
@@ -26,6 +27,7 @@ class CoreBackfillOrchestratorTest {
     private IngestionDistributedLock lock;
     private AppProperties properties;
     private ProviderCheckpointStore checkpoints;
+    private IngestionPlanFactory planFactory;
     private FootballDataUkIngestionPort footballDataUk;
     private LeagueIngestionService leagues;
     private SeasonIngestionService seasons;
@@ -47,31 +49,24 @@ class CoreBackfillOrchestratorTest {
         footballDataConfig.setEnabled(true);
         footballDataConfig.setApiKey("test-api-key");
         properties.getIngestion().getProviderConfig().put(Provider.FOOTBALL_DATA, footballDataConfig);
-        AppProperties.ProviderConfig ukConfig = new AppProperties.ProviderConfig();
-        ukConfig.setEnabled(false);
-        properties.getIngestion().getProviderConfig().put(Provider.FOOTBALL_DATA_UK, ukConfig);
         properties.getIngestion().getProviders().setLeague(Provider.FOOTBALL_DATA);
-        properties.getIngestion().getProviders().setSeason(Provider.FOOTBALL_DATA);
-        properties.getIngestion().getProviders().setTeam(Provider.FOOTBALL_DATA);
-        properties.getIngestion().getProviders().setFixture(Provider.FOOTBALL_DATA);
 
         checkpoints = mock(ProviderCheckpointStore.class);
+        planFactory = mock(IngestionPlanFactory.class);
         footballDataUk = mock(FootballDataUkIngestionPort.class);
         leagues = mock(LeagueIngestionService.class);
         seasons = mock(SeasonIngestionService.class);
         teams = mock(TeamIngestionService.class);
         fixtures = mock(FixtureIngestionService.class);
         standings = mock(StandingsIngestionService.class);
+        when(planFactory.historicalPlan()).thenReturn(historicalFootballDataPlan());
 
-        when(checkpoints.isCompleted(any(), anyString())).thenReturn(false);
-
-        service = new CoreBackfillOrchestrator(
-                lock, properties, checkpoints, footballDataUk,
-                leagues, seasons, teams, fixtures, standings);
+        service = new CoreBackfillOrchestrator(lock, properties, checkpoints, planFactory,
+                footballDataUk, leagues, seasons, teams, fixtures, standings);
     }
 
     @Test
-    void recordsTeamCheckpointButNotFixtureCheckpointWhenFixtureBackfillFails() {
+    void recordsIndependentTeamAndFixtureCheckpointOutcomes() {
         doThrow(new IllegalStateException("fixture provider unavailable"))
                 .when(fixtures).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA, null, null);
 
@@ -79,41 +74,55 @@ class CoreBackfillOrchestratorTest {
                 new ProviderOverrides(Provider.FOOTBALL_DATA, Provider.FOOTBALL_DATA,
                         Provider.FOOTBALL_DATA, Provider.FOOTBALL_DATA, null)));
 
-        verify(checkpoints).markCompleted(Provider.FOOTBALL_DATA, "CORE_BACKFILL_TEAMS");
-        verify(checkpoints, never()).markCompleted(Provider.FOOTBALL_DATA, "CORE_BACKFILL_FIXTURES");
+        verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.TEAM,
+                39L, "2024/2025", CheckpointStatus.COMPLETED);
+        verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.FIXTURE,
+                39L, "2024/2025", CheckpointStatus.FAILED);
         verify(teams).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA);
         verify(fixtures).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA, null, null);
         verify(footballDataUk, never()).syncInitialData();
     }
 
     @Test
-    void completedResourceCheckpointsMakeBootstrapNoOp() {
-        when(checkpoints.isCompleted(Provider.FOOTBALL_DATA, "CORE_BACKFILL_TEAMS")).thenReturn(true);
-        when(checkpoints.isCompleted(Provider.FOOTBALL_DATA, "CORE_BACKFILL_FIXTURES")).thenReturn(true);
+    void completedScopedCheckpointsSkipHistoricalResourceFetches() {
+        when(checkpoints.isCompleted(Provider.FOOTBALL_DATA, Dataset.TEAM,
+                39L, "2024/2025")).thenReturn(true);
+        when(checkpoints.isCompleted(Provider.FOOTBALL_DATA, Dataset.FIXTURE,
+                39L, "2024/2025")).thenReturn(true);
 
-        service.syncCoreData(new ProviderOverrides(Provider.FOOTBALL_DATA, Provider.FOOTBALL_DATA,
-                Provider.FOOTBALL_DATA, Provider.FOOTBALL_DATA, null));
+        service.syncCoreData(ProviderOverrides.defaults());
 
-        verifyNoInteractions(leagues, seasons, teams, fixtures, footballDataUk);
+        verify(leagues).syncLeaguesForProvider(Provider.FOOTBALL_DATA);
+        verify(seasons).syncSeasonsForProvider(Provider.FOOTBALL_DATA);
+        verifyNoInteractions(teams, fixtures, footballDataUk);
     }
 
     @Test
-    void rejectsDisabledThirdPartyProvidersDuringBootstrap() {
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
-                () -> service.syncCoreData(new ProviderOverrides(
-                        Provider.SOFA_SCORE, Provider.UNDER_STATS,
-                        Provider.SOFA_SCORE, Provider.UNDER_STATS, null)));
+    void providerOverridesCannotBypassSeasonAwarePolicy() {
+        service.syncCoreData(new ProviderOverrides(Provider.FOOTBALL_DATA, Provider.SOFA_SCORE,
+                Provider.SOFA_SCORE, Provider.SOFA_SCORE, Provider.SOFA_SCORE));
 
-        verifyNoInteractions(leagues, seasons, teams, fixtures, footballDataUk);
+        verify(teams).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA);
+        verify(fixtures).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA, null, null);
     }
 
     @Test
     void doesNotStartWorkflowWhenGlobalLockIsBusy() {
         doReturn(false).when(lock).execute(eq(IngestionDistributedLock.GLOBAL_INGEST_LOCK), any(Runnable.class));
 
-        service.syncCoreData(new ProviderOverrides(Provider.FOOTBALL_DATA, Provider.FOOTBALL_DATA,
-                Provider.FOOTBALL_DATA, Provider.FOOTBALL_DATA, null));
+        service.syncCoreData(ProviderOverrides.defaults());
 
-        verifyNoInteractions(leagues, seasons, teams, fixtures, footballDataUk);
+        verifyNoInteractions(planFactory, checkpoints, footballDataUk, leagues, seasons, teams, fixtures, standings);
+    }
+
+    private IngestionPlan historicalFootballDataPlan() {
+        return new IngestionPlan(List.of(
+                new IngestionWorkUnit(Dataset.SEASON, 20L, 39L, "2024/2025",
+                        Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY),
+                new IngestionWorkUnit(Dataset.TEAM, 20L, 39L, "2024/2025",
+                        Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY),
+                new IngestionWorkUnit(Dataset.FIXTURE, 20L, 39L, "2024/2025",
+                        Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY)
+        ));
     }
 }
