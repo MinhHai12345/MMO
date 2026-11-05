@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
-import com.mmo.module.fb.ingest.application.port.in.FootballDataUkIngestionUseCase;
+import com.mmo.module.fb.ingest.provider.spi.SeasonBatchProvider;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
@@ -24,7 +24,7 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
     private final IngestionDistributedLock distributedLock;
     private final ProviderCheckpointStore checkpointStore;
     private final IngestionPlanFactory planFactory;
-    private final FootballDataUkIngestionUseCase footballDataUkSyncService;
+    private final SeasonBatchProviderRegistry seasonBatchProviderRegistry;
 
     @Override
     public void enrichFinishedMatches() {
@@ -67,7 +67,7 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
         for (Long seasonId : historicalSeasonIds) {
             try {
                 runStage("football-data-uk/historical-enrichment/season=" + seasonId,
-                        () -> footballDataUkSyncService.syncEnrichmentSeason(seasonId, true));
+                        () -> seasonBatchProviderRegistry.require(Provider.FOOTBALL_DATA_UK).syncEnrichmentSeason(seasonId, true));
             } catch (RuntimeException exception) {
                 failedStages.add("historical/season=" + seasonId + ": " + exception.getMessage());
             }
@@ -84,7 +84,7 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
         for (Long seasonId : activeSeasonIds) {
             try {
                 runStage("football-data-uk/active-enrichment/season=" + seasonId,
-                        () -> footballDataUkSyncService.syncEnrichmentSeason(seasonId, false));
+                        () -> seasonBatchProviderRegistry.require(Provider.FOOTBALL_DATA_UK).syncEnrichmentSeason(seasonId, false));
             } catch (RuntimeException exception) {
                 failedStages.add("active/season=" + seasonId + ": " + exception.getMessage());
             }
