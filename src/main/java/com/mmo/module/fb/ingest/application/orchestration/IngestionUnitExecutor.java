@@ -1,5 +1,6 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
+import com.mmo.module.fb.ingest.application.exception.IngestionNotAvailableException;
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
@@ -52,6 +53,9 @@ public final class IngestionUnitExecutor {
             checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
                     unit.season(), result.status());
             return withDuration(result, elapsedMillis(startedAt));
+        } catch (IngestionNotAvailableException exception) {
+            markFailureState(unit, CheckpointStatus.NOT_AVAILABLE, exception);
+            return IngestionUnitResult.notAvailable(unit, exception.getMessage(), elapsedMillis(startedAt));
         } catch (IngestionPartialException exception) {
             markFailureState(unit, CheckpointStatus.PARTIAL, exception);
             return IngestionUnitResult.partial(unit, exception.getMessage(), elapsedMillis(startedAt));
