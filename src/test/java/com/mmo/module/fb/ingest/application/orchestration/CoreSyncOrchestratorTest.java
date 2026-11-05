@@ -68,9 +68,9 @@ class CoreSyncOrchestratorTest {
         verify(seasons).syncSeasonsForProvider(Provider.FOOTBALL_DATA);
         verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.SEASON,
                 39L, "2025/2026", CheckpointStatus.COMPLETED);
-        verify(teams).syncTeamsForProvider(Provider.FOOTBALL_DATA);
-        verify(fixtures).syncFixturesForProvider(Provider.FOOTBALL_DATA, null, null);
-        verify(standings).syncStandingsForProvider(Provider.FOOTBALL_DATA);
+        verify(teams).syncSeasonForProvider(Provider.FOOTBALL_DATA, 100L);
+        verify(fixtures).syncSeasonForProvider(Provider.FOOTBALL_DATA, 100L, null, null);
+        verify(standings).syncSeasonForProvider(Provider.FOOTBALL_DATA, 100L);
         verify(uk).syncActiveSeasonsData();
         verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.TEAM,
                 39L, "2025/2026", CheckpointStatus.RUNNING);
@@ -92,7 +92,7 @@ class CoreSyncOrchestratorTest {
     @Test
     void recordsFailedScopedCheckpointAndContinuesIndependentDatasetStages() {
         doThrow(new IllegalStateException("provider down"))
-                .when(teams).syncTeamsForProvider(Provider.FOOTBALL_DATA);
+                .when(teams).syncSeasonForProvider(Provider.FOOTBALL_DATA, 100L);
 
         assertThrows(IllegalStateException.class, () -> useCase.sync(null, null));
 
@@ -107,7 +107,7 @@ class CoreSyncOrchestratorTest {
     @Test
     void recordsPartialCheckpointWhenStandingsProviderIsRateLimited() {
         doThrow(new IngestionPartialException("rate limited"))
-                .when(standings).syncStandingsForProvider(Provider.FOOTBALL_DATA);
+                .when(standings).syncSeasonForProvider(Provider.FOOTBALL_DATA, 100L);
 
         assertThrows(IllegalStateException.class, () -> useCase.sync(null, null));
 
