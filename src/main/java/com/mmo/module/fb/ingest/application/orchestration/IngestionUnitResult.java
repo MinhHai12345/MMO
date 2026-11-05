@@ -53,7 +53,9 @@ public record IngestionUnitResult(
                 false, durationMillis, message);
     }
 
-    private static boolean negative(Integer value) {\n        return value != null && value < 0;\n    }
+    private static boolean negative(Integer value) {
+        return value != null && value < 0;
+    }
 
     public boolean isSuccessful() {
         return skipped || status == CheckpointStatus.COMPLETED || status == CheckpointStatus.NOT_AVAILABLE;
