@@ -61,7 +61,7 @@ class TeamPersistenceOwnershipIntegrationTest {
 
         persistence.persistTeamsForSeason(Provider.FOOTBALL_DATA_UK, season,
                 List.of(new ProviderTeam("uk-team-1", "Manchester United", "Man Utd",
-                        "https://uk.example/new-logo.png", null, null, null, null)));
+                        "https://uk.example/new-logo.png", null, null, null)));
 
         assertEquals("Manchester United", canonical.getName());
         assertEquals("Man United", canonical.getShortName());
