@@ -39,6 +39,7 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
         IngestionPlan historicalPlan = planFactory.historicalPlan();
         java.util.List<SeasonBatchProvider> enrichmentProviders = seasonBatchProviderRegistry.all().stream()
                 .filter(provider -> supportsAnyEnrichmentDataset(provider.getProvider()))
+                .filter(provider -> !seasonIdsForProvider(historicalPlan, provider.getProvider()).isEmpty())
                 .toList();
         if (enrichmentProviders.isEmpty()) {
             log.info("Match enrichment skipped: no registered season-batch provider supports enrichment datasets");
