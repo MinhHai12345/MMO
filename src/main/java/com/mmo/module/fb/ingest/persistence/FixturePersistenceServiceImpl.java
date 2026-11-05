@@ -6,6 +6,8 @@ import com.mmo.module.fb.team.entity.Team;
 import com.mmo.module.fb.match.enums.MatchStatus;
 import com.mmo.module.fb.match.enums.MatchProvider;
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
+import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.match.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.match.repository.MatchRepository;
 import com.mmo.module.fb.league.repository.SeasonRepository;
@@ -32,6 +34,7 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final ExternalIdMappingService externalIdMappingService;
+    private final DataSourcePolicy dataSourcePolicy;
 
     @Override
     @Transactional
@@ -46,6 +49,11 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
         Team home = teamRepository.findById(homeTeamId).orElse(null);
         Team away = teamRepository.findById(awayTeamId).orElse(null);
         if (season == null || home == null || away == null) return false;
+        if (!dataSourcePolicy.isPrimary(provider, Dataset.FIXTURE, season)) {
+            log.debug("Rejecting non-owner fixture write: provider={}, season={}, dataset=FIXTURE",
+                    provider, season.getYear());
+            return false;
+        }
 
         Match match = matchExternalIdRepository.findByProviderAndExternalId(MatchProvider.fromName(provider.name()), fixture.externalId())
                 .map(com.mmo.module.fb.match.entity.MatchExternalId::getMatch)

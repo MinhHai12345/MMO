@@ -4,6 +4,8 @@ import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
+import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkMatchDataProvider;
 import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkMatchStatisticsPersistenceService;
 import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkOddsPersistenceService;
@@ -65,6 +67,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
 
     private final AppProperties properties;
     private final ProviderCheckpointStore checkpointStore;
+    private final DataSourcePolicy dataSourcePolicy;
     private final FootballDataUkMatchDataProvider matchDataProvider;
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
@@ -424,11 +427,9 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                                 match.getId(), MatchProvider.fromName(Provider.FOOTBALL_DATA.name())).isPresent();
                 BigDecimal homeXg = decimalMetric(value(row, "HXG"));
                 BigDecimal awayXg = decimalMetric(value(row, "AXG"));
-                if ((!footballDataOwnsCore || match.getHomeXG() == null) && homeXg != null) {
-                    match.setHomeXG(homeXg.doubleValue());
-                }
-                if ((!footballDataOwnsCore || match.getAwayXG() == null) && awayXg != null) {
-                    match.setAwayXG(awayXg.doubleValue());
+                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_XG, season)) {
+                    if (homeXg != null) match.setHomeXG(homeXg.doubleValue());
+                    if (awayXg != null) match.setAwayXG(awayXg.doubleValue());
                 }
                 matchRepository.save(match);
                 importedStats += statisticsMapper.persist(match, row);
@@ -518,12 +519,17 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 boolean footballDataOwnsCore = match.getId() != null
                         && matchExternalIdRepository.findByMatchIdAndProvider(
                                 match.getId(), MatchProvider.fromName(Provider.FOOTBALL_DATA.name())).isPresent();
-                if (!footballDataOwnsCore || match.getMatchTime() == null) {
+                boolean ukOwnsFixtureCore = dataSourcePolicy.isPrimary(
+                        PROVIDER, Dataset.FIXTURE, season);
+                boolean mayUseUkFallback = dataSourcePolicy.mayFallbackForCore(
+                        PROVIDER, Dataset.FIXTURE, season, footballDataOwnsCore);
+                boolean preservePrimaryCore = !ukOwnsFixtureCore && !mayUseUkFallback;
+                if (!preservePrimaryCore || match.getMatchTime() == null) {
                     match.setMatchTime(kickoff);
                 }
-                // Football-Data is the primary Core source for overlapping seasons.
-                // UK refreshes its own matches and fills gaps on Football-Data-owned matches.
-                updateFixtureResult(match, row, footballDataOwnsCore);
+                // Season-aware ownership: UK is primary through 2022; from 2023 it may
+                // only fill a missing Football-Data fixture, never replace mapped FD core fields.
+                updateFixtureResult(match, row, preservePrimaryCore);
                 Optional<MatchExternalId> mapping = match.getId() == null ? Optional.empty()
                         : matchExternalIdRepository.findByMatchIdAndProvider(match.getId(), MatchProvider.fromName(PROVIDER.name()));
                 if (mapping.isPresent()) {

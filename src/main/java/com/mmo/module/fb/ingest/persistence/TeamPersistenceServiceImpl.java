@@ -1,6 +1,8 @@
 package com.mmo.module.fb.ingest.persistence;
 
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
+import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.service.ExternalIdMappingService;
@@ -30,10 +32,16 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
     private final TeamRepository teamRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;
     private final ExternalIdMappingService externalIdMappingService;
+    private final DataSourcePolicy dataSourcePolicy;
 
     @Override
     @Transactional
     public void persistTeamsForSeason(Provider selectedProvider, Season season, List<ProviderTeam> teams) {
+        if (season == null || !dataSourcePolicy.isPrimary(selectedProvider, Dataset.TEAM, season)) {
+            log.debug("Rejecting non-owner team write: provider={}, season={}, dataset=TEAM",
+                    selectedProvider, season == null ? null : season.getYear());
+            return;
+        }
         int synced = 0;
         Map<String, Team> teamsByExternalId = new HashMap<>();
         Map<Long, TeamExternalId> mappingByTeamId = new HashMap<>();

@@ -5,6 +5,7 @@ import com.mmo.module.fb.ingest.application.support.IngestionServiceSupport;
 import com.mmo.AppProperties;
 import com.mmo.module.fb.league.entity.Season;
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.team.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballPlanRestrictionException;
@@ -74,8 +75,8 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
         }
 
         List<Season> seasons = includeHistoricalSeasons
-                ? ingestionSupport.allMappedSeasonsToSync(selectedProvider)
-                : ingestionSupport.seasonsToSync(selectedProvider);
+                ? ingestionSupport.allMappedSeasonsToSync(selectedProvider, Dataset.FIXTURE)
+                : ingestionSupport.seasonsToSync(selectedProvider, Dataset.FIXTURE);
         if (seasons.isEmpty() && selectedProvider == Provider.FOOTBALL_DATA) {
             throw new IllegalStateException("No mapped seasons available for Football-Data fixture ingestion");
         }
