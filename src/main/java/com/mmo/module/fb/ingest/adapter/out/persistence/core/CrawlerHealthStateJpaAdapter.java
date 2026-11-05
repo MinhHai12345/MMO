@@ -1,8 +1,8 @@
 package com.mmo.module.fb.ingest.adapter.out.persistence.core;
 
 import com.mmo.module.fb.ingest.application.port.out.CrawlerHealthStatePort;
-import com.mmo.module.fb.ingest.entity.CrawlerHealth;
-import com.mmo.module.fb.ingest.repository.CrawlerHealthRepository;
+import com.mmo.module.fb.ingest.adapter.out.persistence.entity.CrawlerHealth;
+import com.mmo.module.fb.ingest.adapter.out.persistence.repository.CrawlerHealthRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
