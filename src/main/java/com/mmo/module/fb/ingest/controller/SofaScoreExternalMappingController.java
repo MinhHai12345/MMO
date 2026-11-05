@@ -1,6 +1,6 @@
 package com.mmo.module.fb.ingest.controller;
 
-import com.mmo.module.fb.ingest.service.impl.SofaScoreExternalMappingService;
+import com.mmo.module.fb.ingest.application.service.integration.SofaScoreExternalMappingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
