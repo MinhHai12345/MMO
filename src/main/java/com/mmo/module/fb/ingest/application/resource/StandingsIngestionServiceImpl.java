@@ -1,5 +1,6 @@
 package com.mmo.module.fb.ingest.application.resource;
 
+import com.mmo.module.fb.ingest.application.orchestration.IngestionPartialException;
 import com.mmo.module.fb.ingest.application.support.IngestionServiceSupport;
 
 import com.mmo.AppProperties;
