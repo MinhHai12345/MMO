@@ -51,7 +51,7 @@ class MatchStatisticsSnapshotPersistenceServiceTest {
         assertEquals(match, saved.getMatch());
         assertEquals(team, saved.getTeam());
         assertEquals(MatchProvider.SOFA_SCORE, saved.getProvider());
-        assertTrue(saved.getSnapshotJson().contains("\"expectedGoals\":\"1.25\""));
+        assertTrue(saved.getSnapshotJson().contains("\"expectedGoals\":\"1.50\""));
         assertNotNull(saved.getFetchedAt());
     }
 
