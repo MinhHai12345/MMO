@@ -1,9 +1,9 @@
 package com.mmo.module.fb.ingest.service;
 
-import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
-import java.util.List;
-
-public interface LeaguePersistenceService {
-    void persistLeagues(Provider provider, List<ProviderLeague> leagues);
+/**
+ * @deprecated Use {@code application.port.out.LeaguePersistenceService}.
+ */
+@Deprecated(forRemoval = false)
+public interface LeaguePersistenceService
+        extends com.mmo.module.fb.ingest.application.port.out.LeaguePersistenceService {
 }
