@@ -50,12 +50,26 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
      */
     @Override
     public void syncStandingsForProvider(Provider selectedProvider) {
+        syncStandingsForProvider(selectedProvider, null);
+    }
+
+    @Override
+    public void syncSeasonForProvider(Provider selectedProvider, Long seasonId) {
+        if (seasonId == null) throw new IllegalArgumentException("seasonId must not be null");
+        syncStandingsForProvider(selectedProvider, seasonId);
+    }
+
+    private void syncStandingsForProvider(Provider selectedProvider, Long onlySeasonId) {
         ingestionSupport.requireProviderEnabled(selectedProvider, "standings");
 
         // Allow standalone scheduled runs to bootstrap missing team mappings without repeating
         // the full teams endpoint on every standings refresh.
         if (teamExternalIdRepository.findAllByProvider(selectedProvider).isEmpty()) {
-            teamIngestionService.syncTeamsForProvider(selectedProvider);
+            if (onlySeasonId != null) {
+                teamIngestionService.syncSeasonForProvider(selectedProvider, onlySeasonId);
+            } else {
+                teamIngestionService.syncTeamsForProvider(selectedProvider);
+            }
         }
         StandingsProvider provider = providerRegistry.standings(selectedProvider);
 
@@ -72,6 +86,7 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
         int skipped = 0;
         boolean rateLimitInterrupted = false;
         List<Season> seasons = ingestionSupport.standingsSeasonsToSync(selectedProvider);
+        if (onlySeasonId != null) seasons = seasons.stream().filter(s -> onlySeasonId.equals(s.getId())).toList();
         log.info("Fetching standings for {} season records via {}", seasons.size(), selectedProvider);
         for (Season season : seasons) {
             if (season.getLeague() == null || season.getYear() == null) continue;

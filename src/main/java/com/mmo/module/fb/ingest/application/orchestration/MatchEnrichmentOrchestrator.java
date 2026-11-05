@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
 
-    private static final String CORE_INITIAL_CHECKPOINT = "CORE_INITIAL_BACKFILL";
     private static final String ENRICHMENT_INITIAL_CHECKPOINT = "MATCH_ENRICHMENT_INITIAL";
 
     private final IngestionDistributedLock distributedLock;
@@ -57,27 +56,46 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
                                 || unit.dataset() == Dataset.HISTORICAL_ODDS))
                         .count());
 
-        boolean coreReady = checkpointStore.isCompleted(
-                Provider.FOOTBALL_DATA_UK, CORE_INITIAL_CHECKPOINT);
-        if (!coreReady) {
-            log.info("Skipping match enrichment until the 2014+ Football-Data UK Core CSV import is complete");
-            return;
-        }
-
-        runStage("football-data-uk-match-enrichment", this::syncFootballDataUkEnrichment);
-        log.info("Match enrichment completed: provider={}", Provider.FOOTBALL_DATA_UK);
-    }
-
-    private void syncFootballDataUkEnrichment() {
-        boolean initialEnrichmentComplete = checkpointStore.isCompleted(
-                Provider.FOOTBALL_DATA_UK, ENRICHMENT_INITIAL_CHECKPOINT);
-        if (!initialEnrichmentComplete) {
-            if (footballDataUkSyncService.syncInitialEnrichment()) {
-                checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK, ENRICHMENT_INITIAL_CHECKPOINT);
+        java.util.List<String> failedStages = new java.util.ArrayList<>();
+        java.util.List<Long> historicalSeasonIds = plan.units().stream()
+                .filter(unit -> unit.provider() == Provider.FOOTBALL_DATA_UK
+                        && unit.role() == IngestionWorkUnit.Role.PRIMARY
+                        && (unit.dataset() == Dataset.MATCH_STATISTICS
+                        || unit.dataset() == Dataset.MATCH_XG
+                        || unit.dataset() == Dataset.HISTORICAL_ODDS))
+                .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
+        for (Long seasonId : historicalSeasonIds) {
+            try {
+                runStage("football-data-uk/historical-enrichment/season=" + seasonId,
+                        () -> footballDataUkSyncService.syncEnrichmentSeason(seasonId, true));
+            } catch (RuntimeException exception) {
+                failedStages.add("historical/season=" + seasonId + ": " + exception.getMessage());
             }
-            return;
         }
-        footballDataUkSyncService.syncActiveSeasonsEnrichment();
+
+        IngestionPlan activePlan = planFactory.activeSeasonPlan();
+        java.util.List<Long> activeSeasonIds = activePlan.units().stream()
+                .filter(unit -> unit.provider() == Provider.FOOTBALL_DATA_UK
+                        && unit.role() == IngestionWorkUnit.Role.PRIMARY
+                        && (unit.dataset() == Dataset.MATCH_STATISTICS
+                        || unit.dataset() == Dataset.MATCH_XG
+                        || unit.dataset() == Dataset.HISTORICAL_ODDS))
+                .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
+        for (Long seasonId : activeSeasonIds) {
+            try {
+                runStage("football-data-uk/active-enrichment/season=" + seasonId,
+                        () -> footballDataUkSyncService.syncEnrichmentSeason(seasonId, false));
+            } catch (RuntimeException exception) {
+                failedStages.add("active/season=" + seasonId + ": " + exception.getMessage());
+            }
+        }
+        if (failedStages.isEmpty()) {
+            checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK, ENRICHMENT_INITIAL_CHECKPOINT);
+        }
+        if (!failedStages.isEmpty()) {
+            throw new IllegalStateException("Match enrichment incomplete: " + failedStages);
+        }
+        log.info("Match enrichment completed: provider={}", Provider.FOOTBALL_DATA_UK);
     }
 
     private void runStage(String name, Runnable operation) {

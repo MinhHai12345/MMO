@@ -67,6 +67,8 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
             return;
         }
 
+        List<String> failedStages = new java.util.ArrayList<>();
+        List<IngestionUnitResult> unitResults = new java.util.ArrayList<>();
         // League/season catalogues are provider-specific identity namespaces. They are
         // initialized before the season-scoped resources; season routing itself remains
         // controlled by the plan rather than the global resource provider properties.
@@ -79,40 +81,31 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
                 throw new IllegalStateException("Football-Data is the catalogue owner in DataSourcePolicy, got "
                         + catalogueProvider);
             }
-            runStage("catalogue/leagues/" + catalogueProvider,
-                    () -> leagueIngestionService.syncLeaguesForProvider(catalogueProvider));
+            runStageCollecting("catalogue/leagues/" + catalogueProvider,
+                    () -> leagueIngestionService.syncLeaguesForProvider(catalogueProvider), failedStages);
             List<IngestionWorkUnit> footballDataSeasons = plan.units(
                     Dataset.SEASON, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
             if (footballDataSeasons.isEmpty()) {
-                runStage("catalogue/seasons/" + catalogueProvider,
-                        () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider));
+                runStageCollecting("catalogue/seasons/" + catalogueProvider,
+                        () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider), failedStages);
             } else {
                 runPlannedStage("catalogue/seasons/" + catalogueProvider, Dataset.SEASON,
                         footballDataSeasons,
-                        () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider));
+                        () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider), failedStages);
             }
         }
 
-        List<IngestionWorkUnit> footballDataTeams = plan.units(
-                Dataset.TEAM, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
-        if (!footballDataTeams.isEmpty()) {
-            runPlannedStage("teams/FOOTBALL_DATA", Dataset.TEAM, footballDataTeams,
-                    () -> teamIngestionService.syncTeamsForProvider(Provider.FOOTBALL_DATA));
-        }
-
-        List<IngestionWorkUnit> footballDataFixtures = plan.units(
-                Dataset.FIXTURE, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
-        if (!footballDataFixtures.isEmpty()) {
-            runPlannedStage("fixtures/FOOTBALL_DATA", Dataset.FIXTURE, footballDataFixtures,
-                    () -> fixtureIngestionService.syncFixturesForProvider(Provider.FOOTBALL_DATA, null, null));
-        }
-
-        List<IngestionWorkUnit> footballDataStandings = plan.units(
-                Dataset.STANDINGS, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
-        if (!footballDataStandings.isEmpty()) {
-            runPlannedStage("standings/FOOTBALL_DATA", Dataset.STANDINGS, footballDataStandings,
-                    () -> standingsIngestionService.syncStandingsForProvider(Provider.FOOTBALL_DATA));
-        }
+        plan.units(Dataset.TEAM, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY)
+                .forEach(unit -> runUnit(unit, () ->
+                        teamIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()), failedStages, unitResults));
+        plan.units(Dataset.FIXTURE, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY)
+                .forEach(unit -> runUnit(unit, () ->
+                        fixtureIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId(), null, null),
+                        failedStages, unitResults));
+        plan.units(Dataset.STANDINGS, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY)
+                .forEach(unit -> runUnit(unit, () ->
+                        standingsIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()),
+                        failedStages, unitResults));
 
         // UK is both primary for 2014-2022 and an explicitly permitted fixture fallback
         // for overlap seasons. Its importer evaluates the same active-season policy and
@@ -121,7 +114,20 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
                 unit.provider() == Provider.FOOTBALL_DATA_UK
                         && (unit.dataset() == Dataset.TEAM || unit.dataset() == Dataset.FIXTURE));
         if (ukCoreRequired) {
-            runStage("football-data-uk/active-seasons", footballDataUkSyncService::syncActiveSeasonsData);
+            List<Long> ukActiveSeasonIds = plan.units().stream()
+                    .filter(unit -> unit.provider() == Provider.FOOTBALL_DATA_UK
+                            && (unit.dataset() == Dataset.TEAM || unit.dataset() == Dataset.FIXTURE))
+                    .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
+            for (Long seasonId : ukActiveSeasonIds) {
+                try {
+                    runStage("football-data-uk/active/season=" + seasonId,
+                            () -> footballDataUkSyncService.syncCoreSeason(seasonId, false));
+                } catch (RuntimeException exception) {
+                    failedStages.add("football-data-uk/active/season=" + seasonId
+                            + ": " + exception.getMessage());
+                    log.warn("Football-Data UK active season failed; continuing: {}", seasonId, exception);
+                }
+            }
         }
 
         if (!plan.units(Dataset.UPCOMING_ODDS, IngestionWorkUnit.Role.PRIMARY).isEmpty()) {
@@ -131,25 +137,56 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
             log.info("Ignoring upcoming odds override {} because DataSourcePolicy disables UPCOMING_ODDS",
                     oddsProviderOverride);
         }
-        log.info("Active-season ingestion completed");
+        IngestionExecutionReport report = new IngestionExecutionReport(unitResults);
+        log.info("Active-season work-unit report: {}", report.summary());
+        if (!failedStages.isEmpty()) {
+            throw new IllegalStateException("Active-season ingestion incomplete: " + failedStages
+                    + "; " + report.summary());
+        }
+        log.info("Active-season ingestion completed: {}", report.summary());
     }
 
-    private void runPlannedStage(String name, Dataset dataset,
-                                 List<IngestionWorkUnit> units, Runnable operation) {
+    private void runUnit(IngestionWorkUnit unit, Runnable operation, List<String> failedStages,
+                         List<IngestionUnitResult> results) {
+        String name = unit.provider() + "/" + unit.dataset() + "/league=" + unit.leagueId()
+                + "/season=" + unit.season();
+        IngestionUnitResult result = new IngestionUnitExecutor(checkpointStore)
+                .execute(unit, false, () -> runStage(name, operation));
+        results.add(result);
+        if (!result.isSuccessful()) {
+            failedStages.add(name + " [" + result.status() + "]: " + result.message());
+            log.warn("Independent ingestion work unit finished with {}: {}", result.status(), name);
+        }
+    }
+
+    /**
+     * Catalogue synchronization is provider-wide by contract. Its season checkpoints are
+     * transitioned together because the provider API does not expose an individual season
+     * catalogue endpoint; all resource datasets below remain season-scoped.
+     */
+    private void runPlannedStage(String name, Dataset dataset, List<IngestionWorkUnit> units,
+                                 Runnable operation, List<String> failedStages) {
         units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
                 unit.leagueId(), unit.season(), CheckpointStatus.RUNNING));
         try {
             runStage(name, operation);
             units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
                     unit.leagueId(), unit.season(), CheckpointStatus.COMPLETED));
-        } catch (IngestionPartialException exception) {
-            units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
-                    unit.leagueId(), unit.season(), CheckpointStatus.PARTIAL));
-            log.warn("Ingestion stage completed partially: {} reason={}", name, exception.getMessage());
         } catch (RuntimeException exception) {
+            CheckpointStatus status = exception instanceof IngestionPartialException
+                    ? CheckpointStatus.PARTIAL : CheckpointStatus.FAILED;
             units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
-                    unit.leagueId(), unit.season(), CheckpointStatus.FAILED));
-            throw exception;
+                    unit.leagueId(), unit.season(), status));
+            failedStages.add(name + " [" + status + "]: " + exception.getMessage());
+        }
+    }
+
+    private void runStageCollecting(String name, Runnable operation, List<String> failedStages) {
+        try {
+            runStage(name, operation);
+        } catch (RuntimeException exception) {
+            failedStages.add(name + ": " + exception.getMessage());
+            log.warn("Catalogue stage failed; continuing independent work units: {}", name, exception);
         }
     }
 

@@ -13,6 +13,15 @@ public interface ProviderCheckpointStore {
         return isCompleted(provider, checkpointKey(dataset, leagueId, season));
     }
 
+    /**
+     * True when a historical unit reached a terminal outcome. NOT_AVAILABLE is terminal
+     * for a historical backfill, but is deliberately not treated as successfully completed.
+     * Incremental workflows should still refresh active seasons regardless of this value.
+     */
+    default boolean isSatisfied(Provider provider, Dataset dataset, Long leagueId, String season) {
+        return isCompleted(provider, dataset, leagueId, season);
+    }
+
     void markStatus(Provider provider, Dataset dataset, Long leagueId,
                     String season, CheckpointStatus status);
 

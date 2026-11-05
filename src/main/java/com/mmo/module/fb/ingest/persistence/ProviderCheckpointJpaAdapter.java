@@ -35,6 +35,17 @@ public class ProviderCheckpointJpaAdapter implements ProviderCheckpointStore {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public boolean isSatisfied(Provider provider, Dataset dataset, Long leagueId, String season) {
+        return repository.findByProviderAndCheckpointKey(
+                        provider, ProviderCheckpointStore.checkpointKey(dataset, leagueId, season))
+                .map(checkpoint -> checkpoint.getStatus() == null
+                        || checkpoint.getStatus() == CheckpointStatus.COMPLETED
+                        || checkpoint.getStatus() == CheckpointStatus.NOT_AVAILABLE)
+                .orElse(false);
+    }
+
+    @Override
     @Transactional
     public void markStatus(Provider provider, Dataset dataset, Long leagueId,
                            String season, CheckpointStatus status) {

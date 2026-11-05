@@ -68,7 +68,7 @@ class CoreBackfillOrchestratorTest {
     @Test
     void recordsIndependentTeamAndFixtureCheckpointOutcomes() {
         doThrow(new IllegalStateException("fixture provider unavailable"))
-                .when(fixtures).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA, null, null);
+                .when(fixtures).syncSeasonForProvider(Provider.FOOTBALL_DATA, 20L, null, null);
 
         assertThrows(IllegalStateException.class, () -> service.syncCoreData(
                 new ProviderOverrides(Provider.FOOTBALL_DATA, Provider.FOOTBALL_DATA,
@@ -78,16 +78,32 @@ class CoreBackfillOrchestratorTest {
                 39L, "2024/2025", CheckpointStatus.COMPLETED);
         verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.FIXTURE,
                 39L, "2024/2025", CheckpointStatus.FAILED);
-        verify(teams).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA);
-        verify(fixtures).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA, null, null);
+        verify(teams).syncSeasonForProvider(Provider.FOOTBALL_DATA, 20L);
+        verify(fixtures).syncSeasonForProvider(Provider.FOOTBALL_DATA, 20L, null, null);
         verify(footballDataUk, never()).syncInitialData();
     }
 
     @Test
+    void continuesUkBackfillWhenFootballDataFixtureStageFails() {
+        AppProperties.ProviderConfig ukConfig = new AppProperties.ProviderConfig();
+        ukConfig.setEnabled(true);
+        properties.getIngestion().getProviderConfig().put(Provider.FOOTBALL_DATA_UK, ukConfig);
+        doThrow(new IllegalStateException("fixture provider unavailable"))
+                .when(fixtures).syncSeasonForProvider(Provider.FOOTBALL_DATA, 20L, null, null);
+        when(planFactory.historicalPlan()).thenReturn(historicalFootballDataAndUkPlan());
+
+        assertThrows(IllegalStateException.class, () -> service.syncCoreData(ProviderOverrides.defaults()));
+
+        verify(footballDataUk).prepareHistoricalSeasons();
+        verify(footballDataUk).syncCoreSeason(20L, true);
+        verify(checkpoints).markCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL");
+    }
+
+    @Test
     void completedScopedCheckpointsSkipHistoricalResourceFetches() {
-        when(checkpoints.isCompleted(Provider.FOOTBALL_DATA, Dataset.TEAM,
+        when(checkpoints.isSatisfied(Provider.FOOTBALL_DATA, Dataset.TEAM,
                 39L, "2024/2025")).thenReturn(true);
-        when(checkpoints.isCompleted(Provider.FOOTBALL_DATA, Dataset.FIXTURE,
+        when(checkpoints.isSatisfied(Provider.FOOTBALL_DATA, Dataset.FIXTURE,
                 39L, "2024/2025")).thenReturn(true);
 
         service.syncCoreData(ProviderOverrides.defaults());
@@ -102,8 +118,24 @@ class CoreBackfillOrchestratorTest {
         service.syncCoreData(new ProviderOverrides(Provider.FOOTBALL_DATA, Provider.SOFA_SCORE,
                 Provider.SOFA_SCORE, Provider.SOFA_SCORE, Provider.SOFA_SCORE));
 
-        verify(teams).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA);
-        verify(fixtures).syncAllSeasonsForProvider(Provider.FOOTBALL_DATA, null, null);
+        verify(teams).syncSeasonForProvider(Provider.FOOTBALL_DATA, 20L);
+        verify(fixtures).syncSeasonForProvider(Provider.FOOTBALL_DATA, 20L, null, null);
+    }
+
+    @Test
+    void revisitsUkBackfillEvenWhenLegacyGlobalCheckpointExists() {
+        AppProperties.ProviderConfig ukConfig = new AppProperties.ProviderConfig();
+        ukConfig.setEnabled(true);
+        properties.getIngestion().getProviderConfig().put(Provider.FOOTBALL_DATA_UK, ukConfig);
+        when(checkpoints.isCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL"))
+                .thenReturn(true);
+        when(planFactory.historicalPlan()).thenReturn(historicalFootballDataAndUkPlan());
+
+        service.syncCoreData(ProviderOverrides.defaults());
+
+        verify(footballDataUk).prepareHistoricalSeasons();
+        verify(footballDataUk).syncCoreSeason(20L, true);
+        verify(checkpoints).markCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL");
     }
 
     @Test
@@ -113,6 +145,21 @@ class CoreBackfillOrchestratorTest {
         service.syncCoreData(ProviderOverrides.defaults());
 
         verifyNoInteractions(planFactory, checkpoints, footballDataUk, leagues, seasons, teams, fixtures, standings);
+    }
+
+    private IngestionPlan historicalFootballDataAndUkPlan() {
+        return new IngestionPlan(List.of(
+                new IngestionWorkUnit(Dataset.SEASON, 20L, 39L, "2024/2025",
+                        Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY),
+                new IngestionWorkUnit(Dataset.TEAM, 20L, 39L, "2024/2025",
+                        Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY),
+                new IngestionWorkUnit(Dataset.FIXTURE, 20L, 39L, "2024/2025",
+                        Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY),
+                new IngestionWorkUnit(Dataset.TEAM, 20L, 39L, "2024/2025",
+                        Provider.FOOTBALL_DATA_UK, IngestionWorkUnit.Role.PRIMARY),
+                new IngestionWorkUnit(Dataset.FIXTURE, 20L, 39L, "2024/2025",
+                        Provider.FOOTBALL_DATA_UK, IngestionWorkUnit.Role.PRIMARY)
+        ));
     }
 
     private IngestionPlan historicalFootballDataPlan() {

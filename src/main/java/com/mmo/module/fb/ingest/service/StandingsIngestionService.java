@@ -5,4 +5,5 @@ import com.mmo.module.fb.ingest.enums.Provider;
 public interface StandingsIngestionService {
     void syncStandings();
     void syncStandingsForProvider(Provider selectedProvider);
+    void syncSeasonForProvider(Provider selectedProvider, Long seasonId);
 }

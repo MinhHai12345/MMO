@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
+import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
@@ -25,7 +26,6 @@ import org.springframework.util.StringUtils;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Coordinates the one-time historical Core backfill and recovery workflow.
@@ -40,8 +40,6 @@ import java.util.Set;
 public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
 
     private static final String INITIAL_CORE_CHECKPOINT = "CORE_INITIAL_BACKFILL";
-    private static final String TEAM_BACKFILL_CHECKPOINT = "CORE_BACKFILL_TEAMS";
-    private static final String FIXTURE_BACKFILL_CHECKPOINT = "CORE_BACKFILL_FIXTURES";
 
     private final IngestionDistributedLock distributedLock;
     private final AppProperties appProperties;
@@ -69,14 +67,15 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
     }
 
     private void syncCoreDataLocked(ProviderOverrides overrides) {
+        List<String> failedStages = new ArrayList<>();
         // Catalogue bootstrap precedes plan construction because a cold database may not
         // contain any Season rows yet. The catalogue provider supplies identities only;
         // DataSourcePolicy chooses the owner independently for every season/dataset.
         validateProvider(Provider.FOOTBALL_DATA);
-        runStage("league-catalogue/FOOTBALL_DATA",
-                () -> leagueIngestionService.syncLeaguesForProvider(Provider.FOOTBALL_DATA));
-        runStage("season-catalogue/FOOTBALL_DATA",
-                () -> seasonIngestionService.syncSeasonsForProvider(Provider.FOOTBALL_DATA));
+        runStageCollecting("league-catalogue/FOOTBALL_DATA",
+                () -> leagueIngestionService.syncLeaguesForProvider(Provider.FOOTBALL_DATA), failedStages);
+        runStageCollecting("season-catalogue/FOOTBALL_DATA",
+                () -> seasonIngestionService.syncSeasonsForProvider(Provider.FOOTBALL_DATA), failedStages);
 
         if (overrides != null && (overrides.team() != null || overrides.fixture() != null
                 || overrides.standings() != null)) {
@@ -84,72 +83,90 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
                     + "DataSourcePolicy is authoritative per dataset and season");
         }
 
+        boolean ukCoreRequired = isProviderEnabled(Provider.FOOTBALL_DATA_UK);
+        if (ukCoreRequired) {
+            try {
+                footballDataUkSyncService.prepareHistoricalSeasons();
+            } catch (RuntimeException exception) {
+                failedStages.add("football-data-uk/prepare-seasons: " + exception.getMessage());
+                log.error("Unable to prepare Football-Data UK historical seasons", exception);
+            }
+        }
+
         IngestionPlan plan = planFactory.historicalPlan();
         List<IngestionWorkUnit> footballDataSeasons = plan.units(
                 Dataset.SEASON, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
-        footballDataSeasons.forEach(unit -> checkpointStore.markStatus(unit.provider(), Dataset.SEASON,
-                unit.leagueId(), unit.season(), CheckpointStatus.COMPLETED));
+        if (failedStages.stream().noneMatch(error -> error.startsWith("season-catalogue/"))) {
+            footballDataSeasons.forEach(unit -> checkpointStore.markStatus(unit.provider(), Dataset.SEASON,
+                    unit.leagueId(), unit.season(), CheckpointStatus.COMPLETED));
+        }
         List<IngestionWorkUnit> footballDataTeams = plan.units(
                 Dataset.TEAM, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
         List<IngestionWorkUnit> footballDataFixtures = plan.units(
                 Dataset.FIXTURE, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
-        // UK creates historical Season rows while importing its CSV catalogue, so its
-        // historical work cannot depend on those rows already existing in the plan.
-        boolean ukCoreRequired = isProviderEnabled(Provider.FOOTBALL_DATA_UK);
-
         log.info("Historical Core plan created: units={}, footballDataTeams={}, "
                         + "footballDataFixtures={}, footballDataUkRequired={}",
                 plan.units().size(), footballDataTeams.size(), footballDataFixtures.size(), ukCoreRequired);
 
         if (plan.units().isEmpty() && !ukCoreRequired) {
+            if (!failedStages.isEmpty()) {
+                throw new IllegalStateException("Historical Core catalogue initialization incomplete: "
+                        + failedStages);
+            }
             log.info("Historical Core plan contains no supported season work; nothing to backfill");
             return;
         }
 
-        if (!footballDataTeams.isEmpty() && !areCompleted(footballDataTeams)) {
-            runPlannedStage("teams/historical/FOOTBALL_DATA", Dataset.TEAM, footballDataTeams,
-                    () -> teamIngestionService.syncAllSeasonsForProvider(Provider.FOOTBALL_DATA));
-        } else if (!footballDataTeams.isEmpty()) {
-            log.info("Football-Data team backfill already complete for all planned seasons");
-        }
+        List<IngestionUnitResult> unitResults = new ArrayList<>();
+        footballDataTeams.forEach(unit -> runUnit(unit, () ->
+                teamIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()), failedStages, unitResults));
+        footballDataFixtures.forEach(unit -> runUnit(unit, () ->
+                fixtureIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId(), null, null),
+                failedStages, unitResults));
 
-        if (!footballDataFixtures.isEmpty() && !areCompleted(footballDataFixtures)) {
-            runPlannedStage("fixtures/historical/FOOTBALL_DATA", Dataset.FIXTURE, footballDataFixtures,
-                    () -> fixtureIngestionService.syncAllSeasonsForProvider(
-                            Provider.FOOTBALL_DATA, null, null));
-        } else if (!footballDataFixtures.isEmpty()) {
-            log.info("Football-Data fixture backfill already complete for all planned seasons");
-        }
-
-        if (ukCoreRequired && !checkpointStore.isCompleted(
-                Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL")) {
-            if (footballDataUkSyncService.syncInitialData()) {
-                checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL");
+        if (ukCoreRequired) {
+            // The CSV endpoint is season-scoped. A single request imports one season only;
+            // its TEAM/SEASON/FIXTURE checkpoint outcomes are persisted independently.
+            List<Long> ukSeasonIds = plan.units().stream()
+                    .filter(unit -> unit.provider() == Provider.FOOTBALL_DATA_UK
+                            && (unit.dataset() == Dataset.SEASON || unit.dataset() == Dataset.TEAM
+                            || unit.dataset() == Dataset.FIXTURE))
+                    .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
+            for (Long seasonId : ukSeasonIds) {
+                try {
+                    runStage("football-data-uk/core/season=" + seasonId,
+                            () -> footballDataUkSyncService.syncCoreSeason(seasonId, true));
+                } catch (RuntimeException exception) {
+                    failedStages.add("football-data-uk/core/season=" + seasonId
+                            + ": " + exception.getMessage());
+                    log.warn("Football-Data UK season failed; continuing with remaining seasons: {}",
+                            seasonId, exception);
+                }
             }
-        } else if (ukCoreRequired) {
-            log.info("Football-Data UK historical Core backfill already complete");
+            if (failedStages.stream().noneMatch(error -> error.startsWith("football-data-uk/"))) {
+                checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK, INITIAL_CORE_CHECKPOINT);
+            }
         }
 
-        log.info("Historical Core backfill orchestration completed");
+        IngestionExecutionReport report = new IngestionExecutionReport(unitResults);
+        log.info("Historical Core work-unit report: {}", report.summary());
+        if (!failedStages.isEmpty()) {
+            throw new IllegalStateException("Historical Core backfill incomplete: " + failedStages
+                    + "; " + report.summary());
+        }
+        log.info("Historical Core backfill orchestration completed: {}", report.summary());
     }
 
-    private boolean areCompleted(List<IngestionWorkUnit> units) {
-        return units.stream().allMatch(unit -> checkpointStore.isCompleted(
-                unit.provider(), unit.dataset(), unit.leagueId(), unit.season()));
-    }
-
-    private void runPlannedStage(String name, Dataset dataset,
-                                 List<IngestionWorkUnit> units, Runnable operation) {
-        units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
-                unit.leagueId(), unit.season(), CheckpointStatus.RUNNING));
-        try {
-            runStage(name, operation);
-            units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
-                    unit.leagueId(), unit.season(), CheckpointStatus.COMPLETED));
-        } catch (RuntimeException exception) {
-            units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
-                    unit.leagueId(), unit.season(), CheckpointStatus.FAILED));
-            throw exception;
+    private void runUnit(IngestionWorkUnit unit, Runnable operation, List<String> failedStages,
+                         List<IngestionUnitResult> results) {
+        String name = unit.provider() + "/" + unit.dataset() + "/league=" + unit.leagueId()
+                + "/season=" + unit.season();
+        IngestionUnitResult result = new IngestionUnitExecutor(checkpointStore)
+                .execute(unit, true, () -> runStage(name, operation));
+        results.add(result);
+        if (!result.isSuccessful()) {
+            failedStages.add(name + " [" + result.status() + "]: " + result.message());
+            log.warn("Independent historical work unit finished with {}: {}", result.status(), name);
         }
     }
 
@@ -192,18 +209,28 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
             runStage("multi-provider/seasons/" + provider,
                     () -> seasonIngestionService.syncSeasonsForProvider(provider));
         }
+        IngestionPlan plan = planFactory.historicalPlan();
+        List<String> failedStages = new ArrayList<>();
+        List<IngestionUnitResult> results = new ArrayList<>();
         for (Provider provider : ordered) {
-            runStage("multi-provider/teams/" + provider,
-                    () -> teamIngestionService.syncAllSeasonsForProvider(provider));
+            plan.units(Dataset.TEAM, provider, IngestionWorkUnit.Role.PRIMARY)
+                    .forEach(unit -> runUnit(unit, () ->
+                            teamIngestionService.syncSeasonForProvider(provider, unit.seasonId()),
+                            failedStages, results));
+            plan.units(Dataset.FIXTURE, provider, IngestionWorkUnit.Role.PRIMARY)
+                    .forEach(unit -> runUnit(unit, () ->
+                            fixtureIngestionService.syncSeasonForProvider(provider, unit.seasonId(), null, null),
+                            failedStages, results));
+            plan.units(Dataset.STANDINGS, provider, IngestionWorkUnit.Role.PRIMARY)
+                    .forEach(unit -> runUnit(unit, () ->
+                            standingsIngestionService.syncSeasonForProvider(provider, unit.seasonId()),
+                            failedStages, results));
         }
-        for (Provider provider : ordered) {
-            runStage("multi-provider/fixtures/" + provider,
-                    () -> fixtureIngestionService.syncAllSeasonsForProvider(provider, null, null));
-        }
-
-        if (ordered.contains(Provider.FOOTBALL_DATA)) {
-            runStage("multi-provider/standings/FOOTBALL_DATA",
-                    () -> standingsIngestionService.syncStandingsForProvider(Provider.FOOTBALL_DATA));
+        IngestionExecutionReport report = new IngestionExecutionReport(results);
+        log.info("Multi-provider historical Core execution report: providers={}, {}", ordered, report.summary());
+        if (!failedStages.isEmpty()) {
+            throw new IllegalStateException("Multi-provider historical Core import incomplete: "
+                    + failedStages + "; " + report.summary());
         }
         log.info("Multi-provider historical Core import completed: {}", ordered);
     }
@@ -213,19 +240,13 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
         return config != null && config.isEnabled();
     }
 
-    private boolean isInitialBackfillCompleted(Provider provider) {
-        return checkpointStore.isCompleted(provider, INITIAL_CORE_CHECKPOINT);
-    }
-
-    private boolean isResourceBackfillCompleted(
-            Provider provider, String checkpointKey, boolean legacyCheckpointCompatible) {
-        boolean resourceCheckpoint = checkpointStore.isCompleted(provider, checkpointKey);
-        if (resourceCheckpoint || !legacyCheckpointCompatible) return resourceCheckpoint;
-
-        // The legacy provider-level checkpoint is safe only for the old default topology,
-        // where one provider supplied every Core resource and both historical stages ran
-        // before the checkpoint was written.
-        return checkpointStore.isCompleted(provider, INITIAL_CORE_CHECKPOINT);
+    private void runStageCollecting(String name, Runnable operation, List<String> failedStages) {
+        try {
+            runStage(name, operation);
+        } catch (RuntimeException exception) {
+            failedStages.add(name + ": " + exception.getMessage());
+            log.warn("Catalogue stage failed; continuing independent backfill units: {}", name, exception);
+        }
     }
 
     private void runStage(String name, Runnable operation) {
