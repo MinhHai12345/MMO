@@ -101,7 +101,7 @@ class CoreSyncOrchestratorTest {
         verify(fixtures).syncSeasonForProvider(Provider.FOOTBALL_DATA, 100L, null, null);
         verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.FIXTURE,
                 39L, "2025/2026", CheckpointStatus.COMPLETED);
-        verify(uk).syncActiveSeasonsData();
+        verify(uk).syncCoreSeason(100L, false);
     }
 
     @Test
@@ -113,14 +113,14 @@ class CoreSyncOrchestratorTest {
 
         verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.STANDINGS,
                 39L, "2025/2026", CheckpointStatus.PARTIAL);
-        verify(uk).syncActiveSeasonsData();
+        verify(uk).syncCoreSeason(100L, false);
     }
 
     @Test
     void neverRunsUpcomingOddsEvenWhenAnOverrideIsSupplied() {
         useCase.sync(null, Provider.API_FOOTBALL);
 
-        verify(uk).syncActiveSeasonsData();
+        verify(uk).syncCoreSeason(100L, false);
         verify(checkpoints, never()).markStatus(any(), eq(Dataset.UPCOMING_ODDS), anyLong(), anyString(), any());
     }
 
