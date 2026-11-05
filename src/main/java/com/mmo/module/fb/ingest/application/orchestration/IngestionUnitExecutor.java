@@ -32,15 +32,14 @@ public final class IngestionUnitExecutor {
         Objects.requireNonNull(unit, "unit must not be null");
         Objects.requireNonNull(operation, "operation must not be null");
 
-        if (historical && checkpointStore.isSatisfied(
-                unit.provider(), unit.dataset(), unit.leagueId(), unit.season())) {
-            return IngestionUnitResult.skipped(unit);
-        }
-
         long startedAt = System.nanoTime();
-        checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
-                unit.season(), CheckpointStatus.RUNNING);
         try {
+            if (historical && checkpointStore.isSatisfied(
+                    unit.provider(), unit.dataset(), unit.leagueId(), unit.season())) {
+                return IngestionUnitResult.skipped(unit);
+            }
+            checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
+                    unit.season(), CheckpointStatus.RUNNING);
             IngestionUnitResult result = Objects.requireNonNull(operation.get(),
                     "Work-unit operation returned null");
             if (!unit.equals(result.unit())) {
@@ -54,13 +53,19 @@ public final class IngestionUnitExecutor {
                     unit.season(), result.status());
             return withDuration(result, elapsedMillis(startedAt));
         } catch (IngestionPartialException exception) {
-            checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
-                    unit.season(), CheckpointStatus.PARTIAL);
+            markFailureState(unit, CheckpointStatus.PARTIAL, exception);
             return IngestionUnitResult.partial(unit, exception.getMessage(), elapsedMillis(startedAt));
         } catch (RuntimeException exception) {
-            checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
-                    unit.season(), CheckpointStatus.FAILED);
+            markFailureState(unit, CheckpointStatus.FAILED, exception);
             return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt));
+        }
+    }
+
+    private void markFailureState(IngestionWorkUnit unit, CheckpointStatus status, RuntimeException cause) {
+        try {
+            checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(), unit.season(), status);
+        } catch (RuntimeException checkpointFailure) {
+            cause.addSuppressed(checkpointFailure);
         }
     }
 
