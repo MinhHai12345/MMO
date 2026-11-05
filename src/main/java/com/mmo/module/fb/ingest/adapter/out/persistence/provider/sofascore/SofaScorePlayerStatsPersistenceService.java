@@ -2,7 +2,7 @@ package com.mmo.module.fb.ingest.adapter.out.persistence.provider.sofascore;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.persistence.SourceAwareMergeService;
+import com.mmo.module.fb.ingest.adapter.out.persistence.core.SourceAwareMergeService;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreLineupsResponseDTO;
 import com.mmo.module.fb.domain.match.entity.Match;
 import com.mmo.module.fb.domain.match.repository.MatchRepository;
