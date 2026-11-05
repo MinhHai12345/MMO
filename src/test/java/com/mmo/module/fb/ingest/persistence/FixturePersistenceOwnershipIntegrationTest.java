@@ -73,12 +73,12 @@ class FixturePersistenceOwnershipIntegrationTest {
         when(seasonRepository.findById(2024L)).thenReturn(Optional.of(season));
         when(teamRepository.findById(10L)).thenReturn(Optional.of(home));
         when(teamRepository.findById(11L)).thenReturn(Optional.of(away));
-        when(matchExternalIdRepository.findByProviderAndExternalId(
-                MatchProvider.FOOTBALL_DATA_UK, "uk-fixture-1")).thenReturn(Optional.empty());
     }
 
     @Test
     void allowsUkToCreateMissingOverlapFixtureWhenFootballDataHasNoIdentity() {
+        when(matchExternalIdRepository.findByProviderAndExternalId(
+                MatchProvider.FOOTBALL_DATA_UK, "uk-fixture-1")).thenReturn(Optional.empty());
         when(matchRepository.findFixtureCandidates(eq(2024L), eq(10L), eq(11L), any(), any()))
                 .thenReturn(List.of());
         when(matchRepository.save(any(Match.class))).thenAnswer(invocation -> {
@@ -99,6 +99,8 @@ class FixturePersistenceOwnershipIntegrationTest {
 
     @Test
     void footballDataAdoptsExistingUkFallbackFixtureInsteadOfCreatingDuplicate() {
+        when(matchExternalIdRepository.findByProviderAndExternalId(
+                MatchProvider.FOOTBALL_DATA, "fd-fixture-1")).thenReturn(Optional.empty());
         Match ukFallback = Match.builder().season(season).homeTeam(home).awayTeam(away)
                 .matchTime(ukFixture.kickoff()).build();
         ukFallback.setId(902L);
@@ -120,6 +122,8 @@ class FixturePersistenceOwnershipIntegrationTest {
 
     @Test
     void rejectsUkCoreOverwriteWhenFootballDataOwnsMatchedFixture() {
+        when(matchExternalIdRepository.findByProviderAndExternalId(
+                MatchProvider.FOOTBALL_DATA_UK, "uk-fixture-1")).thenReturn(Optional.empty());
         Match canonical = Match.builder().season(season).homeTeam(home).awayTeam(away)
                 .matchTime(ukFixture.kickoff()).build();
         canonical.setId(901L);
