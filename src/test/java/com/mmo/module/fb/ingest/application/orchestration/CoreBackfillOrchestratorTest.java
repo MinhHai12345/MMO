@@ -117,6 +117,8 @@ class CoreBackfillOrchestratorTest {
 
     private IngestionPlan historicalFootballDataPlan() {
         return new IngestionPlan(List.of(
+                new IngestionWorkUnit(Dataset.SEASON, 20L, 39L, "2024/2025",
+                        Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY),
                 new IngestionWorkUnit(Dataset.TEAM, 20L, 39L, "2024/2025",
                         Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY),
                 new IngestionWorkUnit(Dataset.FIXTURE, 20L, 39L, "2024/2025",

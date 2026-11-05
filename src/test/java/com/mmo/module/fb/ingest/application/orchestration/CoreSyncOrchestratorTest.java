@@ -66,6 +66,8 @@ class CoreSyncOrchestratorTest {
         verify(planFactory).activeSeasonPlan();
         verify(leagues).syncLeaguesForProvider(Provider.FOOTBALL_DATA);
         verify(seasons).syncSeasonsForProvider(Provider.FOOTBALL_DATA);
+        verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.SEASON,
+                39L, "2025/2026", CheckpointStatus.COMPLETED);
         verify(teams).syncTeamsForProvider(Provider.FOOTBALL_DATA);
         verify(fixtures).syncFixturesForProvider(Provider.FOOTBALL_DATA, null, null);
         verify(standings).syncStandingsForProvider(Provider.FOOTBALL_DATA);
@@ -129,6 +131,7 @@ class CoreSyncOrchestratorTest {
 
     private IngestionPlan modernSeasonPlan() {
         return new IngestionPlan(List.of(
+                unit(Dataset.SEASON, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY),
                 unit(Dataset.TEAM, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY),
                 unit(Dataset.FIXTURE, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY),
                 unit(Dataset.FIXTURE, Provider.FOOTBALL_DATA_UK, IngestionWorkUnit.Role.SECONDARY),
