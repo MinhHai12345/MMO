@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
-import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
+import com.mmo.module.fb.ingest.application.port.in.FootballDataUkIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
@@ -24,7 +24,7 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
     private final IngestionDistributedLock distributedLock;
     private final ProviderCheckpointStore checkpointStore;
     private final IngestionPlanFactory planFactory;
-    private final FootballDataUkIngestionPort footballDataUkSyncService;
+    private final FootballDataUkIngestionUseCase footballDataUkSyncService;
 
     @Override
     public void enrichFinishedMatches() {
