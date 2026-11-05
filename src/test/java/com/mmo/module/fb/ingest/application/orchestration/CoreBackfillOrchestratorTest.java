@@ -117,7 +117,9 @@ class CoreBackfillOrchestratorTest {
 
         verify(leagues).syncLeaguesForProvider(Provider.FOOTBALL_DATA);
         verify(seasons).syncSeasonsForProvider(Provider.FOOTBALL_DATA);
-        verifyNoInteractions(teams, fixtures, footballDataUk);
+        verifyNoInteractions(teams, fixtures);
+        verify(footballDataUk, never()).prepareHistoricalSeasons();
+        verify(footballDataUk, never()).syncCoreSeason(anyLong(), anyBoolean());
     }
 
     @Test
