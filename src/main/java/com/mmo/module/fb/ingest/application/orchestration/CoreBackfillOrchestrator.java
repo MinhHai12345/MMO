@@ -3,7 +3,7 @@ package com.mmo.module.fb.ingest.application.orchestration;
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
-import com.mmo.module.fb.ingest.application.port.in.FootballDataUkIngestionUseCase;
+import com.mmo.module.fb.ingest.provider.spi.SeasonBatchProvider;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
@@ -45,7 +45,7 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
     private final AppProperties appProperties;
     private final ProviderCheckpointStore checkpointStore;
     private final IngestionPlanFactory planFactory;
-    private final FootballDataUkIngestionUseCase footballDataUkSyncService;
+    private final SeasonBatchProviderRegistry seasonBatchProviderRegistry;
     private final LeagueIngestionService leagueIngestionService;
     private final SeasonIngestionService seasonIngestionService;
     private final TeamIngestionService teamIngestionService;
@@ -86,7 +86,7 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
         boolean ukCoreRequired = isProviderEnabled(Provider.FOOTBALL_DATA_UK);
         if (ukCoreRequired) {
             try {
-                footballDataUkSyncService.prepareHistoricalSeasons();
+                seasonBatchProviderRegistry.require(Provider.FOOTBALL_DATA_UK).prepareHistoricalSeasons();
             } catch (RuntimeException exception) {
                 failedStages.add("football-data-uk/prepare-seasons: " + exception.getMessage());
                 log.error("Unable to prepare Football-Data UK historical seasons", exception);
@@ -135,7 +135,7 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
             for (Long seasonId : ukSeasonIds) {
                 try {
                     runStage("football-data-uk/core/season=" + seasonId,
-                            () -> footballDataUkSyncService.syncCoreSeason(seasonId, true));
+                            () -> seasonBatchProviderRegistry.require(Provider.FOOTBALL_DATA_UK).syncCoreSeason(seasonId, true));
                 } catch (RuntimeException exception) {
                     failedStages.add("football-data-uk/core/season=" + seasonId
                             + ": " + exception.getMessage());
