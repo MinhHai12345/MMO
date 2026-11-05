@@ -45,20 +45,17 @@ public class GlobalResponseHandler implements ResponseBodyAdvice<Object> {
             return body;
         }
         if (body instanceof Page<?> page) {
-            return Response.builder()
-                    .data(page.getContent())
-                    .page(Pageable.builder()
-                            .totalElements(page.getTotalElements())
-                            .currentPage(page.getNumber())
-                            .pageSize(page.getSize())
-                            .totalPages(page.getTotalPages())
-                            .build())
-                    .build();
+            Response<List<?>> result = new Response<>(page.getContent());
+            result.setPage(Pageable.builder()
+                    .totalElements(page.getTotalElements())
+                    .currentPage(page.getNumber())
+                    .pageSize(page.getSize())
+                    .totalPages(page.getTotalPages())
+                    .build());
+            return result;
         }
 
-        return Response.builder()
-                .data(body)
-                .build();
+        return new Response<>(body);
     }
 
     @SuppressWarnings("unchecked")
@@ -71,7 +68,7 @@ public class GlobalResponseHandler implements ResponseBodyAdvice<Object> {
             return processEntityModel((EntityModel<?>) model);
         }
 
-        return Response.builder().data(model).build();
+        return new Response<>(model);
     }
 
     private Object processPagedModel(PagedModel<EntityModel<?>> pagedModel) {
@@ -93,20 +90,22 @@ public class GlobalResponseHandler implements ResponseBodyAdvice<Object> {
                     .totalElements(totalElements)
                     .totalPages(totalPages)
                     .build();
-            return Response.builder().data(content).page(pageable).build();
-        } else {
-            return Response.builder().data(content).build();
+            Response<List<?>> result = new Response<>(content);
+            result.setPage(pageable);
+            return result;
         }
+
+        return new Response<>(content);
     }
 
     private Object processCollectionModel(CollectionModel<EntityModel<?>> collectionModel) {
         List<?> content = extractContent(collectionModel.getContent());
-        return Response.builder().data(content).build();
+        return new Response<>(content);
     }
 
     private Object processEntityModel(EntityModel<?> entityModel) {
         Object content = entityModel.getContent();
-        return Response.builder().data(content).build();
+        return new Response<>(content);
     }
 
     private List<?> extractContent(Collection<?> contentList) {
