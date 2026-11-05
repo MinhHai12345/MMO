@@ -1,10 +1,10 @@
 package com.mmo.module.fb.ingest.application.service.ingestion;
 
+import com.mmo.module.fb.ingest.application.exception.ProviderAccessException;
 import com.mmo.module.fb.ingest.application.service.support.IngestionServiceSupport;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestrictedResourceException;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
@@ -45,8 +45,9 @@ public class LeagueIngestionServiceImpl implements LeagueIngestionService {
                     ? List.of()
                     : List.of(2000L, 2001L, 2002L, 2014L, 2015L, 2019L, 2016L, 2021L);
             leagues = providerRegistry.league(selectedProvider).fetchLeagues(externalLeagueIds);
-        } catch (FootballDataRestrictedResourceException ex) {
-            if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;
+        } catch (ProviderAccessException ex) {
+            if (!ex.is(ProviderAccessException.Kind.RESOURCE_RESTRICTED)
+                    || selectedProvider != Provider.FOOTBALL_DATA) throw ex;
             var existingMappings = leagueExternalIdRepository.findAllByProvider(selectedProvider);
             if (existingMappings.isEmpty()) {
                 throw new IllegalStateException(
