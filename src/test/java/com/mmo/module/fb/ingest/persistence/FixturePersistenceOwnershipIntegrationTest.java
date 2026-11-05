@@ -70,7 +70,7 @@ class FixturePersistenceOwnershipIntegrationTest {
                 "FT", 2, 1);
 
         when(seasonRepository.findById(2024L)).thenReturn(Optional.of(season));
-        lenient().when(teamRepository.findAllById(anyIterable())).thenReturn(List.of(home, away));
+        lenient().when(teamRepository.findAllById(anyList())).thenReturn(List.of(home, away));
         lenient().when(matchExternalIdRepository.findAllByProviderAndExternalIdIn(
                 any(MatchProvider.class), anyList())).thenReturn(List.of());
         lenient().when(matchRepository.findBatchFixtureCandidates(
@@ -95,7 +95,7 @@ class FixturePersistenceOwnershipIntegrationTest {
                 Integer.valueOf(2).equals(match.getHomeScore())
                         && Integer.valueOf(1).equals(match.getAwayScore())));
         verify(matchExternalIdRepository).saveAll(argThat(mappings ->
-                mappings.size() == 1
+                count(mappings) == 1
                         && "uk-fixture-1".equals(mappings.iterator().next().getExternalId())));
     }
 
@@ -161,7 +161,7 @@ class FixturePersistenceOwnershipIntegrationTest {
 
         assertEquals(0, saved);
         verify(matchRepository, never()).save(any(Match.class));
-        verify(matchExternalIdRepository, never()).saveAll(anyIterable());
+        verify(matchExternalIdRepository, never()).saveAll(anyList());
     }
 
     @Test
@@ -178,6 +178,12 @@ class FixturePersistenceOwnershipIntegrationTest {
 
         assertEquals(1, saved);
         verify(matchExternalIdRepository).saveAll(argThat(mappings -> mappings.size() == 1));
+    }
+
+    private static long count(Iterable<?> values) {
+        long count = 0;
+        for (Object ignored : values) count++;
+        return count;
     }
 
     private Match candidate(Long id) {
