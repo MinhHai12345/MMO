@@ -80,6 +80,11 @@ public class FootballDataUkCsvClient {
         } catch (FootballDataUkCsvException exception) {
             throw exception;
         } catch (RuntimeException exception) {
+            Throwable cause = exception;
+            while (cause != null) {
+                if (cause instanceof FootballDataUkCsvException csvException) throw csvException;
+                cause = cause.getCause();
+            }
             throw new FootballDataUkCsvException(
                     FootballDataUkCsvException.Reason.NETWORK_ERROR,
                     "Failed to download Football-Data.co.uk CSV after retries: " + url,
