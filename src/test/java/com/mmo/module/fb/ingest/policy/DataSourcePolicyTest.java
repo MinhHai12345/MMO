@@ -63,6 +63,21 @@ class DataSourcePolicyTest {
     }
 
     @Test
+    void resolvesSeasonSpecificPrimaryAndSecondarySourcesForSupportedLeague() {
+        Season historical = Season.builder().year("2020/2021")
+                .league(League.builder().name("LaLiga").build()).build();
+        assertEquals(Provider.FOOTBALL_DATA_UK,
+                policy.route(Dataset.FIXTURE, historical).primary());
+
+        Season modern = Season.builder().year("2024/2025")
+                .league(League.builder().name("La Liga").build()).build();
+        assertEquals(Provider.FOOTBALL_DATA,
+                policy.route(Dataset.FIXTURE, modern).primary());
+        assertTrue(policy.route(Dataset.FIXTURE, modern).secondary()
+                .contains(Provider.FOOTBALL_DATA_UK));
+    }
+
+    @Test
     void doesNotRouteUnsupportedCompetitionsToFootballDataUk() {
         Season season = Season.builder().year("2018/2019")
                 .league(League.builder().name("UEFA Champions League").build()).build();
