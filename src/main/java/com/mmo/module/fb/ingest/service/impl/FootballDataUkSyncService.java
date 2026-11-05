@@ -611,8 +611,6 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         int createdFixtures = 0;
         int importedTeams = 0;
         int importedFixtures = 0;
-        int importedStats = 0;
-        int importedOdds = 0;
         int unmatched = 0;
         java.util.Set<Long> resolvedTeamIds = new java.util.HashSet<>();
 
@@ -690,8 +688,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
             }
         }
         importedTeams = resolvedTeamIds.size();
-        return new ImportResult(rows.size(), createdFixtures, importedTeams, importedFixtures,
-                importedStats, importedOdds, unmatched);
+        return new ImportResult(rows.size(), createdFixtures, importedTeams, importedFixtures, unmatched);
     }
 
     private Season getOrCreateSeason(League league, int startYear, LocalDate today) {
@@ -1032,6 +1029,6 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         return normalize(value).replaceAll("([a-z])([0-9])", "$1-$2");
     }
 
-    public record ImportResult(int csvRows, int createdFixtures, int importedTeams, int importedFixtures,
-                               int importedTeamStats, int importedOdds, int unmatchedRows) {}
+    public record ImportResult(int csvRows, int createdFixtures, int importedTeams,
+                               int importedFixtures, int unmatchedRows) {}
 }
