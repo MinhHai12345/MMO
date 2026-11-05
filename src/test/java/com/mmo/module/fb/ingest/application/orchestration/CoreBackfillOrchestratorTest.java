@@ -1,5 +1,7 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
+import com.mmo.module.fb.ingest.application.registry.SeasonBatchIngestionRegistry;
+
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
@@ -29,7 +31,7 @@ class CoreBackfillOrchestratorTest {
     private ProviderCheckpointStore checkpoints;
     private IngestionPlanFactory planFactory;
     private SeasonBatchIngestionPort footballDataUk;
-    private SeasonBatchIngestionPortRegistry seasonBatchProviderRegistry;
+    private SeasonBatchIngestionRegistry seasonBatchRegistry;
     private LeagueIngestionService leagues;
     private SeasonIngestionService seasons;
     private TeamIngestionService teams;
@@ -59,7 +61,7 @@ class CoreBackfillOrchestratorTest {
         when(footballDataUk.supportedDatasets()).thenReturn(java.util.Set.of(
                 Dataset.SEASON, Dataset.TEAM, Dataset.FIXTURE, Dataset.MATCH_STATISTICS,
                 Dataset.MATCH_XG, Dataset.HISTORICAL_ODDS));
-        seasonBatchProviderRegistry = new SeasonBatchIngestionPortRegistry(List.of(footballDataUk));
+        seasonBatchRegistry = new SeasonBatchIngestionPortRegistry(List.of(footballDataUk));
         clearInvocations(footballDataUk);
         leagues = mock(LeagueIngestionService.class);
         seasons = mock(SeasonIngestionService.class);
@@ -69,7 +71,7 @@ class CoreBackfillOrchestratorTest {
         when(planFactory.historicalPlan()).thenReturn(historicalFootballDataPlan());
 
         service = new CoreBackfillOrchestrator(lock, properties, checkpoints, planFactory,
-                seasonBatchProviderRegistry, leagues, seasons, teams, fixtures, standings);
+                seasonBatchRegistry, leagues, seasons, teams, fixtures, standings);
     }
 
     @Test
@@ -153,7 +155,7 @@ class CoreBackfillOrchestratorTest {
 
         service.syncCoreData(ProviderOverrides.defaults());
 
-        verifyNoInteractions(planFactory, checkpoints, seasonBatchProviderRegistry, leagues, seasons, teams, fixtures, standings);
+        verifyNoInteractions(planFactory, checkpoints, seasonBatchRegistry, leagues, seasons, teams, fixtures, standings);
     }
 
     private IngestionPlan historicalFootballDataAndUkPlan() {

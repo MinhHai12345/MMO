@@ -17,7 +17,7 @@ class ApplicationOrchestrationBoundaryTest {
     private static final Path ORCHESTRATION_ROOT = Path.of(
             "src/main/java/com/mmo/module/fb/ingest/application/orchestration");
     private static final Pattern PROVIDER_SPI_IMPORT = Pattern.compile(
-            "^\\\\s*import\\\\s+com\\\\.mmo\\\\.module\\\\.fb\\\\.ingest\\\\.provider\\\\.spi\\\\..*;");
+            "^\\s*import\\s+com\\.mmo\\.module\\.fb\\.ingest\\.provider\\.spi\\..*;");
 
     @Test
     void orchestrationDependsOnlyOnApplicationOwnedContracts() throws IOException {
@@ -39,6 +39,6 @@ class ApplicationOrchestrationBoundaryTest {
                     });
         }
         assertTrue(violations.isEmpty(),
-                () -> "Application orchestration must not import provider SPI:\\n" + String.join("\\n", violations));
+                () -> "Application orchestration must not import provider SPI:\n" + String.join("\n", violations));
     }
 }

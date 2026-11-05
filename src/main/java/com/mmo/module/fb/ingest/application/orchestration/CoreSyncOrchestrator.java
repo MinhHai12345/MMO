@@ -1,5 +1,7 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
+import com.mmo.module.fb.ingest.application.registry.SeasonBatchIngestionRegistry;
+
 import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
@@ -38,7 +40,7 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
     private final TeamIngestionService teamIngestionService;
     private final FixtureIngestionService fixtureIngestionService;
     private final StandingsIngestionService standingsIngestionService;
-    private final SeasonBatchIngestionPortRegistry seasonBatchProviderRegistry;
+    private final SeasonBatchIngestionRegistry seasonBatchRegistry;
 
     @Override
     public void sync(ProviderOverrides overrides, Provider oddsProviderOverride) {
@@ -74,11 +76,11 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
         List<Provider> catalogueProviders = plan.units(Dataset.SEASON, IngestionWorkUnit.Role.PRIMARY)
                 .stream().map(IngestionWorkUnit::provider).distinct().toList();
         for (Provider catalogueProvider : catalogueProviders) {
-            if (!seasonBatchProviderRegistry.supports(catalogueProvider, Dataset.LEAGUE)) {
+            if (!seasonBatchRegistry.supports(catalogueProvider, Dataset.LEAGUE)) {
                 runStageCollecting("catalogue/leagues/" + catalogueProvider,
                         () -> leagueIngestionService.syncLeaguesForProvider(catalogueProvider), failedStages);
             }
-            if (!seasonBatchProviderRegistry.supports(catalogueProvider, Dataset.SEASON)) {
+            if (!seasonBatchRegistry.supports(catalogueProvider, Dataset.SEASON)) {
                 List<IngestionWorkUnit> seasonUnits = plan.units(
                         Dataset.SEASON, catalogueProvider, IngestionWorkUnit.Role.PRIMARY);
                 if (seasonUnits.isEmpty()) {
@@ -93,27 +95,27 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
         }
 
         plan.units().stream().filter(unit -> unit.dataset() == Dataset.TEAM)
-                .filter(unit -> !seasonBatchProviderRegistry.supports(unit.provider(), Dataset.TEAM))
+                .filter(unit -> !seasonBatchRegistry.supports(unit.provider(), Dataset.TEAM))
                 .forEach(unit -> runUnit(unit, () ->
                         teamIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()),
                         failedStages, unitResults));
         plan.units().stream().filter(unit -> unit.dataset() == Dataset.FIXTURE)
-                .filter(unit -> !seasonBatchProviderRegistry.supports(unit.provider(), Dataset.FIXTURE))
+                .filter(unit -> !seasonBatchRegistry.supports(unit.provider(), Dataset.FIXTURE))
                 .forEach(unit -> runUnit(unit, () ->
                         fixtureIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId(), null, null),
                         failedStages, unitResults));
         plan.units().stream().filter(unit -> unit.dataset() == Dataset.STANDINGS)
-                .filter(unit -> !seasonBatchProviderRegistry.supports(unit.provider(), Dataset.STANDINGS))
+                .filter(unit -> !seasonBatchRegistry.supports(unit.provider(), Dataset.STANDINGS))
                 .forEach(unit -> runUnit(unit, () ->
                         standingsIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()),
                         failedStages, unitResults));
 
-        for (SeasonBatchIngestionPort provider : seasonBatchProviderRegistry.all()) {
+        for (SeasonBatchIngestionPort provider : seasonBatchRegistry.all()) {
             Provider providerId = provider.getProvider();
             List<Long> activeSeasonIds = plan.units().stream()
                     .filter(unit -> unit.provider() == providerId
                             && (unit.dataset() == Dataset.TEAM || unit.dataset() == Dataset.FIXTURE)
-                            && seasonBatchProviderRegistry.supports(providerId, unit.dataset()))
+                            && seasonBatchRegistry.supports(providerId, unit.dataset()))
                     .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
             for (Long seasonId : activeSeasonIds) {
                 try {

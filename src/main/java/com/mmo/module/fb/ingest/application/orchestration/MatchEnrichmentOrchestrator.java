@@ -1,5 +1,7 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
+import com.mmo.module.fb.ingest.application.registry.SeasonBatchIngestionRegistry;
+
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
@@ -24,7 +26,7 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
     private final IngestionDistributedLock distributedLock;
     private final ProviderCheckpointStore checkpointStore;
     private final IngestionPlanFactory planFactory;
-    private final SeasonBatchIngestionPortRegistry seasonBatchProviderRegistry;
+    private final SeasonBatchIngestionRegistry seasonBatchRegistry;
 
     @Override
     public void enrichFinishedMatches() {
@@ -37,7 +39,7 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
 
     private void enrichFinishedMatchesLocked() {
         IngestionPlan historicalPlan = planFactory.historicalPlan();
-        java.util.List<SeasonBatchIngestionPort> enrichmentProviders = seasonBatchProviderRegistry.all().stream()
+        java.util.List<SeasonBatchIngestionPort> enrichmentProviders = seasonBatchRegistry.all().stream()
                 .filter(provider -> supportsAnyEnrichmentDataset(provider.getProvider()))
                 .filter(provider -> !seasonIdsForProvider(historicalPlan, provider.getProvider()).isEmpty())
                 .toList();
@@ -87,9 +89,9 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
     }
 
     private boolean supportsAnyEnrichmentDataset(Provider provider) {
-        return seasonBatchProviderRegistry.supports(provider, Dataset.MATCH_STATISTICS)
-                || seasonBatchProviderRegistry.supports(provider, Dataset.MATCH_XG)
-                || seasonBatchProviderRegistry.supports(provider, Dataset.HISTORICAL_ODDS);
+        return seasonBatchRegistry.supports(provider, Dataset.MATCH_STATISTICS)
+                || seasonBatchRegistry.supports(provider, Dataset.MATCH_XG)
+                || seasonBatchRegistry.supports(provider, Dataset.HISTORICAL_ODDS);
     }
 
     private java.util.List<Long> seasonIdsForProvider(IngestionPlan plan, Provider provider) {
@@ -99,7 +101,7 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
                         && (unit.dataset() == Dataset.MATCH_STATISTICS
                         || unit.dataset() == Dataset.MATCH_XG
                         || unit.dataset() == Dataset.HISTORICAL_ODDS)
-                        && seasonBatchProviderRegistry.supports(provider, unit.dataset()))
+                        && seasonBatchRegistry.supports(provider, unit.dataset()))
                 .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
     }
 

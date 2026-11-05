@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.application.orchestration;
+package com.mmo.module.fb.ingest.application.registry;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
@@ -13,7 +13,7 @@ import java.util.Map;
 
 /** Resolves optional season-batch capabilities without coupling orchestration to a provider. */
 @Component
-public class SeasonBatchIngestionPortRegistry {
+public class SeasonBatchIngestionRegistry {
     private final Map<Provider, SeasonBatchIngestionPort> providers;
 
     public SeasonBatchIngestionPortRegistry(List<SeasonBatchIngestionPort> providers) {
