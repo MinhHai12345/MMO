@@ -7,7 +7,7 @@ import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.SeasonIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
-import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 import com.mmo.module.fb.ingest.application.registry.SeasonBatchIngestionRegistry;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
@@ -24,7 +24,7 @@ class CoreSyncOrchestratorTest {
 
     private IngestionDistributedLock lock;
     private IngestionPlanFactory planFactory;
-    private ProviderCheckpointStore checkpoints;
+    private ProviderCheckpointPort checkpoints;
     private LeagueIngestionService leagues;
     private SeasonIngestionService seasons;
     private TeamIngestionService teams;
@@ -42,7 +42,7 @@ class CoreSyncOrchestratorTest {
             return true;
         }).when(lock).execute(anyString(), any(Runnable.class));
         planFactory = mock(IngestionPlanFactory.class);
-        checkpoints = mock(ProviderCheckpointStore.class);
+        checkpoints = mock(ProviderCheckpointPort.class);
         leagues = mock(LeagueIngestionService.class);
         seasons = mock(SeasonIngestionService.class);
         teams = mock(TeamIngestionService.class);
