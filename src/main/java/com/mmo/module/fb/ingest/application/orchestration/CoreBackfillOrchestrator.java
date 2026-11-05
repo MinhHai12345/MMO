@@ -89,9 +89,9 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
                 Dataset.TEAM, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
         List<IngestionWorkUnit> footballDataFixtures = plan.units(
                 Dataset.FIXTURE, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
-        boolean ukCoreRequired = plan.units().stream().anyMatch(unit ->
-                unit.provider() == Provider.FOOTBALL_DATA_UK
-                        && (unit.dataset() == Dataset.TEAM || unit.dataset() == Dataset.FIXTURE));
+        // UK creates historical Season rows while importing its CSV catalogue, so its
+        // historical work cannot depend on those rows already existing in the plan.
+        boolean ukCoreRequired = isProviderEnabled(Provider.FOOTBALL_DATA_UK);
 
         log.info("Historical Core plan created: units={}, footballDataTeams={}, "
                         + "footballDataFixtures={}, footballDataUkRequired={}",
