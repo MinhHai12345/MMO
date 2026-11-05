@@ -1,9 +1,9 @@
 package com.mmo.module.fb.ingest.service;
 
-import com.mmo.module.fb.ingest.enums.Provider;
-
-public interface OddsIngestionService {
-    void syncUpcomingOdds();
-
-    void syncUpcomingOdds(Provider provider);
+/**
+ * @deprecated Use {@code application.port.in.OddsIngestionService}.
+ */
+@Deprecated(forRemoval = false)
+public interface OddsIngestionService
+        extends com.mmo.module.fb.ingest.application.port.in.OddsIngestionService {
 }
