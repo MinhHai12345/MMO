@@ -13,7 +13,6 @@ import com.mmo.module.fb.domain.team.repository.TeamRepository;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.service.ExternalIdMappingService;
 import com.mmo.module.fb.ingest.service.FixturePersistenceService;
 import com.mmo.module.fb.ingest.service.ResolvedProviderFixture;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
@@ -39,7 +38,6 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
     private final TeamRepository teamRepository;
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
-    private final ExternalIdMappingService externalIdMappingService;
     private final DataSourcePolicy dataSourcePolicy;
     private final SourceAwareMergeService mergeService;
 
@@ -188,6 +186,13 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
                 continue;
             }
 
+            MatchExternalId existingForMatch = match == null ? null : providerIdentityByMatchId.get(match.getId());
+            if (existingForMatch != null && !existingForMatch.getExternalId().equals(externalId)) {
+                log.warn("Provider {} already has a different fixture ID for canonical match {}",
+                        provider, match.getId());
+                continue;
+            }
+
             boolean isNew = match == null;
             if (isNew) {
                 match = Match.builder().season(season).homeTeam(home).awayTeam(away)
@@ -215,12 +220,6 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
                     fixture.awayScore(), target.getAwayScore() != null, value -> target.setAwayScore((Integer) value));
 
             if (matchesWritten.add(target.getId())) matchRepository.save(target);
-            MatchExternalId existingForMatch = providerIdentityByMatchId.get(target.getId());
-            if (existingForMatch != null && !existingForMatch.getExternalId().equals(externalId)) {
-                log.warn("Provider {} already has a different fixture ID for canonical match {}",
-                        provider, target.getId());
-                continue;
-            }
             if (knownIdentity == null) {
                 mappingsToInsert.add(newMapping(target, domainProvider, externalId));
                 providerIdentityByMatchId.put(target.getId(), newMapping(target, domainProvider, externalId));
