@@ -28,6 +28,10 @@ class IngestionPlanFactoryTest {
 
         IngestionPlan plan = factory.activeSeasonPlan();
 
+        assertTrue(plan.has(Dataset.SEASON, Provider.FOOTBALL_DATA_UK,
+                IngestionWorkUnit.Role.PRIMARY));
+        assertTrue(plan.has(Dataset.SEASON, Provider.FOOTBALL_DATA,
+                IngestionWorkUnit.Role.PRIMARY));
         assertTrue(plan.has(Dataset.TEAM, Provider.FOOTBALL_DATA_UK,
                 IngestionWorkUnit.Role.PRIMARY));
         assertTrue(plan.has(Dataset.FIXTURE, Provider.FOOTBALL_DATA_UK,
