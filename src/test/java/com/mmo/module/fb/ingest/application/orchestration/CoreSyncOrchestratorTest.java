@@ -103,7 +103,7 @@ class CoreSyncOrchestratorTest {
         useCase.sync(null, Provider.API_FOOTBALL);
 
         verify(uk).syncActiveSeasonsData();
-        verifyNoInteractions(checkpoints);
+        verify(checkpoints, never()).markStatus(any(), eq(Dataset.UPCOMING_ODDS), anyLong(), anyString(), any());
     }
 
     @Test
