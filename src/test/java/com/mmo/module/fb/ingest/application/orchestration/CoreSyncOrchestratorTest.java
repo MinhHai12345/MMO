@@ -59,6 +59,7 @@ class CoreSyncOrchestratorTest {
                 Dataset.SEASON, Dataset.TEAM, Dataset.FIXTURE, Dataset.MATCH_STATISTICS,
                 Dataset.MATCH_XG, Dataset.HISTORICAL_ODDS));
         seasonBatchProviderRegistry = new SeasonBatchProviderRegistry(List.of(uk));
+        clearInvocations(uk);
         when(planFactory.activeSeasonPlan()).thenReturn(modernSeasonPlan());
         useCase = new CoreSyncOrchestrator(lock, properties, planFactory, checkpoints,
                 leagues, seasons, teams, fixtures, standings, seasonBatchProviderRegistry);
