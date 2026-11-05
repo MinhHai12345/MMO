@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.entity;
 
 import com.mmo.core.entity.AbstractEntity;
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -38,4 +39,12 @@ public class ProviderSyncCheckpoint extends AbstractEntity {
 
     @Column(name = "completed_at", nullable = false)
     private Instant completedAt;
+
+    /**
+     * Nullable for backwards compatibility: existing rows without a status and with a
+     * completed_at timestamp are interpreted as COMPLETED.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 24)
+    private CheckpointStatus status;
 }
