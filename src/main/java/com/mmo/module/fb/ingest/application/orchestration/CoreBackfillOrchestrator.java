@@ -209,18 +209,28 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
             runStage("multi-provider/seasons/" + provider,
                     () -> seasonIngestionService.syncSeasonsForProvider(provider));
         }
+        IngestionPlan plan = planFactory.historicalPlan();
+        List<String> failedStages = new ArrayList<>();
+        List<IngestionUnitResult> results = new ArrayList<>();
         for (Provider provider : ordered) {
-            runStage("multi-provider/teams/" + provider,
-                    () -> teamIngestionService.syncAllSeasonsForProvider(provider));
+            plan.units(Dataset.TEAM, provider, IngestionWorkUnit.Role.PRIMARY)
+                    .forEach(unit -> runUnit(unit, () ->
+                            teamIngestionService.syncSeasonForProvider(provider, unit.seasonId()),
+                            failedStages, results));
+            plan.units(Dataset.FIXTURE, provider, IngestionWorkUnit.Role.PRIMARY)
+                    .forEach(unit -> runUnit(unit, () ->
+                            fixtureIngestionService.syncSeasonForProvider(provider, unit.seasonId(), null, null),
+                            failedStages, results));
+            plan.units(Dataset.STANDINGS, provider, IngestionWorkUnit.Role.PRIMARY)
+                    .forEach(unit -> runUnit(unit, () ->
+                            standingsIngestionService.syncSeasonForProvider(provider, unit.seasonId()),
+                            failedStages, results));
         }
-        for (Provider provider : ordered) {
-            runStage("multi-provider/fixtures/" + provider,
-                    () -> fixtureIngestionService.syncAllSeasonsForProvider(provider, null, null));
-        }
-
-        if (ordered.contains(Provider.FOOTBALL_DATA)) {
-            runStage("multi-provider/standings/FOOTBALL_DATA",
-                    () -> standingsIngestionService.syncStandingsForProvider(Provider.FOOTBALL_DATA));
+        IngestionExecutionReport report = new IngestionExecutionReport(results);
+        log.info("Multi-provider historical Core execution report: providers={}, {}", ordered, report.summary());
+        if (!failedStages.isEmpty()) {
+            throw new IllegalStateException("Multi-provider historical Core import incomplete: "
+                    + failedStages + "; " + report.summary());
         }
         log.info("Multi-provider historical Core import completed: {}", ordered);
     }
