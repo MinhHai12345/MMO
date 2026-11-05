@@ -13,8 +13,9 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * Builds a deterministic plan from persisted active seasons and DataSourcePolicy.
- * No league IDs, season years or provider choices are hard-coded in configuration.
+ * Builds a deterministic plan from persisted seasons and DataSourcePolicy.
+ * Each primary route and permitted secondary fallback becomes its own work unit.
+ * No league IDs, season years or dataset provider choices are hard-coded in configuration.
  */
 @Component
 @RequiredArgsConstructor
