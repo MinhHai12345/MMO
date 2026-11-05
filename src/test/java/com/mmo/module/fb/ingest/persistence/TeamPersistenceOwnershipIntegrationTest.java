@@ -54,7 +54,7 @@ class TeamPersistenceOwnershipIntegrationTest {
         when(teamExternalIdRepository.findByTeamIdAndProvider(10L, Provider.FOOTBALL_DATA))
                 .thenReturn(Optional.of(footballDataId));
         when(teamExternalIdRepository.findByTeamIdAndProvider(10L, Provider.FOOTBALL_DATA_UK))
-                .thenReturn(Optional.empty(), Optional.of(ukId));
+                .thenReturn(Optional.of(ukId));
 
         TeamPersistenceServiceImpl persistence = new TeamPersistenceServiceImpl(
                 teamRepository, teamExternalIdRepository, externalIdMappingService, new DataSourcePolicy());
