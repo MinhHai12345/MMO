@@ -10,7 +10,7 @@ import com.mmo.module.fb.ingest.adapter.out.persistence.core.MatchXgPersistenceS
 import com.mmo.module.fb.ingest.adapter.out.persistence.core.SourceAwareMergeService;
 import com.mmo.module.fb.ingest.provider.spi.HistoricalStatsProvider;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
-import com.mmo.module.fb.ingest.adapter.out.persistence.identity.ExternalIdMappingService;
+import com.mmo.module.fb.ingest.application.port.out.ExternalIdMappingPort;
 import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
 import com.mmo.module.fb.domain.league.entity.Season;
 import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
@@ -65,7 +65,7 @@ public class UnderStatSyncService implements HistoricalStatisticsIngestionPort {
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final MatchAdvancedStatsRepository matchAdvancedStatsRepository;
     private final MatchStatisticsSnapshotPersistenceService snapshotPersistenceService;
-    private final ExternalIdMappingService externalIdMappingService;
+    private final ExternalIdMappingPort externalIdMappingService;
     private final MatchXgPersistenceService matchXgPersistenceService;
     private final SourceAwareMergeService sourceAwareMergeService;
 
