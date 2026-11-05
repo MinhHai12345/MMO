@@ -105,11 +105,12 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
         }
 
         List<String> failedStages = new ArrayList<>();
+        List<IngestionUnitResult> unitResults = new ArrayList<>();
         footballDataTeams.forEach(unit -> runUnit(unit, () ->
-                teamIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()), failedStages));
+                teamIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()), failedStages, unitResults));
         footballDataFixtures.forEach(unit -> runUnit(unit, () ->
                 fixtureIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId(), null, null),
-                failedStages));
+                failedStages, unitResults));
 
         if (ukCoreRequired) {
             // The UK importer owns recovery at provider + dataset + league + season scope.
@@ -126,34 +127,25 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
             }
         }
 
+        IngestionExecutionReport report = new IngestionExecutionReport(unitResults);
+        log.info("Historical Core work-unit report: {}", report.summary());
         if (!failedStages.isEmpty()) {
-            throw new IllegalStateException("Historical Core backfill incomplete: " + failedStages);
+            throw new IllegalStateException("Historical Core backfill incomplete: " + failedStages
+                    + "; " + report.summary());
         }
-        log.info("Historical Core backfill orchestration completed");
+        log.info("Historical Core backfill orchestration completed: {}", report.summary());
     }
 
-    private void runUnit(IngestionWorkUnit unit, Runnable operation, List<String> failedStages) {
+    private void runUnit(IngestionWorkUnit unit, Runnable operation, List<String> failedStages,
+                         List<IngestionUnitResult> results) {
         String name = unit.provider() + "/" + unit.dataset() + "/league=" + unit.leagueId()
                 + "/season=" + unit.season();
-        if (checkpointStore.isSatisfied(unit.provider(), unit.dataset(), unit.leagueId(), unit.season())) {
-            log.debug("Skipping terminal historical work unit {}", name);
-            return;
-        }
-        checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
-                unit.season(), CheckpointStatus.RUNNING);
-        try {
-            runStage(name, operation);
-            checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
-                    unit.season(), CheckpointStatus.COMPLETED);
-        } catch (IngestionPartialException exception) {
-            checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
-                    unit.season(), CheckpointStatus.PARTIAL);
-            failedStages.add(name + ": " + exception.getMessage());
-        } catch (RuntimeException exception) {
-            checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
-                    unit.season(), CheckpointStatus.FAILED);
-            failedStages.add(name + ": " + exception.getMessage());
-            log.warn("Independent historical work unit failed; continuing: {}", name, exception);
+        IngestionUnitResult result = new IngestionUnitExecutor(checkpointStore)
+                .execute(unit, true, () -> runStage(name, operation));
+        results.add(result);
+        if (!result.isSuccessful()) {
+            failedStages.add(name + " [" + result.status() + "]: " + result.message());
+            log.warn("Independent historical work unit finished with {}: {}", result.status(), name);
         }
     }
 
