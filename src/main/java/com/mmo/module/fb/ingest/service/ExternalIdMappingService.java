@@ -12,6 +12,7 @@ import com.mmo.module.fb.domain.league.entity.SeasonExternalId;
 import com.mmo.module.fb.domain.team.entity.Team;
 import com.mmo.module.fb.domain.team.entity.TeamExternalId;
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.application.port.out.ExternalIdMappingPort;
 import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.match.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.domain.player.repository.PlayerExternalIdRepository;
@@ -31,7 +32,7 @@ import java.util.Optional;
  */
 @Service
 @Transactional
-public class ExternalIdMappingService {
+public class ExternalIdMappingService implements ExternalIdMappingPort {
 
     private final LeagueExternalIdRepository leagueExternalIds;
     private final SeasonExternalIdRepository seasonExternalIds;
