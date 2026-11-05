@@ -148,4 +148,23 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
             default -> null;
         };
     }
+    /**
+     * Bounded transaction for fixture writes. The orchestration layer submits at most
+     * 100 resolved fixtures per call so provider I/O and large season imports never
+     * hold one transaction open for the whole dataset.
+     */
+    @Override
+    @Transactional
+    public int persistFixtures(Long seasonId, Provider provider,
+                               List<com.mmo.module.fb.ingest.service.ResolvedProviderFixture> fixtures) {
+        if (fixtures == null || fixtures.isEmpty()) return 0;
+        int persisted = 0;
+        for (var row : fixtures) {
+            if (row == null) continue;
+            if (persistFixture(seasonId, row.homeTeamId(), row.awayTeamId(), provider, row.fixture())) {
+                persisted++;
+            }
+        }
+        return persisted;
+    }
 }
