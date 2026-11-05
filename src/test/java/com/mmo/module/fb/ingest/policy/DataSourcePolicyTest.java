@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.policy;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.league.entity.Season;
+import com.mmo.module.fb.league.entity.League;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -62,8 +63,17 @@ class DataSourcePolicyTest {
     }
 
     @Test
+    void doesNotRouteUnsupportedCompetitionsToFootballDataUk() {
+        Season season = Season.builder().year("2018/2019")
+                .league(League.builder().name("UEFA Champions League").build()).build();
+        assertNull(policy.route(Dataset.FIXTURE, season).primary());
+        assertFalse(policy.isPrimary(Provider.FOOTBALL_DATA_UK, Dataset.MATCH_STATISTICS, season));
+    }
+
+    @Test
     void secondaryUkMayOnlyFallbackWhenFootballDataHasNoFixtureIdentity() {
-        Season season = Season.builder().year("2025/2026").build();
+        Season season = Season.builder().year("2025/2026")
+                .league(League.builder().name("Premier League").build()).build();
         assertTrue(policy.mayFallbackForCore(Provider.FOOTBALL_DATA_UK,
                 Dataset.FIXTURE, season, false));
         assertFalse(policy.mayFallbackForCore(Provider.FOOTBALL_DATA_UK,
