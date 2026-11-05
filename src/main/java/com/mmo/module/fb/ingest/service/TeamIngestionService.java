@@ -1,10 +1,9 @@
 package com.mmo.module.fb.ingest.service;
 
-import com.mmo.module.fb.ingest.enums.Provider;
-
-public interface TeamIngestionService {
-    void syncTeams();
-    void syncTeamsForProvider(Provider selectedProvider);
-    void syncAllSeasonsForProvider(Provider selectedProvider);
-    void syncSeasonForProvider(Provider selectedProvider, Long seasonId);
+/**
+ * @deprecated Use {@code application.port.in.TeamIngestionService}.
+ */
+@Deprecated(forRemoval = false)
+public interface TeamIngestionService
+        extends com.mmo.module.fb.ingest.application.port.in.TeamIngestionService {
 }
