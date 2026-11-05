@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
-import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 
 import java.util.Objects;
@@ -13,9 +13,9 @@ import java.util.function.Supplier;
  */
 public final class IngestionUnitExecutor {
 
-    private final ProviderCheckpointStore checkpointStore;
+    private final ProviderCheckpointPort checkpointStore;
 
-    public IngestionUnitExecutor(ProviderCheckpointStore checkpointStore) {
+    public IngestionUnitExecutor(ProviderCheckpointPort checkpointStore) {
         this.checkpointStore = Objects.requireNonNull(checkpointStore, "checkpointStore must not be null");
     }
 

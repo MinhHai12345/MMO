@@ -12,7 +12,7 @@ import com.mmo.module.fb.domain.match.service.MatchOddsQuotePersistenceService;
 import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
-import com.mmo.module.fb.ingest.application.port.out.OddsPersistenceService;
+import com.mmo.module.fb.ingest.application.port.out.OddsPersistencePort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +26,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-public class OddsPersistenceServiceImpl implements OddsPersistenceService {
+public class OddsPersistencePortImpl implements OddsPersistencePort {
 
     private static final String MARKET = "PREMATCH";
 

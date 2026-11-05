@@ -22,7 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
-import com.mmo.module.fb.ingest.application.port.out.OddsPersistenceService;
+import com.mmo.module.fb.ingest.application.port.out.OddsPersistencePort;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -44,7 +44,7 @@ public class OddsIngestionServiceImpl implements OddsIngestionService {
     private final FixtureIngestionService fixtureIngestionService;
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
-    private final OddsPersistenceService oddsPersistenceService;
+    private final OddsPersistencePort oddsPersistenceService;
     private final MatchEnrichmentStateService enrichmentStateService;
 
     /**
