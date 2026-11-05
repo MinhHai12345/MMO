@@ -42,6 +42,7 @@ public class ProviderCheckpointJpaAdapter implements ProviderCheckpointStore {
     }
 
     private void markStatus(Provider provider, String checkpointKey, CheckpointStatus status) {
+        if (status == null) throw new IllegalArgumentException("Checkpoint status must not be null");
         ProviderSyncCheckpoint checkpoint = repository.findByProviderAndCheckpointKey(provider, checkpointKey)
                 .orElseGet(ProviderSyncCheckpoint::new);
         checkpoint.setProvider(provider);
