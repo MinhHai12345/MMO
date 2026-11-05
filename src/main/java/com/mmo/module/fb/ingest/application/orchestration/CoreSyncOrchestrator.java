@@ -4,6 +4,7 @@ import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
