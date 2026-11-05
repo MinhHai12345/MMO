@@ -9,6 +9,7 @@ import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkMatchDataProvider;
 import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkCsvException;
+import com.mmo.module.fb.ingest.persistence.MatchXgPersistenceService;
 import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkMatchStatisticsPersistenceService;
 import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkOddsPersistenceService;
 import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
@@ -80,6 +81,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
     private final ExternalIdMappingService externalIdMappingService;
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
+    private final MatchXgPersistenceService matchXgPersistenceService;
     private final FootballDataUkMatchStatisticsPersistenceService statisticsMapper;
     private final FootballDataUkOddsPersistenceService oddsMapper;
 
@@ -535,11 +537,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
 
                 BigDecimal homeXg = decimalMetric(value(row, "HXG"));
                 BigDecimal awayXg = decimalMetric(value(row, "AXG"));
-                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_XG, season)) {
-                    if (homeXg != null) match.setHomeXG(homeXg.doubleValue());
-                    if (awayXg != null) match.setAwayXG(awayXg.doubleValue());
-                }
-                matchRepository.save(match);
+                matchXgPersistenceService.upsert(PROVIDER, match, homeXg, awayXg);
                 if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_STATISTICS, season)) {
                     importedStats += statisticsMapper.persist(match, row);
                 }
