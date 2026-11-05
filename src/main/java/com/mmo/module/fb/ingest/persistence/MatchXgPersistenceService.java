@@ -11,25 +11,30 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
-/** Persistence boundary for the canonical fixture-level xG projection. */
+/** Persistence boundary for canonical fixture-level xG with field-level source ownership. */
 @Service
 @RequiredArgsConstructor
 public class MatchXgPersistenceService {
 
     private final MatchRepository matchRepository;
     private final DataSourcePolicy dataSourcePolicy;
+    private final SourceAwareMergeService sourceAwareMergeService;
 
     @Transactional
     public boolean upsert(Provider provider, Match match, BigDecimal homeXg, BigDecimal awayXg) {
-        if (match == null || match.getSeason() == null
-                || !dataSourcePolicy.isPrimary(provider, Dataset.MATCH_XG, match.getSeason())
-                || (homeXg == null && awayXg == null)) {
-            return false;
-        }
+        if (match == null || match.getSeason() == null || (homeXg == null && awayXg == null)
+                || !dataSourcePolicy.isAllowed(provider, Dataset.MATCH_XG, match.getSeason())) return false;
 
-        if (homeXg != null) match.setHomeXG(homeXg.doubleValue());
-        if (awayXg != null) match.setAwayXG(awayXg.doubleValue());
-        matchRepository.save(match);
-        return true;
+        boolean changed = false;
+        if (homeXg != null && homeXg.signum() >= 0) {
+            changed |= sourceAwareMergeService.merge(match, provider, Dataset.MATCH_XG, "home_xg",
+                    match.getHomeXG() != null, null, () -> match.setHomeXG(homeXg.doubleValue()));
+        }
+        if (awayXg != null && awayXg.signum() >= 0) {
+            changed |= sourceAwareMergeService.merge(match, provider, Dataset.MATCH_XG, "away_xg",
+                    match.getAwayXG() != null, null, () -> match.setAwayXG(awayXg.doubleValue()));
+        }
+        if (changed) matchRepository.save(match);
+        return changed;
     }
 }
