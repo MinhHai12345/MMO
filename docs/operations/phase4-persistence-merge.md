@@ -13,7 +13,7 @@
 - A secondary provider cannot overwrite a non-null field owned by another provider or legacy data without provenance.
 - Older source revisions cannot replace newer revisions from the same provider.
 - Each accepted canonical field update records provider, dataset, source update time and fetch time in `fb_match_field_provenance`.
-- Fixture fields, team-in-match metrics (Football-Data UK and SofaScore), match-level xG and player-in-match metrics (SofaScore) use the same provenance gate. Player metric keys are scoped by canonical player ID within the match.
+- Fixture fields, team-in-match metrics (Football-Data UK, SofaScore and Understat), match-level xG (Football-Data UK, SofaScore and Understat) and player-in-match metrics (SofaScore) use the same provenance gate. Player metric keys are scoped by canonical player ID within the match.
 
 Provider adapters that do not expose a source revision timestamp currently persist `source_updated_at = null`; `fetched_at` remains the ingestion observation time. Do not treat fetch time as an upstream source revision.
 
@@ -30,6 +30,8 @@ Each fixture chunk is capped at 100 rows and runs in one bounded transaction. Be
 Candidate orientation and the six-hour kickoff tolerance are checked in memory. Ambiguous matches and identity conflicts are rejected before canonical mutation. New provider identity rows are accumulated and inserted with `saveAll` at the end of the chunk. The row loop must not perform provider-ID or candidate-match repository lookups.
 
 A failed chunk rolls back as a unit; orchestration records that chunk as failed and continues with the next chunk. This is intentional: the persistence boundary is atomic at the bounded chunk size, not per row.
+
+Understat is an enrichment-only secondary source for match statistics and xG. It must not populate or overwrite canonical fixture scores. Its team metrics and xG pass through the same source-aware merge gate as the other providers.
 
 ## Snapshot provenance
 Match statistics source snapshots are append-only audit records, scoped by match, team and provider. The canonical `fb_match_advanced_stats` row remains the analytics projection. Enrichment lifecycle remains independently keyed by match/provider/resource. Field provenance and raw snapshots serve different purposes: the former explains each accepted canonical metric, while the latter preserves provider payload history.
