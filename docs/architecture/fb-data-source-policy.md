@@ -59,10 +59,12 @@ duplicate canonical teams.
   their selected provider.
 - `TeamPersistenceServiceImpl`, `FixturePersistenceServiceImpl` and
   `LeaguePersistenceServiceImpl` enforce ownership again at persistence boundaries.
-- `StandingsIngestionServiceImpl` only receives active seasons for which Football-Data owns standings.
-- `FootballDataUkSyncService` uses the policy for team creation, fixture fallback, fixture Core
-  updates, xG, match statistics and historical odds. Its incremental Core and enrichment jobs
-  refresh only operator-selected active seasons, not every historical CSV season.
+- `StandingsPersistenceServiceImpl` receives the selected provider and rejects writes from a
+  provider that does not own standings for that season.
+- UK statistics, xG and historical odds each have persistence-boundary ownership checks.
+- `FootballDataUkSyncService` uses the policy for team creation, fixture fallback and fixture Core
+  updates. Its incremental Core and enrichment jobs refresh only operator-selected active seasons,
+  not every historical CSV season.
 - A newly discovered current season defaults to active; subsequent provider syncs never change
   the operator-controlled active flag.
 
@@ -80,3 +82,25 @@ When adding a provider or a competition:
 4. Ensure the provider mapper writes provider-specific external IDs and does not normalize
    names inside application services.
 5. Keep upcoming odds disabled until a supported, enabled provider is explicitly introduced.
+
+
+## Backfill reliability and checkpoints
+
+Football-Data UK downloads distinguish coverage gaps from provider failures:
+
+| Outcome | Checkpoint state | Backfill behavior |
+|---|---|---|
+| HTTP 404/410 or empty response | `NOT_AVAILABLE` | Skip this league-season without failing the whole backfill |
+| Valid CSV with rows and no unmatched fixtures | `COMPLETED` | Mark the dataset complete |
+| Valid CSV with unmatched rows | `PARTIAL` | Keep it eligible for a later retry |
+| Invalid header, HTML/challenge page or malformed CSV | `FAILED` | Do not mark complete |
+| HTTP 429, 5xx or transient network failure | `FAILED` after bounded retry | Preserve the failure reason and retry on a later run |
+
+Checkpoint identity is stored as provider + dataset + canonical league ID + season. Core
+backfill tracks `SEASON`, `TEAM` and `FIXTURE` independently; enrichment tracks
+`MATCH_STATISTICS`, `MATCH_XG` and `HISTORICAL_ODDS` independently. States are
+`PENDING`, `RUNNING`, `COMPLETED`, `PARTIAL`, `FAILED` and `NOT_AVAILABLE`.
+
+The new checkpoint status column is nullable so legacy checkpoint rows remain readable as
+completed. Existing `UK_CORE_<leagueId>_<year>` and legacy `:CORE2` markers are migrated
+to the scoped dataset keys when encountered.
