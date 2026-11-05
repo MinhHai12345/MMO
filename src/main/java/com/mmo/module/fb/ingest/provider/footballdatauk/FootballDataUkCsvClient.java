@@ -98,7 +98,7 @@ public class FootballDataUkCsvClient {
         }
 
         String csv = new String(response.body(), SOURCE_CHARSET).replace("\uFEFF", "");
-        String header = csv.split("\\R", 2)[0].replace("\"", "").toUpperCase(Locale.ROOT);
+        String header = csv.split("\\R", 2)[0].replace("\uFEFF", "").replace("\"", "").trim().toUpperCase(Locale.ROOT);
         if (!header.contains("DATE") || !(header.contains("HOMETEAM") || header.contains("HOME TEAM"))
                 || !(header.contains("AWAYTEAM") || header.contains("AWAY TEAM")) || !header.contains(",")) {
             throw new FootballDataUkCsvException(
