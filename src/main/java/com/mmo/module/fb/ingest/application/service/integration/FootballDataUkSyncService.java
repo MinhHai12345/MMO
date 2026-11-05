@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.application.service.integration;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
+import com.mmo.module.fb.ingest.provider.spi.SeasonBatchProvider;
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
@@ -49,6 +50,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Set;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -63,7 +65,7 @@ import java.util.Optional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
+public class FootballDataUkSyncService implements FootballDataUkIngestionPort, SeasonBatchProvider {
     private static final Provider PROVIDER = Provider.FOOTBALL_DATA_UK;
     private static final MatchProvider MATCH_PROVIDER = MatchProvider.fromName(PROVIDER.name());
     private static final ZoneId SOURCE_ZONE = ZoneId.of("Europe/London");
@@ -160,6 +162,17 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
      * Creates the canonical season rows needed by the historical plan without importing CSVs.
      * The orchestrator can then schedule and checkpoint each league/season independently.
      */
+    @Override
+    public Provider getProvider() {
+        return Provider.FOOTBALL_DATA_UK;
+    }
+
+    @Override
+    public Set<Dataset> supportedDatasets() {
+        return Set.of(Dataset.SEASON, Dataset.TEAM, Dataset.FIXTURE,
+                Dataset.MATCH_STATISTICS, Dataset.MATCH_XG, Dataset.HISTORICAL_ODDS);
+    }
+
     @Override
     public void prepareHistoricalSeasons() {
         initialLeagueMappings();
