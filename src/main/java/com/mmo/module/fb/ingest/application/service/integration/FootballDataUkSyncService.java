@@ -169,7 +169,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort, S
 
     @Override
     public Set<Dataset> supportedDatasets() {
-        return Set.of(Dataset.SEASON, Dataset.TEAM, Dataset.FIXTURE,
+        return Set.of(Dataset.LEAGUE, Dataset.SEASON, Dataset.TEAM, Dataset.FIXTURE,
                 Dataset.MATCH_STATISTICS, Dataset.MATCH_XG, Dataset.HISTORICAL_ODDS);
     }
 
