@@ -32,29 +32,25 @@ class MatchEnrichmentOrchestratorTest {
         when(checkpoints.isCompleted(any(), anyString())).thenReturn(false);
         planFactory = mock(IngestionPlanFactory.class);
         when(planFactory.historicalPlan()).thenReturn(enrichmentPlan());
+        when(planFactory.activeSeasonPlan()).thenReturn(enrichmentPlan());
         footballDataUk = mock(FootballDataUkIngestionPort.class);
         useCase = new MatchEnrichmentOrchestrator(lock, checkpoints, planFactory, footballDataUk);
     }
 
     @Test
     void runsHistoricalRecoveryAndActiveRefreshWithoutLegacyGlobalGates() {
-        when(footballDataUk.syncInitialEnrichment()).thenReturn(true);
-
         useCase.enrichFinishedMatches();
 
         verify(lock).execute(eq(IngestionDistributedLock.GLOBAL_INGEST_LOCK), any(Runnable.class));
         verify(planFactory).historicalPlan();
-        verify(footballDataUk).syncInitialEnrichment();
-        verify(footballDataUk).syncActiveSeasonsEnrichment();
+        verify(footballDataUk).syncEnrichmentSeason(10L, true);
+        verify(footballDataUk).syncEnrichmentSeason(10L, false);
         verify(checkpoints).markCompleted(Provider.FOOTBALL_DATA_UK, "MATCH_ENRICHMENT_INITIAL");
         verify(checkpoints, never()).isCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL");
     }
 
     @Test
     void retriesHistoricalEnrichmentEvenWhenLegacyEnrichmentMarkerExists() {
-        when(checkpoints.isCompleted(Provider.FOOTBALL_DATA_UK, "MATCH_ENRICHMENT_INITIAL"))
-                .thenReturn(true);
-        when(footballDataUk.syncInitialEnrichment()).thenReturn(true);
 
         useCase.enrichFinishedMatches();
 
@@ -65,7 +61,7 @@ class MatchEnrichmentOrchestratorTest {
     @Test
     void continuesActiveRefreshWhenHistoricalRecoveryFails() {
         doThrow(new IllegalStateException("historical import partial"))
-                .when(footballDataUk).syncInitialEnrichment();
+                .when(footballDataUk).syncEnrichmentSeason(10L, true);
 
         org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
                 () -> useCase.enrichFinishedMatches());
