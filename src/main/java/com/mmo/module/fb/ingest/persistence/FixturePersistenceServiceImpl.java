@@ -118,27 +118,28 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
             match = matchRepository.save(match);
         }
 
-        mergeFixtureField(match, provider, "match_time", fixture.kickoff(),
-                match.getMatchTime() != null && !newMatch, value -> match.setMatchTime((Instant) value));
-        mergeFixtureField(match, provider, "round_info", fixture.round(),
-                hasText(match.getRoundInfo()), value -> match.setRoundInfo((String) value));
+        final Match targetMatch = match;
+        mergeFixtureField(targetMatch, provider, "match_time", fixture.kickoff(),
+                match.getMatchTime() != null && !newMatch, value -> targetMatch.setMatchTime((Instant) value));
+        mergeFixtureField(targetMatch, provider, "round_info", fixture.round(),
+                hasText(match.getRoundInfo()), value -> targetMatch.setRoundInfo((String) value));
         mergeFixtureField(match, provider, "venue", fixture.venue(),
-                hasText(match.getVenue()), value -> match.setVenue((String) value));
+                hasText(match.getVenue()), value -> targetMatch.setVenue((String) value));
         mergeFixtureField(match, provider, "referee", fixture.referee(),
-                hasText(match.getReferee()), value -> match.setReferee((String) value));
+                hasText(match.getReferee()), value -> targetMatch.setReferee((String) value));
 
         MatchStatus incomingStatus = toMatchStatus(fixture.status());
         if (incomingStatus != null && statusTransitionAllowed(match.getStatus(), incomingStatus)) {
             mergeFixtureField(match, provider, "status", incomingStatus,
-                    match.getStatus() != null && !newMatch, value -> match.setStatus((MatchStatus) value));
+                    match.getStatus() != null && !newMatch, value -> targetMatch.setStatus((MatchStatus) value));
         }
         if (fixture.homeScore() != null) mergeFixtureField(match, provider, "home_score",
-                fixture.homeScore(), match.getHomeScore() != null, value -> match.setHomeScore((Integer) value));
+                fixture.homeScore(), match.getHomeScore() != null, value -> targetMatch.setHomeScore((Integer) value));
         if (fixture.awayScore() != null) mergeFixtureField(match, provider, "away_score",
-                fixture.awayScore(), match.getAwayScore() != null, value -> match.setAwayScore((Integer) value));
+                fixture.awayScore(), match.getAwayScore() != null, value -> targetMatch.setAwayScore((Integer) value));
 
-        matchRepository.save(match);
-        externalIdMappingService.registerMatch(match, provider, fixture.externalId());
+        matchRepository.save(targetMatch);
+        externalIdMappingService.registerMatch(targetMatch, provider, fixture.externalId());
         return true;
     }
 
