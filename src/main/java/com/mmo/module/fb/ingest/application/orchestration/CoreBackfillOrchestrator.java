@@ -67,14 +67,15 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
     }
 
     private void syncCoreDataLocked(ProviderOverrides overrides) {
+        List<String> failedStages = new ArrayList<>();
         // Catalogue bootstrap precedes plan construction because a cold database may not
         // contain any Season rows yet. The catalogue provider supplies identities only;
         // DataSourcePolicy chooses the owner independently for every season/dataset.
         validateProvider(Provider.FOOTBALL_DATA);
-        runStage("league-catalogue/FOOTBALL_DATA",
-                () -> leagueIngestionService.syncLeaguesForProvider(Provider.FOOTBALL_DATA));
-        runStage("season-catalogue/FOOTBALL_DATA",
-                () -> seasonIngestionService.syncSeasonsForProvider(Provider.FOOTBALL_DATA));
+        runStageCollecting("league-catalogue/FOOTBALL_DATA",
+                () -> leagueIngestionService.syncLeaguesForProvider(Provider.FOOTBALL_DATA), failedStages);
+        runStageCollecting("season-catalogue/FOOTBALL_DATA",
+                () -> seasonIngestionService.syncSeasonsForProvider(Provider.FOOTBALL_DATA), failedStages);
 
         if (overrides != null && (overrides.team() != null || overrides.fixture() != null
                 || overrides.standings() != null)) {
@@ -83,7 +84,6 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
         }
 
         boolean ukCoreRequired = isProviderEnabled(Provider.FOOTBALL_DATA_UK);
-        List<String> failedStages = new ArrayList<>();
         if (ukCoreRequired) {
             try {
                 footballDataUkSyncService.prepareHistoricalSeasons();
@@ -222,6 +222,15 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
     private boolean isProviderEnabled(Provider provider) {
         AppProperties.ProviderConfig config = appProperties.getIngestion().getProviderConfig().get(provider);
         return config != null && config.isEnabled();
+    }
+
+    private void runStageCollecting(String name, Runnable operation, List<String> failedStages) {
+        try {
+            runStage(name, operation);
+        } catch (RuntimeException exception) {
+            failedStages.add(name + ": " + exception.getMessage());
+            log.warn("Catalogue stage failed; continuing independent backfill units: {}", name, exception);
+        }
     }
 
     private void runStage(String name, Runnable operation) {
