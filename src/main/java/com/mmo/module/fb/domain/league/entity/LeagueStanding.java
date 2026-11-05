@@ -14,10 +14,11 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "fb_league_standings",
-        uniqueConstraints = @UniqueConstraint(name = "uk_standing_season_team_type",
-                columnNames = {"season_id", "team_id", "standing_type"}),
+        uniqueConstraints = @UniqueConstraint(name = "uk_standing_season_team_type_group",
+                columnNames = {"season_id", "team_id", "standing_type", "group_key"}),
         indexes = {
-                @Index(name = "idx_fb_standing_season_type", columnList = "season_id, standing_type")
+                @Index(name = "idx_fb_standing_season_type", columnList = "season_id, standing_type"),
+                @Index(name = "idx_fb_standing_season_group", columnList = "season_id, group_key")
         })
 @Getter
 @Setter
@@ -39,6 +40,17 @@ public class LeagueStanding extends AbstractEntity {
     @Builder.Default
     private StandingType standingType = StandingType.TOTAL;
 
+    @Column(name = "group_name", length = 100)
+    private String groupName;
+
+    /**
+     * Non-null normalized group discriminator. Empty string represents an ungrouped table,
+     * avoiding MySQL's multiple-NULL behavior for unique indexes.
+     */
+    @Column(name = "group_key", nullable = false, length = 100, columnDefinition = "varchar(100) default ''")
+    @Builder.Default
+    private String groupKey = "";
+
     @Column(name = "position_rank")
     private Integer position;
 
@@ -53,9 +65,6 @@ public class LeagueStanding extends AbstractEntity {
 
     @Column(length = 32)
     private String form;
-
-    @Column(name = "group_name", length = 100)
-    private String groupName;
 
     @Column(name = "last_synced_at")
     private Instant lastSyncedAt;
