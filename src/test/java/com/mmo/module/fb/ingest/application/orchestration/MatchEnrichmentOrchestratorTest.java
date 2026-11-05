@@ -54,8 +54,8 @@ class MatchEnrichmentOrchestratorTest {
 
         useCase.enrichFinishedMatches();
 
-        verify(footballDataUk).syncInitialEnrichment();
-        verify(footballDataUk).syncActiveSeasonsEnrichment();
+        verify(footballDataUk).syncEnrichmentSeason(10L, true);
+        verify(footballDataUk).syncEnrichmentSeason(10L, false);
     }
 
     @Test
