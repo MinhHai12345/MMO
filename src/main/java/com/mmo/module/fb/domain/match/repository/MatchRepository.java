@@ -229,7 +229,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
               AND m.awayScore IS NOT NULL
               AND externalId.provider = :provider
               AND NOT EXISTS (
-                    SELECT playerStats.id FROM com.mmo.module.fb.player.entity.PlayerMatchStats playerStats
+                    SELECT playerStats.id FROM com.mmo.module.fb.domain.player.entity.PlayerMatchStats playerStats
                     WHERE playerStats.match = m
               )
               AND (

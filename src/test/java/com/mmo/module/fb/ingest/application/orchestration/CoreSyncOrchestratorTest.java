@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.application.sync;
+package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-class FootballDataSyncUseCaseTest {
+class CoreSyncOrchestratorTest {
 
     private IngestionDistributedLock lock;
     private AppProperties properties;
@@ -26,7 +26,7 @@ class FootballDataSyncUseCaseTest {
     private StandingsIngestionService standings;
     private OddsIngestionService odds;
     private FootballDataUkIngestionPort uk;
-    private FootballDataSyncUseCase useCase;
+    private CoreSyncOrchestrator useCase;
 
     @BeforeEach
     void setUp() {
@@ -43,7 +43,7 @@ class FootballDataSyncUseCaseTest {
         odds = mock(OddsIngestionService.class);
         uk = mock(FootballDataUkIngestionPort.class);
         properties = new AppProperties();
-        useCase = new FootballDataSyncUseCase(lock, properties,
+        useCase = new CoreSyncOrchestrator(lock, properties,
                 leagues, seasons, teams, fixtures, standings, uk);
     }
 

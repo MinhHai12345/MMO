@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.application.bootstrap;
+package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-class FootballDataBootstrapUseCaseTest {
+class CoreBackfillOrchestratorTest {
 
     private IngestionDistributedLock lock;
     private AppProperties properties;
@@ -32,7 +32,7 @@ class FootballDataBootstrapUseCaseTest {
     private TeamIngestionService teams;
     private FixtureIngestionService fixtures;
     private StandingsIngestionService standings;
-    private FootballDataBootstrapUseCase service;
+    private CoreBackfillOrchestrator service;
 
     @BeforeEach
     void setUp() {
@@ -65,7 +65,7 @@ class FootballDataBootstrapUseCaseTest {
 
         when(checkpoints.isCompleted(any(), anyString())).thenReturn(false);
 
-        service = new FootballDataBootstrapUseCase(
+        service = new CoreBackfillOrchestrator(
                 lock, properties, checkpoints, footballDataUk,
                 leagues, seasons, teams, fixtures, standings);
     }

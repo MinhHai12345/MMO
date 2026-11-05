@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.application.enrichment;
+package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
@@ -10,12 +10,12 @@ import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-class MatchEnrichmentUseCaseTest {
+class MatchEnrichmentOrchestratorTest {
 
     private IngestionDistributedLock lock;
     private ProviderCheckpointStore checkpoints;
     private FootballDataUkIngestionPort footballDataUk;
-    private MatchEnrichmentUseCase useCase;
+    private MatchEnrichmentOrchestrator useCase;
 
     @BeforeEach
     void setUp() {
@@ -27,7 +27,7 @@ class MatchEnrichmentUseCaseTest {
         checkpoints = mock(ProviderCheckpointStore.class);
         when(checkpoints.isCompleted(any(), anyString())).thenReturn(false);
         footballDataUk = mock(FootballDataUkIngestionPort.class);
-        useCase = new MatchEnrichmentUseCase(lock, checkpoints, footballDataUk);
+        useCase = new MatchEnrichmentOrchestrator(lock, checkpoints, footballDataUk);
     }
 
     @Test
