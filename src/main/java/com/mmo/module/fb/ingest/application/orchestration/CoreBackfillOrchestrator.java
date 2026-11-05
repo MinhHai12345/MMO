@@ -96,8 +96,10 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
         IngestionPlan plan = planFactory.historicalPlan();
         List<IngestionWorkUnit> footballDataSeasons = plan.units(
                 Dataset.SEASON, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
-        footballDataSeasons.forEach(unit -> checkpointStore.markStatus(unit.provider(), Dataset.SEASON,
-                unit.leagueId(), unit.season(), CheckpointStatus.COMPLETED));
+        if (failedStages.stream().noneMatch(error -> error.startsWith("season-catalogue/"))) {
+            footballDataSeasons.forEach(unit -> checkpointStore.markStatus(unit.provider(), Dataset.SEASON,
+                    unit.leagueId(), unit.season(), CheckpointStatus.COMPLETED));
+        }
         List<IngestionWorkUnit> footballDataTeams = plan.units(
                 Dataset.TEAM, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
         List<IngestionWorkUnit> footballDataFixtures = plan.units(
@@ -107,6 +109,10 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
                 plan.units().size(), footballDataTeams.size(), footballDataFixtures.size(), ukCoreRequired);
 
         if (plan.units().isEmpty() && !ukCoreRequired) {
+            if (!failedStages.isEmpty()) {
+                throw new IllegalStateException("Historical Core catalogue initialization incomplete: "
+                        + failedStages);
+            }
             log.info("Historical Core plan contains no supported season work; nothing to backfill");
             return;
         }
