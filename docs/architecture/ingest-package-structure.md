@@ -54,7 +54,7 @@ com.mmo.module.fb.ingest
 - Kept the old `ingest.service` interfaces as deprecated compatibility facades extending the new ports. New code must not import them.
 - Moved resource ingestion implementations to `application.service.ingestion`.
 - Moved provider bootstrap/enrichment integration services to `application.service.integration`.
-- Moved provider external-ID lookup/registration to `adapter.out.persistence.identity` because it owns transactional mapping-table operations.
+- Moved provider external-ID lookup/registration to `adapter.out.persistence.identity` because it owns transactional mapping-table operations; application services access it only through `ExternalIdMappingPort`.
 - Moved provider override, resolved fixture and SofaScore mapping result records to `application.model`.
 - Moved Quartz jobs to `adapter.in.scheduler` and the mapping REST controller to `adapter.in.web`.
 - Moved persistence implementations to `adapter.out.persistence`, separated core persistence from provider-specific enrichment persistence.
