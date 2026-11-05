@@ -1,22 +1,21 @@
-package com.mmo.module.fb.ingest.application.orchestration;
+package com.mmo.module.fb.ingest.application.registry;
 
+import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
-import org.springframework.stereotype.Component;
-
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.stereotype.Component;
 
 /** Resolves optional season-batch capabilities without coupling orchestration to a provider. */
 @Component
-public class SeasonBatchIngestionPortRegistry {
+public class SeasonBatchIngestionRegistry {
     private final Map<Provider, SeasonBatchIngestionPort> providers;
 
-    public SeasonBatchIngestionPortRegistry(List<SeasonBatchIngestionPort> providers) {
+    public SeasonBatchIngestionRegistry(List<SeasonBatchIngestionPort> providers) {
         Map<Provider, SeasonBatchIngestionPort> indexed = new EnumMap<>(Provider.class);
         if (providers != null) {
             for (SeasonBatchIngestionPort provider : providers) {

@@ -1,15 +1,14 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
-import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
+import com.mmo.module.fb.ingest.application.registry.SeasonBatchIngestionRegistry;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -19,7 +18,7 @@ class MatchEnrichmentOrchestratorTest {
     private ProviderCheckpointStore checkpoints;
     private IngestionPlanFactory planFactory;
     private SeasonBatchIngestionPort footballDataUk;
-    private SeasonBatchIngestionPortRegistry seasonBatchProviderRegistry;
+    private SeasonBatchIngestionRegistry seasonBatchRegistry;
     private MatchEnrichmentOrchestrator useCase;
 
     @BeforeEach
@@ -39,9 +38,9 @@ class MatchEnrichmentOrchestratorTest {
         when(footballDataUk.supportedDatasets()).thenReturn(java.util.Set.of(
                 Dataset.SEASON, Dataset.TEAM, Dataset.FIXTURE, Dataset.MATCH_STATISTICS,
                 Dataset.MATCH_XG, Dataset.HISTORICAL_ODDS));
-        seasonBatchProviderRegistry = new SeasonBatchIngestionPortRegistry(List.of(footballDataUk));
+        seasonBatchRegistry = new SeasonBatchIngestionRegistry(List.of(footballDataUk));
         clearInvocations(footballDataUk);
-        useCase = new MatchEnrichmentOrchestrator(lock, checkpoints, planFactory, seasonBatchProviderRegistry);
+        useCase = new MatchEnrichmentOrchestrator(lock, checkpoints, planFactory, seasonBatchRegistry);
     }
 
     @Test

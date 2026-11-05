@@ -1,22 +1,21 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
-import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
-import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
-import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
-import com.mmo.module.fb.ingest.enums.CheckpointStatus;
-import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.policy.Dataset;
+import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.SeasonIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
+import com.mmo.module.fb.ingest.application.registry.SeasonBatchIngestionRegistry;
+import com.mmo.module.fb.ingest.enums.CheckpointStatus;
+import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.Dataset;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -32,7 +31,7 @@ class CoreSyncOrchestratorTest {
     private FixtureIngestionService fixtures;
     private StandingsIngestionService standings;
     private SeasonBatchIngestionPort uk;
-    private SeasonBatchIngestionPortRegistry seasonBatchProviderRegistry;
+    private SeasonBatchIngestionRegistry seasonBatchRegistry;
     private CoreSyncOrchestrator useCase;
 
     @BeforeEach
@@ -54,11 +53,11 @@ class CoreSyncOrchestratorTest {
         when(uk.supportedDatasets()).thenReturn(java.util.Set.of(
                 Dataset.SEASON, Dataset.TEAM, Dataset.FIXTURE, Dataset.MATCH_STATISTICS,
                 Dataset.MATCH_XG, Dataset.HISTORICAL_ODDS));
-        seasonBatchProviderRegistry = new SeasonBatchIngestionPortRegistry(List.of(uk));
+        seasonBatchRegistry = new SeasonBatchIngestionRegistry(List.of(uk));
         clearInvocations(uk);
         when(planFactory.activeSeasonPlan()).thenReturn(modernSeasonPlan());
         useCase = new CoreSyncOrchestrator(lock, planFactory, checkpoints,
-                leagues, seasons, teams, fixtures, standings, seasonBatchProviderRegistry);
+                leagues, seasons, teams, fixtures, standings, seasonBatchRegistry);
     }
 
     @Test
@@ -133,7 +132,7 @@ class CoreSyncOrchestratorTest {
 
         useCase.sync(null, null);
 
-        verifyNoInteractions(planFactory, checkpoints, leagues, seasons, teams, fixtures, standings, seasonBatchProviderRegistry);
+        verifyNoInteractions(planFactory, checkpoints, leagues, seasons, teams, fixtures, standings, seasonBatchRegistry);
     }
 
     private IngestionPlan modernSeasonPlan() {
