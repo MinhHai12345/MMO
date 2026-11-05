@@ -9,11 +9,11 @@ import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkSeasonDataPort;
-import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkCsvException;
+import com.mmo.module.fb.ingest.application.exception.ProviderDataException;
 import com.mmo.module.fb.ingest.application.port.out.MatchXgPersistencePort;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkMatchStatisticsPersistencePort;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkOddsPersistencePort;
-import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
+import com.mmo.module.fb.ingest.application.port.out.MmoDataStandardizationPort;
 import com.mmo.module.fb.ingest.service.ExternalIdMappingService;
 import com.mmo.module.fb.domain.league.entity.League;
 import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
@@ -72,6 +72,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
     private final ProviderCheckpointStore checkpointStore;
     private final DataSourcePolicy dataSourcePolicy;
     private final FootballDataUkSeasonDataPort matchDataProvider;
+    private final MmoDataStandardizationPort dataStandardizer;
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
     private final SeasonExternalIdRepository seasonExternalIdRepository;
@@ -107,10 +108,10 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         int skipped = 0;
 
         for (LeagueMappingDefinition definition : definitions) {
-            String canonicalLeagueName = MmoProviderDataStandardizer.leagueName(definition.leagueName());
+            String canonicalLeagueName = dataStandardizer.leagueName(definition.leagueName());
             List<League> leagues = leagueRepository.findAll().stream()
                     .filter(candidate -> canonicalLeagueName.equalsIgnoreCase(
-                            MmoProviderDataStandardizer.leagueName(candidate.getName())))
+                            dataStandardizer.leagueName(candidate.getName())))
                     .toList();
             if (leagues.size() != 1) {
                 skipped++;
@@ -228,7 +229,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 throw new IngestionPartialException("Football-Data UK season has "
                         + result.unmatchedRows() + " unmatched CSV rows");
             }
-        } catch (FootballDataUkCsvException exception) {
+        } catch (ProviderDataException exception) {
             if (exception.isNotAvailable()) {
                 markCoreCheckpoint(leagueId, season.getYear(), CheckpointStatus.NOT_AVAILABLE);
                 return;
@@ -279,7 +280,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 throw new IngestionPartialException("Football-Data UK enrichment has "
                         + result.unmatchedRows() + " unmatched rows");
             }
-        } catch (FootballDataUkCsvException exception) {
+        } catch (ProviderDataException exception) {
             if (exception.isNotAvailable()) {
                 markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.NOT_AVAILABLE);
                 return;
@@ -372,7 +373,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     log.info("Football-Data.co.uk imported league={}, season={}, current={}, rows={}, createdFixtures={}, unmatched={}",
                             league.getName(), season.getYear(), current, result.csvRows(),
                             result.createdFixtures(), result.unmatchedRows());
-                } catch (FootballDataUkCsvException exception) {
+                } catch (ProviderDataException exception) {
                     if (exception.isNotAvailable()) {
                         unavailableSeasons++;
                         markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.NOT_AVAILABLE);
@@ -463,7 +464,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     importedSeasons++;
                     log.info("Football-Data.co.uk active-season Core sync: league={}, season={}, rows={}, createdFixtures={}",
                             league.getName(), season.getYear(), result.csvRows(), result.createdFixtures());
-                } catch (FootballDataUkCsvException exception) {
+                } catch (ProviderDataException exception) {
                     if (exception.isNotAvailable()) {
                         markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.NOT_AVAILABLE);
                         log.info("Football-Data.co.uk active-season CSV not published: league={}, season={}",
@@ -549,7 +550,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     importedOdds += result.importedOdds();
                     unmatchedRows += result.unmatchedRows();
                     markEnrichmentCheckpoint(leagueId, season.getYear(), result);
-                } catch (FootballDataUkCsvException exception) {
+                } catch (ProviderDataException exception) {
                     if (exception.isNotAvailable()) {
                         unavailableSeasons++;
                         markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.NOT_AVAILABLE);
@@ -616,7 +617,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     log.info("Football-Data UK active-season enrichment: league={}, season={}, rows={}, stats={}, odds={}, unmatched={}",
                             leagueMapping.getLeague().getName(), season.getYear(), rows.size(),
                             result.importedTeamStats(), result.importedOdds(), result.unmatchedRows());
-                } catch (FootballDataUkCsvException exception) {
+                } catch (ProviderDataException exception) {
                     if (exception.isNotAvailable()) {
                         markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.NOT_AVAILABLE);
                         log.info("Football-Data UK active-season enrichment CSV not published: league={}, season={}",
@@ -715,7 +716,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 teamExternalIdRepository.findByProviderAndExternalId(PROVIDER, legacyExternalId);
         if (legacy.isPresent()) return legacy.get().getTeam();
 
-        String canonicalName = MmoProviderDataStandardizer.standardTeamName(providerName);
+        String canonicalName = dataStandardizer.teamName(providerName);
         if (!StringUtils.hasText(canonicalName)) return null;
         Optional<TeamExternalId> canonical = teamExternalIdRepository.findByProviderAndExternalId(
                 PROVIDER, "TEAM:" + normalize(canonicalName));
@@ -963,7 +964,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 teamExternalIdRepository.findByProviderAndExternalId(PROVIDER, legacyExternalId);
         if (legacyMapping.isPresent()) return legacyMapping.get().getTeam();
 
-        String canonicalName = MmoProviderDataStandardizer.standardTeamName(providerName);
+        String canonicalName = dataStandardizer.teamName(providerName);
         if (!StringUtils.hasText(canonicalName)) {
             throw new IllegalArgumentException("Football-Data UK team name is blank");
         }
