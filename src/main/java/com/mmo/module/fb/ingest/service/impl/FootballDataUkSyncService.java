@@ -218,10 +218,14 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     }
                     if (result.unmatchedRows() == 0) {
                         saveSeasonMapping(season, mapping);
-                        markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.COMPLETED);
+                        markCoreDatasetCheckpoints(league.getId(), season.getYear(),
+                                CheckpointStatus.COMPLETED,
+                                result.importedTeams() > 0 ? CheckpointStatus.COMPLETED : CheckpointStatus.NOT_AVAILABLE,
+                                result.importedFixtures() > 0 ? CheckpointStatus.COMPLETED : CheckpointStatus.NOT_AVAILABLE);
                     } else {
                         incompleteSeasons++;
-                        markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.PARTIAL);
+                        markCoreDatasetCheckpoints(league.getId(), season.getYear(),
+                                CheckpointStatus.PARTIAL, CheckpointStatus.PARTIAL, CheckpointStatus.PARTIAL);
                         log.warn("Football-Data.co.uk season remains partial: league={}, season={}, unmatched={}, rows={}",
                                 league.getName(), season.getYear(), result.unmatchedRows(), result.csvRows());
                     }
@@ -312,7 +316,10 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                         continue;
                     }
                     saveSeasonMapping(season, mapping);
-                    markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.COMPLETED);
+                    markCoreDatasetCheckpoints(league.getId(), season.getYear(),
+                            CheckpointStatus.COMPLETED,
+                            result.importedTeams() > 0 ? CheckpointStatus.COMPLETED : CheckpointStatus.NOT_AVAILABLE,
+                            result.importedFixtures() > 0 ? CheckpointStatus.COMPLETED : CheckpointStatus.NOT_AVAILABLE);
                     importedSeasons++;
                     log.info("Football-Data.co.uk active-season Core sync: league={}, season={}, rows={}, createdFixtures={}",
                             league.getName(), season.getYear(), result.csvRows(), result.createdFixtures());
@@ -398,9 +405,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     importedStats += result.importedTeamStats();
                     importedOdds += result.importedOdds();
                     unmatchedRows += result.unmatchedRows();
-                    markEnrichmentCheckpoint(leagueId, season.getYear(),
-                            result.unmatchedRows() == 0
-                                    ? CheckpointStatus.COMPLETED : CheckpointStatus.PARTIAL);
+                    markEnrichmentCheckpoint(leagueId, season.getYear(), result);
                 } catch (FootballDataUkCsvException exception) {
                     if (exception.isNotAvailable()) {
                         unavailableSeasons++;
@@ -505,6 +510,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
     private EnrichmentResult enrichRows(
             Season season, LeagueExternalId leagueMapping, List<Map<String, String>> rows) {
         int importedStats = 0;
+        int importedXg = 0;
         int importedOdds = 0;
         int unmatched = 0;
         for (Map<String, String> row : rows) {
@@ -544,6 +550,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 BigDecimal homeXg = decimalMetric(value(row, "HXG"));
                 BigDecimal awayXg = decimalMetric(value(row, "AXG"));
                 matchXgPersistenceService.upsert(PROVIDER, match, homeXg, awayXg);
+                if (homeXg != null || awayXg != null) importedXg++;
                 if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_STATISTICS, season)) {
                     importedStats += statisticsMapper.persist(match, row);
                 }
@@ -556,7 +563,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                         season.getYear(), exception.getMessage());
             }
         }
-        return new EnrichmentResult(rows.size(), importedStats, importedOdds, unmatched);
+        return new EnrichmentResult(rows.size(), importedStats, importedXg, importedOdds, unmatched);
     }
 
     private Team findExistingTeam(String leagueCode, String providerName) {
@@ -594,7 +601,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
     }
 
     private record EnrichmentResult(
-            int csvRows, int importedTeamStats, int importedOdds, int unmatchedRows) {
+            int csvRows, int importedTeamStats, int importedXg, int importedOdds, int unmatchedRows) {
     }
 
     public ImportResult syncSeason(Season season, LeagueExternalId leagueMapping,
@@ -602,9 +609,12 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         List<Map<String, String>> rows = matchDataProvider.fetchSeason(
                 config.getUri(), season.getYear(), leagueMapping.getIdentify());
         int createdFixtures = 0;
+        int importedTeams = 0;
+        int importedFixtures = 0;
         int importedStats = 0;
         int importedOdds = 0;
         int unmatched = 0;
+        java.util.Set<Long> resolvedTeamIds = new java.util.HashSet<>();
 
         for (Map<String, String> row : rows) {
             try {
@@ -618,6 +628,8 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
 
                 Team home = resolveTeam(leagueMapping.getIdentify(), homeName, season);
                 Team away = resolveTeam(leagueMapping.getIdentify(), awayName, season);
+                resolvedTeamIds.add(home.getId());
+                resolvedTeamIds.add(away.getId());
                 if (home.getId().equals(away.getId())) {
                     unmatched++;
                     continue;
@@ -668,6 +680,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 } else {
                     matchRepository.save(match);
                 }
+                importedFixtures++;
                 // Core import owns fixture identity, kickoff, status and result only.
                 // Statistics and odds are imported by the independent Match Enrichment workflow.
             } catch (RuntimeException ex) {
@@ -676,7 +689,9 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                         season.getYear(), value(row, "HOMETEAM"), value(row, "AWAYTEAM"), ex.getMessage());
             }
         }
-        return new ImportResult(rows.size(), createdFixtures, 0, 0, unmatched);
+        importedTeams = resolvedTeamIds.size();
+        return new ImportResult(rows.size(), createdFixtures, importedTeams, importedFixtures,
+                importedStats, importedOdds, unmatched);
     }
 
     private Season getOrCreateSeason(League league, int startYear, LocalDate today) {
@@ -763,9 +778,16 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
     }
 
     private void markCoreCheckpoint(Long leagueId, String season, CheckpointStatus status) {
-        checkpointStore.markStatus(PROVIDER, Dataset.SEASON, leagueId, season, status);
-        checkpointStore.markStatus(PROVIDER, Dataset.TEAM, leagueId, season, status);
-        checkpointStore.markStatus(PROVIDER, Dataset.FIXTURE, leagueId, season, status);
+        markCoreDatasetCheckpoints(leagueId, season, status, status, status);
+    }
+
+    private void markCoreDatasetCheckpoints(Long leagueId, String season,
+                                            CheckpointStatus seasonStatus,
+                                            CheckpointStatus teamStatus,
+                                            CheckpointStatus fixtureStatus) {
+        checkpointStore.markStatus(PROVIDER, Dataset.SEASON, leagueId, season, seasonStatus);
+        checkpointStore.markStatus(PROVIDER, Dataset.TEAM, leagueId, season, teamStatus);
+        checkpointStore.markStatus(PROVIDER, Dataset.FIXTURE, leagueId, season, fixtureStatus);
     }
 
     private boolean isEnrichmentCheckpointCompleted(Long leagueId, String season) {
@@ -778,6 +800,17 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         checkpointStore.markStatus(PROVIDER, Dataset.MATCH_STATISTICS, leagueId, season, status);
         checkpointStore.markStatus(PROVIDER, Dataset.MATCH_XG, leagueId, season, status);
         checkpointStore.markStatus(PROVIDER, Dataset.HISTORICAL_ODDS, leagueId, season, status);
+    }
+
+    private void markEnrichmentCheckpoint(Long leagueId, String season, EnrichmentResult result) {
+        CheckpointStatus partialOrComplete = result.unmatchedRows() == 0
+                ? CheckpointStatus.COMPLETED : CheckpointStatus.PARTIAL;
+        checkpointStore.markStatus(PROVIDER, Dataset.MATCH_STATISTICS, leagueId, season,
+                result.importedTeamStats() == 0 ? CheckpointStatus.NOT_AVAILABLE : partialOrComplete);
+        checkpointStore.markStatus(PROVIDER, Dataset.MATCH_XG, leagueId, season,
+                result.importedXg() == 0 ? CheckpointStatus.NOT_AVAILABLE : partialOrComplete);
+        checkpointStore.markStatus(PROVIDER, Dataset.HISTORICAL_ODDS, leagueId, season,
+                result.importedOdds() == 0 ? CheckpointStatus.NOT_AVAILABLE : partialOrComplete);
     }
 
     private static String seasonCheckpointKey(League league, int startYear) {
@@ -999,5 +1032,6 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         return normalize(value).replaceAll("([a-z])([0-9])", "$1-$2");
     }
 
-    public record ImportResult(int csvRows, int createdFixtures, int importedTeamStats, int importedOdds, int unmatchedRows) {}
+    public record ImportResult(int csvRows, int createdFixtures, int importedTeams, int importedFixtures,
+                               int importedTeamStats, int importedOdds, int unmatchedRows) {}
 }
