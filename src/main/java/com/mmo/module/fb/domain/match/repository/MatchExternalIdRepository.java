@@ -43,7 +43,9 @@ public interface MatchExternalIdRepository extends JpaRepository<MatchExternalId
     boolean existsByProviderAndExternalId(MatchProvider provider, String externalId);
 
 
+    @EntityGraph(attributePaths = {"match", "match.season", "match.homeTeam", "match.awayTeam"})
     List<MatchExternalId> findAllByProviderAndExternalIdIn(MatchProvider provider, List<String> externalIds);
 
+    @EntityGraph(attributePaths = {"match", "match.season", "match.homeTeam", "match.awayTeam"})
     List<MatchExternalId> findAllByMatchIdInAndProvider(List<Long> matchIds, MatchProvider provider);
 }
