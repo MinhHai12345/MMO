@@ -50,7 +50,17 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
         syncTeams(selectedProvider, true);
     }
 
+    @Override
+    public void syncSeasonForProvider(Provider selectedProvider, Long seasonId) {
+        if (seasonId == null) throw new IllegalArgumentException("seasonId must not be null");
+        syncTeams(selectedProvider, true, seasonId);
+    }
+
     private void syncTeams(Provider selectedProvider, boolean includeHistoricalSeasons) {
+        syncTeams(selectedProvider, includeHistoricalSeasons, null);
+    }
+
+    private void syncTeams(Provider selectedProvider, boolean includeHistoricalSeasons, Long onlySeasonId) {
         ingestionSupport.requireProviderEnabled(selectedProvider, "team");
 
         // Team sync can run independently on a cold start, but should not refetch every
@@ -69,6 +79,7 @@ public class TeamIngestionServiceImpl implements TeamIngestionService {
         List<Season> seasons = includeHistoricalSeasons
                 ? ingestionSupport.allMappedSeasonsToSync(selectedProvider, Dataset.TEAM)
                 : ingestionSupport.seasonsToSync(selectedProvider, Dataset.TEAM);
+        if (onlySeasonId != null) seasons = seasons.stream().filter(s -> onlySeasonId.equals(s.getId())).toList();
         if (seasons.isEmpty()) {
             if (!ingestionSupport.hasAnySeasons(includeHistoricalSeasons)) {
                 throw new IllegalStateException("No canonical seasons available for team ingestion");
