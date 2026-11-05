@@ -45,6 +45,6 @@ public class ProviderSyncCheckpoint extends AbstractEntity {
      * completed_at timestamp are interpreted as COMPLETED.
      */
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", length = 24)
+    @Column(name = "checkpoint_status", length = 24)
     private CheckpointStatus status;
 }
