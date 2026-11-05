@@ -10,7 +10,7 @@ import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.MatchesResponseDTO;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.SeasonDTO;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreFixtureMapper;
-import com.mmo.module.fb.ingest.provider.spi.FixtureProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.FixtureIngestionPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -25,7 +25,7 @@ import java.util.Objects;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implements FixtureProvider {
+public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implements FixtureIngestionPort {
     private final SofaScoreFixtureMapper mapper;
     private final SofaScoreClient sofaScoreClient;
     private final AppProperties appProperties;

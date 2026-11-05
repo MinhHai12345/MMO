@@ -7,7 +7,7 @@ import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
 import com.mmo.module.fb.ingest.provider.apifootball.mapper.ApiFootballFixtureMapper;
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
-import com.mmo.module.fb.ingest.provider.spi.FixtureProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.FixtureIngestionPort;
 import com.mmo.module.fb.ingest.enums.Provider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +21,7 @@ import java.util.Map;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ApiFootballFixtureProvider implements FixtureProvider {
+public class ApiFootballFixtureProvider implements FixtureIngestionPort {
 
     private static final TypeReference<ApiFootballResponse<FixtureItem>> RESPONSE_TYPE =
             new TypeReference<>() {};

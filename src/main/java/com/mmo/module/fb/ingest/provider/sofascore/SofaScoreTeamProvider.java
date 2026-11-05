@@ -9,7 +9,7 @@ import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.Seas
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.StandingGroupDTO;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.StandingRowDTO;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreTeamMapper;
-import com.mmo.module.fb.ingest.provider.spi.TeamProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.TeamIngestionPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class SofaScoreTeamProvider extends AbstractSofaScoreProvider implements TeamProvider {
+public class SofaScoreTeamProvider extends AbstractSofaScoreProvider implements TeamIngestionPort {
 
     private final SofaScoreTeamMapper mapper;
     private final SofaScoreClient sofaScoreClient;

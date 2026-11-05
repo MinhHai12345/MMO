@@ -8,7 +8,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreLeagueMapper;
-import com.mmo.module.fb.ingest.provider.spi.LeagueProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.LeagueIngestionPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +17,7 @@ import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
-public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implements LeagueProvider {
+public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implements LeagueIngestionPort {
 
     private final SofaScoreLeagueMapper mapper;
     private final SofaScoreClient sofaScoreClient;

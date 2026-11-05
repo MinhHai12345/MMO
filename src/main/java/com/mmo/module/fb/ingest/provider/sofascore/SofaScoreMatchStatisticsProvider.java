@@ -5,7 +5,7 @@ import com.mmo.module.fb.ingest.provider.model.ProviderMatchAdvancedStatistics;
 import com.mmo.module.fb.ingest.provider.sofascore.client.AbstractSofaScoreProvider;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreMatchStatisticsMapper;
-import com.mmo.module.fb.ingest.provider.spi.MatchStatisticsProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.MatchStatisticsIngestionProviderPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -16,7 +16,7 @@ import java.util.Optional;
 @Component
 @RequiredArgsConstructor
 public class SofaScoreMatchStatisticsProvider extends AbstractSofaScoreProvider
-        implements MatchStatisticsProvider {
+        implements MatchStatisticsIngestionProviderPort {
 
     private final SofaScoreClient sofaScoreClient;
     private final SofaScoreMatchStatisticsMapper mapper;

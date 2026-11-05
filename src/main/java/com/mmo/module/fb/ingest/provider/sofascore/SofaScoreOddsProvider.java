@@ -8,7 +8,7 @@ import com.mmo.module.fb.ingest.provider.model.OddsQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreOddsMapper;
-import com.mmo.module.fb.ingest.provider.spi.OddsProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.OddsIngestionPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +17,7 @@ import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
-public class SofaScoreOddsProvider extends AbstractSofaScoreProvider implements OddsProvider {
+public class SofaScoreOddsProvider extends AbstractSofaScoreProvider implements OddsIngestionPort {
 
     private final SofaScoreOddsMapper mapper;
     private final SofaScoreClient sofaScoreClient;

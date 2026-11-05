@@ -3,7 +3,7 @@ package com.mmo.module.fb.ingest.provider.understats;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
 import com.mmo.module.fb.ingest.provider.model.SeasonQuery;
-import com.mmo.module.fb.ingest.provider.spi.SeasonProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.SeasonIngestionPort;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -20,7 +20,7 @@ import java.util.stream.IntStream;
  * exist: expose the supported historical range directly.
  */
 @Component
-public class UnderStatSeasonProvider implements SeasonProvider {
+public class UnderStatSeasonProvider implements SeasonIngestionPort {
     private static final int FIRST_SUPPORTED_SEASON = 2014;
 
     @Override

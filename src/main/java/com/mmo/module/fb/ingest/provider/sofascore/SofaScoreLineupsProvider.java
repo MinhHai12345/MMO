@@ -4,7 +4,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderLineups;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreLineupsClient;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreLineupsMapper;
-import com.mmo.module.fb.ingest.provider.spi.PlayerLineupsProvider;
+import com.mmo.module.fb.ingest.application.port.out.provider.PlayerLineupsIngestionPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -13,7 +13,7 @@ import java.util.Optional;
 /** SofaScore implementation of the provider-neutral player-lineups SPI. */
 @Component
 @RequiredArgsConstructor
-public class SofaScoreLineupsProvider implements PlayerLineupsProvider {
+public class SofaScoreLineupsProvider implements PlayerLineupsIngestionPort {
 
     private final SofaScoreLineupsClient client;
     private final SofaScoreLineupsMapper mapper;
