@@ -1,6 +1,4 @@
-package com.mmo.module.fb.ingest.application.enrichment;
-
-import com.mmo.module.fb.ingest.application.orchestration.MatchEnrichmentOrchestrator;
+package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;

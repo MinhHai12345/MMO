@@ -1,6 +1,4 @@
-package com.mmo.module.fb.ingest.application.bootstrap;
-
-import com.mmo.module.fb.ingest.application.orchestration.CoreBackfillOrchestrator;
+package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;

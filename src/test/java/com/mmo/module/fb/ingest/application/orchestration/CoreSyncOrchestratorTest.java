@@ -1,6 +1,4 @@
-package com.mmo.module.fb.ingest.application.sync;
-
-import com.mmo.module.fb.ingest.application.orchestration.CoreSyncOrchestrator;
+package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
