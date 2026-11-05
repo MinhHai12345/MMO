@@ -1,7 +1,9 @@
 package com.mmo.module.fb.ingest.provider.footballdatauk;
 
+import com.mmo.module.fb.ingest.application.exception.ProviderDataException;
+
 /** Classified transport/content failure from Football-Data.co.uk. */
-public class FootballDataUkCsvException extends RuntimeException {
+public class FootballDataUkCsvException extends ProviderDataException {
     public enum Reason {
         NOT_AVAILABLE,
         RATE_LIMITED,
@@ -20,7 +22,7 @@ public class FootballDataUkCsvException extends RuntimeException {
     }
 
     public FootballDataUkCsvException(Reason reason, String message, Throwable cause, boolean retryable) {
-        super(message, cause);
+        super(message, cause, reason == Reason.NOT_AVAILABLE, retryable);
         this.reason = reason;
         this.retryable = retryable;
     }
