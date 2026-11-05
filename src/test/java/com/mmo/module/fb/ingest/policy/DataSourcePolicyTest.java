@@ -43,6 +43,10 @@ class DataSourcePolicyTest {
                     policy.route(Dataset.MATCH_STATISTICS, year).primary());
             assertEquals(Provider.FOOTBALL_DATA_UK,
                     policy.route(Dataset.MATCH_XG, year).primary());
+            assertTrue(policy.route(Dataset.MATCH_STATISTICS, year).secondary()
+                    .contains(Provider.UNDER_STATS));
+            assertTrue(policy.route(Dataset.MATCH_XG, year).secondary()
+                    .contains(Provider.UNDER_STATS));
             assertEquals(Provider.FOOTBALL_DATA_UK,
                     policy.route(Dataset.HISTORICAL_ODDS, year).primary());
         }
