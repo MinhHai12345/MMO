@@ -48,7 +48,9 @@ class FixturePersistenceOwnershipIntegrationTest {
     void setUp() {
         DataSourcePolicy policy = new DataSourcePolicy();
         persistence = new FixturePersistenceServiceImpl(seasonRepository, teamRepository,
-                matchRepository, matchExternalIdRepository, externalIdMappingService, policy);
+                matchRepository, matchExternalIdRepository, externalIdMappingService, policy,
+                new SourceAwareMergeService(policy,
+                        mock(com.mmo.module.fb.domain.match.repository.MatchFieldProvenanceRepository.class)));
 
         League league = new League();
         league.setId(39L);
@@ -131,8 +133,8 @@ class FixturePersistenceOwnershipIntegrationTest {
         when(matchRepository.findFixtureCandidates(eq(2024L), eq(10L), eq(11L), any(), any()))
                 .thenReturn(List.of(canonical));
         MatchExternalId footballDataIdentity = new MatchExternalId();
-        when(matchExternalIdRepository.findByMatchIdAndProvider(901L, MatchProvider.FOOTBALL_DATA))
-                .thenReturn(Optional.of(footballDataIdentity));
+        when(matchExternalIdRepository.existsByMatchIdAndProvider(901L, MatchProvider.FOOTBALL_DATA))
+                .thenReturn(true);
 
         boolean saved = persistence.persistFixture(2024L, 10L, 11L,
                 Provider.FOOTBALL_DATA_UK, ukFixture);
