@@ -21,13 +21,13 @@ public final class IngestionUnitExecutor {
 
     public IngestionUnitResult execute(IngestionWorkUnit unit, boolean historical, Runnable operation) {
         Objects.requireNonNull(operation, "operation must not be null");
-        return execute(unit, historical, () -> {
+        return executeWithResult(unit, historical, () -> {
             operation.run();
             return IngestionUnitResult.completed(unit, 0);
         });
     }
 
-    public IngestionUnitResult execute(
+    public IngestionUnitResult executeWithResult(
             IngestionWorkUnit unit, boolean historical, Supplier<IngestionUnitResult> operation) {
         Objects.requireNonNull(unit, "unit must not be null");
         Objects.requireNonNull(operation, "operation must not be null");
