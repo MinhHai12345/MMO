@@ -432,8 +432,12 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     if (awayXg != null) match.setAwayXG(awayXg.doubleValue());
                 }
                 matchRepository.save(match);
-                importedStats += statisticsMapper.persist(match, row);
-                importedOdds += oddsMapper.persist(match, row);
+                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_STATISTICS, season)) {
+                    importedStats += statisticsMapper.persist(match, row);
+                }
+                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.HISTORICAL_ODDS, season)) {
+                    importedOdds += oddsMapper.persist(match, row);
+                }
             } catch (RuntimeException exception) {
                 unmatched++;
                 log.debug("Skip unmatched Football-Data UK enrichment row: season={}, reason={}",
