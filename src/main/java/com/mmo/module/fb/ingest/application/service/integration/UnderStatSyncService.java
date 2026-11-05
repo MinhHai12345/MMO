@@ -6,8 +6,8 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderMatchStatistics;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeamMatchStats;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.adapter.out.persistence.core.MatchXgPersistenceService;
-import com.mmo.module.fb.ingest.adapter.out.persistence.core.SourceAwareMergeService;
+import com.mmo.module.fb.ingest.application.port.out.MatchXgPersistencePort;
+import com.mmo.module.fb.ingest.application.port.out.SourceAwareMergePort;
 import com.mmo.module.fb.ingest.provider.spi.HistoricalStatsProvider;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import com.mmo.module.fb.ingest.service.ExternalIdMappingService;
@@ -66,8 +66,8 @@ public class UnderStatSyncService implements HistoricalStatisticsIngestionPort {
     private final MatchAdvancedStatsRepository matchAdvancedStatsRepository;
     private final MatchStatisticsSnapshotPersistenceService snapshotPersistenceService;
     private final ExternalIdMappingService externalIdMappingService;
-    private final MatchXgPersistenceService matchXgPersistenceService;
-    private final SourceAwareMergeService sourceAwareMergeService;
+    private final MatchXgPersistencePort matchXgPersistenceService;
+    private final SourceAwareMergePort sourceAwareMergeService;
 
     public void syncActiveSeasons() {
         AppProperties.ProviderConfig config = appProperties.getIngestion().getProviderConfig().get(PROVIDER);
