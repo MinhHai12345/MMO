@@ -150,7 +150,8 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
             List<Long> batchSeasonIds = plan.units().stream()
                     .filter(unit -> unit.provider() == providerId
                             && (unit.dataset() == Dataset.SEASON || unit.dataset() == Dataset.TEAM
-                            || unit.dataset() == Dataset.FIXTURE))
+                            || unit.dataset() == Dataset.FIXTURE)
+                            && seasonBatchProviderRegistry.supports(providerId, unit.dataset()))
                     .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
             for (Long seasonId : batchSeasonIds) {
                 try {
