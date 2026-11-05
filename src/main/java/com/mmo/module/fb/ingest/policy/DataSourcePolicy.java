@@ -29,7 +29,8 @@ public class DataSourcePolicy {
     public ProviderRoute route(Dataset dataset, Season season) {
         ProviderRoute route = route(dataset, seasonStartYear(season));
         if (route.primary() == Provider.FOOTBALL_DATA_UK && !isFootballDataUkLeague(season)) {
-            return new ProviderRoute(null, List.of());
+            return new ProviderRoute(null, route.secondary().stream()
+                    .filter(provider -> provider != Provider.FOOTBALL_DATA_UK).toList());
         }
         if (route.secondary().contains(Provider.FOOTBALL_DATA_UK) && !isFootballDataUkLeague(season)) {
             return new ProviderRoute(route.primary(), List.of());
