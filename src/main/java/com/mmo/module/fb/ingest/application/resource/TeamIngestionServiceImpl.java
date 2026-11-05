@@ -13,9 +13,9 @@ import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestric
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.provider.model.TeamQuery;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
-import com.mmo.module.fb.ingest.service.LeagueIngestionService;
-import com.mmo.module.fb.ingest.service.TeamIngestionService;
-import com.mmo.module.fb.ingest.service.TeamPersistenceService;
+import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
+import com.mmo.module.fb.ingest.application.port.out.TeamPersistenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
