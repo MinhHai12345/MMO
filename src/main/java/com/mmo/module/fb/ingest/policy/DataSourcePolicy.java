@@ -2,10 +2,13 @@ package com.mmo.module.fb.ingest.policy;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.league.entity.Season;
+import com.mmo.module.fb.league.entity.League;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.Locale;
 
 /**
  * Central source-of-truth policy. Routing is based on logical dataset and the
@@ -20,9 +23,18 @@ public class DataSourcePolicy {
 
     public static final int UK_CORE_FROM = 2014;
     public static final int FOOTBALL_DATA_CORE_FROM = 2023;
+    private static final Set<String> FOOTBALL_DATA_UK_LEAGUES = Set.of(
+            "premierleague", "championship", "bundesliga", "seriea", "laliga", "ligue1");
 
     public ProviderRoute route(Dataset dataset, Season season) {
-        return route(dataset, seasonStartYear(season));
+        ProviderRoute route = route(dataset, seasonStartYear(season));
+        if (route.primary() == Provider.FOOTBALL_DATA_UK && !isFootballDataUkLeague(season)) {
+            return new ProviderRoute(null, List.of());
+        }
+        if (route.secondary().contains(Provider.FOOTBALL_DATA_UK) && !isFootballDataUkLeague(season)) {
+            return new ProviderRoute(route.primary(), List.of());
+        }
+        return route;
     }
 
     public ProviderRoute route(Dataset dataset, String season) {
@@ -76,6 +88,18 @@ public class DataSourcePolicy {
 
     public static int seasonStartYear(Season season) {
         return season == null ? -1 : parseSeasonStartYear(season.getYear());
+    }
+
+    public boolean isFootballDataUkLeague(Season season) {
+        if (season == null || season.getLeague() == null) return false;
+        League league = season.getLeague();
+        return isFootballDataUkLeagueName(league.getName());
+    }
+
+    private static boolean isFootballDataUkLeagueName(String name) {
+        if (name == null) return false;
+        String key = name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
+        return FOOTBALL_DATA_UK_LEAGUES.contains(key);
     }
 
     public static int parseSeasonStartYear(String value) {
