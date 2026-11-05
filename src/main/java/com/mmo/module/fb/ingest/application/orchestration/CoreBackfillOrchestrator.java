@@ -164,7 +164,8 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
                             providerId, seasonId, exception);
                 }
             }
-            if (failedStages.stream().noneMatch(error -> error.startsWith(providerId + "/"))) {
+            if (!batchSeasonIds.isEmpty()
+                    && failedStages.stream().noneMatch(error -> error.startsWith(providerId + "/"))) {
                 checkpointStore.markCompleted(providerId, INITIAL_CORE_CHECKPOINT);
             }
         }
