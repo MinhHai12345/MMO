@@ -5,6 +5,8 @@ import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.enums.CheckpointStatus;
+import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.provider.client.ProviderTransportException;
 
 import com.mmo.module.fb.ingest.service.FixtureIngestionService;
@@ -44,6 +46,7 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
     private final IngestionDistributedLock distributedLock;
     private final AppProperties appProperties;
     private final ProviderCheckpointStore checkpointStore;
+    private final IngestionPlanFactory planFactory;
     private final FootballDataUkIngestionPort footballDataUkSyncService;
     private final LeagueIngestionService leagueIngestionService;
     private final SeasonIngestionService seasonIngestionService;
@@ -66,89 +69,84 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
     }
 
     private void syncCoreDataLocked(ProviderOverrides overrides) {
-        ProviderOverrides selected = overrides == null ? ProviderOverrides.defaults() : overrides;
-        AppProperties.Providers defaults = appProperties.getIngestion().getProviders();
+        // Catalogue bootstrap precedes plan construction because a cold database may not
+        // contain any Season rows yet. The catalogue provider supplies identities only;
+        // DataSourcePolicy chooses the owner independently for every season/dataset.
+        validateProvider(Provider.FOOTBALL_DATA);
+        runStage("league-catalogue/FOOTBALL_DATA",
+                () -> leagueIngestionService.syncLeaguesForProvider(Provider.FOOTBALL_DATA));
+        runStage("season-catalogue/FOOTBALL_DATA",
+                () -> seasonIngestionService.syncSeasonsForProvider(Provider.FOOTBALL_DATA));
 
-        Provider leagueProvider = selected.league() == null ? defaults.getLeague() : selected.league();
-        Provider seasonProvider = selected.season() == null ? defaults.getSeason() : selected.season();
-        Provider teamProvider = selected.team() == null ? defaults.getTeam() : selected.team();
-        Provider fixtureProvider = selected.fixture() == null ? defaults.getFixture() : selected.fixture();
+        if (overrides != null && (overrides.team() != null || overrides.fixture() != null
+                || overrides.standings() != null)) {
+            log.info("Ignoring resource-level provider overrides for historical Core; "
+                    + "DataSourcePolicy is authoritative per dataset and season");
+        }
 
-        Set<Provider> coreProviders = new LinkedHashSet<>(List.of(
-                leagueProvider, seasonProvider, teamProvider, fixtureProvider));
+        IngestionPlan plan = planFactory.historicalPlan();
+        List<IngestionWorkUnit> footballDataTeams = plan.units(
+                Dataset.TEAM, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
+        List<IngestionWorkUnit> footballDataFixtures = plan.units(
+                Dataset.FIXTURE, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
+        boolean ukCoreRequired = plan.units().stream().anyMatch(unit ->
+                unit.provider() == Provider.FOOTBALL_DATA_UK
+                        && (unit.dataset() == Dataset.TEAM || unit.dataset() == Dataset.FIXTURE));
 
-        // A legacy provider-level checkpoint is safe to reuse only when the old and new
-        // configurations have one unambiguous Core provider for every resource.
-        boolean legacyCheckpointCompatible = coreProviders.size() == 1;
-        boolean teamsBackfillRequired = !isResourceBackfillCompleted(
-                teamProvider, TEAM_BACKFILL_CHECKPOINT, legacyCheckpointCompatible);
-        boolean fixturesBackfillRequired = !isResourceBackfillCompleted(
-                fixtureProvider, FIXTURE_BACKFILL_CHECKPOINT, legacyCheckpointCompatible);
-        boolean csvProviderEnabled = isProviderEnabled(Provider.FOOTBALL_DATA_UK);
-        boolean csvBackfillCompleted = !csvProviderEnabled
-                || isInitialBackfillCompleted(Provider.FOOTBALL_DATA_UK);
+        log.info("Historical Core plan created: units={}, footballDataTeams={}, "
+                        + "footballDataFixtures={}, footballDataUkRequired={}",
+                plan.units().size(), footballDataTeams.size(), footballDataFixtures.size(), ukCoreRequired);
 
-        // Bootstrap is a historical initialization/recovery path only. Current-season
-        // refreshes, standings and odds belong exclusively to FootballDataSyncJob.
-        if (!teamsBackfillRequired && !fixturesBackfillRequired && csvBackfillCompleted) {
-            log.info("Historical Core backfill already completed. providers: teams={}, fixtures={}, csv={}. "
-                    + "Skipping bootstrap; recurring updates belong to FootballDataSyncJob.",
-                    teamProvider, fixtureProvider, Provider.FOOTBALL_DATA_UK);
+        if (plan.units().isEmpty()) {
+            log.info("Historical Core plan contains no supported season work; nothing to backfill");
             return;
         }
 
-        log.info("Historical bootstrap mode: teams={}, fixtures={}, csv={}",
-                teamsBackfillRequired ? "BACKFILL" : "COMPLETED",
-                fixturesBackfillRequired ? "BACKFILL" : "COMPLETED",
-                !csvProviderEnabled ? "DISABLED" : csvBackfillCompleted ? "COMPLETED" : "BACKFILL");
-
-        Set<Provider> catalogueProviders = new LinkedHashSet<>();
-        if (teamsBackfillRequired || fixturesBackfillRequired) {
-            catalogueProviders.add(leagueProvider);
-            catalogueProviders.add(seasonProvider);
-            if (teamsBackfillRequired) catalogueProviders.add(teamProvider);
-            if (fixturesBackfillRequired) catalogueProviders.add(fixtureProvider);
-        }
-        for (Provider provider : catalogueProviders) {
-            validateProvider(provider);
-            runStage("league-catalogue/" + provider,
-                    () -> leagueIngestionService.syncLeaguesForProvider(provider));
+        if (!footballDataTeams.isEmpty() && !areCompleted(footballDataTeams)) {
+            runPlannedStage("teams/historical/FOOTBALL_DATA", Dataset.TEAM, footballDataTeams,
+                    () -> teamIngestionService.syncAllSeasonsForProvider(Provider.FOOTBALL_DATA));
+        } else if (!footballDataTeams.isEmpty()) {
+            log.info("Football-Data team backfill already complete for all planned seasons");
         }
 
-        // Each resource provider owns its own season external-ID namespace. Populate
-        // season mappings for every provider that participates in this historical run.
-        for (Provider provider : catalogueProviders) {
-            runStage("season-catalogue/" + provider,
-                    () -> seasonIngestionService.syncSeasonsForProvider(provider));
+        if (!footballDataFixtures.isEmpty() && !areCompleted(footballDataFixtures)) {
+            runPlannedStage("fixtures/historical/FOOTBALL_DATA", Dataset.FIXTURE, footballDataFixtures,
+                    () -> fixtureIngestionService.syncAllSeasonsForProvider(
+                            Provider.FOOTBALL_DATA, null, null));
+        } else if (!footballDataFixtures.isEmpty()) {
+            log.info("Football-Data fixture backfill already complete for all planned seasons");
         }
 
-        if (teamsBackfillRequired) {
-            validateProvider(teamProvider);
-            runStage("teams/historical/" + teamProvider,
-                    () -> teamIngestionService.syncAllSeasonsForProvider(teamProvider));
-            checkpointStore.markCompleted(teamProvider, TEAM_BACKFILL_CHECKPOINT);
+        if (ukCoreRequired && !checkpointStore.isCompleted(
+                Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL")) {
+            if (footballDataUkSyncService.syncInitialData()) {
+                checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL");
+            }
+        } else if (ukCoreRequired) {
+            log.info("Football-Data UK historical Core backfill already complete");
         }
 
-        if (fixturesBackfillRequired) {
-            validateProvider(fixtureProvider);
-            runStage("fixtures/historical/" + fixtureProvider,
-                    () -> fixtureIngestionService.syncAllSeasonsForProvider(fixtureProvider, null, null));
-            checkpointStore.markCompleted(fixtureProvider, FIXTURE_BACKFILL_CHECKPOINT);
-        }
+        log.info("Historical Core backfill orchestration completed");
+    }
 
-        if (!csvProviderEnabled) {
-            log.info("Skipping Football-Data UK bootstrap because the provider is disabled");
-        } else if (!csvBackfillCompleted && footballDataUkSyncService.syncInitialData()) {
-            checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK, INITIAL_CORE_CHECKPOINT);
-        } else if (csvBackfillCompleted) {
-            log.info("Football-Data UK historical Core backfill already complete; "
-                    + "current-season refresh belongs to FootballDataSyncJob");
-        }
+    private boolean areCompleted(List<IngestionWorkUnit> units) {
+        return units.stream().allMatch(unit -> checkpointStore.isCompleted(
+                unit.provider(), unit.dataset(), unit.leagueId(), unit.season()));
+    }
 
-        log.info("Historical Core bootstrap completed. teams={}, fixtures={}, csv={}",
-                teamsBackfillRequired ? "BACKFILLED" : "ALREADY_COMPLETE",
-                fixturesBackfillRequired ? "BACKFILLED" : "ALREADY_COMPLETE",
-                !csvProviderEnabled ? "DISABLED" : csvBackfillCompleted ? "ALREADY_COMPLETE" : "ATTEMPTED");
+    private void runPlannedStage(String name, Dataset dataset,
+                                 List<IngestionWorkUnit> units, Runnable operation) {
+        units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
+                unit.leagueId(), unit.season(), CheckpointStatus.RUNNING));
+        try {
+            runStage(name, operation);
+            units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
+                    unit.leagueId(), unit.season(), CheckpointStatus.COMPLETED));
+        } catch (RuntimeException exception) {
+            units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
+                    unit.leagueId(), unit.season(), CheckpointStatus.FAILED));
+            throw exception;
+        }
     }
 
     /**
