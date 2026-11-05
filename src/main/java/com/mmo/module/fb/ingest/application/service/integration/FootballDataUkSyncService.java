@@ -8,11 +8,11 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkMatchDataProvider;
+import com.mmo.module.fb.ingest.application.port.out.FootballDataUkSeasonDataPort;
 import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkCsvException;
-import com.mmo.module.fb.ingest.adapter.out.persistence.core.MatchXgPersistenceService;
-import com.mmo.module.fb.ingest.adapter.out.persistence.provider.footballdatauk.FootballDataUkMatchStatisticsPersistenceService;
-import com.mmo.module.fb.ingest.adapter.out.persistence.provider.footballdatauk.FootballDataUkOddsPersistenceService;
+import com.mmo.module.fb.ingest.application.port.out.MatchXgPersistencePort;
+import com.mmo.module.fb.ingest.application.port.out.FootballDataUkMatchStatisticsPersistencePort;
+import com.mmo.module.fb.ingest.application.port.out.FootballDataUkOddsPersistencePort;
 import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.service.ExternalIdMappingService;
 import com.mmo.module.fb.domain.league.entity.League;
@@ -71,7 +71,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
     private final AppProperties properties;
     private final ProviderCheckpointStore checkpointStore;
     private final DataSourcePolicy dataSourcePolicy;
-    private final FootballDataUkMatchDataProvider matchDataProvider;
+    private final FootballDataUkSeasonDataPort matchDataProvider;
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
     private final SeasonExternalIdRepository seasonExternalIdRepository;
@@ -81,9 +81,9 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
     private final ExternalIdMappingService externalIdMappingService;
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
-    private final MatchXgPersistenceService matchXgPersistenceService;
-    private final FootballDataUkMatchStatisticsPersistenceService statisticsMapper;
-    private final FootballDataUkOddsPersistenceService oddsMapper;
+    private final MatchXgPersistencePort matchXgPersistenceService;
+    private final FootballDataUkMatchStatisticsPersistencePort statisticsMapper;
+    private final FootballDataUkOddsPersistencePort oddsMapper;
 
     /**
      * Initialize Football-Data.co.uk league mappings for leagues already present in MMO core.
