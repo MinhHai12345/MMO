@@ -49,12 +49,6 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
         Team home = teamRepository.findById(homeTeamId).orElse(null);
         Team away = teamRepository.findById(awayTeamId).orElse(null);
         if (season == null || home == null || away == null) return false;
-        if (!dataSourcePolicy.isPrimary(provider, Dataset.FIXTURE, season)) {
-            log.debug("Rejecting non-owner fixture write: provider={}, season={}, dataset=FIXTURE",
-                    provider, season.getYear());
-            return false;
-        }
-
         Match match = matchExternalIdRepository.findByProviderAndExternalId(MatchProvider.fromName(provider.name()), fixture.externalId())
                 .map(com.mmo.module.fb.match.entity.MatchExternalId::getMatch)
                 .orElse(null);
@@ -83,8 +77,21 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
             }
         }
 
-        if (match == null && provider != Provider.FOOTBALL_DATA && provider != Provider.UNDER_STATS) {
-            log.debug("Skipping SofaScore fixture {} because no unique existing canonical fixture matched; SofaScore mapping sync does not create core entities.",
+        boolean primaryOwner = dataSourcePolicy.isPrimary(provider, Dataset.FIXTURE, season);
+        boolean primaryIdentityExists = match != null && match.getId() != null
+                && matchExternalIdRepository.findByMatchIdAndProvider(
+                        match.getId(), MatchProvider.FOOTBALL_DATA).isPresent();
+        boolean allowedFallback = dataSourcePolicy.mayFallbackForCore(
+                provider, Dataset.FIXTURE, season, primaryIdentityExists);
+        if (!primaryOwner && !allowedFallback) {
+            log.debug("Rejecting fixture write outside provider ownership: provider={}, season={}, primaryIdentityExists={}",
+                    provider, season.getYear(), primaryIdentityExists);
+            return false;
+        }
+
+        if (match == null && provider != Provider.FOOTBALL_DATA
+                && provider != Provider.UNDER_STATS && provider != Provider.FOOTBALL_DATA_UK) {
+            log.debug("Skipping secondary fixture {} because no unique canonical fixture matched",
                     fixture.externalId());
             return false;
         }
@@ -97,9 +104,10 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
             match = new Match();
         }
 
-        if (provider != Provider.FOOTBALL_DATA && provider != Provider.UNDER_STATS) {
-            // SofaScore is a secondary identity/enrichment source. Preserve canonical
-            // football-data fields and only attach its provider-specific ID.
+        if (provider != Provider.FOOTBALL_DATA && provider != Provider.UNDER_STATS
+                && provider != Provider.FOOTBALL_DATA_UK) {
+            // Non-Core secondary sources only attach their identity; they cannot create
+            // or overwrite canonical fixture fields.
             externalIdMappingService.registerMatch(match, provider, fixture.externalId());
             return true;
         }
