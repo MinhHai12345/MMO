@@ -115,7 +115,7 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
                     skipped++;
                     continue;
                 }
-                standingsPersistenceService.upsertStanding(season.getId(), teamId, row);
+                standingsPersistenceService.upsertStanding(selectedProvider, season.getId(), teamId, row);
                 saved++;
             }
         }
