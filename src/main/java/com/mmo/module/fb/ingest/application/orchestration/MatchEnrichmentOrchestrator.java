@@ -57,24 +57,40 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
                         .count());
 
         java.util.List<String> failedStages = new java.util.ArrayList<>();
-        try {
-            runStage("football-data-uk-historical-enrichment",
-                    () -> {
-                        // Historical recovery is driven by scoped dataset/league/season checkpoints.
-                        // Do not let a legacy provider-wide marker hide newly added or failed seasons.
-                        if (footballDataUkSyncService.syncInitialEnrichment()) {
-                            checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK,
-                                    ENRICHMENT_INITIAL_CHECKPOINT);
-                        }
-                    });
-        } catch (RuntimeException exception) {
-            failedStages.add("historical: " + exception.getMessage());
+        java.util.List<Long> historicalSeasonIds = plan.units().stream()
+                .filter(unit -> unit.provider() == Provider.FOOTBALL_DATA_UK
+                        && unit.role() == IngestionWorkUnit.Role.PRIMARY
+                        && (unit.dataset() == Dataset.MATCH_STATISTICS
+                        || unit.dataset() == Dataset.MATCH_XG
+                        || unit.dataset() == Dataset.HISTORICAL_ODDS))
+                .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
+        for (Long seasonId : historicalSeasonIds) {
+            try {
+                runStage("football-data-uk/historical-enrichment/season=" + seasonId,
+                        () -> footballDataUkSyncService.syncEnrichmentSeason(seasonId, true));
+            } catch (RuntimeException exception) {
+                failedStages.add("historical/season=" + seasonId + ": " + exception.getMessage());
+            }
         }
-        try {
-            runStage("football-data-uk-active-enrichment",
-                    footballDataUkSyncService::syncActiveSeasonsEnrichment);
-        } catch (RuntimeException exception) {
-            failedStages.add("active: " + exception.getMessage());
+
+        IngestionPlan activePlan = planFactory.activeSeasonPlan();
+        java.util.List<Long> activeSeasonIds = activePlan.units().stream()
+                .filter(unit -> unit.provider() == Provider.FOOTBALL_DATA_UK
+                        && unit.role() == IngestionWorkUnit.Role.PRIMARY
+                        && (unit.dataset() == Dataset.MATCH_STATISTICS
+                        || unit.dataset() == Dataset.MATCH_XG
+                        || unit.dataset() == Dataset.HISTORICAL_ODDS))
+                .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
+        for (Long seasonId : activeSeasonIds) {
+            try {
+                runStage("football-data-uk/active-enrichment/season=" + seasonId,
+                        () -> footballDataUkSyncService.syncEnrichmentSeason(seasonId, false));
+            } catch (RuntimeException exception) {
+                failedStages.add("active/season=" + seasonId + ": " + exception.getMessage());
+            }
+        }
+        if (failedStages.isEmpty()) {
+            checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK, ENRICHMENT_INITIAL_CHECKPOINT);
         }
         if (!failedStages.isEmpty()) {
             throw new IllegalStateException("Match enrichment incomplete: " + failedStages);
