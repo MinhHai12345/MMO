@@ -4,9 +4,12 @@ import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkMatchDataProvider;
+import com.mmo.module.fb.ingest.provider.footballdatauk.FootballDataUkCsvException;
+import com.mmo.module.fb.ingest.persistence.MatchXgPersistenceService;
 import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkMatchStatisticsPersistenceService;
 import com.mmo.module.fb.ingest.persistence.footballdatauk.FootballDataUkOddsPersistenceService;
 import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
@@ -78,6 +81,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
     private final ExternalIdMappingService externalIdMappingService;
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
+    private final MatchXgPersistenceService matchXgPersistenceService;
     private final FootballDataUkMatchStatisticsPersistenceService statisticsMapper;
     private final FootballDataUkOddsPersistenceService oddsMapper;
 
@@ -186,11 +190,13 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         int importedFixtures = 0;
         int failedSeasons = 0;
         int incompleteSeasons = 0;
+        int unavailableSeasons = 0;
 
         for (LeagueExternalId mapping : leagueExternalIdRepository.findAllByProvider(PROVIDER)) {
             League league = mapping.getLeague();
             if (!StringUtils.hasText(mapping.getIdentify())) {
-                log.warn("Skip Football-Data.co.uk league without identify mapping: leagueId={}, name={}",
+                failedSeasons++;
+                log.warn("Cannot complete Football-Data.co.uk backfill without identify mapping: leagueId={}, name={}",
                         league.getId(), league.getName());
                 continue;
             }
@@ -198,38 +204,59 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
             for (int startYear = 2014; startYear <= today.getYear(); startYear++) {
                 Season season = getOrCreateSeason(league, startYear, today);
                 boolean current = season.isCurrent();
-                boolean alreadyImported = isHistoricalSeasonImported(season, mapping);
-                if (!current && alreadyImported) {
-                    continue;
-                }
+                if (!current && isHistoricalSeasonImported(season, mapping)) continue;
+
+                markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.RUNNING);
                 try {
                     ImportResult result = syncSeason(season, mapping, config);
                     importedFixtures += result.createdFixtures();
-                    if (result.unmatchedRows() == 0 && result.csvRows() > 0) {
+                    if (result.csvRows() == 0) {
+                        unavailableSeasons++;
+                        markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.NOT_AVAILABLE);
+                        log.info("Football-Data.co.uk CSV not available; skipping without failing backfill: league={}, season={}",
+                                league.getName(), season.getYear());
+                        continue;
+                    }
+                    if (result.unmatchedRows() == 0) {
                         saveSeasonMapping(season, mapping);
-                        checkpointStore.markCompleted(PROVIDER,
-                                seasonCheckpointKey(league, startYear));
+                        markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.COMPLETED);
                     } else {
                         incompleteSeasons++;
-                        log.warn("Football-Data.co.uk season remains pending because rows were unmatched or CSV was empty: league={}, season={}, unmatched={}, rows={}",
+                        markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.PARTIAL);
+                        log.warn("Football-Data.co.uk season remains partial: league={}, season={}, unmatched={}, rows={}",
                                 league.getName(), season.getYear(), result.unmatchedRows(), result.csvRows());
                     }
-                    log.info("Football-Data.co.uk imported league={}, season={}, current={}, rows={}, createdFixtures={}, stats={}, odds={}, unmatched={}",
+                    log.info("Football-Data.co.uk imported league={}, season={}, current={}, rows={}, createdFixtures={}, unmatched={}",
                             league.getName(), season.getYear(), current, result.csvRows(),
-                            result.createdFixtures(), result.importedTeamStats(), result.importedOdds(), result.unmatchedRows());
-                } catch (RuntimeException ex) {
+                            result.createdFixtures(), result.unmatchedRows());
+                } catch (FootballDataUkCsvException exception) {
+                    if (exception.isNotAvailable()) {
+                        unavailableSeasons++;
+                        markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.NOT_AVAILABLE);
+                        log.info("Football-Data.co.uk CSV not published: league={}, season={}, reason={}",
+                                league.getName(), season.getYear(), exception.getMessage());
+                    } else {
+                        failedSeasons++;
+                        markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.FAILED);
+                        log.error("Football-Data.co.uk CSV failure: league={}, season={}, reason={}, retryable={}",
+                                league.getName(), season.getYear(), exception.getReason(),
+                                exception.isRetryable(), exception);
+                    }
+                } catch (RuntimeException exception) {
                     failedSeasons++;
+                    markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.FAILED);
                     log.error("Football-Data.co.uk import failed: league={}, season={}, reason={}",
-                            league.getName(), season.getYear(), ex.getMessage(), ex);
+                            league.getName(), season.getYear(), exception.getMessage(), exception);
                 }
             }
         }
 
-        log.info("Football-Data.co.uk Core import completed: createdFixtures={}, failedSeasons={}",
-                importedFixtures, failedSeasons);
+        log.info("Football-Data.co.uk Core import completed: createdFixtures={}, unavailableSeasons={}, failedSeasons={}, partialSeasons={}",
+                importedFixtures, unavailableSeasons, failedSeasons, incompleteSeasons);
         if (failedSeasons > 0 || incompleteSeasons > 0) {
             throw new IllegalStateException("Football-Data.co.uk initial import incomplete: failedSeasons="
-                    + failedSeasons + ", incompleteSeasons=" + incompleteSeasons);
+                    + failedSeasons + ", partialSeasons=" + incompleteSeasons
+                    + ", unavailableSeasons=" + unavailableSeasons);
         }
         return true;
     }
@@ -269,20 +296,41 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     .toList();
 
             for (Season season : activeSeasons) {
+                markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.RUNNING);
                 try {
                     ImportResult result = syncSeason(season, mapping, config);
-                    if (result.csvRows() == 0 || result.unmatchedRows() > 0) {
+                    if (result.csvRows() == 0) {
+                        markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.NOT_AVAILABLE);
+                        log.info("Football-Data.co.uk active-season CSV not available: league={}, season={}",
+                                league.getName(), season.getYear());
+                        continue;
+                    }
+                    if (result.unmatchedRows() > 0) {
                         failedSeasons++;
-                        log.warn("Football-Data.co.uk active-season sync remains incomplete: league={}, season={}, rows={}, unmatched={}",
+                        markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.PARTIAL);
+                        log.warn("Football-Data.co.uk active-season sync remains partial: league={}, season={}, rows={}, unmatched={}",
                                 league.getName(), season.getYear(), result.csvRows(), result.unmatchedRows());
                         continue;
                     }
                     saveSeasonMapping(season, mapping);
+                    markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.COMPLETED);
                     importedSeasons++;
                     log.info("Football-Data.co.uk active-season Core sync: league={}, season={}, rows={}, createdFixtures={}",
                             league.getName(), season.getYear(), result.csvRows(), result.createdFixtures());
+                } catch (FootballDataUkCsvException exception) {
+                    if (exception.isNotAvailable()) {
+                        markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.NOT_AVAILABLE);
+                        log.info("Football-Data.co.uk active-season CSV not published: league={}, season={}",
+                                league.getName(), season.getYear());
+                    } else {
+                        failedSeasons++;
+                        markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.FAILED);
+                        log.error("Football-Data.co.uk active-season CSV failure: league={}, season={}, reason={}",
+                                league.getName(), season.getYear(), exception.getReason(), exception);
+                    }
                 } catch (RuntimeException exception) {
                     failedSeasons++;
+                    markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.FAILED);
                     log.error("Football-Data.co.uk active-season sync failed: league={}, season={}, reason={}",
                             league.getName(), season.getYear(), exception.getMessage(), exception);
                 }
@@ -312,13 +360,22 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         LocalDate today = LocalDate.now(SOURCE_ZONE);
         int failedSeasons = 0;
         int unmatchedRows = 0;
+        int unavailableSeasons = 0;
         int importedStats = 0;
         int importedOdds = 0;
         List<LeagueExternalId> leagueMappings = leagueExternalIdRepository.findAllByProvider(PROVIDER);
         if (leagueMappings.isEmpty()) {
             throw new IllegalStateException("No Football-Data.co.uk league mappings are available for enrichment");
         }
+
         for (LeagueExternalId leagueMapping : leagueMappings) {
+            if (!StringUtils.hasText(leagueMapping.getIdentify())) {
+                failedSeasons++;
+                log.warn("Cannot enrich Football-Data UK league without identify mapping: league={}",
+                        leagueMapping.getLeague().getName());
+                continue;
+            }
+            Long leagueId = leagueMapping.getLeague().getId();
             for (int startYear = 2014; startYear <= today.getYear(); startYear++) {
                 Season season = findSeason(leagueMapping.getLeague(), startYear);
                 if (season == null) {
@@ -327,29 +384,51 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                             leagueMapping.getLeague().getName(), startYear);
                     continue;
                 }
+                if (isEnrichmentCheckpointCompleted(leagueId, season.getYear())) continue;
+
+                markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.RUNNING);
                 try {
                     List<Map<String, String>> rows = matchDataProvider.fetchSeason(
                             config.getUri(), season.getYear(), leagueMapping.getIdentify());
                     if (rows.isEmpty()) {
-                        failedSeasons++;
+                        unavailableSeasons++;
+                        markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.NOT_AVAILABLE);
                         continue;
                     }
                     EnrichmentResult result = enrichRows(season, leagueMapping, rows);
                     importedStats += result.importedTeamStats();
                     importedOdds += result.importedOdds();
                     unmatchedRows += result.unmatchedRows();
+                    markEnrichmentCheckpoint(leagueId, season.getYear(),
+                            result.unmatchedRows() == 0
+                                    ? CheckpointStatus.COMPLETED : CheckpointStatus.PARTIAL);
+                } catch (FootballDataUkCsvException exception) {
+                    if (exception.isNotAvailable()) {
+                        unavailableSeasons++;
+                        markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.NOT_AVAILABLE);
+                        log.info("Football-Data UK enrichment CSV not published: league={}, season={}",
+                                leagueMapping.getLeague().getName(), season.getYear());
+                    } else {
+                        failedSeasons++;
+                        markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.FAILED);
+                        log.error("Football-Data UK historical enrichment CSV failure: league={}, season={}, reason={}",
+                                leagueMapping.getLeague().getName(), season.getYear(),
+                                exception.getReason(), exception);
+                    }
                 } catch (RuntimeException exception) {
                     failedSeasons++;
+                    markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.FAILED);
                     log.error("Football-Data UK historical enrichment failed: league={}, season={}",
                             leagueMapping.getLeague().getName(), season.getYear(), exception);
                 }
             }
         }
-        log.info("Football-Data UK initial enrichment completed: stats={}, odds={}, unmatched={}, failedSeasons={}",
-                importedStats, importedOdds, unmatchedRows, failedSeasons);
+        log.info("Football-Data UK initial enrichment completed: stats={}, odds={}, unmatched={}, unavailableSeasons={}, failedSeasons={}",
+                importedStats, importedOdds, unmatchedRows, unavailableSeasons, failedSeasons);
         if (failedSeasons > 0 || unmatchedRows > 0) {
             throw new IllegalStateException("Football-Data UK initial enrichment incomplete: failedSeasons="
-                    + failedSeasons + ", unmatchedRows=" + unmatchedRows);
+                    + failedSeasons + ", unmatchedRows=" + unmatchedRows
+                    + ", unavailableSeasons=" + unavailableSeasons);
         }
         return true;
     }
@@ -370,17 +449,40 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                             PROVIDER, Dataset.MATCH_STATISTICS, season))
                     .toList();
             for (Season season : activeSeasons) {
+                Long leagueId = leagueMapping.getLeague().getId();
+                markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.RUNNING);
                 try {
                     List<Map<String, String>> rows = matchDataProvider.fetchSeason(
                             config.getUri(), season.getYear(), leagueMapping.getIdentify());
+                    if (rows.isEmpty()) {
+                        markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.NOT_AVAILABLE);
+                        continue;
+                    }
                     EnrichmentResult result = enrichRows(season, leagueMapping, rows);
-                    if (rows.isEmpty() || result.unmatchedRows() > 0) failed++;
-                    else enrichedSeasons++;
+                    if (result.unmatchedRows() > 0) {
+                        failed++;
+                        markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.PARTIAL);
+                    } else {
+                        enrichedSeasons++;
+                        markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.COMPLETED);
+                    }
                     log.info("Football-Data UK active-season enrichment: league={}, season={}, rows={}, stats={}, odds={}, unmatched={}",
                             leagueMapping.getLeague().getName(), season.getYear(), rows.size(),
                             result.importedTeamStats(), result.importedOdds(), result.unmatchedRows());
+                } catch (FootballDataUkCsvException exception) {
+                    if (exception.isNotAvailable()) {
+                        markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.NOT_AVAILABLE);
+                        log.info("Football-Data UK active-season enrichment CSV not published: league={}, season={}",
+                                leagueMapping.getLeague().getName(), season.getYear());
+                    } else {
+                        failed++;
+                        markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.FAILED);
+                        log.error("Football-Data UK active-season enrichment CSV failure: league={}, season={}, reason={}",
+                                leagueMapping.getLeague().getName(), season.getYear(), exception.getReason(), exception);
+                    }
                 } catch (RuntimeException exception) {
                     failed++;
+                    markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.FAILED);
                     log.error("Football-Data UK active-season enrichment failed: league={}, season={}",
                             leagueMapping.getLeague().getName(), season.getYear(), exception);
                 }
@@ -442,11 +544,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
 
                 BigDecimal homeXg = decimalMetric(value(row, "HXG"));
                 BigDecimal awayXg = decimalMetric(value(row, "AXG"));
-                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_XG, season)) {
-                    if (homeXg != null) match.setHomeXG(homeXg.doubleValue());
-                    if (awayXg != null) match.setAwayXG(awayXg.doubleValue());
-                }
-                matchRepository.save(match);
+                matchXgPersistenceService.upsert(PROVIDER, match, homeXg, awayXg);
                 if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_STATISTICS, season)) {
                     importedStats += statisticsMapper.persist(match, row);
                 }
@@ -594,11 +692,27 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         Season season;
         if (existing.isPresent()) {
             season = existing.get();
+            boolean footballDataOwnsSeason = seasonExternalIdRepository
+                    .findBySeasonIdAndProvider(season.getId(), Provider.FOOTBALL_DATA).isPresent();
+            boolean mayUpdate = dataSourcePolicy.isPrimary(PROVIDER, Dataset.SEASON, season)
+                    || dataSourcePolicy.mayFallbackForCore(
+                            PROVIDER, Dataset.SEASON, season, footballDataOwnsSeason);
+            if (!mayUpdate) return season;
         } else {
+            // UK may create a season only when it owns the season dataset or is the
+            // explicitly permitted fallback because the primary provider has no identity.
+            Season candidate = Season.builder()
+                    .league(league).year(year).startDate(start).endDate(end).build();
+            boolean mayCreate = dataSourcePolicy.isPrimary(PROVIDER, Dataset.SEASON, candidate)
+                    || dataSourcePolicy.mayFallbackForCore(
+                            PROVIDER, Dataset.SEASON, candidate, false);
+            if (!mayCreate) {
+                throw new IllegalStateException("Football-Data UK is not allowed to create season "
+                        + year + " for league " + league.getName());
+            }
             // Default a newly discovered current season to active. Once persisted, the
             // active flag is operator-controlled and later syncs never change it.
-            season = Season.builder()
-                    .league(league).year(year).startDate(start).endDate(end).build();
+            season = candidate;
             season.setActive(current);
         }
 
@@ -623,22 +737,48 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
     }
 
     private boolean isHistoricalSeasonImported(Season season, LeagueExternalId leagueMapping) {
-        int startYear = seasonStartYear(season.getYear());
-        String checkpointKey = seasonCheckpointKey(leagueMapping.getLeague(), startYear);
-        if (checkpointStore.isCompleted(PROVIDER, checkpointKey)) return true;
+        Long leagueId = leagueMapping.getLeague().getId();
+        String seasonYear = season.getYear();
+        boolean teamCompleted = checkpointStore.isCompleted(PROVIDER, Dataset.TEAM, leagueId, seasonYear);
+        boolean seasonCompleted = checkpointStore.isCompleted(PROVIDER, Dataset.SEASON, leagueId, seasonYear);
+        boolean fixtureCompleted = checkpointStore.isCompleted(PROVIDER, Dataset.FIXTURE, leagueId, seasonYear);
+        if (teamCompleted && seasonCompleted && fixtureCompleted) return true;
 
-        // Migrate legacy databases that stored completion in the provider season ID.
-        Optional<SeasonExternalId> legacy = seasonExternalIdRepository
+        // Migrate the previous season-scoped key and legacy :CORE2 marker into the
+        // structured dataset/league/season checkpoint namespace.
+        String legacyKey = seasonCheckpointKey(leagueMapping.getLeague(), seasonStartYear(seasonYear));
+        boolean legacyCheckpoint = checkpointStore.isCompleted(PROVIDER, legacyKey);
+        Optional<SeasonExternalId> legacyMapping = seasonExternalIdRepository
                 .findBySeasonIdAndProvider(season.getId(), PROVIDER);
-        if (legacy.isPresent() && legacy.get().getExternalId() != null
-                && legacy.get().getExternalId().endsWith(":CORE2")) {
-            saveSeasonMapping(season, leagueMapping);
-            checkpointStore.markCompleted(PROVIDER, checkpointKey);
-            log.info("Migrated legacy Football-Data UK import marker: league={}, season={}",
-                    leagueMapping.getLeague().getName(), season.getYear());
+        boolean legacyCore2 = legacyMapping.isPresent()
+                && legacyMapping.get().getExternalId() != null
+                && legacyMapping.get().getExternalId().endsWith(":CORE2");
+        if (legacyCheckpoint || legacyCore2) {
+            if (legacyCore2) saveSeasonMapping(season, leagueMapping);
+            markCoreCheckpoint(leagueId, seasonYear, CheckpointStatus.COMPLETED);
+            log.info("Migrated legacy Football-Data UK Core checkpoint: league={}, season={}",
+                    leagueMapping.getLeague().getName(), seasonYear);
             return true;
         }
         return false;
+    }
+
+    private void markCoreCheckpoint(Long leagueId, String season, CheckpointStatus status) {
+        checkpointStore.markStatus(PROVIDER, Dataset.SEASON, leagueId, season, status);
+        checkpointStore.markStatus(PROVIDER, Dataset.TEAM, leagueId, season, status);
+        checkpointStore.markStatus(PROVIDER, Dataset.FIXTURE, leagueId, season, status);
+    }
+
+    private boolean isEnrichmentCheckpointCompleted(Long leagueId, String season) {
+        return checkpointStore.isCompleted(PROVIDER, Dataset.MATCH_STATISTICS, leagueId, season)
+                && checkpointStore.isCompleted(PROVIDER, Dataset.MATCH_XG, leagueId, season)
+                && checkpointStore.isCompleted(PROVIDER, Dataset.HISTORICAL_ODDS, leagueId, season);
+    }
+
+    private void markEnrichmentCheckpoint(Long leagueId, String season, CheckpointStatus status) {
+        checkpointStore.markStatus(PROVIDER, Dataset.MATCH_STATISTICS, leagueId, season, status);
+        checkpointStore.markStatus(PROVIDER, Dataset.MATCH_XG, leagueId, season, status);
+        checkpointStore.markStatus(PROVIDER, Dataset.HISTORICAL_ODDS, leagueId, season, status);
     }
 
     private static String seasonCheckpointKey(League league, int startYear) {

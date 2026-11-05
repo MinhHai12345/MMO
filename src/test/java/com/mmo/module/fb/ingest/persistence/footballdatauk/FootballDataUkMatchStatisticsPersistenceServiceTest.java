@@ -1,6 +1,9 @@
 package com.mmo.module.fb.ingest.persistence.footballdatauk;
 
 import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.league.entity.League;
+import com.mmo.module.fb.league.entity.Season;
+import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.match.entity.MatchAdvancedStats;
 import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
 import com.mmo.module.fb.match.service.MatchStatisticsSnapshotPersistenceService;
@@ -29,11 +32,12 @@ class FootballDataUkMatchStatisticsPersistenceServiceTest {
         away.setId(20L);
         Match match = new Match();
         match.setId(100L);
+        match.setSeason(supportedSeason());
         match.setHomeTeam(home);
         match.setAwayTeam(away);
 
         FootballDataUkMatchStatisticsPersistenceService mapper = new FootballDataUkMatchStatisticsPersistenceService(
-                repository, mock(MatchStatisticsSnapshotPersistenceService.class));
+                repository, mock(MatchStatisticsSnapshotPersistenceService.class), new DataSourcePolicy());
         Map<String, String> row = Map.ofEntries(
                 Map.entry("FTHG", "2"), Map.entry("FTAG", "1"),
                 Map.entry("HS", "14"), Map.entry("HST", "6"), Map.entry("HHW", "1"),
@@ -60,5 +64,16 @@ class FootballDataUkMatchStatisticsPersistenceServiceTest {
         assertEquals(1.85, stats.getXg().doubleValue(), 0.0001);
         assertEquals(0.75, stats.getXga().doubleValue(), 0.0001);
         assertNull(stats.getMissed(), "Goals conceded must not be mapped to missed chances");
+    }
+
+    private Season supportedSeason() {
+        League league = new League();
+        league.setId(39L);
+        league.setName("Premier League");
+        Season season = new Season();
+        season.setId(2024L);
+        season.setLeague(league);
+        season.setYear("2024/2025");
+        return season;
     }
 }

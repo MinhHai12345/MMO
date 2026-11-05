@@ -1,6 +1,9 @@
 package com.mmo.module.fb.ingest.persistence.footballdatauk;
 
 import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
+import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.match.entity.MatchAdvancedStats;
 import com.mmo.module.fb.match.repository.MatchAdvancedStatsRepository;
 import com.mmo.module.fb.match.service.MatchStatisticsSnapshotPersistenceService;
@@ -26,9 +29,14 @@ public class FootballDataUkMatchStatisticsPersistenceService {
 
     private final MatchAdvancedStatsRepository statsRepository;
     private final MatchStatisticsSnapshotPersistenceService snapshotPersistenceService;
+    private final DataSourcePolicy dataSourcePolicy;
 
     @Transactional
     public int persist(Match match, Map<String, String> row) {
+        if (match == null || match.getSeason() == null
+                || !dataSourcePolicy.isPrimary(Provider.FOOTBALL_DATA_UK, Dataset.MATCH_STATISTICS, match.getSeason())) {
+            return 0;
+        }
         int saved = 0;
         if (persistSide(match, match.getHomeTeam(), row, "H")) saved++;
         if (persistSide(match, match.getAwayTeam(), row, "A")) saved++;

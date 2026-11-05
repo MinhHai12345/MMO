@@ -1,7 +1,8 @@
 package com.mmo.module.fb.ingest.service;
 
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
+import com.mmo.module.fb.ingest.enums.Provider;
 
 public interface StandingsPersistenceService {
-    void upsertStanding(Long seasonId, Long teamId, ProviderStanding row);
+    void upsertStanding(Provider provider, Long seasonId, Long teamId, ProviderStanding row);
 }

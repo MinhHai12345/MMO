@@ -1,6 +1,9 @@
 package com.mmo.module.fb.ingest.persistence.footballdatauk;
 
 import com.mmo.module.fb.match.entity.Bookmaker;
+import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
+import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.match.entity.Match;
 import com.mmo.module.fb.match.entity.MatchOdds;
 import com.mmo.module.fb.match.repository.BookmakerRepository;
@@ -59,9 +62,14 @@ public class FootballDataUkOddsPersistenceService {
     private final BookmakerRepository bookmakerRepository;
     private final MatchOddsRepository matchOddsRepository;
     private final MatchOddsQuotePersistenceService quotePersistenceService;
+    private final DataSourcePolicy dataSourcePolicy;
 
     @Transactional
     public int persist(Match match, Map<String, String> row) {
+        if (match == null || match.getSeason() == null
+                || !dataSourcePolicy.isPrimary(Provider.FOOTBALL_DATA_UK, Dataset.HISTORICAL_ODDS, match.getSeason())) {
+            return 0;
+        }
         int saved = 0;
         for (BookmakerSource source : BOOKMAKERS) {
             saved += persistBookmaker(match, row, source, false);
