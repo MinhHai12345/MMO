@@ -78,14 +78,16 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
             }
         }
 
-        boolean primaryOwner = dataSourcePolicy.isPrimary(provider, Dataset.FIXTURE, season);
-        boolean primaryIdentityExists = match != null && match.getId() != null
-                && matchExternalIdRepository.findByMatchIdAndProvider(
-                        match.getId(), MatchProvider.FOOTBALL_DATA).isPresent();
+        var route = dataSourcePolicy.route(Dataset.FIXTURE, season);
+        boolean primaryOwner = route.primary() == provider;
+        boolean primaryIdentityExists = match != null && match.getId() != null && route.primary() != null
+                && matchExternalIdRepository.existsByMatchIdAndProvider(
+                        match.getId(), MatchProvider.fromName(route.primary().name()));
         boolean allowedFallback = dataSourcePolicy.mayFallbackForCore(
                 provider, Dataset.FIXTURE, season, primaryIdentityExists);
-        if (!primaryOwner && !allowedFallback) {
-            log.debug("Rejecting fixture write outside provider ownership: provider={}, season={}, primaryIdentityExists={}",
+        boolean secondaryMerge = match != null && route.secondary().contains(provider);
+        if (!route.allows(provider) || (!primaryOwner && !allowedFallback && !secondaryMerge)) {
+            log.debug("Rejecting fixture write outside provider route: provider={}, season={}, primaryIdentityExists={}",
                     provider, season.getYear(), primaryIdentityExists);
             return false;
         }
@@ -101,40 +103,61 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
             log.warn("Skipping new fixture {} because kickoff time is missing", fixture.externalId());
             return false;
         }
-        if (match == null) {
-            match = new Match();
-        }
-
         if (provider != Provider.FOOTBALL_DATA && provider != Provider.UNDER_STATS
                 && provider != Provider.FOOTBALL_DATA_UK) {
-            // Non-Core secondary sources only attach their identity; they cannot create
-            // or overwrite canonical fixture fields.
+            // Secondary providers may attach identity, but do not own Core fixture fields.
             externalIdMappingService.registerMatch(match, provider, fixture.externalId());
             return true;
         }
 
-        match.setSeason(season);
-        match.setHomeTeam(home);
-        match.setAwayTeam(away);
-        if (fixture.kickoff() != null) match.setMatchTime(fixture.kickoff());
-        if (fixture.round() != null && !fixture.round().isBlank()) match.setRoundInfo(fixture.round());
-        if (fixture.venue() != null && !fixture.venue().isBlank()) match.setVenue(fixture.venue());
-        if (fixture.referee() != null && !fixture.referee().isBlank()) match.setReferee(fixture.referee());
+        boolean newMatch = match == null;
+        if (newMatch) {
+            if (fixture.kickoff() == null) return false;
+            match = Match.builder().season(season).homeTeam(home).awayTeam(away)
+                    .matchTime(fixture.kickoff()).status(MatchStatus.SCHEDULED).build();
+            match = matchRepository.save(match);
+        }
+
+        mergeFixtureField(match, provider, "match_time", fixture.kickoff(),
+                match.getMatchTime() != null && !newMatch, value -> match.setMatchTime((Instant) value));
+        mergeFixtureField(match, provider, "round_info", fixture.round(),
+                hasText(match.getRoundInfo()), value -> match.setRoundInfo((String) value));
+        mergeFixtureField(match, provider, "venue", fixture.venue(),
+                hasText(match.getVenue()), value -> match.setVenue((String) value));
+        mergeFixtureField(match, provider, "referee", fixture.referee(),
+                hasText(match.getReferee()), value -> match.setReferee((String) value));
 
         MatchStatus incomingStatus = toMatchStatus(fixture.status());
-        if (incomingStatus != null
-                && (match.getStatus() != MatchStatus.FINISHED || incomingStatus == MatchStatus.FINISHED)
-                && (match.getStatus() != MatchStatus.LIVE || incomingStatus != MatchStatus.SCHEDULED)) {
-            match.setStatus(incomingStatus);
-        } else if (match.getStatus() == null) {
-            match.setStatus(MatchStatus.SCHEDULED);
+        if (incomingStatus != null && statusTransitionAllowed(match.getStatus(), incomingStatus)) {
+            mergeFixtureField(match, provider, "status", incomingStatus,
+                    match.getStatus() != null && !newMatch, value -> match.setStatus((MatchStatus) value));
         }
-        if (fixture.homeScore() != null) match.setHomeScore(fixture.homeScore());
-        if (fixture.awayScore() != null) match.setAwayScore(fixture.awayScore());
-        match = matchRepository.save(match);
+        if (fixture.homeScore() != null) mergeFixtureField(match, provider, "home_score",
+                fixture.homeScore(), match.getHomeScore() != null, value -> match.setHomeScore((Integer) value));
+        if (fixture.awayScore() != null) mergeFixtureField(match, provider, "away_score",
+                fixture.awayScore(), match.getAwayScore() != null, value -> match.setAwayScore((Integer) value));
 
+        matchRepository.save(match);
         externalIdMappingService.registerMatch(match, provider, fixture.externalId());
         return true;
+    }
+
+
+    private void mergeFixtureField(Match match, Provider provider, String field, Object incoming,
+                                   boolean currentPresent, java.util.function.Consumer<Object> setter) {
+        if (incoming == null) return;
+        mergeService.merge(match, provider, Dataset.FIXTURE, field, currentPresent, null,
+                () -> setter.accept(incoming));
+    }
+
+    private static boolean statusTransitionAllowed(MatchStatus current, MatchStatus incoming) {
+        if (current == null) return true;
+        if (current == MatchStatus.FINISHED && incoming != MatchStatus.FINISHED) return false;
+        return current != MatchStatus.LIVE || incoming != MatchStatus.SCHEDULED;
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private static MatchStatus toMatchStatus(String status) {
