@@ -79,7 +79,9 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
 
         // Recover from a cold start, but do not re-fetch every team's roster on each fixture poll.
         if (teamExternalIdRepository.findAllByProvider(selectedProvider).isEmpty()) {
-            if (includeHistoricalSeasons) {
+            if (onlySeasonId != null) {
+                teamIngestionService.syncSeasonForProvider(selectedProvider, onlySeasonId);
+            } else if (includeHistoricalSeasons) {
                 teamIngestionService.syncAllSeasonsForProvider(selectedProvider);
             } else {
                 teamIngestionService.syncTeamsForProvider(selectedProvider);
