@@ -89,6 +89,7 @@ public class IngestionServiceSupport {
 
     public List<Season> standingsSeasonsToSync(Provider provider) {
         return seasonRepository.findAllForActiveLeagues().stream()
+                .filter(Season::isActive)
                 .filter(season -> dataSourcePolicy.isPrimary(provider, Dataset.STANDINGS, season))
                 .toList();
     }
