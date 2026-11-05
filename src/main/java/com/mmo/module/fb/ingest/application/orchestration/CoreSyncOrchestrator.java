@@ -1,6 +1,5 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
-import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
@@ -30,7 +29,6 @@ import java.util.List;
 public class CoreSyncOrchestrator implements FootballDataSyncService {
 
     private final IngestionDistributedLock distributedLock;
-    private final AppProperties properties;
     private final IngestionPlanFactory planFactory;
     private final ProviderCheckpointStore checkpointStore;
     private final LeagueIngestionService leagueIngestionService;
@@ -74,8 +72,10 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
         List<Provider> catalogueProviders = plan.units(Dataset.SEASON, IngestionWorkUnit.Role.PRIMARY)
                 .stream().map(IngestionWorkUnit::provider).distinct().toList();
         for (Provider catalogueProvider : catalogueProviders) {
-            runStageCollecting("catalogue/leagues/" + catalogueProvider,
-                    () -> leagueIngestionService.syncLeaguesForProvider(catalogueProvider), failedStages);
+            if (!seasonBatchProviderRegistry.supports(catalogueProvider, Dataset.LEAGUE)) {
+                runStageCollecting("catalogue/leagues/" + catalogueProvider,
+                        () -> leagueIngestionService.syncLeaguesForProvider(catalogueProvider), failedStages);
+            }
             if (!seasonBatchProviderRegistry.supports(catalogueProvider, Dataset.SEASON)) {
                 List<IngestionWorkUnit> seasonUnits = plan.units(
                         Dataset.SEASON, catalogueProvider, IngestionWorkUnit.Role.PRIMARY);
