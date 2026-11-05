@@ -61,6 +61,20 @@ class SourceAwareMergeServiceTest {
     }
 
     @Test
+    void understatCanFillMissingXgButCannotOverwriteExistingPrimaryValue() {
+        MatchFieldProvenanceRepository repository = mock(MatchFieldProvenanceRepository.class);
+        when(repository.findByMatchIdAndFieldKey(99L, "home_xg")).thenReturn(Optional.empty());
+        SourceAwareMergeService service = new SourceAwareMergeService(new DataSourcePolicy(), repository);
+        AtomicInteger applied = new AtomicInteger();
+
+        assertTrue(service.merge(match2024(), Provider.UNDER_STATS, Dataset.MATCH_XG,
+                "home_xg", false, null, applied::incrementAndGet));
+        assertFalse(service.merge(match2024(), Provider.UNDER_STATS, Dataset.MATCH_XG,
+                "home_xg", true, null, applied::incrementAndGet));
+        assertEquals(1, applied.get());
+    }
+
+    @Test
     void rejectsStaleRevisionFromSameProvider() {
         MatchFieldProvenanceRepository repository = mock(MatchFieldProvenanceRepository.class);
         MatchFieldProvenance current = MatchFieldProvenance.builder()
