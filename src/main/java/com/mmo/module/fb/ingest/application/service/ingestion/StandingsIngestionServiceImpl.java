@@ -15,7 +15,7 @@ import com.mmo.module.fb.ingest.provider.model.StandingsQuery;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.out.provider.StandingsIngestionPort;
 import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionService;
-import com.mmo.module.fb.ingest.application.port.out.StandingsPersistenceService;
+import com.mmo.module.fb.ingest.application.port.out.StandingsPersistencePort;
 import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +36,7 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
     private final TeamIngestionService teamIngestionService;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;
-    private final StandingsPersistenceService standingsPersistenceService;
+    private final StandingsPersistencePort standingsPersistenceService;
 
     @Override
     public void syncStandings() {
@@ -45,7 +45,7 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
 
     /**
      * Fetch provider data outside a database transaction; each season's rows are persisted
-     * in a separate short transaction by StandingsPersistenceService.
+     * in a separate short transaction by StandingsPersistencePort.
      */
     @Override
     public void syncStandingsForProvider(Provider selectedProvider) {

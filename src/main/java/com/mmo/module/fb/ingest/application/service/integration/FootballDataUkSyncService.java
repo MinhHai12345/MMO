@@ -3,7 +3,7 @@ package com.mmo.module.fb.ingest.application.service.integration;
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
-import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
@@ -71,7 +71,7 @@ public class FootballDataUkSyncService implements SeasonBatchIngestionPort {
     private static final DateTimeFormatter CSV_DATE = DateTimeFormatter.ofPattern("dd/MM/yy");
 
     private final AppProperties properties;
-    private final ProviderCheckpointStore checkpointStore;
+    private final ProviderCheckpointPort checkpointStore;
     private final DataSourcePolicy dataSourcePolicy;
     private final FootballDataUkSeasonDataPort matchDataProvider;
     private final MmoDataStandardizationPort dataStandardizer;

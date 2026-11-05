@@ -11,7 +11,7 @@ import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.SeasonIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
-import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 import com.mmo.module.fb.ingest.application.registry.SeasonBatchIngestionRegistry;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
@@ -42,7 +42,7 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
 
     private final IngestionDistributedLock distributedLock;
     private final AppProperties appProperties;
-    private final ProviderCheckpointStore checkpointStore;
+    private final ProviderCheckpointPort checkpointStore;
     private final IngestionPlanFactory planFactory;
     private final SeasonBatchIngestionRegistry seasonBatchRegistry;
     private final LeagueIngestionService leagueIngestionService;

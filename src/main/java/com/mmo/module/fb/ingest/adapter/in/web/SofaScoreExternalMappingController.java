@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.adapter.in.web;
 
 import com.mmo.module.fb.ingest.application.model.SofaScoreExternalMappingResult;
-import com.mmo.module.fb.ingest.application.port.in.SofaScoreExternalMappingUseCase;
+import com.mmo.module.fb.ingest.application.port.in.SofaScoreExternalMappingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

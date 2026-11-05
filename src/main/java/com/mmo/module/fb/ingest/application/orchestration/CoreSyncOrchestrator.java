@@ -9,7 +9,7 @@ import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.SeasonIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
-import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 import com.mmo.module.fb.ingest.application.registry.SeasonBatchIngestionRegistry;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
@@ -31,7 +31,7 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
 
     private final IngestionDistributedLock distributedLock;
     private final IngestionPlanFactory planFactory;
-    private final ProviderCheckpointStore checkpointStore;
+    private final ProviderCheckpointPort checkpointStore;
     private final LeagueIngestionService leagueIngestionService;
     private final SeasonIngestionService seasonIngestionService;
     private final TeamIngestionService teamIngestionService;

@@ -1,6 +1,6 @@
 package com.mmo.module.fb.ingest.adapter.out.persistence.core;
 
-import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.adapter.out.persistence.entity.ProviderSyncCheckpoint;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
@@ -15,7 +15,7 @@ import java.time.Instant;
 /** JPA adapter for durable provider/resource checkpoints. */
 @Component
 @RequiredArgsConstructor
-public class ProviderCheckpointJpaAdapter implements ProviderCheckpointStore {
+public class ProviderCheckpointJpaAdapter implements ProviderCheckpointPort {
 
     private final ProviderSyncCheckpointRepository repository;
 
@@ -31,14 +31,14 @@ public class ProviderCheckpointJpaAdapter implements ProviderCheckpointStore {
     @Override
     @Transactional(readOnly = true)
     public boolean isCompleted(Provider provider, Dataset dataset, Long leagueId, String season) {
-        return isCompleted(provider, ProviderCheckpointStore.checkpointKey(dataset, leagueId, season));
+        return isCompleted(provider, ProviderCheckpointPort.checkpointKey(dataset, leagueId, season));
     }
 
     @Override
     @Transactional(readOnly = true)
     public boolean isSatisfied(Provider provider, Dataset dataset, Long leagueId, String season) {
         return repository.findByProviderAndCheckpointKey(
-                        provider, ProviderCheckpointStore.checkpointKey(dataset, leagueId, season))
+                        provider, ProviderCheckpointPort.checkpointKey(dataset, leagueId, season))
                 .map(checkpoint -> checkpoint.getStatus() == null
                         || checkpoint.getStatus() == CheckpointStatus.COMPLETED
                         || checkpoint.getStatus() == CheckpointStatus.NOT_AVAILABLE)
@@ -49,7 +49,7 @@ public class ProviderCheckpointJpaAdapter implements ProviderCheckpointStore {
     @Transactional
     public void markStatus(Provider provider, Dataset dataset, Long leagueId,
                            String season, CheckpointStatus status) {
-        markStatus(provider, ProviderCheckpointStore.checkpointKey(dataset, leagueId, season), status);
+        markStatus(provider, ProviderCheckpointPort.checkpointKey(dataset, leagueId, season), status);
     }
 
     private void markStatus(Provider provider, String checkpointKey, CheckpointStatus status) {

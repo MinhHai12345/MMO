@@ -13,7 +13,7 @@ import com.mmo.module.fb.domain.team.repository.TeamRepository;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.application.port.out.FixturePersistenceService;
+import com.mmo.module.fb.ingest.application.port.out.FixturePersistencePort;
 import com.mmo.module.fb.ingest.application.model.ResolvedProviderFixture;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class FixturePersistenceServiceImpl implements FixturePersistenceService {
+public class FixturePersistencePortImpl implements FixturePersistencePort {
 
     private static final Duration MATCH_TIME_TOLERANCE = Duration.ofHours(6);
 

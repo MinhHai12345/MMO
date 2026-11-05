@@ -15,7 +15,7 @@ import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
-import com.mmo.module.fb.ingest.application.port.out.FixturePersistenceService;
+import com.mmo.module.fb.ingest.application.port.out.FixturePersistencePort;
 import com.mmo.module.fb.ingest.application.model.ResolvedProviderFixture;
 import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +38,7 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
     private final TeamIngestionService teamIngestionService;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;
-    private final FixturePersistenceService fixturePersistenceService;
+    private final FixturePersistencePort fixturePersistenceService;
 
     @Override
     public void syncCurrentSeasonFixtures(LocalDate from, LocalDate to) {

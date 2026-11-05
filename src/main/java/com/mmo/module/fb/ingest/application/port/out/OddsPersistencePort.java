@@ -5,7 +5,7 @@ import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 
 import java.util.List;
 
-public interface OddsPersistenceService {
+public interface OddsPersistencePort {
 
     /** Backward-compatible entry point for older callers. */
     void persistOdds(Long matchId, List<ProviderOdds> values);
