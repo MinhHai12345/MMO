@@ -170,6 +170,24 @@ public class FixturePersistenceServiceImpl implements FixturePersistenceService 
             if (match == null && !ownsCoreFixtures(provider)) continue;
             if (match == null && fixture.kickoff() == null) continue;
 
+            // A routed secondary source may attach its provider identity after the
+            // primary identity exists, but must not enter the canonical core-field path.
+            if (!primaryOwner && !allowedFallback) {
+                if (match == null) continue;
+                MatchExternalId existingForMatch = providerIdentityByMatchId.get(match.getId());
+                if (existingForMatch != null && !existingForMatch.getExternalId().equals(externalId)) {
+                    log.warn("Provider {} already has a different fixture ID for canonical match {}",
+                            provider, match.getId());
+                    continue;
+                }
+                if (knownIdentity == null) mappingsToInsert.add(newMapping(match, domainProvider, externalId));
+                providerIdentityByMatchId.put(match.getId(),
+                        knownIdentity != null ? knownIdentity : newMapping(match, domainProvider, externalId));
+                seenExternalIds.put(externalId, match.getId());
+                persisted++;
+                continue;
+            }
+
             if (!ownsCoreFixtures(provider)) {
                 if (match == null) continue;
                 MatchExternalId existingForMatch = providerIdentityByMatchId.get(match.getId());
