@@ -372,7 +372,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                         failedSeasons++;
                         markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.FAILED);
                         log.error("Football-Data.co.uk CSV failure: league={}, season={}, reason={}, retryable={}",
-                                league.getName(), season.getYear(), exception.getReason(),
+                                league.getName(), season.getYear(), exception.getFailureCode(),
                                 exception.isRetryable(), exception);
                     }
                 } catch (RuntimeException exception) {
@@ -462,7 +462,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                         failedSeasons++;
                         markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.FAILED);
                         log.error("Football-Data.co.uk active-season CSV failure: league={}, season={}, reason={}",
-                                league.getName(), season.getYear(), exception.getReason(), exception);
+                                league.getName(), season.getYear(), exception.getFailureCode(), exception);
                     }
                 } catch (RuntimeException exception) {
                     failedSeasons++;
@@ -550,7 +550,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                         markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.FAILED);
                         log.error("Football-Data UK historical enrichment CSV failure: league={}, season={}, reason={}",
                                 leagueMapping.getLeague().getName(), season.getYear(),
-                                exception.getReason(), exception);
+                                exception.getFailureCode(), exception);
                     }
                 } catch (RuntimeException exception) {
                     failedSeasons++;
@@ -615,7 +615,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                         failed++;
                         markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.FAILED);
                         log.error("Football-Data UK active-season enrichment CSV failure: league={}, season={}, reason={}",
-                                leagueMapping.getLeague().getName(), season.getYear(), exception.getReason(), exception);
+                                leagueMapping.getLeague().getName(), season.getYear(), exception.getFailureCode(), exception);
                     }
                 } catch (RuntimeException exception) {
                     failed++;
