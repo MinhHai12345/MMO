@@ -66,8 +66,8 @@ public class IngestionServiceSupport {
     }
 
     /**
-     * Historical scope used only by the initial backfill. Unlike incremental scope,
-     * this includes inactive seasons as long as this provider has its own season mapping.
+     * Historical scope used by initial backfills and coverage audits. Includes inactive
+     * seasons that have a provider mapping and are owned by the selected provider.
      */
     public List<Season> allMappedSeasonsToSync(Provider provider) {
         return allMappedSeasonsToSync(provider, Dataset.FIXTURE);
@@ -98,11 +98,13 @@ public class IngestionServiceSupport {
                 .anyMatch(season -> dataSourcePolicy.isPrimary(provider, dataset, season));
     }
 
+    /**
+     * Standings must be backfilled for every mapped season, not only active seasons.
+     * A provider may not expose standings for every season; callers report NOT_AVAILABLE
+     * without deleting or overwriting previously persisted rows.
+     */
     public List<Season> standingsSeasonsToSync(Provider provider) {
-        return seasonRepository.findAllForActiveLeagues().stream()
-                .filter(Season::isActive)
-                .filter(season -> dataSourcePolicy.isPrimary(provider, Dataset.STANDINGS, season))
-                .toList();
+        return allMappedSeasonsToSync(provider, Dataset.STANDINGS);
     }
 
     public static Long parseExternalId(String value) {
