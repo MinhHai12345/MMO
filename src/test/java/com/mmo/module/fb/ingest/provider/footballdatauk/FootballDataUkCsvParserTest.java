@@ -2,8 +2,6 @@ package com.mmo.module.fb.ingest.provider.footballdatauk;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class FootballDataUkCsvParserTest {
@@ -12,7 +10,7 @@ class FootballDataUkCsvParserTest {
     @Test
     void parsesQuotedCommasAndEscapedQuotes() {
         var rows = parser.parse("Date,HomeTeam,AwayTeam,Referee,HS\n"
-                + "\"A, FC\",B,\"Referee \"\"X\"\"\",12\n");
+                + "\"01/08/24\",\"A, FC\",B,\"Referee \"\"X\"\"\",12\n");
         assertEquals(1, rows.size());
         assertEquals("A, FC", rows.get(0).get("HOMETEAM"));
         assertEquals("Referee \"X\"", rows.get(0).get("REFEREE"));
@@ -36,12 +34,12 @@ class FootballDataUkCsvParserTest {
     @Test
     void rejectsUnterminatedQuotedField() {
         var exception = assertThrows(FootballDataUkCsvException.class,
-                () -> parser.parse("Date,HomeTeam,AwayTeam\\n01/08/24,\\"A,B\\n"));
+                () -> parser.parse("Date,HomeTeam,AwayTeam\n01/08/24,\"A,B\n"));
         assertEquals(FootballDataUkCsvException.Reason.INVALID_CSV, exception.getReason());
     }
 
     @Test
     void headerOnlyCsvIsAValidEmptySeason() {
-        assertTrue(parser.parse("Date,HomeTeam,AwayTeam\\n").isEmpty());
+        assertTrue(parser.parse("Date,HomeTeam,AwayTeam\n").isEmpty());
     }
 }
