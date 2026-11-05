@@ -203,7 +203,9 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
             for (int startYear = 2014; startYear <= today.getYear(); startYear++) {
                 Season season = getOrCreateSeason(league, startYear, today);
                 boolean current = season.isCurrent();
-                if (!current && isHistoricalSeasonImported(season, mapping)) continue;
+                // Backfill is idempotent for every season. Active-season refresh is a
+                // separate incremental workflow and must remain controlled by Season.active.
+                if (isHistoricalSeasonImported(season, mapping)) continue;
 
                 markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.RUNNING);
                 try {
@@ -390,6 +392,9 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                             leagueMapping.getLeague().getName(), startYear);
                     continue;
                 }
+                // The initial enrichment pass is historical-only. The active-season
+                // workflow below owns refreshes for operator-selected seasons.
+                if (season.isActive()) continue;
                 if (isEnrichmentCheckpointSatisfied(leagueId, season.getYear())) continue;
 
                 markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.RUNNING);
