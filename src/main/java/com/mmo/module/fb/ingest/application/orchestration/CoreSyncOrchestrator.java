@@ -136,7 +136,7 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
     private void runUnit(IngestionWorkUnit unit, Runnable operation, List<String> failedStages) {
         String name = unit.provider() + "/" + unit.dataset() + "/league=" + unit.leagueId()
                 + "/season=" + unit.season();
-        if (checkpointStore.isSatisfied(unit.provider(), unit.dataset(), unit.leagueId(), unit.season())) {
+        if (checkpointStore.isCompleted(unit.provider(), unit.dataset(), unit.leagueId(), unit.season())) {
             log.debug("Skipping satisfied ingestion work unit {}", name);
             return;
         }
