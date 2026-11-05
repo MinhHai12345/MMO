@@ -37,8 +37,9 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
     @Override
     @Transactional
     public void persistTeamsForSeason(Provider selectedProvider, Season season, List<ProviderTeam> teams) {
-        if (season == null || !dataSourcePolicy.isPrimary(selectedProvider, Dataset.TEAM, season)) {
-            log.debug("Rejecting non-owner team write: provider={}, season={}, dataset=TEAM",
+        if (season == null || (!dataSourcePolicy.isPrimary(selectedProvider, Dataset.TEAM, season)
+                && !dataSourcePolicy.route(Dataset.TEAM, season).secondary().contains(selectedProvider))) {
+            log.debug("Rejecting provider without team route: provider={}, season={}",
                     selectedProvider, season == null ? null : season.getYear());
             return;
         }
@@ -55,6 +56,7 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
         // canonical team. Match a unique standardized name before creating another row.
         Map<String, List<Team>> teamsByNameKey =
                 selectedProvider == Provider.FOOTBALL_DATA || selectedProvider == Provider.UNDER_STATS
+                        || selectedProvider == Provider.FOOTBALL_DATA_UK
                         ? indexCanonicalTeams(teamRepository.findAll()) : Map.of();
 
         for (ProviderTeam source : teams == null ? List.<ProviderTeam>of() : teams) {
@@ -66,7 +68,8 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
 
             Team team = teamsByExternalId.get(source.externalId());
             if (team == null && (selectedProvider == Provider.FOOTBALL_DATA
-                    || selectedProvider == Provider.UNDER_STATS)) {
+                    || selectedProvider == Provider.UNDER_STATS
+                    || selectedProvider == Provider.FOOTBALL_DATA_UK)) {
                 List<Team> candidates = findNameMatches(source, teamsByNameKey);
                 if (candidates.size() == 1) {
                     Team candidate = candidates.get(0);
@@ -89,15 +92,27 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
                 }
             }
             if (team == null && selectedProvider != Provider.FOOTBALL_DATA
-                    && selectedProvider != Provider.UNDER_STATS) {
+                    && selectedProvider != Provider.UNDER_STATS
+                    && selectedProvider != Provider.FOOTBALL_DATA_UK) {
                 log.debug("Skipping unmapped team '{}' from {} (external ID {}). "
                                 + "Register its provider ID against the canonical MMO team before syncing.",
                         source.name(), selectedProvider, source.externalId());
                 continue;
             }
+            boolean primaryOwner = dataSourcePolicy.isPrimary(selectedProvider, Dataset.TEAM, season);
+            boolean primaryIdentityExists = team != null
+                    && teamExternalIdRepository.findByTeamIdAndProvider(
+                            team.getId(), Provider.FOOTBALL_DATA).isPresent();
+            boolean allowedFallback = dataSourcePolicy.mayFallbackForCore(
+                    selectedProvider, Dataset.TEAM, season, primaryIdentityExists);
+            boolean canWriteCore = primaryOwner || allowedFallback;
+
             if (team == null) {
-                // Football-Data and UnderStat may bootstrap canonical teams. Other providers
-                // are secondary sources and require an explicit cross-provider mapping.
+                if (!canWriteCore) {
+                    log.debug("Skipping team '{}' from {} because primary identity exists or provider is not owner",
+                            source.name(), selectedProvider);
+                    continue;
+                }
                 team = new Team();
             }
 
@@ -108,7 +123,9 @@ public class TeamPersistenceServiceImpl implements TeamPersistenceService {
                 continue;
             }
 
-            if (selectedProvider == Provider.FOOTBALL_DATA || selectedProvider == Provider.UNDER_STATS) {
+            if (canWriteCore && (selectedProvider == Provider.FOOTBALL_DATA
+                    || selectedProvider == Provider.UNDER_STATS
+                    || selectedProvider == Provider.FOOTBALL_DATA_UK)) {
                 if (team.getName() == null || team.getName().isBlank()) team.setName(source.name());
                 if (team.getShortName() == null || team.getShortName().isBlank()) {
                     team.setShortName(source.shortName());
