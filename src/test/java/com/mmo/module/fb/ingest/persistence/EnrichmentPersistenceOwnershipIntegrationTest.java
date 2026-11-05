@@ -40,9 +40,12 @@ class EnrichmentPersistenceOwnershipIntegrationTest {
         MatchAdvancedStatsRepository statsRepository = mock(MatchAdvancedStatsRepository.class);
         MatchStatisticsSnapshotPersistenceService snapshotService =
                 mock(MatchStatisticsSnapshotPersistenceService.class);
+        DataSourcePolicy policy = new DataSourcePolicy();
         FootballDataUkMatchStatisticsPersistenceService statsService =
                 new FootballDataUkMatchStatisticsPersistenceService(
-                        statsRepository, snapshotService, new DataSourcePolicy());
+                        statsRepository, snapshotService, policy,
+                        new SourceAwareMergeService(policy,
+                                mock(com.mmo.module.fb.domain.match.repository.MatchFieldProvenanceRepository.class)));
 
         BookmakerRepository bookmakerRepository = mock(BookmakerRepository.class);
         MatchOddsRepository oddsRepository = mock(MatchOddsRepository.class);
@@ -54,7 +57,9 @@ class EnrichmentPersistenceOwnershipIntegrationTest {
         assertEquals(0, oddsService.persist(match, Map.of("B365H", "2.0", "B365D", "3.0", "B365A", "4.0")));
 
         MatchRepository matchRepository = mock(MatchRepository.class);
-        MatchXgPersistenceService xgService = new MatchXgPersistenceService(matchRepository, new DataSourcePolicy());
+        MatchXgPersistenceService xgService = new MatchXgPersistenceService(matchRepository, policy,
+                new SourceAwareMergeService(policy,
+                        mock(com.mmo.module.fb.domain.match.repository.MatchFieldProvenanceRepository.class)));
         assertFalse(xgService.upsert(Provider.FOOTBALL_DATA_UK, match,
                 new BigDecimal("0.75"), new BigDecimal("0.25")));
 

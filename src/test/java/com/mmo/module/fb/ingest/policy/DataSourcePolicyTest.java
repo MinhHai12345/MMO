@@ -43,8 +43,22 @@ class DataSourcePolicyTest {
                     policy.route(Dataset.MATCH_STATISTICS, year).primary());
             assertEquals(Provider.FOOTBALL_DATA_UK,
                     policy.route(Dataset.MATCH_XG, year).primary());
+            assertTrue(policy.route(Dataset.MATCH_STATISTICS, year).secondary()
+                    .contains(Provider.UNDER_STATS));
+            assertTrue(policy.route(Dataset.MATCH_XG, year).secondary()
+                    .contains(Provider.UNDER_STATS));
             assertEquals(Provider.FOOTBALL_DATA_UK,
                     policy.route(Dataset.HISTORICAL_ODDS, year).primary());
+        }
+    }
+
+    @Test
+    void assignsSofaScoreAsOwnerForPlayerMatchStatistics() {
+        for (int year = 2014; year <= 2035; year++) {
+            assertEquals(Provider.SOFA_SCORE,
+                    policy.route(Dataset.PLAYER_STATISTICS, year).primary(), "season " + year);
+            assertTrue(policy.isAllowed(Provider.SOFA_SCORE, Dataset.PLAYER_STATISTICS,
+                    Season.builder().year(year + "/" + (year + 1)).build()));
         }
     }
 

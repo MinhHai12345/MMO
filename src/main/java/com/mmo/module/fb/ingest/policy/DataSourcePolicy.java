@@ -29,7 +29,8 @@ public class DataSourcePolicy {
     public ProviderRoute route(Dataset dataset, Season season) {
         ProviderRoute route = route(dataset, seasonStartYear(season));
         if (route.primary() == Provider.FOOTBALL_DATA_UK && !isFootballDataUkLeague(season)) {
-            return new ProviderRoute(null, List.of());
+            return new ProviderRoute(null, route.secondary().stream()
+                    .filter(provider -> provider != Provider.FOOTBALL_DATA_UK).toList());
         }
         if (route.secondary().contains(Provider.FOOTBALL_DATA_UK) && !isFootballDataUkLeague(season)) {
             return new ProviderRoute(route.primary(), List.of());
@@ -51,7 +52,12 @@ public class DataSourcePolicy {
             case STANDINGS -> startYear >= FOOTBALL_DATA_CORE_FROM
                     ? new ProviderRoute(Provider.FOOTBALL_DATA, List.of())
                     : new ProviderRoute(null, List.of());
-            case MATCH_STATISTICS, MATCH_XG, HISTORICAL_ODDS ->
+            case PLAYER_STATISTICS -> new ProviderRoute(Provider.SOFA_SCORE, List.of());
+            case MATCH_STATISTICS, MATCH_XG ->
+                    startYear >= UK_CORE_FROM
+                            ? new ProviderRoute(Provider.FOOTBALL_DATA_UK, List.of(Provider.SOFA_SCORE, Provider.UNDER_STATS))
+                            : new ProviderRoute(null, List.of(Provider.SOFA_SCORE));
+            case HISTORICAL_ODDS ->
                     startYear >= UK_CORE_FROM
                             ? new ProviderRoute(Provider.FOOTBALL_DATA_UK, List.of())
                             : new ProviderRoute(null, List.of());

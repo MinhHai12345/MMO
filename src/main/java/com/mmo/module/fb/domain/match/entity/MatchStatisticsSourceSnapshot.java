@@ -15,13 +15,12 @@ import java.time.Instant;
  */
 @Entity
 @Table(name = "fb_match_statistics_source_snapshots",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_fb_match_stats_snapshot_source",
-                columnNames = {"match_id", "team_id", "provider"}),
         indexes = {
                 @Index(name = "idx_fb_match_stats_snapshot_provider",
                         columnList = "provider, fetched_at"),
-                @Index(name = "idx_fb_match_stats_snapshot_match", columnList = "match_id")
+                @Index(name = "idx_fb_match_stats_snapshot_match", columnList = "match_id"),
+                @Index(name = "idx_fb_match_stats_snapshot_latest",
+                        columnList = "match_id, team_id, provider, fetched_at")
         })
 @Getter
 @Setter

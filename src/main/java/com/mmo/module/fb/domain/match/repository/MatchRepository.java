@@ -427,4 +427,16 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
                                                    @Param("status") MatchStatus status);
 
 
+    /** Batch candidates for cross-provider fixture matching; final orientation/tolerance checks stay in memory. */
+    @EntityGraph(attributePaths = {"season", "homeTeam", "awayTeam"})
+    @Query("""
+            SELECT m FROM Match m
+            WHERE m.season.id = :seasonId
+              AND (m.homeTeam.id IN :teamIds OR m.awayTeam.id IN :teamIds)
+              AND m.matchTime BETWEEN :startTime AND :endTime
+            """)
+    List<Match> findBatchFixtureCandidates(@Param("seasonId") Long seasonId,
+                                           @Param("teamIds") List<Long> teamIds,
+                                           @Param("startTime") Instant startTime,
+                                           @Param("endTime") Instant endTime);
 }

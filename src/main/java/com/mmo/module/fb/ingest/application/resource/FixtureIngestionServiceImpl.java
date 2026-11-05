@@ -17,6 +17,7 @@ import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
 import com.mmo.module.fb.ingest.service.FixtureIngestionService;
 import com.mmo.module.fb.ingest.service.FixturePersistenceService;
+import com.mmo.module.fb.ingest.service.ResolvedProviderFixture;
 import com.mmo.module.fb.ingest.service.TeamIngestionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -159,10 +160,10 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
                     fixtures.size(), externalLeagueId, season.getYear(), selectedProvider);
             if (fixtures.isEmpty()) continue;
 
+            List<ResolvedProviderFixture> resolved = new java.util.ArrayList<>();
             for (ProviderFixture fixture : fixtures) {
-                if (fixture.externalId() == null || fixture.externalId().isBlank()) {
+                if (fixture == null || fixture.externalId() == null || fixture.externalId().isBlank()) {
                     skipped++;
-                    log.warn("Skipping fixture with empty external ID from {}", selectedProvider);
                     continue;
                 }
                 Long homeTeamId = teamIdsByExternalId.get(fixture.homeTeamExternalId());
@@ -173,17 +174,23 @@ public class FixtureIngestionServiceImpl implements FixtureIngestionService {
                             fixture.externalId());
                     continue;
                 }
+                resolved.add(new ResolvedProviderFixture(homeTeamId, awayTeamId, fixture));
+            }
+
+            // Keep transactions bounded and independent. A failed chunk does not block later chunks.
+            final int persistenceBatchSize = 100;
+            for (int offset = 0; offset < resolved.size(); offset += persistenceBatchSize) {
+                List<ResolvedProviderFixture> batch = resolved.subList(
+                        offset, Math.min(offset + persistenceBatchSize, resolved.size()));
                 try {
-                    if (fixturePersistenceService.persistFixture(
-                            season.getId(), homeTeamId, awayTeamId, selectedProvider, fixture)) {
-                        saved++;
-                    } else {
-                        skipped++;
-                    }
+                    int batchSaved = fixturePersistenceService.persistFixtures(
+                            season.getId(), selectedProvider, batch);
+                    saved += batchSaved;
+                    skipped += batch.size() - batchSaved;
                 } catch (Exception ex) {
-                    failed++;
-                    log.error("Failed to persist provider {} fixture {}; continuing with remaining fixtures",
-                            selectedProvider, fixture.externalId(), ex);
+                    failed += batch.size();
+                    log.error("Failed to persist provider {} fixture batch for league={} season={} offset={}",
+                            selectedProvider, externalLeagueId, season.getYear(), offset, ex);
                 }
             }
         }

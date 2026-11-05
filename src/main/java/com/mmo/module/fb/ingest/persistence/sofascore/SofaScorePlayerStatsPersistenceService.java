@@ -1,6 +1,8 @@
 package com.mmo.module.fb.ingest.persistence.sofascore;
 
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.Dataset;
+import com.mmo.module.fb.ingest.persistence.SourceAwareMergeService;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreLineupsResponseDTO;
 import com.mmo.module.fb.domain.match.entity.Match;
 import com.mmo.module.fb.domain.match.repository.MatchRepository;
@@ -21,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 @Service
 @RequiredArgsConstructor
@@ -29,9 +32,11 @@ public class SofaScorePlayerStatsPersistenceService {
     private final PlayerRepository playerRepository;
     private final PlayerExternalIdRepository playerExternalIdRepository;
     private final PlayerMatchStatsRepository playerMatchStatsRepository;
+    private final SourceAwareMergeService sourceAwareMergeService;
 
     @Transactional
     public int persist(Long matchId, SofaScoreLineupsResponseDTO response) {
+        if (response == null) return 0;
         Match match = matchRepository.findById(matchId).orElse(null);
         if (match == null) return 0;
         Map<String, PlayerMatchStats> existingByExternalId = new HashMap<>();
@@ -50,7 +55,7 @@ public class SofaScorePlayerStatsPersistenceService {
     private void addTeamPlayers(Match match, SofaScoreLineupsResponseDTO.LineupTeamDTO lineup,
                                 Team team, List<PlayerMatchStats> toSave,
                                 Map<String, PlayerMatchStats> existingByExternalId) {
-        if (lineup == null || lineup.players() == null) return;
+        if (lineup == null || lineup.players() == null || team == null) return;
         for (SofaScoreLineupsResponseDTO.LineupPlayerDTO lineupPlayer : lineup.players()) {
             if (lineupPlayer == null || lineupPlayer.player() == null
                     || lineupPlayer.player().id() == null || lineupPlayer.player().name() == null
@@ -71,7 +76,7 @@ public class SofaScorePlayerStatsPersistenceService {
             stats.setPlayer(player);
             stats.setMatch(match);
             stats.setTeam(team);
-            applyStatistics(stats, lineupPlayer.statistics());
+            applyStatistics(match, player.getId(), stats, lineupPlayer.statistics());
             toSave.add(stats);
         }
     }
@@ -87,30 +92,48 @@ public class SofaScorePlayerStatsPersistenceService {
         return player;
     }
 
-    private void applyStatistics(PlayerMatchStats stats, Map<String, Object> values) {
-        stats.setMinutesPlayed(integer(values, "minutesPlayed", "minutes"));
-        stats.setGoals(integer(values, "goals"));
-        stats.setAssists(integer(values, "goalAssist", "assists"));
-        stats.setShots(integer(values, "totalShots", "shots"));
-        stats.setShotsOnTarget(integer(values, "shotsOnTarget", "onTargetScoringAttempt"));
-        stats.setXg(decimal(values, "expectedGoals", "xg"));
-        stats.setXa(decimal(values, "expectedAssists", "xa"));
-        stats.setPasses(integer(values, "totalPasses", "passes"));
-        stats.setPassAccuracy(decimal(values, "accuratePassesPercentage", "passAccuracy"));
-        stats.setKeyPasses(integer(values, "keyPasses"));
-        stats.setTackles(integer(values, "tackles"));
-        stats.setInterceptions(integer(values, "interceptions"));
-        stats.setDuelsWon(integer(values, "duelWon", "duelsWon"));
-        stats.setDribbles(integer(values, "successfulDribbles", "dribbles"));
-        stats.setFoulsDrawn(integer(values, "wasFouled", "foulsDrawn"));
-        stats.setFoulsCommitted(integer(values, "fouls", "foulsCommitted"));
-        stats.setYellowCards(integer(values, "yellowCards"));
-        stats.setRedCards(integer(values, "redCards"));
+    private void applyStatistics(Match match, Long playerId, PlayerMatchStats stats, Map<String, Object> values) {
+        merge(match, playerId, "minutes_played", stats.getMinutesPlayed(),
+                integer(values, "minutesPlayed", "minutes"), stats::setMinutesPlayed);
+        merge(match, playerId, "goals", stats.getGoals(), integer(values, "goals"), stats::setGoals);
+        merge(match, playerId, "assists", stats.getAssists(), integer(values, "goalAssist", "assists"), stats::setAssists);
+        merge(match, playerId, "shots", stats.getShots(), integer(values, "totalShots", "shots"), stats::setShots);
+        merge(match, playerId, "shots_on_target", stats.getShotsOnTarget(),
+                integer(values, "shotsOnTarget", "onTargetScoringAttempt"), stats::setShotsOnTarget);
+        merge(match, playerId, "xg", stats.getXg(), decimal(values, "expectedGoals", "xg"), stats::setXg);
+        merge(match, playerId, "xa", stats.getXa(), decimal(values, "expectedAssists", "xa"), stats::setXa);
+        merge(match, playerId, "passes", stats.getPasses(), integer(values, "totalPasses", "passes"), stats::setPasses);
+        merge(match, playerId, "pass_accuracy", stats.getPassAccuracy(),
+                decimal(values, "accuratePassesPercentage", "passAccuracy"), stats::setPassAccuracy);
+        merge(match, playerId, "key_passes", stats.getKeyPasses(), integer(values, "keyPasses"), stats::setKeyPasses);
+        merge(match, playerId, "tackles", stats.getTackles(), integer(values, "tackles"), stats::setTackles);
+        merge(match, playerId, "interceptions", stats.getInterceptions(),
+                integer(values, "interceptions"), stats::setInterceptions);
+        merge(match, playerId, "duels_won", stats.getDuelsWon(),
+                integer(values, "duelWon", "duelsWon"), stats::setDuelsWon);
+        merge(match, playerId, "dribbles", stats.getDribbles(),
+                integer(values, "successfulDribbles", "dribbles"), stats::setDribbles);
+        merge(match, playerId, "fouls_drawn", stats.getFoulsDrawn(),
+                integer(values, "wasFouled", "foulsDrawn"), stats::setFoulsDrawn);
+        merge(match, playerId, "fouls_committed", stats.getFoulsCommitted(),
+                integer(values, "fouls", "foulsCommitted"), stats::setFoulsCommitted);
+        merge(match, playerId, "yellow_cards", stats.getYellowCards(),
+                integer(values, "yellowCards"), stats::setYellowCards);
+        merge(match, playerId, "red_cards", stats.getRedCards(),
+                integer(values, "redCards"), stats::setRedCards);
+    }
+
+    private <T> void merge(Match match, Long playerId, String field, T current, T incoming, Consumer<T> setter) {
+        if (incoming == null || playerId == null) return;
+        sourceAwareMergeService.merge(match, Provider.SOFA_SCORE, Dataset.PLAYER_STATISTICS,
+                "player:" + playerId + ":" + field, current != null, null, () -> setter.accept(incoming));
     }
 
     private Integer integer(Map<String, Object> values, String... keys) {
         BigDecimal value = decimal(values, keys);
-        return value == null ? null : value.intValue();
+        if (value == null || value.signum() < 0 || value.stripTrailingZeros().scale() > 0
+                || value.compareTo(BigDecimal.valueOf(Integer.MAX_VALUE)) > 0) return null;
+        return value.intValue();
     }
 
     private BigDecimal decimal(Map<String, Object> values, String... keys) {
@@ -119,7 +142,10 @@ public class SofaScorePlayerStatsPersistenceService {
             if (raw == null) continue;
             try {
                 String text = raw.toString().trim().replace("%", "").replace(",", ".");
-                if (!text.isBlank() && !"-".equals(text)) return new BigDecimal(text);
+                if (!text.isBlank() && !"-".equals(text)) {
+                    BigDecimal parsed = new BigDecimal(text);
+                    if (parsed.signum() >= 0) return parsed;
+                }
             } catch (NumberFormatException ignored) {
                 // Try the next provider alias.
             }

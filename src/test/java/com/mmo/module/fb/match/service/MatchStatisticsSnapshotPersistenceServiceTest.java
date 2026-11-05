@@ -19,7 +19,7 @@ import static org.mockito.Mockito.*;
 class MatchStatisticsSnapshotPersistenceServiceTest {
 
     @Test
-    void upsertsLatestPayloadPerMatchTeamAndProvider() {
+    void appendsEveryFetchedPayloadPerMatchTeamAndProvider() {
         MatchStatisticsSourceSnapshotRepository repository =
                 mock(MatchStatisticsSourceSnapshotRepository.class);
         when(repository.findByMatchIdAndTeamIdAndProvider(10L, 20L, MatchProvider.SOFA_SCORE))
@@ -39,17 +39,19 @@ class MatchStatisticsSnapshotPersistenceServiceTest {
         MatchStatisticsSnapshotPersistenceService service =
                 new MatchStatisticsSnapshotPersistenceService(repository, new ObjectMapper());
         service.upsert(match, team, MatchProvider.SOFA_SCORE, Map.of(
-                "expectedGoals", "1.25",
-                "totalShots", 14
+                "expectedGoals", "1.25", "totalShots", 14
+        ));
+        service.upsert(match, team, MatchProvider.SOFA_SCORE, Map.of(
+                "expectedGoals", "1.50", "totalShots", 16
         ));
 
         var captor = org.mockito.ArgumentCaptor.forClass(MatchStatisticsSourceSnapshot.class);
-        verify(repository).save(captor.capture());
-        MatchStatisticsSourceSnapshot saved = captor.getValue();
+        verify(repository, times(2)).save(captor.capture());
+        MatchStatisticsSourceSnapshot saved = captor.getAllValues().get(1);
         assertEquals(match, saved.getMatch());
         assertEquals(team, saved.getTeam());
         assertEquals(MatchProvider.SOFA_SCORE, saved.getProvider());
-        assertTrue(saved.getSnapshotJson().contains("\"expectedGoals\":\"1.25\""));
+        assertTrue(saved.getSnapshotJson().contains("\"expectedGoals\":\"1.50\""));
         assertNotNull(saved.getFetchedAt());
     }
 
