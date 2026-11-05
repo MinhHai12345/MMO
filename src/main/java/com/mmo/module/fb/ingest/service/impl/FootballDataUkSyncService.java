@@ -465,10 +465,10 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     EnrichmentResult result = enrichRows(season, leagueMapping, rows);
                     if (result.unmatchedRows() > 0) {
                         failed++;
-                        markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.PARTIAL);
+                        markEnrichmentCheckpoint(leagueId, season.getYear(), result);
                     } else {
                         enrichedSeasons++;
-                        markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.COMPLETED);
+                        markEnrichmentCheckpoint(leagueId, season.getYear(), result);
                     }
                     log.info("Football-Data UK active-season enrichment: league={}, season={}, rows={}, stats={}, odds={}, unmatched={}",
                             leagueMapping.getLeague().getName(), season.getYear(), rows.size(),
