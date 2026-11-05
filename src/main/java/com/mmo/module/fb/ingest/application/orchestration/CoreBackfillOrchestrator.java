@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
+import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
@@ -103,9 +104,10 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
             return;
         }
 
+        List<String> failedStages = new ArrayList<>();
         if (!footballDataTeams.isEmpty() && !areCompleted(footballDataTeams)) {
             runPlannedStage("teams/historical/FOOTBALL_DATA", Dataset.TEAM, footballDataTeams,
-                    () -> teamIngestionService.syncAllSeasonsForProvider(Provider.FOOTBALL_DATA));
+                    () -> teamIngestionService.syncAllSeasonsForProvider(Provider.FOOTBALL_DATA), failedStages);
         } else if (!footballDataTeams.isEmpty()) {
             log.info("Football-Data team backfill already complete for all planned seasons");
         }
@@ -113,7 +115,7 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
         if (!footballDataFixtures.isEmpty() && !areCompleted(footballDataFixtures)) {
             runPlannedStage("fixtures/historical/FOOTBALL_DATA", Dataset.FIXTURE, footballDataFixtures,
                     () -> fixtureIngestionService.syncAllSeasonsForProvider(
-                            Provider.FOOTBALL_DATA, null, null));
+                            Provider.FOOTBALL_DATA, null, null), failedStages);
         } else if (!footballDataFixtures.isEmpty()) {
             log.info("Football-Data fixture backfill already complete for all planned seasons");
         }
@@ -123,11 +125,19 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
             // Always revisit its catalogue: completed/unavailable historical units are skipped
             // by scoped checkpoints, partial/failed units are retried, and the current season
             // is refreshed. The legacy provider-wide marker must never suppress new work.
-            if (footballDataUkSyncService.syncInitialData()) {
-                checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK, INITIAL_CORE_CHECKPOINT);
+            try {
+                if (footballDataUkSyncService.syncInitialData()) {
+                    checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK, INITIAL_CORE_CHECKPOINT);
+                }
+            } catch (RuntimeException exception) {
+                failedStages.add("football-data-uk/historical: " + exception.getMessage());
+                log.error("Historical Core stage failed: football-data-uk/historical", exception);
             }
         }
 
+        if (!failedStages.isEmpty()) {
+            throw new IllegalStateException("Historical Core backfill incomplete: " + failedStages);
+        }
         log.info("Historical Core backfill orchestration completed");
     }
 
@@ -137,7 +147,8 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
     }
 
     private void runPlannedStage(String name, Dataset dataset,
-                                 List<IngestionWorkUnit> units, Runnable operation) {
+                                 List<IngestionWorkUnit> units, Runnable operation,
+                                 List<String> failedStages) {
         units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
                 unit.leagueId(), unit.season(), CheckpointStatus.RUNNING));
         try {
@@ -145,9 +156,12 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
             units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
                     unit.leagueId(), unit.season(), CheckpointStatus.COMPLETED));
         } catch (RuntimeException exception) {
+            CheckpointStatus status = exception instanceof IngestionPartialException
+                    ? CheckpointStatus.PARTIAL : CheckpointStatus.FAILED;
             units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
-                    unit.leagueId(), unit.season(), CheckpointStatus.FAILED));
-            throw exception;
+                    unit.leagueId(), unit.season(), status));
+            failedStages.add(name + ": " + exception.getMessage());
+            log.warn("Historical Core stage did not complete; continuing independent datasets: {}", name);
         }
     }
 

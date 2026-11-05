@@ -56,17 +56,29 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
                                 || unit.dataset() == Dataset.HISTORICAL_ODDS))
                         .count());
 
-        runStage("football-data-uk-historical-enrichment",
-                () -> {
-                    // Historical recovery is driven by scoped dataset/league/season checkpoints.
-                    // Do not let a legacy provider-wide marker hide newly added or failed seasons.
-                    if (footballDataUkSyncService.syncInitialEnrichment()) {
-                        checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK,
-                                ENRICHMENT_INITIAL_CHECKPOINT);
-                    }
-                });
-        runStage("football-data-uk-active-enrichment",
-                footballDataUkSyncService::syncActiveSeasonsEnrichment);
+        java.util.List<String> failedStages = new java.util.ArrayList<>();
+        try {
+            runStage("football-data-uk-historical-enrichment",
+                    () -> {
+                        // Historical recovery is driven by scoped dataset/league/season checkpoints.
+                        // Do not let a legacy provider-wide marker hide newly added or failed seasons.
+                        if (footballDataUkSyncService.syncInitialEnrichment()) {
+                            checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK,
+                                    ENRICHMENT_INITIAL_CHECKPOINT);
+                        }
+                    });
+        } catch (RuntimeException exception) {
+            failedStages.add("historical: " + exception.getMessage());
+        }
+        try {
+            runStage("football-data-uk-active-enrichment",
+                    footballDataUkSyncService::syncActiveSeasonsEnrichment);
+        } catch (RuntimeException exception) {
+            failedStages.add("active: " + exception.getMessage());
+        }
+        if (!failedStages.isEmpty()) {
+            throw new IllegalStateException("Match enrichment incomplete: " + failedStages);
+        }
         log.info("Match enrichment completed: provider={}", Provider.FOOTBALL_DATA_UK);
     }
 
