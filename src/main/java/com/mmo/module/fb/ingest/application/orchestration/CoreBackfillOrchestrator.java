@@ -82,13 +82,21 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
                     + "DataSourcePolicy is authoritative per dataset and season");
         }
 
-        boolean ukCoreRequired = isProviderEnabled(Provider.FOOTBALL_DATA_UK);
-        if (ukCoreRequired) {
+        List<SeasonBatchProvider> batchProviders = seasonBatchProviderRegistry.all().stream()
+                .filter(provider -> isProviderEnabled(provider.getProvider()))
+                .toList();
+        boolean batchCoreRequired = batchProviders.stream().anyMatch(provider ->
+                seasonBatchProviderRegistry.supports(provider.getProvider(), Dataset.SEASON)
+                        || seasonBatchProviderRegistry.supports(provider.getProvider(), Dataset.TEAM)
+                        || seasonBatchProviderRegistry.supports(provider.getProvider(), Dataset.FIXTURE));
+        for (SeasonBatchProvider provider : batchProviders) {
+            if (!seasonBatchProviderRegistry.supports(provider.getProvider(), Dataset.SEASON)) continue;
             try {
-                seasonBatchProviderRegistry.require(Provider.FOOTBALL_DATA_UK).prepareHistoricalSeasons();
+                runStage(provider.getProvider() + "/prepare-historical-seasons",
+                        provider::prepareHistoricalSeasons);
             } catch (RuntimeException exception) {
-                failedStages.add("football-data-uk/prepare-seasons: " + exception.getMessage());
-                log.error("Unable to prepare Football-Data UK historical seasons", exception);
+                failedStages.add(provider.getProvider() + "/prepare-seasons: " + exception.getMessage());
+                log.error("Unable to prepare historical seasons for provider {}", provider.getProvider(), exception);
             }
         }
 
@@ -99,15 +107,19 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
             footballDataSeasons.forEach(unit -> checkpointStore.markStatus(unit.provider(), Dataset.SEASON,
                     unit.leagueId(), unit.season(), CheckpointStatus.COMPLETED));
         }
-        List<IngestionWorkUnit> footballDataTeams = plan.units(
-                Dataset.TEAM, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
-        List<IngestionWorkUnit> footballDataFixtures = plan.units(
-                Dataset.FIXTURE, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
-        log.info("Historical Core plan created: units={}, footballDataTeams={}, "
-                        + "footballDataFixtures={}, footballDataUkRequired={}",
-                plan.units().size(), footballDataTeams.size(), footballDataFixtures.size(), ukCoreRequired);
+        List<IngestionWorkUnit> nonBatchTeams = plan.units(
+                        Dataset.TEAM, IngestionWorkUnit.Role.PRIMARY).stream()
+                .filter(unit -> !seasonBatchProviderRegistry.supports(unit.provider(), Dataset.TEAM))
+                .toList();
+        List<IngestionWorkUnit> nonBatchFixtures = plan.units(
+                        Dataset.FIXTURE, IngestionWorkUnit.Role.PRIMARY).stream()
+                .filter(unit -> !seasonBatchProviderRegistry.supports(unit.provider(), Dataset.FIXTURE))
+                .toList();
+        log.info("Historical Core plan created: units={}, nonBatchTeams={}, nonBatchFixtures={}, batchProviders={}",
+                plan.units().size(), nonBatchTeams.size(), nonBatchFixtures.size(),
+                batchProviders.stream().map(SeasonBatchProvider::getProvider).toList());
 
-        if (plan.units().isEmpty() && !ukCoreRequired) {
+        if (plan.units().isEmpty() && !batchCoreRequired) {
             if (!failedStages.isEmpty()) {
                 throw new IllegalStateException("Historical Core catalogue initialization incomplete: "
                         + failedStages);
@@ -117,33 +129,32 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
         }
 
         List<IngestionUnitResult> unitResults = new ArrayList<>();
-        footballDataTeams.forEach(unit -> runUnit(unit, () ->
+        nonBatchTeams.forEach(unit -> runUnit(unit, () ->
                 teamIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()), failedStages, unitResults));
-        footballDataFixtures.forEach(unit -> runUnit(unit, () ->
+        nonBatchFixtures.forEach(unit -> runUnit(unit, () ->
                 fixtureIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId(), null, null),
                 failedStages, unitResults));
 
-        if (ukCoreRequired) {
-            // The CSV endpoint is season-scoped. A single request imports one season only;
-            // its TEAM/SEASON/FIXTURE checkpoint outcomes are persisted independently.
-            List<Long> ukSeasonIds = plan.units().stream()
-                    .filter(unit -> unit.provider() == Provider.FOOTBALL_DATA_UK
+        for (SeasonBatchProvider provider : batchProviders) {
+            Provider providerId = provider.getProvider();
+            List<Long> batchSeasonIds = plan.units().stream()
+                    .filter(unit -> unit.provider() == providerId
                             && (unit.dataset() == Dataset.SEASON || unit.dataset() == Dataset.TEAM
                             || unit.dataset() == Dataset.FIXTURE))
                     .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
-            for (Long seasonId : ukSeasonIds) {
+            for (Long seasonId : batchSeasonIds) {
                 try {
-                    runStage("football-data-uk/core/season=" + seasonId,
-                            () -> seasonBatchProviderRegistry.require(Provider.FOOTBALL_DATA_UK).syncCoreSeason(seasonId, true));
+                    runStage(providerId + "/core/season=" + seasonId,
+                            () -> provider.syncCoreSeason(seasonId, true));
                 } catch (RuntimeException exception) {
-                    failedStages.add("football-data-uk/core/season=" + seasonId
+                    failedStages.add(providerId + "/core/season=" + seasonId
                             + ": " + exception.getMessage());
-                    log.warn("Football-Data UK season failed; continuing with remaining seasons: {}",
-                            seasonId, exception);
+                    log.warn("Season-batch provider {} failed season {}; continuing with remaining seasons",
+                            providerId, seasonId, exception);
                 }
             }
-            if (failedStages.stream().noneMatch(error -> error.startsWith("football-data-uk/"))) {
-                checkpointStore.markCompleted(Provider.FOOTBALL_DATA_UK, INITIAL_CORE_CHECKPOINT);
+            if (failedStages.stream().noneMatch(error -> error.startsWith(providerId + "/"))) {
+                checkpointStore.markCompleted(providerId, INITIAL_CORE_CHECKPOINT);
             }
         }
 
