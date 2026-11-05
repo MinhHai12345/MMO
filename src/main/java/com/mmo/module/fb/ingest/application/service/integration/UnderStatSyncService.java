@@ -10,7 +10,7 @@ import com.mmo.module.fb.ingest.adapter.out.persistence.core.MatchXgPersistenceS
 import com.mmo.module.fb.ingest.adapter.out.persistence.core.SourceAwareMergeService;
 import com.mmo.module.fb.ingest.provider.spi.HistoricalStatsProvider;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
-import com.mmo.module.fb.ingest.application.service.identity.ExternalIdMappingService;
+import com.mmo.module.fb.ingest.adapter.out.persistence.identity.ExternalIdMappingService;
 import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
 import com.mmo.module.fb.domain.league.entity.Season;
 import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
