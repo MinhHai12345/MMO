@@ -55,7 +55,7 @@ public class DataSourcePolicy {
             case PLAYER_STATISTICS -> new ProviderRoute(Provider.SOFA_SCORE, List.of());
             case MATCH_STATISTICS, MATCH_XG ->
                     startYear >= UK_CORE_FROM
-                            ? new ProviderRoute(Provider.FOOTBALL_DATA_UK, List.of(Provider.SOFA_SCORE))
+                            ? new ProviderRoute(Provider.FOOTBALL_DATA_UK, List.of(Provider.SOFA_SCORE, Provider.UNDER_STATS))
                             : new ProviderRoute(null, List.of(Provider.SOFA_SCORE));
             case HISTORICAL_ODDS ->
                     startYear >= UK_CORE_FROM
