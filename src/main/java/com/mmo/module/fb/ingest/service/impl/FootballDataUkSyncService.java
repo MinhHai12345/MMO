@@ -501,8 +501,8 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     continue;
                 }
 
-                Team home = resolveTeam(leagueMapping.getIdentify(), homeName);
-                Team away = resolveTeam(leagueMapping.getIdentify(), awayName);
+                Team home = resolveTeam(leagueMapping.getIdentify(), homeName, season);
+                Team away = resolveTeam(leagueMapping.getIdentify(), awayName, season);
                 if (home.getId().equals(away.getId())) {
                     unmatched++;
                     continue;
@@ -525,6 +525,10 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                 boolean mayUseUkFallback = dataSourcePolicy.mayFallbackForCore(
                         PROVIDER, Dataset.FIXTURE, season, footballDataOwnsCore);
                 boolean preservePrimaryCore = !ukOwnsFixtureCore && !mayUseUkFallback;
+                if (!ukOwnsFixtureCore && !mayUseUkFallback && !footballDataOwnsCore) {
+                    unmatched++;
+                    continue;
+                }
                 if (!preservePrimaryCore || match.getMatchTime() == null) {
                     match.setMatchTime(kickoff);
                 }
@@ -616,7 +620,7 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         return "UK_CORE_" + league.getId() + "_" + startYear;
     }
 
-    private Team resolveTeam(String leagueCode, String providerName) {
+    private Team resolveTeam(String leagueCode, String providerName, Season season) {
         String legacyExternalId = normalize(leagueCode) + ":" + normalize(providerName);
         Optional<TeamExternalId> legacyMapping =
                 teamExternalIdRepository.findByProviderAndExternalId(PROVIDER, legacyExternalId);
@@ -638,14 +642,25 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     + canonicalName + " (matches=" + exact.size() + ")");
         }
 
-        Team team = exact.isEmpty()
-                ? teamRepository.save(Team.builder()
-                        .name(canonicalName)
-                        .shortName(canonicalName.length() > 80 ? canonicalName.substring(0, 80) : canonicalName)
-                        .slug(slug(canonicalName))
-                        .isActive(true)
-                        .build())
-                : exact.get(0);
+        Team team = exact.isEmpty() ? null : exact.get(0);
+        boolean footballDataOwnsTeam = team != null
+                && teamExternalIdRepository.findByTeamIdAndProvider(
+                        team.getId(), Provider.FOOTBALL_DATA).isPresent();
+        boolean ukOwnsTeam = dataSourcePolicy.isPrimary(PROVIDER, Dataset.TEAM, season);
+        boolean mayUseUkFallback = dataSourcePolicy.mayFallbackForCore(
+                PROVIDER, Dataset.TEAM, season, footballDataOwnsTeam);
+        if (team == null) {
+            if (!ukOwnsTeam && !mayUseUkFallback) {
+                throw new IllegalStateException("Football-Data UK is not allowed to create team "
+                        + canonicalName + " for season " + season.getYear());
+            }
+            team = teamRepository.save(Team.builder()
+                    .name(canonicalName)
+                    .shortName(canonicalName.length() > 80 ? canonicalName.substring(0, 80) : canonicalName)
+                    .slug(slug(canonicalName))
+                    .isActive(true)
+                    .build());
+        }
 
         Optional<TeamExternalId> existingForTeam =
                 teamExternalIdRepository.findByTeamIdAndProvider(team.getId(), PROVIDER);
