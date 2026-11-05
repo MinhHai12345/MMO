@@ -139,9 +139,11 @@ class FixturePersistenceOwnershipIntegrationTest {
         boolean saved = persistence.persistFixture(2024L, 10L, 11L,
                 Provider.FOOTBALL_DATA_UK, ukFixture);
 
-        assertFalse(saved);
-        assertEquals(1, canonical.getHomeScore());
-        assertEquals(0, canonical.getAwayScore());
-        verify(matchRepository, never()).save(any(Match.class));
+        assertTrue(saved, "secondary source identity may be attached to the canonical fixture");
+        assertEquals(1, canonical.getHomeScore(), "secondary source must not overwrite primary score");
+        assertEquals(0, canonical.getAwayScore(), "secondary source must not overwrite primary score");
+        verify(matchRepository).save(canonical);
+        verify(externalIdMappingService).registerMatch(canonical,
+                Provider.FOOTBALL_DATA_UK, "uk-fixture-1");
     }
 }
