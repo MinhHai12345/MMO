@@ -98,7 +98,7 @@ class CoreSyncOrchestratorTest {
 
         verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.TEAM,
                 39L, "2025/2026", CheckpointStatus.FAILED);
-        verify(fixtures).syncFixturesForProvider(Provider.FOOTBALL_DATA, null, null);
+        verify(fixtures).syncSeasonForProvider(Provider.FOOTBALL_DATA, 100L, null, null);
         verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.FIXTURE,
                 39L, "2025/2026", CheckpointStatus.COMPLETED);
         verify(uk).syncActiveSeasonsData();
