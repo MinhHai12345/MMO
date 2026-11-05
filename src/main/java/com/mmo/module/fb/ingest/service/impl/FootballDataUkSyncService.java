@@ -588,14 +588,21 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         LocalDate end = LocalDate.of(startYear + 1, 6, 30);
         boolean current = !today.isBefore(start) && !today.isAfter(end);
 
-        Season season = seasonRepository.findByLeague_Id(league.getId()).stream()
+        Optional<Season> existing = seasonRepository.findByLeague_Id(league.getId()).stream()
                 .filter(candidate -> seasonStartYear(candidate.getYear()) == startYear)
-                .findFirst()
-                .orElseGet(() -> Season.builder()
-                        .league(league).year(year).startDate(start).endDate(end).build());
+                .findFirst();
+        Season season;
+        if (existing.isPresent()) {
+            season = existing.get();
+        } else {
+            // Default a newly discovered current season to active. Once persisted, the
+            // active flag is operator-controlled and later syncs never change it.
+            season = Season.builder()
+                    .league(league).year(year).startDate(start).endDate(end).build();
+            season.setActive(current);
+        }
 
-        // isCurrent is derived from the calendar. isActive is an operator-controlled
-        // ingestion selector and must never be overwritten by provider synchronization.
+        // isCurrent is derived from the calendar. isActive is operator-controlled after creation.
         season.setCurrent(current);
         if (season.getStartDate() == null) season.setStartDate(start);
         if (season.getEndDate() == null) season.setEndDate(end);
