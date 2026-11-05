@@ -98,6 +98,11 @@ public class FootballDataUkCsvClient {
         }
 
         String csv = new String(response.body(), SOURCE_CHARSET).replace("\uFEFF", "");
+        if (!StringUtils.hasText(csv)) {
+            throw new FootballDataUkCsvException(
+                    FootballDataUkCsvException.Reason.NOT_AVAILABLE,
+                    "Football-Data.co.uk returned a blank CSV response: " + url);
+        }
         String header = csv.split("\\R", 2)[0].replace("\uFEFF", "").replace("\"", "").trim().toUpperCase(Locale.ROOT);
         if (!header.contains("DATE") || !(header.contains("HOMETEAM") || header.contains("HOME TEAM"))
                 || !(header.contains("AWAYTEAM") || header.contains("AWAY TEAM")) || !header.contains(",")) {
