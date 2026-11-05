@@ -4,15 +4,15 @@ import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.service.MatchEnrichmentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /**
- * Coordinates match enrichment from the canonical Football-Data UK CSV source.
- * Match fixtures and match-level statistics are sourced from Football-Data UK;
- * SofaScore player statistics are intentionally disabled until a later provider phase.
+ * Executes historical and active match enrichment only when the season-aware policy
+ * assigns one or more enrichment datasets to Football-Data UK.
  */
 @Slf4j
 @Service
@@ -24,6 +24,7 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
 
     private final IngestionDistributedLock distributedLock;
     private final ProviderCheckpointStore checkpointStore;
+    private final IngestionPlanFactory planFactory;
     private final FootballDataUkIngestionPort footballDataUkSyncService;
 
     @Override
@@ -36,7 +37,25 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
     }
 
     private void enrichFinishedMatchesLocked() {
-        log.info("Match enrichment started: matchDataProvider={}", Provider.FOOTBALL_DATA_UK);
+        IngestionPlan plan = planFactory.historicalPlan();
+        boolean ukEnrichmentRequired = plan.units().stream().anyMatch(unit ->
+                unit.provider() == Provider.FOOTBALL_DATA_UK
+                        && unit.role() == IngestionWorkUnit.Role.PRIMARY
+                        && (unit.dataset() == Dataset.MATCH_STATISTICS
+                        || unit.dataset() == Dataset.MATCH_XG
+                        || unit.dataset() == Dataset.HISTORICAL_ODDS));
+        if (!ukEnrichmentRequired) {
+            log.info("Match enrichment skipped: DataSourcePolicy has no historical Football-Data UK work units");
+            return;
+        }
+
+        log.info("Match enrichment plan: provider={}, workUnits={}",
+                Provider.FOOTBALL_DATA_UK, plan.units().stream()
+                        .filter(unit -> unit.provider() == Provider.FOOTBALL_DATA_UK
+                                && (unit.dataset() == Dataset.MATCH_STATISTICS
+                                || unit.dataset() == Dataset.MATCH_XG
+                                || unit.dataset() == Dataset.HISTORICAL_ODDS))
+                        .count());
 
         boolean coreReady = checkpointStore.isCompleted(
                 Provider.FOOTBALL_DATA_UK, CORE_INITIAL_CHECKPOINT);
@@ -46,15 +65,9 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
         }
 
         runStage("football-data-uk-match-enrichment", this::syncFootballDataUkEnrichment);
-
-        log.info("Match enrichment completed: matchDataProvider={}; SofaScore player statistics are disabled in Phase 1",
-                Provider.FOOTBALL_DATA_UK);
+        log.info("Match enrichment completed: provider={}", Provider.FOOTBALL_DATA_UK);
     }
 
-    /**
-     * Backfill all imported historical seasons once, then refresh only operator-selected active seasons.
-     * The checkpoint is marked only after the full historical enrichment succeeds.
-     */
     private void syncFootballDataUkEnrichment() {
         boolean initialEnrichmentComplete = checkpointStore.isCompleted(
                 Provider.FOOTBALL_DATA_UK, ENRICHMENT_INITIAL_CHECKPOINT);
@@ -64,15 +77,21 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
             }
             return;
         }
-
         footballDataUkSyncService.syncActiveSeasonsEnrichment();
     }
 
     private void runStage(String name, Runnable operation) {
         long started = System.nanoTime();
         log.info("Match enrichment stage STARTED: {}", name);
-        operation.run();
-        log.info("Match enrichment stage COMPLETED: {} durationMs={}",
-                name, (System.nanoTime() - started) / 1_000_000);
+        try {
+            operation.run();
+            log.info("Match enrichment stage COMPLETED: {} durationMs={}",
+                    name, (System.nanoTime() - started) / 1_000_000);
+        } catch (RuntimeException exception) {
+            log.error("Match enrichment stage FAILED: {} durationMs={} errorType={} message={}",
+                    name, (System.nanoTime() - started) / 1_000_000,
+                    exception.getClass().getSimpleName(), exception.getMessage(), exception);
+            throw exception;
+        }
     }
 }
