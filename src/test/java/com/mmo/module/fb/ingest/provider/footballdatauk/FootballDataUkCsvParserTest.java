@@ -11,7 +11,7 @@ class FootballDataUkCsvParserTest {
 
     @Test
     void parsesQuotedCommasAndEscapedQuotes() {
-        var rows = parser.parse("HomeTeam,AwayTeam,Referee,HS\n"
+        var rows = parser.parse("Date,HomeTeam,AwayTeam,Referee,HS\n"
                 + "\"A, FC\",B,\"Referee \"\"X\"\"\",12\n");
         assertEquals(1, rows.size());
         assertEquals("A, FC", rows.get(0).get("HOMETEAM"));
@@ -21,8 +21,27 @@ class FootballDataUkCsvParserTest {
 
     @Test
     void skipsBlankLinesAndNormalizesHeaders() {
-        var rows = parser.parse("\uFEFF hometeam , awayteam , HS \nA,B,9\n\n");
+        var rows = parser.parse("\uFEFF Date, hometeam , awayteam , HS \n01/08/24,A,B,9\n\n");
         assertEquals(1, rows.size());
         assertEquals("9", rows.get(0).get("HS"));
+    }
+
+    @Test
+    void rejectsHtmlOrInvalidHeaders() {
+        var exception = assertThrows(FootballDataUkCsvException.class,
+                () -> parser.parse("<html>Access denied</html>"));
+        assertEquals(FootballDataUkCsvException.Reason.INVALID_CSV, exception.getReason());
+    }
+
+    @Test
+    void rejectsUnterminatedQuotedField() {
+        var exception = assertThrows(FootballDataUkCsvException.class,
+                () -> parser.parse("Date,HomeTeam,AwayTeam\\n01/08/24,\\"A,B\\n"));
+        assertEquals(FootballDataUkCsvException.Reason.INVALID_CSV, exception.getReason());
+    }
+
+    @Test
+    void headerOnlyCsvIsAValidEmptySeason() {
+        assertTrue(parser.parse("Date,HomeTeam,AwayTeam\\n").isEmpty());
     }
 }
