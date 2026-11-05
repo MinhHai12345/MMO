@@ -41,6 +41,10 @@ public class LeaguePersistenceServiceImpl implements LeaguePersistenceService {
     @Override
     @Transactional
     public void persistLeagues(Provider selectedProvider, List<ProviderLeague> sources) {
+        if (selectedProvider != dataSourcePolicy.route(Dataset.LEAGUE, -1).primary()) {
+            log.debug("Skipping league catalogue persistence from non-owner provider {}", selectedProvider);
+            return;
+        }
         int synced = 0;
         for (ProviderLeague source : sources) {
             if (source == null || source.externalId() == null || source.externalId().isBlank()

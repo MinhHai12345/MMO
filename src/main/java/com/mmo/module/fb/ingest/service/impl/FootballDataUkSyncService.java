@@ -422,9 +422,6 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
                     continue;
                 }
 
-                boolean footballDataOwnsCore = match.getId() != null
-                        && matchExternalIdRepository.findByMatchIdAndProvider(
-                                match.getId(), MatchProvider.fromName(Provider.FOOTBALL_DATA.name())).isPresent();
                 BigDecimal homeXg = decimalMetric(value(row, "HXG"));
                 BigDecimal awayXg = decimalMetric(value(row, "AXG"));
                 if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_XG, season)) {
