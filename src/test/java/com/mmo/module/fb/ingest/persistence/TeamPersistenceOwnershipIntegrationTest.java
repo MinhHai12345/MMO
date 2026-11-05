@@ -29,6 +29,42 @@ class TeamPersistenceOwnershipIntegrationTest {
     @Mock private ExternalIdMappingService externalIdMappingService;
 
     @Test
+    void footballDataAdoptsExistingUkFallbackTeamInsteadOfCreatingDuplicate() {
+        League league = new League();
+        league.setId(39L);
+        league.setName("Premier League");
+        Season season = new Season();
+        season.setId(2024L);
+        season.setLeague(league);
+        season.setYear("2024/2025");
+
+        Team ukFallback = new Team();
+        ukFallback.setId(11L);
+        ukFallback.setName("Manchester United");
+        ukFallback.setShortName("Man United");
+        ukFallback.setLogoUrl("https://uk.example/logo.png");
+        TeamExternalId footballDataId = TeamExternalId.builder()
+                .team(ukFallback).provider(Provider.FOOTBALL_DATA).externalId("66").build();
+
+        when(teamExternalIdRepository.findAllByProvider(Provider.FOOTBALL_DATA)).thenReturn(List.of());
+        when(teamRepository.findAll()).thenReturn(List.of(ukFallback));
+        when(teamExternalIdRepository.findByTeamIdAndProvider(11L, Provider.FOOTBALL_DATA))
+                .thenReturn(Optional.empty(), Optional.of(footballDataId));
+        when(teamRepository.save(any(Team.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        TeamPersistenceServiceImpl persistence = new TeamPersistenceServiceImpl(
+                teamRepository, teamExternalIdRepository, externalIdMappingService, new DataSourcePolicy());
+        persistence.persistTeamsForSeason(Provider.FOOTBALL_DATA, season,
+                List.of(new ProviderTeam("66", "Manchester United", "Man Utd",
+                        "https://fd.example/logo.png", null, null, null)));
+
+        assertEquals("Manchester United", ukFallback.getName());
+        assertEquals("https://fd.example/logo.png", ukFallback.getLogoUrl());
+        verify(teamRepository, times(1)).save(ukFallback);
+        verify(externalIdMappingService).registerTeam(ukFallback, Provider.FOOTBALL_DATA, "66");
+    }
+
+    @Test
     void ukSecondaryMappingDoesNotOverwriteFootballDataOwnedTeamMetadata() {
         League league = new League();
         league.setId(39L);
