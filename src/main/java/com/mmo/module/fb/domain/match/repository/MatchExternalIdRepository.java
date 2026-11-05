@@ -43,4 +43,7 @@ public interface MatchExternalIdRepository extends JpaRepository<MatchExternalId
     boolean existsByProviderAndExternalId(MatchProvider provider, String externalId);
 
 
+    List<MatchExternalId> findAllByProviderAndExternalIdIn(MatchProvider provider, List<String> externalIds);
+
+    List<MatchExternalId> findAllByMatchIdInAndProvider(List<Long> matchIds, MatchProvider provider);
 }
