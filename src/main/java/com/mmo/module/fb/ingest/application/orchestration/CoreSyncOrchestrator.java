@@ -68,63 +68,58 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
 
         List<String> failedStages = new java.util.ArrayList<>();
         List<IngestionUnitResult> unitResults = new java.util.ArrayList<>();
-        // League/season catalogues are provider-specific identity namespaces. They are
-        // initialized before the season-scoped resources; season routing itself remains
-        // controlled by the plan rather than the global resource provider properties.
-        boolean footballDataCatalogueRequired = plan.units().stream().anyMatch(unit ->
-                unit.provider() == Provider.FOOTBALL_DATA
-                        && unit.role() == IngestionWorkUnit.Role.PRIMARY);
-        if (footballDataCatalogueRequired) {
-            Provider catalogueProvider = properties.getIngestion().getProviders().getLeague();
-            if (catalogueProvider != Provider.FOOTBALL_DATA) {
-                throw new IllegalStateException("Football-Data is the catalogue owner in DataSourcePolicy, got "
-                        + catalogueProvider);
-            }
+        // Initialize each season catalogue represented in the plan. Providers with a
+        // season-batch capability own their catalogue preparation; ordinary providers use
+        // the season ingestion port. No provider implementation is injected here.
+        List<Provider> catalogueProviders = plan.units(Dataset.SEASON, IngestionWorkUnit.Role.PRIMARY)
+                .stream().map(IngestionWorkUnit::provider).distinct().toList();
+        for (Provider catalogueProvider : catalogueProviders) {
             runStageCollecting("catalogue/leagues/" + catalogueProvider,
                     () -> leagueIngestionService.syncLeaguesForProvider(catalogueProvider), failedStages);
-            List<IngestionWorkUnit> footballDataSeasons = plan.units(
-                    Dataset.SEASON, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
-            if (footballDataSeasons.isEmpty()) {
-                runStageCollecting("catalogue/seasons/" + catalogueProvider,
-                        () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider), failedStages);
-            } else {
-                runPlannedStage("catalogue/seasons/" + catalogueProvider, Dataset.SEASON,
-                        footballDataSeasons,
-                        () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider), failedStages);
+            if (!seasonBatchProviderRegistry.supports(catalogueProvider, Dataset.SEASON)) {
+                List<IngestionWorkUnit> seasonUnits = plan.units(
+                        Dataset.SEASON, catalogueProvider, IngestionWorkUnit.Role.PRIMARY);
+                if (seasonUnits.isEmpty()) {
+                    runStageCollecting("catalogue/seasons/" + catalogueProvider,
+                            () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider), failedStages);
+                } else {
+                    runPlannedStage("catalogue/seasons/" + catalogueProvider, Dataset.SEASON,
+                            seasonUnits,
+                            () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider), failedStages);
+                }
             }
         }
 
-        plan.units(Dataset.TEAM, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY)
+        plan.units(Dataset.TEAM, IngestionWorkUnit.Role.PRIMARY).stream()
+                .filter(unit -> !seasonBatchProviderRegistry.supports(unit.provider(), Dataset.TEAM))
                 .forEach(unit -> runUnit(unit, () ->
                         teamIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()), failedStages, unitResults));
-        plan.units(Dataset.FIXTURE, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY)
+        plan.units(Dataset.FIXTURE, IngestionWorkUnit.Role.PRIMARY).stream()
+                .filter(unit -> !seasonBatchProviderRegistry.supports(unit.provider(), Dataset.FIXTURE))
                 .forEach(unit -> runUnit(unit, () ->
                         fixtureIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId(), null, null),
                         failedStages, unitResults));
-        plan.units(Dataset.STANDINGS, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY)
+        plan.units(Dataset.STANDINGS, IngestionWorkUnit.Role.PRIMARY).stream()
+                .filter(unit -> !seasonBatchProviderRegistry.supports(unit.provider(), Dataset.STANDINGS))
                 .forEach(unit -> runUnit(unit, () ->
                         standingsIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()),
                         failedStages, unitResults));
 
-        // UK is both primary for 2014-2022 and an explicitly permitted fixture fallback
-        // for overlap seasons. Its importer evaluates the same active-season policy and
-        // writes its own scoped Core checkpoints.
-        boolean ukCoreRequired = plan.units().stream().anyMatch(unit ->
-                unit.provider() == Provider.FOOTBALL_DATA_UK
-                        && (unit.dataset() == Dataset.TEAM || unit.dataset() == Dataset.FIXTURE));
-        if (ukCoreRequired) {
-            List<Long> ukActiveSeasonIds = plan.units().stream()
-                    .filter(unit -> unit.provider() == Provider.FOOTBALL_DATA_UK
+        for (SeasonBatchProvider provider : seasonBatchProviderRegistry.all()) {
+            Provider providerId = provider.getProvider();
+            List<Long> activeSeasonIds = plan.units().stream()
+                    .filter(unit -> unit.provider() == providerId
                             && (unit.dataset() == Dataset.TEAM || unit.dataset() == Dataset.FIXTURE))
                     .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
-            for (Long seasonId : ukActiveSeasonIds) {
+            for (Long seasonId : activeSeasonIds) {
                 try {
-                    runStage("football-data-uk/active/season=" + seasonId,
-                            () -> seasonBatchProviderRegistry.require(Provider.FOOTBALL_DATA_UK).syncCoreSeason(seasonId, false));
+                    runStage(providerId + "/active-core/season=" + seasonId,
+                            () -> provider.syncCoreSeason(seasonId, false));
                 } catch (RuntimeException exception) {
-                    failedStages.add("football-data-uk/active/season=" + seasonId
+                    failedStages.add(providerId + "/active-core/season=" + seasonId
                             + ": " + exception.getMessage());
-                    log.warn("Football-Data UK active season failed; continuing: {}", seasonId, exception);
+                    log.warn("Season-batch provider {} failed active season {}; continuing",
+                            providerId, seasonId, exception);
                 }
             }
         }
