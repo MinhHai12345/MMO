@@ -94,28 +94,17 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
             }
         }
 
-        List<IngestionWorkUnit> footballDataTeams = plan.units(
-                Dataset.TEAM, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
-        if (!footballDataTeams.isEmpty()) {
-            runPlannedStage("teams/FOOTBALL_DATA", Dataset.TEAM, footballDataTeams,
-                    () -> teamIngestionService.syncTeamsForProvider(Provider.FOOTBALL_DATA), failedStages);
-        }
-
-        List<IngestionWorkUnit> footballDataFixtures = plan.units(
-                Dataset.FIXTURE, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
-        if (!footballDataFixtures.isEmpty()) {
-            runPlannedStage("fixtures/FOOTBALL_DATA", Dataset.FIXTURE, footballDataFixtures,
-                    () -> fixtureIngestionService.syncFixturesForProvider(Provider.FOOTBALL_DATA, null, null),
-                    failedStages);
-        }
-
-        List<IngestionWorkUnit> footballDataStandings = plan.units(
-                Dataset.STANDINGS, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
-        if (!footballDataStandings.isEmpty()) {
-            runPlannedStage("standings/FOOTBALL_DATA", Dataset.STANDINGS, footballDataStandings,
-                    () -> standingsIngestionService.syncStandingsForProvider(Provider.FOOTBALL_DATA),
-                    failedStages);
-        }
+        plan.units(Dataset.TEAM, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY)
+                .forEach(unit -> runUnit(unit, () ->
+                        teamIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()), failedStages));
+        plan.units(Dataset.FIXTURE, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY)
+                .forEach(unit -> runUnit(unit, () ->
+                        fixtureIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId(), null, null),
+                        failedStages));
+        plan.units(Dataset.STANDINGS, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY)
+                .forEach(unit -> runUnit(unit, () ->
+                        standingsIngestionService.syncSeasonForProvider(unit.provider(), unit.seasonId()),
+                        failedStages));
 
         // UK is both primary for 2014-2022 and an explicitly permitted fixture fallback
         // for overlap seasons. Its importer evaluates the same active-season policy and
@@ -144,24 +133,28 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
         log.info("Active-season ingestion completed");
     }
 
-    private void runPlannedStage(String name, Dataset dataset,
-                                 List<IngestionWorkUnit> units, Runnable operation,
-                                 List<String> failedStages) {
-        units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
-                unit.leagueId(), unit.season(), CheckpointStatus.RUNNING));
+    private void runUnit(IngestionWorkUnit unit, Runnable operation, List<String> failedStages) {
+        String name = unit.provider() + "/" + unit.dataset() + "/league=" + unit.leagueId()
+                + "/season=" + unit.season();
+        if (checkpointStore.isSatisfied(unit.provider(), unit.dataset(), unit.leagueId(), unit.season())) {
+            log.debug("Skipping satisfied ingestion work unit {}", name);
+            return;
+        }
+        checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
+                unit.season(), CheckpointStatus.RUNNING);
         try {
             runStage(name, operation);
-            units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
-                    unit.leagueId(), unit.season(), CheckpointStatus.COMPLETED));
+            checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
+                    unit.season(), CheckpointStatus.COMPLETED);
         } catch (IngestionPartialException exception) {
-            units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
-                    unit.leagueId(), unit.season(), CheckpointStatus.PARTIAL));
+            checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
+                    unit.season(), CheckpointStatus.PARTIAL);
             failedStages.add(name + ": " + exception.getMessage());
-            log.warn("Ingestion stage completed partially: {} reason={}", name, exception.getMessage());
         } catch (RuntimeException exception) {
-            units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
-                    unit.leagueId(), unit.season(), CheckpointStatus.FAILED));
+            checkpointStore.markStatus(unit.provider(), unit.dataset(), unit.leagueId(),
+                    unit.season(), CheckpointStatus.FAILED);
             failedStages.add(name + ": " + exception.getMessage());
+            log.warn("Independent ingestion work unit failed; continuing: {}", name, exception);
         }
     }
 
