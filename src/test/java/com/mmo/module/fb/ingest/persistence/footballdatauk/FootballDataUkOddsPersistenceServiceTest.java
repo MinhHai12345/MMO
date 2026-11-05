@@ -2,6 +2,9 @@ package com.mmo.module.fb.ingest.persistence.footballdatauk;
 
 import com.mmo.module.fb.match.entity.Bookmaker;
 import com.mmo.module.fb.match.entity.Match;
+import com.mmo.module.fb.league.entity.League;
+import com.mmo.module.fb.league.entity.Season;
+import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.match.entity.MatchOdds;
 import com.mmo.module.fb.match.repository.BookmakerRepository;
 import com.mmo.module.fb.match.repository.MatchOddsRepository;
@@ -30,8 +33,9 @@ class FootballDataUkOddsPersistenceServiceTest {
 
         Match match = new Match();
         match.setId(99L);
+        match.setSeason(supportedSeason());
         FootballDataUkOddsPersistenceService mapper = new FootballDataUkOddsPersistenceService(
-                bookmakers, oddsRepository, mock(MatchOddsQuotePersistenceService.class));
+                bookmakers, oddsRepository, mock(MatchOddsQuotePersistenceService.class), new DataSourcePolicy());
         Map<String, String> row = Map.ofEntries(
                 Map.entry("B365H", "2.10"), Map.entry("B365D", "3.30"), Map.entry("B365A", "3.60"),
                 Map.entry("B365CH", "2.00"), Map.entry("B365CD", "3.40"), Map.entry("B365CA", "3.80"),
@@ -83,13 +87,25 @@ class FootballDataUkOddsPersistenceServiceTest {
 
         Match match = new Match();
         match.setId(101L);
+        match.setSeason(supportedSeason());
         FootballDataUkOddsPersistenceService mapper = new FootballDataUkOddsPersistenceService(
-                bookmakers, oddsRepository, mock(MatchOddsQuotePersistenceService.class));
+                bookmakers, oddsRepository, mock(MatchOddsQuotePersistenceService.class), new DataSourcePolicy());
 
         mapper.persist(match, Map.of("B365H", "2.1"));
 
         assertEquals("Bet365", legacy.getName());
         verify(oddsRepository).findByMatchIdAndBookmakerIdAndMarketName(101L, 7L, "1X2_OPEN");
+    }
+
+    private Season supportedSeason() {
+        League league = new League();
+        league.setId(39L);
+        league.setName("Premier League");
+        Season season = new Season();
+        season.setId(2024L);
+        season.setLeague(league);
+        season.setYear("2024/2025");
+        return season;
     }
 
 }
