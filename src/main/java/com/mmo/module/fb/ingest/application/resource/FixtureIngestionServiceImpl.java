@@ -15,10 +15,10 @@ import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataRestric
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
-import com.mmo.module.fb.ingest.service.FixtureIngestionService;
-import com.mmo.module.fb.ingest.service.FixturePersistenceService;
+import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
+import com.mmo.module.fb.ingest.application.port.out.FixturePersistenceService;
 import com.mmo.module.fb.ingest.service.ResolvedProviderFixture;
-import com.mmo.module.fb.ingest.service.TeamIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
