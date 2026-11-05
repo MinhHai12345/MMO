@@ -685,6 +685,12 @@ public class FootballDataUkSyncService implements FootballDataUkIngestionPort {
         Season season;
         if (existing.isPresent()) {
             season = existing.get();
+            boolean footballDataOwnsSeason = seasonExternalIdRepository
+                    .findBySeasonIdAndProvider(season.getId(), Provider.FOOTBALL_DATA).isPresent();
+            boolean mayUpdate = dataSourcePolicy.isPrimary(PROVIDER, Dataset.SEASON, season)
+                    || dataSourcePolicy.mayFallbackForCore(
+                            PROVIDER, Dataset.SEASON, season, footballDataOwnsSeason);
+            if (!mayUpdate) return season;
         } else {
             // UK may create a season only when it owns the season dataset or is the
             // explicitly permitted fallback because the primary provider has no identity.
