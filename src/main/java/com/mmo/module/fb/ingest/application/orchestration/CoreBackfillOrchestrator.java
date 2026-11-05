@@ -97,7 +97,7 @@ public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
                         + "footballDataFixtures={}, footballDataUkRequired={}",
                 plan.units().size(), footballDataTeams.size(), footballDataFixtures.size(), ukCoreRequired);
 
-        if (plan.units().isEmpty()) {
+        if (plan.units().isEmpty() && !ukCoreRequired) {
             log.info("Historical Core plan contains no supported season work; nothing to backfill");
             return;
         }
