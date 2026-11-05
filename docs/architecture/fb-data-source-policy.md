@@ -63,6 +63,8 @@ duplicate canonical teams.
 - `FootballDataUkSyncService` uses the policy for team creation, fixture fallback, fixture Core
   updates, xG, match statistics and historical odds. Its incremental Core and enrichment jobs
   refresh only operator-selected active seasons, not every historical CSV season.
+- A newly discovered current season defaults to active; subsequent provider syncs never change
+  the operator-controlled active flag.
 
 The persistence checks are intentional: routing alone is not sufficient protection against
 manual provider overrides or future callers that bypass the normal orchestration.
