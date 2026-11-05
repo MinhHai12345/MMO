@@ -76,8 +76,16 @@ public class CoreSyncOrchestrator implements FootballDataSyncService {
             }
             runStage("catalogue/leagues/" + catalogueProvider,
                     () -> leagueIngestionService.syncLeaguesForProvider(catalogueProvider));
-            runStage("catalogue/seasons/" + catalogueProvider,
-                    () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider));
+            List<IngestionWorkUnit> footballDataSeasons = plan.units(
+                    Dataset.SEASON, Provider.FOOTBALL_DATA, IngestionWorkUnit.Role.PRIMARY);
+            if (footballDataSeasons.isEmpty()) {
+                runStage("catalogue/seasons/" + catalogueProvider,
+                        () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider));
+            } else {
+                runPlannedStage("catalogue/seasons/" + catalogueProvider, Dataset.SEASON,
+                        footballDataSeasons,
+                        () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider));
+            }
         }
 
         List<IngestionWorkUnit> footballDataTeams = plan.units(
