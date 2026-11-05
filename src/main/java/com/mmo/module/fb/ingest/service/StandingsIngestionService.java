@@ -1,9 +1,9 @@
 package com.mmo.module.fb.ingest.service;
 
-import com.mmo.module.fb.ingest.enums.Provider;
-
-public interface StandingsIngestionService {
-    void syncStandings();
-    void syncStandingsForProvider(Provider selectedProvider);
-    void syncSeasonForProvider(Provider selectedProvider, Long seasonId);
+/**
+ * @deprecated Use {@code application.port.in.StandingsIngestionService}.
+ */
+@Deprecated(forRemoval = false)
+public interface StandingsIngestionService
+        extends com.mmo.module.fb.ingest.application.port.in.StandingsIngestionService {
 }
