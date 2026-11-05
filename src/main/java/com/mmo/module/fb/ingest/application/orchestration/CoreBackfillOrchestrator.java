@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.application.bootstrap;
+package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
@@ -35,7 +35,7 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class FootballDataBootstrapUseCase implements FootballDataBootstrapService {
+public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
 
     private static final String INITIAL_CORE_CHECKPOINT = "CORE_INITIAL_BACKFILL";
     private static final String TEAM_BACKFILL_CHECKPOINT = "CORE_BACKFILL_TEAMS";

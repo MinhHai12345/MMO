@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.application.sync;
+package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
@@ -26,7 +26,7 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class FootballDataSyncUseCase implements FootballDataSyncService {
+public class CoreSyncOrchestrator implements FootballDataSyncService {
 
     private final IngestionDistributedLock distributedLock;
     private final AppProperties properties;

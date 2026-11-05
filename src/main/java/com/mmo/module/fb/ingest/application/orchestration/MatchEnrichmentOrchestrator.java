@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.application.enrichment;
+package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkIngestionPort;
@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class MatchEnrichmentUseCase implements MatchEnrichmentService {
+public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
 
     private static final String CORE_INITIAL_CHECKPOINT = "CORE_INITIAL_BACKFILL";
     private static final String ENRICHMENT_INITIAL_CHECKPOINT = "MATCH_ENRICHMENT_INITIAL";
