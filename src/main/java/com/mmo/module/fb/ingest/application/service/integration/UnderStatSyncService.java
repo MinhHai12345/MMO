@@ -8,8 +8,8 @@ import com.mmo.module.fb.ingest.provider.model.ProviderTeamMatchStats;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.application.port.out.MatchXgPersistencePort;
 import com.mmo.module.fb.ingest.application.port.out.SourceAwareMergePort;
-import com.mmo.module.fb.ingest.provider.spi.HistoricalStatsProvider;
-import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
+import com.mmo.module.fb.ingest.application.port.out.provider.HistoricalStatsIngestionProviderPort;
+import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.out.ExternalIdMappingPort;
 import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
 import com.mmo.module.fb.domain.league.entity.Season;
@@ -57,7 +57,7 @@ public class UnderStatSyncService implements HistoricalStatisticsIngestionPort {
     private static final Pattern SEASON_START_YEAR = Pattern.compile("(\\d{4})");
 
     private final AppProperties appProperties;
-    private final ProviderRegistry providerRegistry;
+    private final ProviderIngestionRegistry providerRegistry;
     private final SeasonRepository seasonRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;
@@ -87,7 +87,7 @@ public class UnderStatSyncService implements HistoricalStatisticsIngestionPort {
             return;
         }
 
-        HistoricalStatsProvider provider = providerRegistry.historicalStats(selected);
+        HistoricalStatsIngestionProviderPort provider = providerRegistry.historicalStats(selected);
         int successful = 0;
         int skipped = 0;
         int failed = 0;
@@ -111,7 +111,7 @@ public class UnderStatSyncService implements HistoricalStatisticsIngestionPort {
         }
     }
 
-    private boolean syncSeason(HistoricalStatsProvider provider, Season season) {
+    private boolean syncSeason(HistoricalStatsIngestionProviderPort provider, Season season) {
         if (season.getLeague() == null || season.getLeague().getId() == null) return false;
         LeagueExternalId mapping = leagueExternalIdRepository
                 .findByLeagueIdAndProvider(season.getLeague().getId(), PROVIDER)

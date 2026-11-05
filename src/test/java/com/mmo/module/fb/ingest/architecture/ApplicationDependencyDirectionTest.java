@@ -18,7 +18,7 @@ class ApplicationDependencyDirectionTest {
             Path.of("src/main/java/com/mmo/module/fb/ingest/application");
 
     private static final Pattern FORBIDDEN_IMPORT = Pattern.compile(
-            "^\\s*import\\s+com\\.mmo\\.module\\.fb\\.ingest\\.(?:adapter\\.|repository\\.|entity\\.|service\\.)"
+            "^\\s*import\\s+com\\.mmo\\.module\\.fb\\.ingest\\.(?:adapter\\.|repository\\.|entity\\.|service\\.|provider\\.spi\\.)"
                     + "|^\\s*import\\s+com\\.mmo\\.module\\.fb\\.ingest\\.provider\\."
                     + "(?:apifootball|footballdata|footballdatauk|sofascore|understats)\\."
                     + "(?:client|dto|mapper)(?:\\.|;)");

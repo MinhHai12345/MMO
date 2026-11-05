@@ -1,13 +1,11 @@
 package com.mmo.module.fb.ingest.provider.spi;
 
-import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
-import com.mmo.module.fb.ingest.provider.model.SeasonQuery;
+import com.mmo.module.fb.ingest.application.port.out.provider.SeasonIngestionPort;
 
-import java.util.List;
-
-/** Source-neutral contract for discovering seasons independently from league metadata. */
-public interface SeasonProvider {
-    Provider getProvider();
-    List<ProviderSeason> fetchSeasons(SeasonQuery query);
+/**
+ * @deprecated Implement the application-owned SeasonIngestionPort contract directly.
+ * This bridge is retained temporarily to keep existing provider adapters source-compatible.
+ */
+@Deprecated(forRemoval = false)
+public interface SeasonProvider extends SeasonIngestionPort {
 }

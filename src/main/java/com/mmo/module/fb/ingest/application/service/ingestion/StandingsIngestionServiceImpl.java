@@ -12,8 +12,8 @@ import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.team.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
 import com.mmo.module.fb.ingest.provider.model.StandingsQuery;
-import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
-import com.mmo.module.fb.ingest.provider.spi.StandingsProvider;
+import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
+import com.mmo.module.fb.ingest.application.port.out.provider.StandingsIngestionPort;
 import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionService;
 import com.mmo.module.fb.ingest.application.port.out.StandingsPersistenceService;
 import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
@@ -30,7 +30,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class StandingsIngestionServiceImpl implements StandingsIngestionService {
 
-    private final ProviderRegistry providerRegistry;
+    private final ProviderIngestionRegistry providerRegistry;
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
     private final TeamIngestionService teamIngestionService;
@@ -70,7 +70,7 @@ public class StandingsIngestionServiceImpl implements StandingsIngestionService 
                 teamIngestionService.syncTeamsForProvider(selectedProvider);
             }
         }
-        StandingsProvider provider = providerRegistry.standings(selectedProvider);
+        StandingsIngestionPort provider = providerRegistry.standings(selectedProvider);
 
         Map<Long, String> leagueExternalIdsByLeagueId = new HashMap<>();
         leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->

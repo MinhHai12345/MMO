@@ -8,8 +8,8 @@ import com.mmo.module.fb.ingest.application.port.out.MatchXgPersistencePort;
 import com.mmo.module.fb.ingest.application.port.out.SourceAwareMergePort;
 import com.mmo.module.fb.ingest.application.port.out.MatchStatisticsIngestionPort;
 import com.mmo.module.fb.ingest.provider.model.ProviderMatchAdvancedStatistics;
-import com.mmo.module.fb.ingest.provider.spi.MatchStatisticsProvider;
-import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
+import com.mmo.module.fb.ingest.application.port.out.provider.MatchStatisticsIngestionProviderPort;
+import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.domain.match.entity.Match;
 import com.mmo.module.fb.domain.match.entity.MatchAdvancedStats;
 import com.mmo.module.fb.domain.match.entity.MatchExternalId;
@@ -50,7 +50,7 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
     private static final int BATCH_SIZE = 30;
     private static final int RETRY_HOURS = 24;
 
-    private final ProviderRegistry providerRegistry;
+    private final ProviderIngestionRegistry providerRegistry;
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final MatchAdvancedStatsRepository matchAdvancedStatsRepository;
@@ -72,7 +72,7 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
             return;
         }
 
-        MatchStatisticsProvider provider = providerRegistry.matchStatistics(Provider.SOFA_SCORE);
+        MatchStatisticsIngestionProviderPort provider = providerRegistry.matchStatistics(Provider.SOFA_SCORE);
         int persisted = 0;
         int skipped = 0;
         int failed = 0;

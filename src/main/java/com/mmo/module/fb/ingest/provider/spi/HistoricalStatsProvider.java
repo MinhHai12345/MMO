@@ -1,26 +1,11 @@
 package com.mmo.module.fb.ingest.provider.spi;
 
-import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.ProviderLeagueMonthlyStats;
-import com.mmo.module.fb.ingest.provider.model.ProviderMatchStatistics;
-import com.mmo.module.fb.ingest.provider.model.ProviderTeamMatchStats;
-
-import java.time.YearMonth;
-import java.util.List;
-import java.util.Optional;
+import com.mmo.module.fb.ingest.application.port.out.provider.HistoricalStatsIngestionProviderPort;
 
 /**
- * Provider contract for historical, team-level advanced statistics used by pre-match analytics.
- * The returned values are source-neutral and do not contain persistence entities.
+ * @deprecated Implement the application-owned HistoricalStatsIngestionProviderPort contract directly.
+ * This bridge is retained temporarily to keep existing provider adapters source-compatible.
  */
-public interface HistoricalStatsProvider {
-
-    Provider getProvider();
-
-    List<ProviderMatchStatistics> fetchLeagueMatches(String leagueSlug, int season);
-
-    List<ProviderTeamMatchStats> fetchTeamHistory(String leagueSlug, String teamSlug, int season);
-
-    Optional<ProviderLeagueMonthlyStats> fetchLeagueMonthlyStats(
-            String leagueSlug, int season, YearMonth month);
+@Deprecated(forRemoval = false)
+public interface HistoricalStatsProvider extends HistoricalStatsIngestionProviderPort {
 }

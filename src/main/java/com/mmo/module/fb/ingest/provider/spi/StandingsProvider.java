@@ -1,12 +1,11 @@
 package com.mmo.module.fb.ingest.provider.spi;
 
-import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
-import com.mmo.module.fb.ingest.provider.model.StandingsQuery;
+import com.mmo.module.fb.ingest.application.port.out.provider.StandingsIngestionPort;
 
-import java.util.List;
-
-public interface StandingsProvider {
-    Provider getProvider();
-    List<ProviderStanding> fetchStandings(StandingsQuery query);
+/**
+ * @deprecated Implement the application-owned StandingsIngestionPort contract directly.
+ * This bridge is retained temporarily to keep existing provider adapters source-compatible.
+ */
+@Deprecated(forRemoval = false)
+public interface StandingsProvider extends StandingsIngestionPort {
 }

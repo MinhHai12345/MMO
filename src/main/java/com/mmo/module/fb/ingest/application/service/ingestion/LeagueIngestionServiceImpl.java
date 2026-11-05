@@ -6,7 +6,7 @@ import com.mmo.module.fb.ingest.application.service.support.IngestionServiceSupp
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
-import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
+import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
 import com.mmo.module.fb.ingest.application.port.out.LeaguePersistenceService;
 import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
@@ -20,7 +20,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class LeagueIngestionServiceImpl implements LeagueIngestionService {
-    private final ProviderRegistry providerRegistry;
+    private final ProviderIngestionRegistry providerRegistry;
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
     private final LeaguePersistenceService leaguePersistenceService;

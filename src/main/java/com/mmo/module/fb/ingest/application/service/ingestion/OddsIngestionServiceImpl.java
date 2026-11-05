@@ -15,7 +15,7 @@ import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import com.mmo.module.fb.domain.match.service.MatchEnrichmentStateService;
 import com.mmo.module.fb.ingest.provider.model.OddsQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
-import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
+import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.in.OddsIngestionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +38,7 @@ public class OddsIngestionServiceImpl implements OddsIngestionService {
 
     private static final int MAX_FIXTURES_PER_RUN = 10;
 
-    private final ProviderRegistry providerRegistry;
+    private final ProviderIngestionRegistry providerRegistry;
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
     private final FixtureIngestionService fixtureIngestionService;

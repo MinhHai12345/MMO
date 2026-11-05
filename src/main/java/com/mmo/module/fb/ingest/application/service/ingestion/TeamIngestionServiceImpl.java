@@ -11,7 +11,7 @@ import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.provider.model.TeamQuery;
-import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
+import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
 import com.mmo.module.fb.ingest.application.port.out.TeamPersistenceService;
@@ -27,7 +27,7 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class TeamIngestionServiceImpl implements TeamIngestionService {
-    private final ProviderRegistry providerRegistry;
+    private final ProviderIngestionRegistry providerRegistry;
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
     private final LeagueIngestionService leagueIngestionService;

@@ -1,12 +1,11 @@
 package com.mmo.module.fb.ingest.provider.spi;
 
-import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.OddsQuery;
-import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
+import com.mmo.module.fb.ingest.application.port.out.provider.OddsIngestionPort;
 
-import java.util.List;
-
-public interface OddsProvider {
-    Provider getProvider();
-    List<ProviderOdds> fetchOdds(OddsQuery query);
+/**
+ * @deprecated Implement the application-owned OddsIngestionPort contract directly.
+ * This bridge is retained temporarily to keep existing provider adapters source-compatible.
+ */
+@Deprecated(forRemoval = false)
+public interface OddsProvider extends OddsIngestionPort {
 }

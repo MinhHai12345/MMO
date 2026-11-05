@@ -1,12 +1,11 @@
 package com.mmo.module.fb.ingest.provider.spi;
 
-import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
-import com.mmo.module.fb.ingest.provider.model.TeamQuery;
+import com.mmo.module.fb.ingest.application.port.out.provider.TeamIngestionPort;
 
-import java.util.List;
-
-public interface TeamProvider {
-    Provider getProvider();
-    List<ProviderTeam> fetchTeams(TeamQuery query);
+/**
+ * @deprecated Implement the application-owned TeamIngestionPort contract directly.
+ * This bridge is retained temporarily to keep existing provider adapters source-compatible.
+ */
+@Deprecated(forRemoval = false)
+public interface TeamProvider extends TeamIngestionPort {
 }

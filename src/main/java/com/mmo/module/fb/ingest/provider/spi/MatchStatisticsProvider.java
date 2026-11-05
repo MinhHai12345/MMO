@@ -1,12 +1,11 @@
 package com.mmo.module.fb.ingest.provider.spi;
 
-import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.ProviderMatchAdvancedStatistics;
+import com.mmo.module.fb.ingest.application.port.out.provider.MatchStatisticsIngestionProviderPort;
 
-import java.util.Optional;
-
-/** Fetches source-neutral advanced statistics for one provider match ID. */
-public interface MatchStatisticsProvider {
-    Provider getProvider();
-    Optional<ProviderMatchAdvancedStatistics> fetchMatchStatistics(String externalMatchId);
+/**
+ * @deprecated Implement the application-owned MatchStatisticsIngestionProviderPort contract directly.
+ * This bridge is retained temporarily to keep existing provider adapters source-compatible.
+ */
+@Deprecated(forRemoval = false)
+public interface MatchStatisticsProvider extends MatchStatisticsIngestionProviderPort {
 }

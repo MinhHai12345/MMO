@@ -1,13 +1,11 @@
 package com.mmo.module.fb.ingest.provider.spi;
 
-import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
-import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
+import com.mmo.module.fb.ingest.application.port.out.provider.FixtureIngestionPort;
 
-import java.util.List;
-
-/** Source-neutral contract for retrieving fixtures. */
-public interface FixtureProvider {
-    Provider getProvider();
-    List<ProviderFixture> fetchFixtures(FixtureQuery query);
+/**
+ * @deprecated Implement the application-owned FixtureIngestionPort contract directly.
+ * This bridge is retained temporarily to keep existing provider adapters source-compatible.
+ */
+@Deprecated(forRemoval = false)
+public interface FixtureProvider extends FixtureIngestionPort {
 }

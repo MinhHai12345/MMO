@@ -1,12 +1,11 @@
 package com.mmo.module.fb.ingest.provider.spi;
 
-import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.ProviderLineups;
+import com.mmo.module.fb.ingest.application.port.out.provider.PlayerLineupsIngestionPort;
 
-import java.util.Optional;
-
-/** Retrieves provider-neutral lineups and player match metrics for one fixture. */
-public interface PlayerLineupsProvider {
-    Provider getProvider();
-    Optional<ProviderLineups> fetchLineups(String externalMatchId);
+/**
+ * @deprecated Implement the application-owned PlayerLineupsIngestionPort contract directly.
+ * This bridge is retained temporarily to keep existing provider adapters source-compatible.
+ */
+@Deprecated(forRemoval = false)
+public interface PlayerLineupsProvider extends PlayerLineupsIngestionPort {
 }
