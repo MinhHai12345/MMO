@@ -1,9 +1,12 @@
 package com.mmo.module.fb.ingest.application.service.integration;
 
 import com.mmo.module.fb.ingest.application.port.out.PlayerStatisticsIngestionPort;
-import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreLineupsClient;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreLineupsResponseDTO;
-import com.mmo.module.fb.ingest.adapter.out.persistence.provider.sofascore.SofaScorePlayerStatsPersistenceService;
+import com.mmo.module.fb.ingest.provider.spi.PlayerLineupsProvider;
+import com.mmo.module.fb.ingest.provider.model.ProviderLineups;
+import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.provider.spi.ProviderRegistry;
+
+import com.mmo.module.fb.ingest.application.port.out.PlayerMatchStatisticsPersistencePort;
 import com.mmo.module.fb.domain.match.entity.Match;
 import com.mmo.module.fb.domain.match.entity.MatchExternalId;
 import com.mmo.module.fb.domain.match.enums.MatchStatus;
@@ -30,8 +33,8 @@ public class SofaScorePlayerStatisticsIngestionService implements PlayerStatisti
 
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
-    private final SofaScoreLineupsClient lineupsClient;
-    private final SofaScorePlayerStatsPersistenceService persistenceService;
+    private final ProviderRegistry providerRegistry;
+    private final PlayerMatchStatisticsPersistencePort persistenceService;
     private final MatchEnrichmentStateService enrichmentStateService;
 
     public void syncFinishedMatchPlayerStatistics() {
@@ -54,14 +57,14 @@ public class SofaScorePlayerStatisticsIngestionService implements PlayerStatisti
                 continue;
             }
             try {
-                SofaScoreLineupsResponseDTO response =
-                        lineupsClient.fetchLineups(Long.valueOf(externalId.getExternalId()));
-                if (response == null || (empty(response.home()) && empty(response.away()))) {
+                PlayerLineupsProvider provider = providerRegistry.playerLineups(Provider.SOFA_SCORE);
+                java.util.Optional<ProviderLineups> response = provider.fetchLineups(externalId.getExternalId());
+                if (response.isEmpty() || response.get().isEmpty()) {
                     enrichmentStateService.empty(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.PLAYER_STATISTICS);
                     skipped++;
                     continue;
                 }
-                int rows = persistenceService.persist(match.getId(), response);
+                int rows = persistenceService.persist(match.getId(), response.get());
                 if (rows > 0) {
                     enrichmentStateService.succeed(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.PLAYER_STATISTICS);
                     persisted++;
@@ -79,7 +82,4 @@ public class SofaScorePlayerStatisticsIngestionService implements PlayerStatisti
                 candidates.size(), persisted, skipped);
     }
 
-    private boolean empty(SofaScoreLineupsResponseDTO.LineupTeamDTO team) {
-        return team == null || team.players() == null || team.players().isEmpty();
-    }
 }
