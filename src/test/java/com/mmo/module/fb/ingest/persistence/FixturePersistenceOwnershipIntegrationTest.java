@@ -120,7 +120,7 @@ class FixturePersistenceOwnershipIntegrationTest {
         assertEquals(902L, ukFallback.getId());
         verify(matchRepository).save(ukFallback);
         verify(matchExternalIdRepository).saveAll(argThat(mappings ->
-                mappings.size() == 1
+                count(mappings) == 1
                         && "fd-fixture-1".equals(mappings.iterator().next().getExternalId())));
     }
 
@@ -146,7 +146,7 @@ class FixturePersistenceOwnershipIntegrationTest {
         assertEquals(1, canonical.getHomeScore());
         assertEquals(0, canonical.getAwayScore());
         verify(matchRepository, never()).save(any(Match.class));
-        verify(matchExternalIdRepository).saveAll(argThat(mappings -> mappings.size() == 1));
+        verify(matchExternalIdRepository).saveAll(argThat(mappings -> count(mappings) == 1));
     }
 
     @Test
@@ -177,7 +177,7 @@ class FixturePersistenceOwnershipIntegrationTest {
                 new ResolvedProviderFixture(10L, 11L, fixture)));
 
         assertEquals(1, saved);
-        verify(matchExternalIdRepository).saveAll(argThat(mappings -> mappings.size() == 1));
+        verify(matchExternalIdRepository).saveAll(argThat(mappings -> count(mappings) == 1));
     }
 
     private static long count(Iterable<?> values) {
