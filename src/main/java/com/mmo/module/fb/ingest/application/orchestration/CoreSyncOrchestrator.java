@@ -1,27 +1,24 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
-import com.mmo.module.fb.ingest.application.registry.SeasonBatchIngestionRegistry;
-
-import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
-
-import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
-import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
-import com.mmo.module.fb.ingest.enums.CheckpointStatus;
-import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.policy.Dataset;
+import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
+import com.mmo.module.fb.ingest.application.model.ProviderOverrides;
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.FootballDataSyncService;
 import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
-import com.mmo.module.fb.ingest.application.model.ProviderOverrides;
-import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.SeasonIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointStore;
+import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
+import com.mmo.module.fb.ingest.application.registry.SeasonBatchIngestionRegistry;
+import com.mmo.module.fb.ingest.enums.CheckpointStatus;
+import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.Dataset;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 /**
  * Executes the active-season plan. Provider ownership is decided per dataset/season
