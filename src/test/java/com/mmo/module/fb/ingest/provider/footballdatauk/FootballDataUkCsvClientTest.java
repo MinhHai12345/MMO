@@ -26,6 +26,18 @@ class FootballDataUkCsvClientTest {
     }
 
     @Test
+    void classifiesWhitespaceOnlyCsvAsNotAvailable() {
+        WebClient.Builder builder = WebClient.builder().exchangeFunction(request ->
+                Mono.just(ClientResponse.create(HttpStatus.OK).body("  \n  ").build()));
+        FootballDataUkCsvClient client = new FootballDataUkCsvClient(builder);
+
+        FootballDataUkCsvException exception = assertThrows(FootballDataUkCsvException.class,
+                () -> client.getCsv("https://football-data.co.uk/mmz4281/1415/E0.csv"));
+
+        assertEquals(FootballDataUkCsvException.Reason.NOT_AVAILABLE, exception.getReason());
+    }
+
+    @Test
     void retriesRateLimitThenReturnsValidCsv() {
         AtomicInteger requests = new AtomicInteger();
         String csv = "Date,HomeTeam,AwayTeam,HS\n01/08/14,Arsenal,Chelsea,2\n";
