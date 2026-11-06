@@ -239,8 +239,10 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
         }
         for (Provider provider : ordered) {
             if (seasonBatchRegistry.supports(provider, Dataset.SEASON)) {
-                runStage("multi-provider/prepare-seasons/" + provider,
-                        () -> seasonBatchRegistry.require(provider).prepareHistoricalSeasons());
+                boolean acquired = distributedLock.executeScoped("catalogue/" + provider + "/SEASON",
+                        () -> runStage("multi-provider/prepare-seasons/" + provider,
+                                () -> seasonBatchRegistry.require(provider).prepareHistoricalSeasons()));
+                if (!acquired) throw new IllegalStateException("Catalogue lock is already held for " + provider);
             } else {
                 boolean acquired = distributedLock.executeScoped("catalogue/" + provider + "/SEASON",
                         () -> runStage("multi-provider/seasons/" + provider,
