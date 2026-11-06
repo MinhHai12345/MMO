@@ -55,6 +55,11 @@ public class Team extends AbstractEntity {
     @Builder.Default
     private Boolean isActive = true;
 
+    /** Detects concurrent provider updates to the same canonical team. */
+    @Version
+    @Column(name = "version")
+    private Long version;
+
     @OneToMany(mappedBy = "team", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<TeamExternalId> externalIds = new ArrayList<>();
