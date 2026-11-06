@@ -124,15 +124,16 @@ public class StandingsIngestionService implements StandingsIngestionUseCase {
                         selectedProvider, externalLeagueId, season.getYear());
                 continue;
             }
+            List<StandingsPersistencePort.StandingRow> batch = new java.util.ArrayList<>(rows.size());
             for (ProviderStanding row : rows) {
-                Long teamId = teamIdsByExternalId.get(row.teamExternalId());
+                Long teamId = row == null ? null : teamIdsByExternalId.get(row.teamExternalId());
                 if (teamId == null) {
                     skipped++;
                     continue;
                 }
-                standingsPersistenceService.upsertStanding(selectedProvider, season.getId(), teamId, row);
-                saved++;
+                batch.add(new StandingsPersistencePort.StandingRow(teamId, row));
             }
+            saved += standingsPersistenceService.upsertStandings(selectedProvider, season.getId(), batch);
         }
         if (rateLimitInterrupted) {
             log.warn("Standings ingestion via {} partially completed. {} rows upserted, {} rows skipped.",
