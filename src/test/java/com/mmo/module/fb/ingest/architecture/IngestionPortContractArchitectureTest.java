@@ -14,8 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Protects the dependency boundary of the complete application layer.
  *
- * <p>Ports describe capabilities required by the application. They must not
- * expose persistence/framework APIs or provider implementation details.</p>
+ * <p>Application code must depend on application-owned contracts and models,
+ * never on persistence internals or provider implementation details.</p>
  */
 class IngestionPortContractArchitectureTest {
 
@@ -38,7 +38,7 @@ class IngestionPortContractArchitectureTest {
     @Test
     void applicationLayerMustNotDependOnInfrastructureOrProviderImplementationTypes() throws IOException {
         List<String> violations = new ArrayList<>();
-        try (var paths = Files.walk(PORT_ROOT)) {
+        try (var paths = Files.walk(APPLICATION_ROOT)) {
             paths.filter(Files::isRegularFile)
                     .filter(path -> path.toString().endsWith(".java"))
                     .forEach(path -> {
@@ -50,7 +50,7 @@ class IngestionPortContractArchitectureTest {
                                 }
                             }
                         } catch (IOException exception) {
-                            throw new IllegalStateException("Cannot inspect application port " + path, exception);
+                            throw new IllegalStateException("Cannot inspect application source " + path, exception);
                         }
                     });
         }
