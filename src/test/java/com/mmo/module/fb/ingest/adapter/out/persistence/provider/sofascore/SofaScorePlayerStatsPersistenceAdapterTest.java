@@ -82,11 +82,22 @@ class SofaScorePlayerStatsPersistenceAdapterTest {
             PlayerMatchStats saved = rows.iterator().next();
             return saved.getGoals() == 2 && saved.getXg().signum() == 0;
         }));
-        verify(provenanceRepository, atLeastOnce()).save(argThat((MatchFieldProvenance provenance) ->
-                provenance.getMatch().getId().equals(55L)
-                        && provenance.getProvider().name().equals("SOFA_SCORE")
-                        && provenance.getFieldKey().equals("player:777:goals")));
-        verify(provenanceRepository).save(argThat((MatchFieldProvenance provenance) ->
-                provenance.getFieldKey().equals("player:777:xg")));
+        verify(provenanceRepository, times(1)).saveAll(anyList());
+        verify(provenanceRepository, atLeastOnce()).saveAll(argThat(rows ->
+                containsField(rows, "player:777:goals", 55L)));
+        verify(provenanceRepository, atLeastOnce()).saveAll(argThat(rows ->
+                containsField(rows, "player:777:xg", 55L)));
+    }
+
+    private static boolean containsField(Iterable<?> rows, String fieldKey, Long matchId) {
+        for (Object row : rows) {
+            if (row instanceof MatchFieldProvenance provenance
+                    && fieldKey.equals(provenance.getFieldKey())
+                    && matchId.equals(provenance.getMatch().getId())
+                    && "SOFA_SCORE".equals(provenance.getProvider().name())) {
+                return true;
+            }
+        }
+        return false;
     }
 }

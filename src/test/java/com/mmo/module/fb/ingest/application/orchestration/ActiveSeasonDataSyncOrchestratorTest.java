@@ -40,7 +40,7 @@ class ActiveSeasonDataSyncOrchestratorTest {
         doAnswer(invocation -> {
             ((Runnable) invocation.getArgument(1)).run();
             return true;
-        }).when(lock).execute(anyString(), any(Runnable.class));
+        }).when(lock).executeScoped(anyString(), any(Runnable.class));
         planFactory = mock(IngestionPlanFactory.class);
         checkpoints = mock(ProviderCheckpointPort.class);
         leagues = mock(LeagueIngestionUseCase.class);
@@ -64,7 +64,7 @@ class ActiveSeasonDataSyncOrchestratorTest {
     void executesResourcesFromDatasetSeasonPlanAndPersistsScopedCheckpoints() {
         useCase.sync(null, null);
 
-        verify(lock).execute(eq(IngestionDistributedLock.GLOBAL_INGEST_LOCK), any(Runnable.class));
+        verify(lock).executeScoped(eq("workflow/active-season"), any(Runnable.class));
         verify(planFactory).activeSeasonPlan();
         verify(leagues).syncLeaguesForProvider(Provider.FOOTBALL_DATA);
         verify(seasons).syncSeasonsForProvider(Provider.FOOTBALL_DATA);
@@ -128,7 +128,7 @@ class ActiveSeasonDataSyncOrchestratorTest {
 
     @Test
     void skipsAllStagesWhenGlobalLockIsBusy() {
-        doReturn(false).when(lock).execute(eq(IngestionDistributedLock.GLOBAL_INGEST_LOCK), any(Runnable.class));
+        doReturn(false).when(lock).executeScoped(eq("workflow/active-season"), any(Runnable.class));
 
         useCase.sync(null, null);
 

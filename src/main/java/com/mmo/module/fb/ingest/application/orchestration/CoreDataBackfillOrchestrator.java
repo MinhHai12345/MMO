@@ -58,7 +58,7 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
 
     @Override
     public void syncCoreData(ProviderOverrides overrides) {
-        boolean executed = distributedLock.execute(IngestionDistributedLock.GLOBAL_INGEST_LOCK,
+        boolean executed = distributedLock.executeScoped("workflow/historical-core-backfill",
                 () -> syncCoreDataLocked(overrides));
         if (!executed) {
             log.warn("Bootstrap skipped because another ingestion workflow is running");
@@ -76,11 +76,11 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
         validateProvider(leagueCatalogueProvider);
         validateProvider(seasonCatalogueProvider);
         if (!seasonBatchRegistry.supports(leagueCatalogueProvider, Dataset.LEAGUE)) {
-            runStageCollecting("league-catalogue/" + leagueCatalogueProvider,
+            runStageCollecting("catalogue/" + leagueCatalogueProvider + "/LEAGUE",
                     () -> leagueIngestionService.syncLeaguesForProvider(leagueCatalogueProvider), failedStages);
         }
         if (!seasonBatchRegistry.supports(seasonCatalogueProvider, Dataset.SEASON)) {
-            runStageCollecting("season-catalogue/" + seasonCatalogueProvider,
+            runStageCollecting("catalogue/" + seasonCatalogueProvider + "/SEASON",
                     () -> seasonIngestionService.syncSeasonsForProvider(seasonCatalogueProvider), failedStages);
         }
 
@@ -100,8 +100,13 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
         for (SeasonBatchIngestionPort provider : batchProviders) {
             if (!seasonBatchRegistry.supports(provider.getProvider(), Dataset.SEASON)) continue;
             try {
-                runStage(provider.getProvider() + "/prepare-historical-seasons",
-                        provider::prepareHistoricalSeasons);
+                boolean acquired = distributedLock.executeScoped(
+                        "catalogue/" + provider.getProvider() + "/SEASON",
+                        () -> runStage(provider.getProvider() + "/prepare-historical-seasons",
+                                provider::prepareHistoricalSeasons));
+                if (!acquired) {
+                    failedStages.add(provider.getProvider() + "/prepare-seasons: catalogue lock is already held");
+                }
             } catch (RuntimeException exception) {
                 failedStages.add(provider.getProvider() + "/prepare-seasons: " + exception.getMessage());
                 log.error("Unable to prepare historical seasons for provider {}", provider.getProvider(), exception);
@@ -155,8 +160,14 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
                     .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
             for (Long seasonId : batchSeasonIds) {
                 try {
-                    runStage(providerId + "/core/season=" + seasonId,
-                            () -> provider.syncCoreSeason(seasonId, true));
+                    boolean acquired = distributedLock.executeScoped(
+                            "batch/" + providerId + "/core/season/" + seasonId,
+                            () -> runStage(providerId + "/core/season=" + seasonId,
+                                    () -> provider.syncCoreSeason(seasonId, true)));
+                    if (!acquired) {
+                        failedStages.add(providerId + "/core/season=" + seasonId
+                                + ": another node owns this season batch");
+                    }
                 } catch (RuntimeException exception) {
                     failedStages.add(providerId + "/core/season=" + seasonId
                             + ": " + exception.getMessage());
@@ -183,7 +194,7 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
                          List<IngestionUnitResult> results) {
         String name = unit.provider() + "/" + unit.dataset() + "/league=" + unit.leagueId()
                 + "/season=" + unit.season();
-        IngestionUnitResult result = new IngestionUnitExecutor(checkpointStore)
+        IngestionUnitResult result = new IngestionUnitExecutor(checkpointStore, distributedLock)
                 .execute(unit, true, () -> runStage(name, operation));
         results.add(result);
         if (!result.isSuccessful()) {
@@ -198,7 +209,7 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
      */
     @Override
     public void syncCoreDataForProviders(List<Provider> providers) {
-        boolean executed = distributedLock.execute(IngestionDistributedLock.GLOBAL_INGEST_LOCK,
+        boolean executed = distributedLock.executeScoped("workflow/multi-provider-core-backfill",
                 () -> syncCoreDataForProvidersLocked(providers));
         if (!executed) {
             log.warn("Multi-provider bootstrap skipped because another ingestion workflow is running");
@@ -220,17 +231,23 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
         log.info("Starting multi-provider historical Core import: {}", ordered);
         for (Provider provider : ordered) {
             if (!seasonBatchRegistry.supports(provider, Dataset.LEAGUE)) {
-                runStage("multi-provider/leagues/" + provider,
-                        () -> leagueIngestionService.syncLeaguesForProvider(provider));
+                boolean acquired = distributedLock.executeScoped("catalogue/" + provider + "/LEAGUE",
+                        () -> runStage("multi-provider/leagues/" + provider,
+                                () -> leagueIngestionService.syncLeaguesForProvider(provider)));
+                if (!acquired) throw new IllegalStateException("Catalogue lock is already held for " + provider);
             }
         }
         for (Provider provider : ordered) {
             if (seasonBatchRegistry.supports(provider, Dataset.SEASON)) {
-                runStage("multi-provider/prepare-seasons/" + provider,
-                        () -> seasonBatchRegistry.require(provider).prepareHistoricalSeasons());
+                boolean acquired = distributedLock.executeScoped("catalogue/" + provider + "/SEASON",
+                        () -> runStage("multi-provider/prepare-seasons/" + provider,
+                                () -> seasonBatchRegistry.require(provider).prepareHistoricalSeasons()));
+                if (!acquired) throw new IllegalStateException("Catalogue lock is already held for " + provider);
             } else {
-                runStage("multi-provider/seasons/" + provider,
-                        () -> seasonIngestionService.syncSeasonsForProvider(provider));
+                boolean acquired = distributedLock.executeScoped("catalogue/" + provider + "/SEASON",
+                        () -> runStage("multi-provider/seasons/" + provider,
+                                () -> seasonIngestionService.syncSeasonsForProvider(provider)));
+                if (!acquired) throw new IllegalStateException("Catalogue lock is already held for " + provider);
             }
         }
         IngestionPlan plan = planFactory.historicalPlan();
@@ -247,8 +264,14 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
                 SeasonBatchIngestionPort batchProvider = seasonBatchRegistry.require(provider);
                 for (Long seasonId : batchSeasonIds) {
                     try {
-                        runStage("multi-provider/core/" + provider + "/season=" + seasonId,
-                                () -> batchProvider.syncCoreSeason(seasonId, true));
+                        boolean acquired = distributedLock.executeScoped(
+                                "batch/" + provider + "/core/season/" + seasonId,
+                                () -> runStage("multi-provider/core/" + provider + "/season=" + seasonId,
+                                        () -> batchProvider.syncCoreSeason(seasonId, true)));
+                        if (!acquired) {
+                            failedStages.add("multi-provider/core/" + provider + "/season=" + seasonId
+                                    + ": another node owns this season batch");
+                        }
                     } catch (RuntimeException exception) {
                         failedStages.add("multi-provider/core/" + provider + "/season=" + seasonId
                                 + ": " + exception.getMessage());
@@ -290,11 +313,19 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
 
     private void runStageCollecting(String name, Runnable operation, List<String> failedStages) {
         try {
-            runStage(name, operation);
+            boolean acquired = distributedLock.executeScoped(catalogueScope(name),
+                    () -> runStage(name, operation));
+            if (!acquired) {
+                failedStages.add(name + ": catalogue lock is already held by another node");
+            }
         } catch (RuntimeException exception) {
             failedStages.add(name + ": " + exception.getMessage());
             log.warn("Catalogue stage failed; continuing independent backfill units: {}", name, exception);
         }
+    }
+
+    private static String catalogueScope(String name) {
+        return name.startsWith("catalogue/") ? name : "catalogue/" + name;
     }
 
     private void runStage(String name, Runnable operation) {

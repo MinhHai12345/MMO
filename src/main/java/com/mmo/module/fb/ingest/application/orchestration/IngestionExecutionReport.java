@@ -31,6 +31,10 @@ public record IngestionExecutionReport(List<IngestionUnitResult> results) {
         return results.stream().filter(IngestionUnitResult::skipped).count();
     }
 
+    public long retryableFailures() {
+        return results.stream().filter(IngestionUnitResult::isRetryable).count();
+    }
+
     public boolean isSuccessful() {
         return results.stream().allMatch(IngestionUnitResult::isSuccessful);
     }
@@ -41,7 +45,8 @@ public record IngestionExecutionReport(List<IngestionUnitResult> results) {
                 + ", unavailable=" + unavailable()
                 + ", skipped=" + skipped()
                 + ", partial=" + partial()
-                + ", failed=" + failed();
+                + ", failed=" + failed()
+                + ", retryableFailures=" + retryableFailures();
     }
 
     public void throwIfIncomplete(String workflow) {
@@ -50,7 +55,8 @@ public record IngestionExecutionReport(List<IngestionUnitResult> results) {
                 .map(result -> result.unit().provider() + "/" + result.unit().dataset()
                         + "/league=" + result.unit().leagueId()
                         + "/season=" + result.unit().season()
-                        + " status=" + result.status() + " reason=" + result.message())
+                        + " status=" + result.status() + " code=" + result.failureCode()
+                        + " retryable=" + result.retryable() + " reason=" + result.message())
                 .toList();
         if (!errors.isEmpty()) {
             throw new IllegalStateException(workflow + " incomplete: " + summary() + "; errors=" + errors);

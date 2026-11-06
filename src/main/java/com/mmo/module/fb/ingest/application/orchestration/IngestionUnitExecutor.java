@@ -1,22 +1,34 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
+import com.mmo.module.fb.ingest.application.exception.ProviderDataException;
+import com.mmo.module.fb.ingest.application.exception.ProviderTransportException;
+import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 /**
- * Executes and checkpoints one work unit. Historical runs may skip terminal outcomes;
+ * Executes one provider/dataset/league/season work unit under a distributed lock
+ * and persists its checkpoint transition. Historical runs may skip terminal outcomes;
  * active runs always execute so checkpoints never suppress scheduled refreshes.
  */
 public final class IngestionUnitExecutor {
 
     private final ProviderCheckpointPort checkpointStore;
+    private final IngestionDistributedLock distributedLock;
 
     public IngestionUnitExecutor(ProviderCheckpointPort checkpointStore) {
+        this(checkpointStore, null);
+    }
+
+    public IngestionUnitExecutor(ProviderCheckpointPort checkpointStore,
+                                 IngestionDistributedLock distributedLock) {
         this.checkpointStore = Objects.requireNonNull(checkpointStore, "checkpointStore must not be null");
+        this.distributedLock = distributedLock;
     }
 
     public IngestionUnitResult execute(IngestionWorkUnit unit, boolean historical, Runnable operation) {
@@ -32,6 +44,23 @@ public final class IngestionUnitExecutor {
         Objects.requireNonNull(unit, "unit must not be null");
         Objects.requireNonNull(operation, "operation must not be null");
 
+        if (distributedLock == null) {
+            return executeUnlocked(unit, historical, operation);
+        }
+
+        AtomicReference<IngestionUnitResult> result = new AtomicReference<>();
+        boolean acquired = distributedLock.executeScoped(lockScope(unit),
+                () -> result.set(executeUnlocked(unit, historical, operation)));
+        if (!acquired) {
+            return IngestionUnitResult.failed(unit,
+                    "Another application instance currently owns this provider/dataset/league/season work unit",
+                    0, "LOCK_BUSY", true);
+        }
+        return Objects.requireNonNull(result.get(), "Locked work-unit execution returned no result");
+    }
+
+    private IngestionUnitResult executeUnlocked(
+            IngestionWorkUnit unit, boolean historical, Supplier<IngestionUnitResult> operation) {
         long startedAt = System.nanoTime();
         try {
             if (historical && checkpointStore.isSatisfied(
@@ -55,10 +84,30 @@ public final class IngestionUnitExecutor {
         } catch (IngestionPartialException exception) {
             markFailureState(unit, CheckpointStatus.PARTIAL, exception);
             return IngestionUnitResult.partial(unit, exception.getMessage(), elapsedMillis(startedAt));
+        } catch (ProviderDataException exception) {
+            CheckpointStatus status = exception.isNotAvailable()
+                    ? CheckpointStatus.NOT_AVAILABLE : CheckpointStatus.FAILED;
+            markFailureState(unit, status, exception);
+            if (exception.isNotAvailable()) {
+                return IngestionUnitResult.notAvailable(unit, exception.getMessage(), elapsedMillis(startedAt));
+            }
+            return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
+                    exception.getFailureCode() == null ? "PROVIDER_DATA" : exception.getFailureCode(),
+                    exception.isRetryable());
+        } catch (ProviderTransportException exception) {
+            markFailureState(unit, CheckpointStatus.FAILED, exception);
+            return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
+                    "PROVIDER_TRANSPORT", true);
         } catch (RuntimeException exception) {
             markFailureState(unit, CheckpointStatus.FAILED, exception);
-            return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt));
+            return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
+                    exception.getClass().getSimpleName(), false);
         }
+    }
+
+    private static String lockScope(IngestionWorkUnit unit) {
+        return "unit/" + unit.provider().name() + "/" + unit.dataset().name()
+                + "/" + unit.leagueId() + "/" + unit.season();
     }
 
     private void markFailureState(IngestionWorkUnit unit, CheckpointStatus status, RuntimeException cause) {
@@ -71,7 +120,8 @@ public final class IngestionUnitExecutor {
 
     private static IngestionUnitResult withDuration(IngestionUnitResult result, long durationMillis) {
         return new IngestionUnitResult(result.unit(), result.status(), result.fetched(), result.persisted(),
-                result.skippedRows(), result.failedRows(), result.skipped(), durationMillis, result.message());
+                result.skippedRows(), result.failedRows(), result.skipped(), durationMillis,
+                result.message(), result.failureCode(), result.retryable());
     }
 
     private static long elapsedMillis(long startedAt) {

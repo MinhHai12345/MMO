@@ -69,6 +69,26 @@ public class IngestionDistributedLock {
     }
 
     /**
+     * Executes an operation under a deterministic, bounded lock derived from a logical scope.
+     * The scope may contain provider/dataset/league/season identifiers; only its digest is
+     * sent to MySQL so the 64-character named-lock limit is always respected.
+     */
+    public boolean executeScoped(String scope, Runnable operation) {
+        if (scope == null || scope.isBlank()) {
+            throw new IllegalArgumentException("Lock scope must not be blank");
+        }
+        Objects.requireNonNull(operation, "operation must not be null");
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(scope.getBytes(StandardCharsets.UTF_8));
+            String lockName = "mmo:fb:ingest:" + HexFormat.of().formatHex(digest).substring(0, 32);
+            return execute(lockName, operation);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable for ingestion lock scoping", exception);
+        }
+    }
+
+    /**
      * MySQL named locks are server-wide, not schema-wide. Include the active catalog so
      * dev/test schemas sharing one MySQL server do not block one another.
      */
