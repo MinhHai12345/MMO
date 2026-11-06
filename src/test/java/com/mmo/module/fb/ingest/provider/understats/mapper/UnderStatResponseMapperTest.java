@@ -1,8 +1,8 @@
-package com.mmo.module.fb.ingest.provider.understats.mapper;
+package com.mmo.module.fb.ingest.adapter.out.provider.understats.mapper;
 
 import com.mmo.module.fb.ingest.application.model.provider.ProviderMatchStatistics;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderTeamMatchStats;
-import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
+import com.mmo.module.fb.ingest.adapter.out.provider.understats.dto.UnderStatDtos;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
