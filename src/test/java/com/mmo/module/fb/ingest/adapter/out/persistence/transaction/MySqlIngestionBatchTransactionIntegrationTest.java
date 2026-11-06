@@ -9,19 +9,15 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 
-import javax.sql.DataSource;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-/**
- * Exercises the batch transaction boundary against the same MySQL 8 service used by CI.
- * The data row and cursor row model the two writes that must commit or roll back together.
- */
+/** Exercises atomic persistence and cursor updates against the MySQL 8 CI service. */
 @EnabledIfEnvironmentVariable(named = "MMO_MYSQL_TEST_URL", matches = ".+")
 class MySqlIngestionBatchTransactionIntegrationTest {
 
-    private static final String TABLE = "fb_ingestion_batch_atomicity_it";
+    private static final String DATA_TABLE = "fb_ingestion_batch_data_it";
+    private static final String CURSOR_TABLE = "fb_ingestion_batch_cursor_it";
     private static JdbcTemplate jdbc;
     private static IngestionBatchTransactionPort transactions;
 
@@ -34,42 +30,48 @@ class MySqlIngestionBatchTransactionIntegrationTest {
         dataSource.setPassword(System.getenv("MMO_MYSQL_TEST_PASSWORD"));
         jdbc = new JdbcTemplate(dataSource);
         transactions = new IngestionBatchTransactionAdapter(new DataSourceTransactionManager(dataSource));
-        jdbc.execute("CREATE TABLE IF NOT EXISTS " + TABLE + " ("
-                + "id BIGINT NOT NULL PRIMARY KEY, "
-                + "data_value VARCHAR(100) NOT NULL, "
-                + "cursor_value VARCHAR(100) NOT NULL"
-                + ") ENGINE=InnoDB");
-        jdbc.update("DELETE FROM " + TABLE);
+        jdbc.execute("CREATE TABLE IF NOT EXISTS " + DATA_TABLE
+                + " (id BIGINT NOT NULL PRIMARY KEY, data_value VARCHAR(100) NOT NULL) ENGINE=InnoDB");
+        jdbc.execute("CREATE TABLE IF NOT EXISTS " + CURSOR_TABLE
+                + " (id BIGINT NOT NULL PRIMARY KEY, cursor_value VARCHAR(100) NOT NULL) ENGINE=InnoDB");
+        jdbc.update("DELETE FROM " + DATA_TABLE);
+        jdbc.update("DELETE FROM " + CURSOR_TABLE);
     }
 
     @AfterAll
     static void tearDown() {
         if (jdbc != null) {
-            jdbc.update("DELETE FROM " + TABLE);
+            jdbc.update("DELETE FROM " + DATA_TABLE);
+            jdbc.update("DELETE FROM " + CURSOR_TABLE);
         }
     }
 
     @Test
     void rollsBackPersistedDataAndCursorTogetherWhenBatchFails() {
         assertThrows(IllegalStateException.class, () -> transactions.execute(() -> {
-            jdbc.update("INSERT INTO " + TABLE + " (id, data_value, cursor_value) VALUES (?, ?, ?)",
-                    1L, "persisted-row", "cursor-100");
+            jdbc.update("INSERT INTO " + DATA_TABLE + " (id, data_value) VALUES (?, ?)",
+                    1L, "persisted-row");
+            jdbc.update("INSERT INTO " + CURSOR_TABLE + " (id, cursor_value) VALUES (?, ?)",
+                    1L, "cursor-100");
             throw new IllegalStateException("simulated failure before commit");
         }));
 
-        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM " + TABLE, Integer.class));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM " + DATA_TABLE, Integer.class));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM " + CURSOR_TABLE, Integer.class));
     }
 
     @Test
     void commitsDataAndCursorTogetherWhenBatchSucceeds() {
         transactions.execute(() -> {
-            jdbc.update("INSERT INTO " + TABLE + " (id, data_value, cursor_value) VALUES (?, ?, ?)",
-                    2L, "persisted-row", "cursor-200");
+            jdbc.update("INSERT INTO " + DATA_TABLE + " (id, data_value) VALUES (?, ?)",
+                    2L, "persisted-row");
+            jdbc.update("INSERT INTO " + CURSOR_TABLE + " (id, cursor_value) VALUES (?, ?)",
+                    2L, "cursor-200");
             return null;
         });
 
-        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM " + TABLE, Integer.class));
-        assertEquals("cursor-200",
-                jdbc.queryForObject("SELECT cursor_value FROM " + TABLE + " WHERE id = 2", String.class));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM " + DATA_TABLE, Integer.class));
+        assertEquals("cursor-200", jdbc.queryForObject(
+                "SELECT cursor_value FROM " + CURSOR_TABLE + " WHERE id = 2", String.class));
     }
 }
