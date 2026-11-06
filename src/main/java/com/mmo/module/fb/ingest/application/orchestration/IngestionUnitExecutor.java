@@ -6,6 +6,9 @@ import com.mmo.module.fb.ingest.application.exception.ProviderTransportException
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.TransientDataAccessException;
+import org.springframework.transaction.TransactionException;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -98,6 +101,18 @@ public final class IngestionUnitExecutor {
             markFailureState(unit, CheckpointStatus.FAILED, exception);
             return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
                     "PROVIDER_TRANSPORT", true);
+        } catch (TransientDataAccessException exception) {
+            markFailureState(unit, CheckpointStatus.FAILED, exception);
+            return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
+                    "DATABASE_TRANSIENT", true);
+        } catch (DataAccessException exception) {
+            markFailureState(unit, CheckpointStatus.FAILED, exception);
+            return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
+                    "DATABASE", false);
+        } catch (TransactionException exception) {
+            markFailureState(unit, CheckpointStatus.FAILED, exception);
+            return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
+                    "DATABASE_TRANSACTION", true);
         } catch (RuntimeException exception) {
             markFailureState(unit, CheckpointStatus.FAILED, exception);
             return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
