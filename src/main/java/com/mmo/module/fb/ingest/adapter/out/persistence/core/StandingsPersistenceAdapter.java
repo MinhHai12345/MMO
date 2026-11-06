@@ -10,7 +10,7 @@ import com.mmo.module.fb.domain.league.enums.StandingType;
 import com.mmo.module.fb.domain.league.repository.LeagueStandingRepository;
 import com.mmo.module.fb.domain.league.repository.SeasonRepository;
 import com.mmo.module.fb.domain.team.repository.TeamRepository;
-import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderStanding;
 import com.mmo.module.fb.ingest.application.port.out.StandingsPersistencePort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;

@@ -11,7 +11,7 @@ import com.mmo.module.fb.domain.match.repository.OddsHistoryRepository;
 import com.mmo.module.fb.domain.match.service.MatchOddsQuotePersistenceService;
 import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderOdds;
 import com.mmo.module.fb.ingest.application.port.out.OddsPersistencePort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;

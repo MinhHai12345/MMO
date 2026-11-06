@@ -2,9 +2,9 @@ package com.mmo.module.fb.ingest.provider.understats;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.ProviderLeagueMonthlyStats;
-import com.mmo.module.fb.ingest.provider.model.ProviderMatchStatistics;
-import com.mmo.module.fb.ingest.provider.model.ProviderTeamMatchStats;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderLeagueMonthlyStats;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderMatchStatistics;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderTeamMatchStats;
 import com.mmo.module.fb.ingest.application.port.out.provider.HistoricalStatsIngestionProviderPort;
 import com.mmo.module.fb.ingest.provider.understats.mapper.UnderStatResponseMapper;
 import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;

@@ -8,7 +8,7 @@ import com.mmo.module.fb.ingest.application.port.out.MatchXgPersistencePort;
 import com.mmo.module.fb.ingest.application.port.out.SofaScoreMatchEnrichmentQueryPort;
 import com.mmo.module.fb.ingest.application.port.out.SourceAwareMergePort;
 import com.mmo.module.fb.ingest.application.port.out.MatchStatisticsIngestionPort;
-import com.mmo.module.fb.ingest.provider.model.ProviderMatchAdvancedStatistics;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderMatchAdvancedStatistics;
 import com.mmo.module.fb.ingest.application.port.out.provider.MatchStatisticsIngestionProviderPort;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.domain.match.entity.Match;

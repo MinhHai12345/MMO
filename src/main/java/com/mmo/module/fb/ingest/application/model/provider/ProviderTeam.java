@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.model;
+package com.mmo.module.fb.ingest.application.model.provider;
 
 public record ProviderTeam(
         String externalId,

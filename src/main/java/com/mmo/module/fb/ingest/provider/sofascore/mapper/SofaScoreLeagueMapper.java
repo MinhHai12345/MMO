@@ -1,8 +1,8 @@
 package com.mmo.module.fb.ingest.provider.sofascore.mapper;
 
-import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
-import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
-import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
+import com.mmo.module.fb.ingest.application.model.provider.MmoProviderDataStandardizer;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderLeague;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderSeason;
 import com.mmo.module.fb.ingest.provider.sofascore.SofaScoreSeasonMatcher;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.SeasonDTO;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.UniqueTournamentDTO;

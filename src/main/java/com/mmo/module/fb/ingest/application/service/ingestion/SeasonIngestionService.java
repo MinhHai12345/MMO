@@ -3,9 +3,9 @@ package com.mmo.module.fb.ingest.application.service.ingestion;
 import com.mmo.module.fb.ingest.application.service.support.IngestionServiceSupport;
 
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
-import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
-import com.mmo.module.fb.ingest.provider.model.SeasonQuery;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderLeague;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderSeason;
+import com.mmo.module.fb.ingest.application.model.provider.SeasonQuery;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.out.LeaguePersistencePort;
 import com.mmo.module.fb.ingest.application.port.out.LeagueExternalMappingPort;

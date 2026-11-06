@@ -1,9 +1,9 @@
 package com.mmo.module.fb.ingest.application.port.out.provider;
 
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.ProviderLeagueMonthlyStats;
-import com.mmo.module.fb.ingest.provider.model.ProviderMatchStatistics;
-import com.mmo.module.fb.ingest.provider.model.ProviderTeamMatchStats;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderLeagueMonthlyStats;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderMatchStatistics;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderTeamMatchStats;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;

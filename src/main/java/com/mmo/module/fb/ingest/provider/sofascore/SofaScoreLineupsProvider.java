@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.ProviderLineups;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderLineups;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreLineupsClient;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreLineupsMapper;
 import com.mmo.module.fb.ingest.application.port.out.provider.PlayerLineupsIngestionPort;

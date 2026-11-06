@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.model;
+package com.mmo.module.fb.ingest.application.model.provider;
 
 import java.time.Instant;
 

@@ -8,12 +8,12 @@ import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.Stand
 import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.StandingTableDto;
 import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.StandingsDto;
 import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.TeamDto;
-import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
-import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
-import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
-import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
-import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
-import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderFixture;
+import com.mmo.module.fb.ingest.application.model.provider.MmoProviderDataStandardizer;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderLeague;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderSeason;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderStanding;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderTeam;
 import com.mmo.module.fb.domain.league.enums.StandingType;
 import org.springframework.stereotype.Component;
 

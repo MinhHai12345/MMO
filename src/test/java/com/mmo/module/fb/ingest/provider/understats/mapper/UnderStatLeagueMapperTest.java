@@ -1,6 +1,6 @@
 package com.mmo.module.fb.ingest.provider.understats.mapper;
 
-import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
 import org.junit.jupiter.api.Test;
 
