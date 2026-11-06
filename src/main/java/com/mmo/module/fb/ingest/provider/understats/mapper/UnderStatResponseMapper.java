@@ -1,9 +1,9 @@
 package com.mmo.module.fb.ingest.provider.understats.mapper;
 
-import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
-import com.mmo.module.fb.ingest.provider.model.ProviderMatchStatistics;
-import com.mmo.module.fb.ingest.provider.model.ProviderPlayerSeasonStats;
-import com.mmo.module.fb.ingest.provider.model.ProviderTeamMatchStats;
+import com.mmo.module.fb.ingest.application.model.provider.MmoProviderDataStandardizer;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderMatchStatistics;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderPlayerSeasonStats;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderTeamMatchStats;
 import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
