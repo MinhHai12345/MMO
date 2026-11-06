@@ -84,12 +84,8 @@ class SofaScorePlayerStatsPersistenceAdapterTest {
         }));
         verify(provenanceRepository, times(2)).saveAll(anyList());
         verify(provenanceRepository, atLeastOnce()).saveAll(argThat(rows ->
-                rows.stream().map(MatchFieldProvenance.class::cast)
-                        .anyMatch(provenance -> provenance.getMatch().getId().equals(55L)
-                                && provenance.getProvider().name().equals("SOFA_SCORE")
-                                && provenance.getFieldKey().equals("player:777:goals"))));
+                containsField(rows, "player:777:goals", 55L)));
         verify(provenanceRepository, atLeastOnce()).saveAll(argThat(rows ->
-                rows.stream().map(MatchFieldProvenance.class::cast)
-                        .anyMatch(provenance -> provenance.getFieldKey().equals("player:777:xg"))));
+                containsField(rows, "player:777:xg", 55L)));
     }
 }
