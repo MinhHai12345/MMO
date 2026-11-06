@@ -27,7 +27,7 @@ class MatchEnrichmentOrchestratorTest {
         doAnswer(invocation -> {
             ((Runnable) invocation.getArgument(1)).run();
             return true;
-        }).when(lock).execute(anyString(), any(Runnable.class));
+        }).when(lock).executeScoped(anyString(), any(Runnable.class));
         checkpoints = mock(ProviderCheckpointPort.class);
         when(checkpoints.isCompleted(any(), anyString())).thenReturn(false);
         planFactory = mock(IngestionPlanFactory.class);
@@ -47,7 +47,7 @@ class MatchEnrichmentOrchestratorTest {
     void runsHistoricalRecoveryAndActiveRefreshWithoutLegacyGlobalGates() {
         useCase.enrichFinishedMatches();
 
-        verify(lock).execute(eq(IngestionDistributedLock.GLOBAL_INGEST_LOCK), any(Runnable.class));
+        verify(lock).executeScoped(eq("workflow/match-enrichment"), any(Runnable.class));
         verify(planFactory).historicalPlan();
         verify(footballDataUk).syncEnrichmentSeason(10L, true);
         verify(footballDataUk).syncEnrichmentSeason(10L, false);
@@ -88,7 +88,7 @@ class MatchEnrichmentOrchestratorTest {
 
     @Test
     void skipsEnrichmentWhenGlobalLockIsBusy() {
-        doReturn(false).when(lock).execute(eq(IngestionDistributedLock.GLOBAL_INGEST_LOCK), any(Runnable.class));
+        doReturn(false).when(lock).executeScoped(eq("workflow/match-enrichment"), any(Runnable.class));
 
         useCase.enrichFinishedMatches();
 
