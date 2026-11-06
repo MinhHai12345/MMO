@@ -75,6 +75,9 @@ public class FixturePersistenceAdapter implements FixturePersistencePort {
         Set<Long> teamIds = validRows.stream()
                 .flatMap(row -> java.util.stream.Stream.of(row.homeTeamId(), row.awayTeamId()))
                 .collect(Collectors.toSet());
+        // Concurrent providers creating the same fixture must serialize on the canonical
+        // home/away teams before checking for an existing season/team/time candidate.
+        teamRepository.lockAllByIds(teamIds);
         Map<Long, Team> teams = teamRepository.findAllById(teamIds).stream()
                 .collect(Collectors.toMap(Team::getId, team -> team));
 
