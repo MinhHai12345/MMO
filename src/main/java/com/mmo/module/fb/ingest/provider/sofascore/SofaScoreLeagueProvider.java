@@ -5,7 +5,7 @@ import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.Seas
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.UniqueTournamentDTO;
 
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreLeagueMapper;
 import com.mmo.module.fb.ingest.application.port.out.provider.LeagueIngestionPort;
