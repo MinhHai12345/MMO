@@ -49,18 +49,23 @@ public class SofaScorePlayerStatsPersistenceAdapter implements PlayerMatchStatis
         List<Long> existingPlayerIds = existingStats.stream()
                 .filter(stats -> stats.getPlayer() != null && stats.getPlayer().getId() != null)
                 .map(stats -> stats.getPlayer().getId()).distinct().toList();
+        Map<Long, PlayerMatchStats> statsByPlayerId = new HashMap<>();
+        existingStats.stream().filter(stats -> stats.getPlayer() != null)
+                .forEach(stats -> statsByPlayerId.put(stats.getPlayer().getId(), stats));
         Map<String, PlayerMatchStats> existingByExternalId = new HashMap<>();
         if (!existingPlayerIds.isEmpty()) {
             playerExternalIdRepository.findAllByPlayerIdInAndProvider(existingPlayerIds, Provider.SOFA_SCORE)
-                    .forEach(mapping -> existingStats.stream()
-                            .filter(stats -> stats.getPlayer() != null
-                                    && Objects.equals(stats.getPlayer().getId(), mapping.getPlayer().getId()))
-                            .findFirst()
-                            .ifPresent(stats -> existingByExternalId.put(mapping.getExternalId(), stats)));
+                    .forEach(mapping -> {
+                        PlayerMatchStats stats = statsByPlayerId.get(mapping.getPlayer().getId());
+                        if (stats != null) existingByExternalId.put(mapping.getExternalId(), stats);
+                    });
         }
 
         List<String> incomingExternalIds = java.util.stream.Stream.concat(
-                        lineups.home().stream(), lineups.away().stream())
+                        (lineups.home() == null ? java.util.stream.Stream.<ProviderLineupPlayer>empty()
+                                : lineups.home().stream()),
+                        (lineups.away() == null ? java.util.stream.Stream.<ProviderLineupPlayer>empty()
+                                : lineups.away().stream()))
                 .filter(Objects::nonNull)
                 .map(ProviderLineupPlayer::externalPlayerId)
                 .filter(Objects::nonNull).distinct().toList();
@@ -100,10 +105,9 @@ public class SofaScorePlayerStatsPersistenceAdapter implements PlayerMatchStatis
             if (mapping != null) {
                 player = mapping.getPlayer();
             } else {
-                player = createPlayer(lineupPlayer, team, externalId);
-                PlayerExternalId createdMapping = playerExternalIdRepository.findByProviderAndExternalId(
-                        Provider.SOFA_SCORE, externalId).orElseThrow();
-                playerMappingsByExternalId.put(externalId, createdMapping);
+                mapping = createPlayer(lineupPlayer, team, externalId);
+                player = mapping.getPlayer();
+                playerMappingsByExternalId.put(externalId, mapping);
             }
             if (player.getTeam() == null || !Objects.equals(player.getTeam().getId(), team.getId())) {
                 player.setTeam(team);
@@ -119,15 +123,14 @@ public class SofaScorePlayerStatsPersistenceAdapter implements PlayerMatchStatis
         }
     }
 
-    private Player createPlayer(ProviderLineupPlayer dto, Team team, String externalId) {
+    private PlayerExternalId createPlayer(ProviderLineupPlayer dto, Team team, String externalId) {
         Player player = Player.builder().name(dto.name())
                 .position(dto.position() == null || dto.position().isBlank() ? "Unknown" : dto.position())
                 .nationality(dto.nationality()).height(dto.height()).weight(dto.weight())
                 .team(team).isActive(true).build();
         player = playerRepository.save(player);
-        playerExternalIdRepository.save(PlayerExternalId.builder()
+        return playerExternalIdRepository.save(PlayerExternalId.builder()
                 .player(player).provider(Provider.SOFA_SCORE).externalId(externalId).build());
-        return player;
     }
 
     private void applyStatistics(Match match, Long playerId, PlayerMatchStats stats,
