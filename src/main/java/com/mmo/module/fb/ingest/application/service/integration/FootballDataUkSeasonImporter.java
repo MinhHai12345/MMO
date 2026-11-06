@@ -811,13 +811,14 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         int unmatched = Math.toIntExact(Math.min(Integer.MAX_VALUE, failedRows));
 
         for (int batchStart = startOffset; batchStart < rows.size(); batchStart += 100) {
-            int batchEnd = Math.min(rows.size(), batchStart + 100);
+            final int batchStartOffset = batchStart;
+            int batchEnd = Math.min(rows.size(), batchStartOffset + 100);
             final int persistedBeforeBatch = importedFixtures;
             final int unmatchedBeforeBatch = unmatched;
 
             BatchCounters batch = batchTransaction.execute(() -> {
                 BatchCounters current = new BatchCounters();
-                for (int rowIndex = batchStart; rowIndex < batchEnd; rowIndex++) {
+                for (int rowIndex = batchStartOffset; rowIndex < batchEnd; rowIndex++) {
                     Map<String, String> row = rows.get(rowIndex);
                     if (row == null) {
                         current.unmatched++;
