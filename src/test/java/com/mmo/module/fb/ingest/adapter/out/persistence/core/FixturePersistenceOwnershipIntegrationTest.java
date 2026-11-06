@@ -71,6 +71,7 @@ class FixturePersistenceOwnershipIntegrationTest {
 
         when(seasonRepository.findById(2024L)).thenReturn(Optional.of(season));
         lenient().when(teamRepository.findAllById(anyIterable())).thenReturn(List.of(home, away));
+        lenient().when(teamRepository.lockAllByIds(anyCollection())).thenReturn(List.of(home, away));
         lenient().when(matchExternalIdRepository.findAllByProviderAndExternalIdIn(
                 any(MatchProvider.class), anyList())).thenReturn(List.of());
         lenient().when(matchRepository.findBatchFixtureCandidates(
