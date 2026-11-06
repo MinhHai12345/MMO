@@ -17,6 +17,8 @@ import com.mmo.module.fb.ingest.application.port.in.OddsIngestionUseCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DataAccessException;
+import org.springframework.transaction.TransactionException;
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.out.OddsPersistencePort;
 import com.mmo.module.fb.ingest.application.port.out.UpcomingOddsMatchQueryPort;
@@ -97,6 +99,10 @@ public class OddsIngestionService implements OddsIngestionUseCase {
                     enrichmentStateService.succeed(match, MatchProvider.fromName(selectedProvider.name()), MatchEnrichmentResource.ODDS);
                 }
                 processed++;
+            } catch (DataAccessException | TransactionException databaseFailure) {
+                // Do not downgrade a persistence outage to a per-match provider failure.
+                // Let the work-unit executor report a retryable database outcome.
+                throw databaseFailure;
             } catch (Exception ex) {
                 enrichmentStateService.failed(match, MatchProvider.fromName(selectedProvider.name()), MatchEnrichmentResource.ODDS, ex);
                 log.warn("Could not sync odds for match {}: {}", match.getId(), ex.getMessage());
