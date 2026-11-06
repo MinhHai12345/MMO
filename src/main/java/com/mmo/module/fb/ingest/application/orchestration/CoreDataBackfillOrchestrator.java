@@ -204,7 +204,7 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
      */
     @Override
     public void syncCoreDataForProviders(List<Provider> providers) {
-        boolean executed = distributedLock.execute(IngestionDistributedLock.GLOBAL_INGEST_LOCK,
+        boolean executed = distributedLock.executeScoped("workflow/multi-provider-core-backfill",
                 () -> syncCoreDataForProvidersLocked(providers));
         if (!executed) {
             log.warn("Multi-provider bootstrap skipped because another ingestion workflow is running");
