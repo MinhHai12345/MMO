@@ -5,12 +5,12 @@ import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
 import com.mmo.module.fb.ingest.application.exception.ProviderTransportException;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.model.ProviderOverrides;
-import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.in.CoreDataBackfillUseCase;
-import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
-import com.mmo.module.fb.ingest.application.port.in.SeasonIngestionService;
-import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionService;
-import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionUseCase;
+import com.mmo.module.fb.ingest.application.port.in.SeasonIngestionUseCase;
+import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionUseCase;
+import com.mmo.module.fb.ingest.application.port.in.TeamIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 import com.mmo.module.fb.ingest.application.registry.SeasonBatchIngestionRegistry;
@@ -45,11 +45,11 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
     private final ProviderCheckpointPort checkpointStore;
     private final IngestionPlanFactory planFactory;
     private final SeasonBatchIngestionRegistry seasonBatchRegistry;
-    private final LeagueIngestionService leagueIngestionService;
-    private final SeasonIngestionService seasonIngestionService;
-    private final TeamIngestionService teamIngestionService;
-    private final FixtureIngestionService fixtureIngestionService;
-    private final StandingsIngestionService standingsIngestionService;
+    private final LeagueIngestionUseCase leagueIngestionService;
+    private final SeasonIngestionUseCase seasonIngestionService;
+    private final TeamIngestionUseCase teamIngestionService;
+    private final FixtureIngestionUseCase fixtureIngestionService;
+    private final StandingsIngestionUseCase standingsIngestionService;
 
     @Override
     public void syncCoreData() {

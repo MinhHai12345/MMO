@@ -7,7 +7,7 @@ import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
-import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.out.LeaguePersistencePort;
 import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +19,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class LeagueIngestionServiceImpl implements LeagueIngestionService {
+public class LeagueIngestionUseCaseImpl implements LeagueIngestionUseCase {
     private final ProviderIngestionRegistry providerRegistry;
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;

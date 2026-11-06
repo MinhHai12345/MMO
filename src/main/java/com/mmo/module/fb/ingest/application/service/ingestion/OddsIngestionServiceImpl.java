@@ -16,12 +16,12 @@ import com.mmo.module.fb.domain.match.service.MatchEnrichmentStateService;
 import com.mmo.module.fb.ingest.provider.model.OddsQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
-import com.mmo.module.fb.ingest.application.port.in.OddsIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.OddsIngestionUseCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.out.OddsPersistencePort;
 
 import java.time.Instant;
@@ -34,14 +34,14 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class OddsIngestionServiceImpl implements OddsIngestionService {
+public class OddsIngestionUseCaseImpl implements OddsIngestionUseCase {
 
     private static final int MAX_FIXTURES_PER_RUN = 10;
 
     private final ProviderIngestionRegistry providerRegistry;
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
-    private final FixtureIngestionService fixtureIngestionService;
+    private final FixtureIngestionUseCase fixtureIngestionService;
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final OddsPersistencePort oddsPersistenceService;

@@ -8,7 +8,7 @@ import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
 import com.mmo.module.fb.ingest.provider.model.SeasonQuery;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.out.LeaguePersistencePort;
-import com.mmo.module.fb.ingest.application.port.in.SeasonIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.SeasonIngestionUseCase;
 import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
 import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +22,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SeasonIngestionServiceImpl implements SeasonIngestionService {
+public class SeasonIngestionUseCaseImpl implements SeasonIngestionUseCase {
     private final ProviderIngestionRegistry providerRegistry;
     private final IngestionServiceSupport ingestionSupport;
     private final LeagueExternalIdRepository leagueExternalIdRepository;

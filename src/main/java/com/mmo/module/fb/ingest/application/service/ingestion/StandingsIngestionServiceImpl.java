@@ -14,9 +14,9 @@ import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
 import com.mmo.module.fb.ingest.provider.model.StandingsQuery;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.out.provider.StandingsIngestionPort;
-import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.out.StandingsPersistencePort;
-import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.TeamIngestionUseCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,12 +28,12 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class StandingsIngestionServiceImpl implements StandingsIngestionService {
+public class StandingsIngestionUseCaseImpl implements StandingsIngestionUseCase {
 
     private final ProviderIngestionRegistry providerRegistry;
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
-    private final TeamIngestionService teamIngestionService;
+    private final TeamIngestionUseCase teamIngestionService;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;
     private final StandingsPersistencePort standingsPersistenceService;

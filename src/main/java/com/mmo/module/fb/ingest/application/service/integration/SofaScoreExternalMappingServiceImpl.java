@@ -2,11 +2,11 @@ package com.mmo.module.fb.ingest.application.service.integration;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.application.model.SofaScoreExternalMappingResult;
-import com.mmo.module.fb.ingest.application.port.in.SofaScoreExternalMappingService;
+import com.mmo.module.fb.ingest.application.port.in.SofaScoreExternalMappingUseCase;
 import com.mmo.module.fb.domain.match.enums.MatchProvider;
-import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
-import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
-import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionUseCase;
+import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionUseCase;
+import com.mmo.module.fb.ingest.application.port.in.TeamIngestionUseCase;
 import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.league.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.domain.match.repository.MatchExternalIdRepository;
@@ -22,11 +22,11 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SofaScoreExternalMappingServiceImpl implements SofaScoreExternalMappingService {
+public class SofaScoreExternalMappingUseCaseImpl implements SofaScoreExternalMappingUseCase {
 
-    private final LeagueIngestionService leagueIngestionService;
-    private final TeamIngestionService teamIngestionService;
-    private final FixtureIngestionService fixtureIngestionService;
+    private final LeagueIngestionUseCase leagueIngestionService;
+    private final TeamIngestionUseCase teamIngestionService;
+    private final FixtureIngestionUseCase fixtureIngestionService;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final SeasonExternalIdRepository seasonExternalIdRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;
