@@ -251,7 +251,11 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         } catch (IngestionPartialException exception) {
             throw exception;
         } catch (RuntimeException exception) {
-            markCoreCheckpoint(leagueId, season.getYear(), CheckpointStatus.FAILED);
+            try {
+                markCoreCheckpoint(leagueId, season.getYear(), CheckpointStatus.FAILED);
+            } catch (RuntimeException checkpointFailure) {
+                exception.addSuppressed(checkpointFailure);
+            }
             throw exception;
         }
     }
@@ -301,7 +305,11 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         } catch (IngestionPartialException exception) {
             throw exception;
         } catch (RuntimeException exception) {
-            markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.FAILED);
+            try {
+                markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.FAILED);
+            } catch (RuntimeException checkpointFailure) {
+                exception.addSuppressed(checkpointFailure);
+            }
             throw exception;
         }
     }
