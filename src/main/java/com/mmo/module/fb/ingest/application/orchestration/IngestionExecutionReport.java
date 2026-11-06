@@ -45,7 +45,8 @@ public record IngestionExecutionReport(List<IngestionUnitResult> results) {
                 + ", unavailable=" + unavailable()
                 + ", skipped=" + skipped()
                 + ", partial=" + partial()
-                + ", failed=" + failed()\n                + ", retryableFailures=" + retryableFailures();
+                + ", failed=" + failed()
+                + ", retryableFailures=" + retryableFailures();
     }
 
     public void throwIfIncomplete(String workflow) {
@@ -54,7 +55,8 @@ public record IngestionExecutionReport(List<IngestionUnitResult> results) {
                 .map(result -> result.unit().provider() + "/" + result.unit().dataset()
                         + "/league=" + result.unit().leagueId()
                         + "/season=" + result.unit().season()
-                        + " status=" + result.status() + " code=" + result.failureCode()\n                        + " retryable=" + result.retryable() + " reason=" + result.message())
+                        + " status=" + result.status() + " code=" + result.failureCode()
+                        + " retryable=" + result.retryable() + " reason=" + result.message())
                 .toList();
         if (!errors.isEmpty()) {
             throw new IllegalStateException(workflow + " incomplete: " + summary() + "; errors=" + errors);
