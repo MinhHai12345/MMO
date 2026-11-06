@@ -223,7 +223,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
 
             saveSeasonMapping(season, mapping);
             CheckpointStatus teamStatus = datasetStatus(result.csvRows(), result.unmatchedRows());
-            CheckpointStatus fixtureStatus = datasetStatus(result.importedFixtures(), result.unmatchedRows());
+            CheckpointStatus fixtureStatus = datasetStatus(result.csvRows(), result.unmatchedRows());
             markCoreDatasetCheckpoints(leagueId, season.getYear(), CheckpointStatus.COMPLETED,
                     teamStatus, fixtureStatus);
             if (result.unmatchedRows() > 0) {
