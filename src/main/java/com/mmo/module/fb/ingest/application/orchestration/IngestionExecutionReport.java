@@ -31,6 +31,10 @@ public record IngestionExecutionReport(List<IngestionUnitResult> results) {
         return results.stream().filter(IngestionUnitResult::skipped).count();
     }
 
+    public long retryableFailures() {
+        return results.stream().filter(IngestionUnitResult::isRetryable).count();
+    }
+
     public boolean isSuccessful() {
         return results.stream().allMatch(IngestionUnitResult::isSuccessful);
     }
@@ -41,7 +45,7 @@ public record IngestionExecutionReport(List<IngestionUnitResult> results) {
                 + ", unavailable=" + unavailable()
                 + ", skipped=" + skipped()
                 + ", partial=" + partial()
-                + ", failed=" + failed();
+                + ", failed=" + failed()\n                + ", retryableFailures=" + retryableFailures();
     }
 
     public void throwIfIncomplete(String workflow) {
