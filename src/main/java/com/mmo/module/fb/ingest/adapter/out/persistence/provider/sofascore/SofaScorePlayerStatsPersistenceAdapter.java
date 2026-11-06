@@ -112,7 +112,8 @@ public class SofaScorePlayerStatsPersistenceAdapter implements PlayerMatchStatis
         if (lineup == null || team == null) return;
         for (ProviderLineupPlayer lineupPlayer : lineup) {
             if (lineupPlayer == null || lineupPlayer.externalPlayerId() == null
-                    || lineupPlayer.name() == null || lineupPlayer.statistics() == null) {
+                    || lineupPlayer.externalPlayerId().isBlank() || lineupPlayer.name() == null
+                    || lineupPlayer.name().isBlank() || lineupPlayer.statistics() == null) {
                 // A lineup identity alone is not evidence of a player performance line.
                 continue;
             }
@@ -122,9 +123,7 @@ public class SofaScorePlayerStatsPersistenceAdapter implements PlayerMatchStatis
             if (mapping != null) {
                 player = mapping.getPlayer();
             } else {
-                mapping = createPlayer(lineupPlayer, team, externalId);
-                player = mapping.getPlayer();
-                playerMappingsByExternalId.put(externalId, mapping);
+                throw new IllegalStateException("Player identity batch did not resolve provider ID " + externalId);
             }
             if (player.getTeam() == null || !Objects.equals(player.getTeam().getId(), team.getId())) {
                 player.setTeam(team);
