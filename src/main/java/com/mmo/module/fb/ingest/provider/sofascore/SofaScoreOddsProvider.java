@@ -4,7 +4,7 @@ import com.mmo.module.fb.ingest.provider.sofascore.client.AbstractSofaScoreProvi
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.MatchOddDetailDTO;
 
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.OddsQuery;
+import com.mmo.module.fb.ingest.application.model.provider.OddsQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreOddsMapper;
