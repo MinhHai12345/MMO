@@ -6,9 +6,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.List;
+import java.util.Collection;
 
 @Repository
 public interface PlayerExternalIdRepository extends JpaRepository<PlayerExternalId, Long> {
     Optional<PlayerExternalId> findByPlayerIdAndProvider(Long playerId, Provider provider);
     Optional<PlayerExternalId> findByProviderAndExternalId(Provider provider, String externalId);
+    List<PlayerExternalId> findAllByPlayerIdInAndProvider(Collection<Long> playerIds, Provider provider);
+    List<PlayerExternalId> findAllByProviderAndExternalIdIn(Provider provider, Collection<String> externalIds);
 }
