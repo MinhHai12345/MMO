@@ -1,6 +1,8 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
+import com.mmo.module.fb.ingest.application.exception.ProviderDataException;
+import com.mmo.module.fb.ingest.application.exception.ProviderTransportException;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
@@ -81,9 +83,24 @@ public final class IngestionUnitExecutor {
         } catch (IngestionPartialException exception) {
             markFailureState(unit, CheckpointStatus.PARTIAL, exception);
             return IngestionUnitResult.partial(unit, exception.getMessage(), elapsedMillis(startedAt));
+        } catch (ProviderDataException exception) {
+            CheckpointStatus status = exception.isNotAvailable()
+                    ? CheckpointStatus.NOT_AVAILABLE : CheckpointStatus.FAILED;
+            markFailureState(unit, status, exception);
+            if (exception.isNotAvailable()) {
+                return IngestionUnitResult.notAvailable(unit, exception.getMessage(), elapsedMillis(startedAt));
+            }
+            return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
+                    exception.getFailureCode() == null ? "PROVIDER_DATA" : exception.getFailureCode(),
+                    exception.isRetryable());
+        } catch (ProviderTransportException exception) {
+            markFailureState(unit, CheckpointStatus.FAILED, exception);
+            return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
+                    "PROVIDER_TRANSPORT", true);
         } catch (RuntimeException exception) {
             markFailureState(unit, CheckpointStatus.FAILED, exception);
-            return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt));
+            return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
+                    exception.getClass().getSimpleName(), false);
         }
     }
 
@@ -102,7 +119,8 @@ public final class IngestionUnitExecutor {
 
     private static IngestionUnitResult withDuration(IngestionUnitResult result, long durationMillis) {
         return new IngestionUnitResult(result.unit(), result.status(), result.fetched(), result.persisted(),
-                result.skippedRows(), result.failedRows(), result.skipped(), durationMillis, result.message());
+                result.skippedRows(), result.failedRows(), result.skipped(), durationMillis,
+                result.message(), result.failureCode(), result.retryable());
     }
 
     private static long elapsedMillis(long startedAt) {
