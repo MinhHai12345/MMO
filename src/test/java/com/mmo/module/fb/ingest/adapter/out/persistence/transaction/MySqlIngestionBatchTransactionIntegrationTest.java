@@ -3,6 +3,7 @@ package com.mmo.module.fb.ingest.adapter.out.persistence.transaction;
 import com.mmo.module.fb.ingest.application.port.out.IngestionBatchTransactionPort;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -34,6 +35,10 @@ class MySqlIngestionBatchTransactionIntegrationTest {
                 + " (id BIGINT NOT NULL PRIMARY KEY, data_value VARCHAR(100) NOT NULL) ENGINE=InnoDB");
         jdbc.execute("CREATE TABLE IF NOT EXISTS " + CURSOR_TABLE
                 + " (id BIGINT NOT NULL PRIMARY KEY, cursor_value VARCHAR(100) NOT NULL) ENGINE=InnoDB");
+    }
+
+    @BeforeEach
+    void clearTables() {
         jdbc.update("DELETE FROM " + DATA_TABLE);
         jdbc.update("DELETE FROM " + CURSOR_TABLE);
     }
