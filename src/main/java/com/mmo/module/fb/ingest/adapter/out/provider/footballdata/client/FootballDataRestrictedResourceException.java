@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.footballdata.client;
+package com.mmo.module.fb.ingest.adapter.out.provider.footballdata.client;
 
 import com.mmo.module.fb.ingest.application.exception.ProviderAccessException;
 

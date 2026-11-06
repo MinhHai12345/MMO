@@ -1,9 +1,9 @@
-package com.mmo.module.fb.ingest.provider.footballdata;
+package com.mmo.module.fb.ingest.adapter.out.provider.footballdata;
 
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataClient;
-import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.MatchListDto;
-import com.mmo.module.fb.ingest.provider.footballdata.mapper.FootballDataResponseMapper;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.client.FootballDataClient;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.MatchListDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.mapper.FootballDataResponseMapper;
 import com.mmo.module.fb.ingest.application.model.provider.FixtureQuery;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderFixture;
 import com.mmo.module.fb.ingest.application.port.out.provider.FixtureIngestionPort;

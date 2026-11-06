@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.footballdata.client;
+package com.mmo.module.fb.ingest.adapter.out.provider.footballdata.client;
 
 /** Converts HTTP response codes into typed exceptions shared by all football-data resources. */
 public class FootballDataHttpErrorClassifier {

@@ -1,13 +1,13 @@
-package com.mmo.module.fb.ingest.provider.footballdata.mapper;
+package com.mmo.module.fb.ingest.adapter.out.provider.footballdata.mapper;
 
-import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.CompetitionDto;
-import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.MatchDto;
-import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.ScorePairDto;
-import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.SeasonDto;
-import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.StandingRowDto;
-import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.StandingTableDto;
-import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.StandingsDto;
-import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.TeamDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.CompetitionDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.MatchDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.ScorePairDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.SeasonDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.StandingRowDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.StandingTableDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.StandingsDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.TeamDto;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderFixture;
 import com.mmo.module.fb.ingest.adapter.out.provider.standardization.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderLeague;

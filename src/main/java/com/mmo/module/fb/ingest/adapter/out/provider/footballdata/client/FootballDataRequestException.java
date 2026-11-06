@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.footballdata.client;
+package com.mmo.module.fb.ingest.adapter.out.provider.footballdata.client;
 
 /** Non-retryable HTTP response from football-data.org, with its status code preserved. */
 public class FootballDataRequestException extends IllegalStateException {
