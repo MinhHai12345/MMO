@@ -38,6 +38,11 @@ public class Player extends AbstractEntity {
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;
+    /** Detects conflicting updates to the same canonical player across providers. */
+    @Version
+    @Column(name = "version")
+    private Long version;
+
     @OneToMany(mappedBy = "player", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<PlayerMatchStats> matchStats = new ArrayList<>();
