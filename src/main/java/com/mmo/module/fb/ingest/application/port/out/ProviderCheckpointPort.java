@@ -1,6 +1,6 @@
 package com.mmo.module.fb.ingest.application.port.out;
 
-import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.enums.Provider;\nimport com.mmo.module.fb.ingest.application.model.IngestionCheckpointProgress;\n\nimport java.util.Optional;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.policy.Dataset;
 
