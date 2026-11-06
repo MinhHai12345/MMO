@@ -1,8 +1,9 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
-import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.application.exception.ProviderDataException;
-import com.mmo.module.fb.ingest.application.exception.ProviderTransportException;\nimport com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
+import com.mmo.module.fb.ingest.application.exception.ProviderTransportException;
+import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class IngestionUnitExecutorTest {
@@ -70,6 +72,56 @@ class IngestionUnitExecutorTest {
     }
 
     @Test
+    void reportsWorkUnitAsRetryableFailureWhenAnotherNodeOwnsItsScopedLock() {
+        IngestionDistributedLock lock = mock(IngestionDistributedLock.class);
+        when(lock.executeScoped(anyString(), any(Runnable.class))).thenReturn(false);
+        IngestionUnitExecutor lockedExecutor = new IngestionUnitExecutor(checkpoints, lock);
+
+        IngestionUnitResult result = lockedExecutor.execute(unit, false, () -> fail("must not execute"));
+
+        assertFalse(result.skipped());
+        assertEquals(CheckpointStatus.FAILED, result.status());
+        assertEquals("LOCK_BUSY", result.failureCode());
+        assertTrue(result.isRetryable());
+        assertTrue(result.message().contains("Another application instance"));
+        verify(checkpoints, never()).markStatus(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void preservesProviderRetryabilityAndFailureCode() {
+        IngestionUnitResult retryable = executor.execute(unit, false, () -> {
+            throw new ProviderDataException("rate limited", null, "RATE_LIMITED", false, true);
+        });
+        IngestionUnitResult transport = executor.execute(unit, false, () -> {
+            throw new ProviderTransportException("network timeout", new java.net.SocketTimeoutException());
+        });
+        IngestionUnitResult permanent = executor.execute(unit, false, () -> {
+            throw new IllegalArgumentException("invalid provider payload");
+        });
+
+        assertEquals("RATE_LIMITED", retryable.failureCode());
+        assertTrue(retryable.isRetryable());
+        assertEquals("PROVIDER_TRANSPORT", transport.failureCode());
+        assertTrue(transport.isRetryable());
+        assertEquals("IllegalArgumentException", permanent.failureCode());
+        assertFalse(permanent.isRetryable());
+    }
+
+    @Test
+    void treatsProviderNotAvailableAsTerminalWithoutRetry() {
+        IngestionUnitResult result = executor.execute(unit, true, () -> {
+            throw new ProviderDataException("season not published", null,
+                    "NOT_AVAILABLE", true, false);
+        });
+
+        assertEquals(CheckpointStatus.NOT_AVAILABLE, result.status());
+        assertTrue(result.isSuccessful());
+        assertFalse(result.isRetryable());
+        verify(checkpoints).markStatus(Provider.FOOTBALL_DATA, Dataset.FIXTURE,
+                34L, "2024/2025", CheckpointStatus.NOT_AVAILABLE);
+    }
+
+    @Test
     void executionReportSeparatesUnavailableFromCompleted() {
         IngestionUnitResult completed = IngestionUnitResult.completed(unit, 12);
         IngestionUnitResult unavailable = IngestionUnitResult.notAvailable(unit, "not published", 4);
@@ -79,5 +131,6 @@ class IngestionUnitExecutorTest {
         assertEquals(1, report.completed());
         assertEquals(1, report.unavailable());
         assertEquals(0, report.failed());
+        assertEquals(0, report.retryableFailures());
     }
 }
