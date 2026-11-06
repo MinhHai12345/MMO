@@ -48,7 +48,6 @@ class TeamPersistenceOwnershipIntegrationTest {
         when(teamRepository.findAll()).thenReturn(List.of(ukFallback));
         when(teamExternalIdRepository.findByTeamIdAndProvider(11L, Provider.FOOTBALL_DATA))
                 .thenReturn(Optional.of(footballDataId));
-        when(teamRepository.save(any(Team.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         TeamPersistenceAdapter persistence = new TeamPersistenceAdapter(teamRepository, teamExternalIdRepository, new DataSourcePolicy());
         persistence.persistTeamsForSeason(Provider.FOOTBALL_DATA, season,
