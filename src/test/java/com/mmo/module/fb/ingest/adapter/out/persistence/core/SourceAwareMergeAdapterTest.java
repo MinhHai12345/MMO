@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-class SourceAwareMergeServiceTest {
+class SourceAwareMergeAdapterTest {
 
     private Match match2024() {
         League league = new League();
@@ -37,7 +37,7 @@ class SourceAwareMergeServiceTest {
     void primaryProviderCanRefreshItsOwnedField() {
         MatchFieldProvenanceRepository repository = mock(MatchFieldProvenanceRepository.class);
         when(repository.findByMatchIdAndFieldKey(99L, "home_score")).thenReturn(Optional.empty());
-        SourceAwareMergeService service = new SourceAwareMergeService(new DataSourcePolicy(), repository);
+        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), repository);
         AtomicInteger applied = new AtomicInteger();
 
         assertTrue(service.merge(match2024(), Provider.FOOTBALL_DATA, Dataset.FIXTURE,
@@ -50,7 +50,7 @@ class SourceAwareMergeServiceTest {
     void secondaryProviderMayFillButCannotOverwriteExistingUnattributedValue() {
         MatchFieldProvenanceRepository repository = mock(MatchFieldProvenanceRepository.class);
         when(repository.findByMatchIdAndFieldKey(99L, "venue")).thenReturn(Optional.empty());
-        SourceAwareMergeService service = new SourceAwareMergeService(new DataSourcePolicy(), repository);
+        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), repository);
         AtomicInteger applied = new AtomicInteger();
 
         assertTrue(service.merge(match2024(), Provider.FOOTBALL_DATA_UK, Dataset.FIXTURE,
@@ -64,7 +64,7 @@ class SourceAwareMergeServiceTest {
     void understatCanFillMissingXgButCannotOverwriteExistingPrimaryValue() {
         MatchFieldProvenanceRepository repository = mock(MatchFieldProvenanceRepository.class);
         when(repository.findByMatchIdAndFieldKey(99L, "home_xg")).thenReturn(Optional.empty());
-        SourceAwareMergeService service = new SourceAwareMergeService(new DataSourcePolicy(), repository);
+        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), repository);
         AtomicInteger applied = new AtomicInteger();
 
         assertTrue(service.merge(match2024(), Provider.UNDER_STATS, Dataset.MATCH_XG,
@@ -82,7 +82,7 @@ class SourceAwareMergeServiceTest {
                 .provider(MatchProvider.FOOTBALL_DATA)
                 .sourceUpdatedAt(Instant.parse("2026-01-02T00:00:00Z")).build();
         when(repository.findByMatchIdAndFieldKey(99L, "home_score")).thenReturn(Optional.of(current));
-        SourceAwareMergeService service = new SourceAwareMergeService(new DataSourcePolicy(), repository);
+        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), repository);
         AtomicInteger applied = new AtomicInteger();
 
         assertFalse(service.merge(match2024(), Provider.FOOTBALL_DATA, Dataset.FIXTURE,

@@ -18,7 +18,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
-class FootballDataUkMatchStatisticsPersistenceServiceTest {
+class FootballDataUkMatchStatisticsPersistenceAdapterTest {
 
     @Test
     void mapsAllPublishedTeamStatisticsWithoutConfusingFoulsAndFreeKicks() {
@@ -36,9 +36,9 @@ class FootballDataUkMatchStatisticsPersistenceServiceTest {
         match.setHomeTeam(home);
         match.setAwayTeam(away);
 
-        FootballDataUkMatchStatisticsPersistenceService mapper = new FootballDataUkMatchStatisticsPersistenceService(
+        FootballDataUkMatchStatisticsPersistenceAdapter mapper = new FootballDataUkMatchStatisticsPersistenceAdapter(
                 repository, mock(MatchStatisticsSnapshotPersistenceService.class), new DataSourcePolicy(),
-                new com.mmo.module.fb.ingest.adapter.out.persistence.core.SourceAwareMergeService(new DataSourcePolicy(),
+                new com.mmo.module.fb.ingest.adapter.out.persistence.core.SourceAwareMergeAdapter(new DataSourcePolicy(),
                         mock(com.mmo.module.fb.domain.match.repository.MatchFieldProvenanceRepository.class)));
         Map<String, String> row = Map.ofEntries(
                 Map.entry("FTHG", "2"), Map.entry("FTAG", "1"),

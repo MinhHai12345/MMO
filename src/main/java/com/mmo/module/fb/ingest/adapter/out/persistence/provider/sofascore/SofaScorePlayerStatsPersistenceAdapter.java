@@ -17,7 +17,7 @@ import com.mmo.module.fb.ingest.provider.model.ProviderLineupPlayer;
 import com.mmo.module.fb.ingest.provider.model.ProviderLineups;
 import com.mmo.module.fb.ingest.provider.model.ProviderPlayerMatchStats;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -28,9 +28,9 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 /** Persists provider-neutral player match metrics and source provenance. */
-@Service
+@Repository
 @RequiredArgsConstructor
-public class SofaScorePlayerStatsPersistenceService implements PlayerMatchStatisticsPersistencePort {
+public class SofaScorePlayerStatsPersistenceAdapter implements PlayerMatchStatisticsPersistencePort {
     private final MatchRepository matchRepository;
     private final PlayerRepository playerRepository;
     private final PlayerExternalIdRepository playerExternalIdRepository;

@@ -14,7 +14,7 @@ import com.mmo.module.fb.domain.player.repository.PlayerMatchStatsRepository;
 import com.mmo.module.fb.domain.player.repository.PlayerRepository;
 import com.mmo.module.fb.domain.team.entity.Team;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.adapter.out.persistence.core.SourceAwareMergeService;
+import com.mmo.module.fb.ingest.adapter.out.persistence.core.SourceAwareMergeAdapter;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.provider.model.ProviderLineupPlayer;
 import com.mmo.module.fb.ingest.provider.model.ProviderLineups;
@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-class SofaScorePlayerStatsPersistenceServiceTest {
+class SofaScorePlayerStatsPersistenceAdapterTest {
 
     @Test
     void persistsPlayerMetricsWithMatchAndPlayerScopedProvenance() {
@@ -65,8 +65,8 @@ class SofaScorePlayerStatsPersistenceServiceTest {
                         .player(player).provider(Provider.SOFA_SCORE).externalId("123").build()));
 
         DataSourcePolicy policy = new DataSourcePolicy();
-        SourceAwareMergeService mergeService = new SourceAwareMergeService(policy, provenanceRepository);
-        SofaScorePlayerStatsPersistenceService service = new SofaScorePlayerStatsPersistenceService(
+        SourceAwareMergeAdapter mergeService = new SourceAwareMergeAdapter(policy, provenanceRepository);
+        SofaScorePlayerStatsPersistenceAdapter service = new SofaScorePlayerStatsPersistenceAdapter(
                 matchRepository, playerRepository, externalIdRepository, statsRepository, mergeService);
 
         var statistics = new ProviderPlayerMatchStats(

@@ -18,7 +18,7 @@ import com.mmo.module.fb.ingest.application.model.ResolvedProviderFixture;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
@@ -28,9 +28,9 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Slf4j
-@Service
+@Repository
 @RequiredArgsConstructor
-public class FixturePersistencePortImpl implements FixturePersistencePort {
+public class FixturePersistenceAdapter implements FixturePersistencePort {
 
     private static final Duration MATCH_TIME_TOLERANCE = Duration.ofHours(6);
 
@@ -39,7 +39,7 @@ public class FixturePersistencePortImpl implements FixturePersistencePort {
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final DataSourcePolicy dataSourcePolicy;
-    private final SourceAwareMergeService mergeService;
+    private final SourceAwareMergeAdapter mergeService;
 
     @Override
     @Transactional

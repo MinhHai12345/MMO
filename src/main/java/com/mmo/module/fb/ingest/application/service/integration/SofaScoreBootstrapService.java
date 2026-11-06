@@ -27,7 +27,7 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SofaScoreBootstrapUseCaseImpl implements SofaScoreBootstrapUseCase {
+public class SofaScoreBootstrapService implements SofaScoreBootstrapUseCase {
 
     private static final Provider PROVIDER = Provider.SOFA_SCORE;
     private static final String BOOTSTRAP_STATE_NAME = "SOFA_SCORE_CORE_BOOTSTRAP";

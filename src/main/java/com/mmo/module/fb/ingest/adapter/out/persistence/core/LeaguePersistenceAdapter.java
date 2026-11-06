@@ -5,7 +5,7 @@ import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
-import com.mmo.module.fb.ingest.adapter.out.persistence.identity.ExternalIdMappingService;
+import com.mmo.module.fb.ingest.adapter.out.persistence.identity.ExternalIdMappingAdapter;
 import com.mmo.module.fb.ingest.application.port.out.LeaguePersistencePort;
 import com.mmo.module.fb.domain.league.entity.League;
 import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
@@ -15,21 +15,21 @@ import com.mmo.module.fb.domain.league.repository.LeagueRepository;
 import com.mmo.module.fb.domain.league.repository.SeasonRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
 
 @Slf4j
-@Service
+@Repository
 @RequiredArgsConstructor
-public class LeaguePersistencePortImpl implements LeaguePersistencePort {
+public class LeaguePersistenceAdapter implements LeaguePersistencePort {
 
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
-    private final ExternalIdMappingService externalIdMappingService;
+    private final ExternalIdMappingAdapter externalIdMappingService;
     private final DataSourcePolicy dataSourcePolicy;
 
     /**

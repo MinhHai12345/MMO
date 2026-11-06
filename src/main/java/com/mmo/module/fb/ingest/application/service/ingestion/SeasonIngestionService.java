@@ -21,7 +21,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SeasonIngestionUseCaseImpl implements SeasonIngestionUseCase {
+public class SeasonIngestionService implements SeasonIngestionUseCase {
     private final ProviderIngestionRegistry providerRegistry;
     private final IngestionServiceSupport ingestionSupport;
     private final LeagueExternalMappingPort leagueExternalMappingPort;

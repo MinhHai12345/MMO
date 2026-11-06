@@ -31,7 +31,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class OddsIngestionUseCaseImpl implements OddsIngestionUseCase {
+public class OddsIngestionService implements OddsIngestionUseCase {
 
     private static final int MAX_FIXTURES_PER_RUN = 10;
 

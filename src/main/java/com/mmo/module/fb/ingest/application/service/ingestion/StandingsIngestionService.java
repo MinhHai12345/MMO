@@ -27,7 +27,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class StandingsIngestionUseCaseImpl implements StandingsIngestionUseCase {
+public class StandingsIngestionService implements StandingsIngestionUseCase {
 
     private final ProviderIngestionRegistry providerRegistry;
     private final AppProperties appProperties;

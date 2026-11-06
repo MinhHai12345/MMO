@@ -25,7 +25,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class TeamIngestionUseCaseImpl implements TeamIngestionUseCase {
+public class TeamIngestionService implements TeamIngestionUseCase {
     private final ProviderIngestionRegistry providerRegistry;
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
