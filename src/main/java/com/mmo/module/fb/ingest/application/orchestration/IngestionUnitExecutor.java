@@ -52,8 +52,9 @@ public final class IngestionUnitExecutor {
         boolean acquired = distributedLock.executeScoped(lockScope(unit),
                 () -> result.set(executeUnlocked(unit, historical, operation)));
         if (!acquired) {
-            return IngestionUnitResult.skipped(unit,
-                    "Another application instance currently owns this provider/dataset/league/season work unit");
+            return IngestionUnitResult.failed(unit,
+                    "Another application instance currently owns this provider/dataset/league/season work unit",
+                    0, "LOCK_BUSY", true);
         }
         return Objects.requireNonNull(result.get(), "Locked work-unit execution returned no result");
     }
