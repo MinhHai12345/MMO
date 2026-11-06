@@ -5,7 +5,7 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.PlaywrightException;
 import com.microsoft.playwright.Response;
 import com.microsoft.playwright.options.WaitUntilState;
-import com.mmo.module.fb.ingest.provider.model.DynamicFetchResult;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client.DynamicFetchResult;
 import lombok.extern.slf4j.Slf4j;
 import org.thymeleaf.util.MapUtils;
 
