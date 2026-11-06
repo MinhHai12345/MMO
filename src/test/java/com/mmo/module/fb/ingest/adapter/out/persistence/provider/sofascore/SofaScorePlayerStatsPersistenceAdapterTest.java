@@ -60,12 +60,14 @@ class SofaScorePlayerStatsPersistenceAdapterTest {
         player.setId(777L);
         player.setName("Test Player");
         player.setTeam(home);
-        when(externalIdRepository.findByProviderAndExternalId(Provider.SOFA_SCORE, "123"))
-                .thenReturn(Optional.of(PlayerExternalId.builder()
-                        .player(player).provider(Provider.SOFA_SCORE).externalId("123").build()));
+        PlayerExternalId playerMapping = PlayerExternalId.builder()
+                .player(player).provider(Provider.SOFA_SCORE).externalId("123").build();
+        when(externalIdRepository.findAllByProviderAndExternalIdIn(eq(Provider.SOFA_SCORE), anyCollection()))
+                .thenReturn(List.of(playerMapping));
 
         DataSourcePolicy policy = new DataSourcePolicy();
-        SourceAwareMergeAdapter mergeService = new SourceAwareMergeAdapter(policy, provenanceRepository);
+        when(matchRepository.lockAllByIds(anyCollection())).thenReturn(List.of());
+        SourceAwareMergeAdapter mergeService = new SourceAwareMergeAdapter(policy, matchRepository, provenanceRepository);
         SofaScorePlayerStatsPersistenceAdapter service = new SofaScorePlayerStatsPersistenceAdapter(
                 matchRepository, playerRepository, externalIdRepository, statsRepository, mergeService);
 

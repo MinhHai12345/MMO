@@ -13,6 +13,9 @@ import com.mmo.module.fb.ingest.application.model.provider.ProviderFixture;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.out.FixturePersistencePort;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
+import com.mmo.module.fb.ingest.application.port.out.IngestionBatchTransactionPort;
+import com.mmo.module.fb.ingest.application.model.IngestionCheckpointProgress;
 import com.mmo.module.fb.ingest.application.port.out.LeagueExternalMappingPort;
 import com.mmo.module.fb.ingest.application.port.out.TeamExternalMappingPort;
 import com.mmo.module.fb.ingest.application.model.ResolvedProviderFixture;
@@ -25,6 +28,10 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 
 @Slf4j
 @Service
@@ -38,6 +45,8 @@ public class FixtureIngestionService implements FixtureIngestionUseCase {
     private final LeagueExternalMappingPort leagueExternalMappingPort;
     private final TeamExternalMappingPort teamExternalMappingPort;
     private final FixturePersistencePort fixturePersistenceService;
+    private final ProviderCheckpointPort checkpointStore;
+    private final IngestionBatchTransactionPort batchTransaction;
 
     @Override
     public void syncCurrentSeasonFixtures(LocalDate from, LocalDate to) {
@@ -160,7 +169,11 @@ public class FixtureIngestionService implements FixtureIngestionUseCase {
             fetched += fixtures.size();
             log.info("Fetched {} fixtures for league {} season {} from {}",
                     fixtures.size(), externalLeagueId, season.getYear(), selectedProvider);
-            if (fixtures.isEmpty()) continue;
+            if (fixtures.isEmpty()) {
+                checkpointStore.clearProgress(selectedProvider, Dataset.FIXTURE,
+                        season.getLeague().getId(), season.getYear());
+                continue;
+            }
 
             List<ResolvedProviderFixture> resolved = new java.util.ArrayList<>();
             for (ProviderFixture fixture : fixtures) {
@@ -179,28 +192,93 @@ public class FixtureIngestionService implements FixtureIngestionUseCase {
                 resolved.add(new ResolvedProviderFixture(homeTeamId, awayTeamId, fixture));
             }
 
-            // Keep transactions bounded and independent. A failed chunk does not block later chunks.
-            final int persistenceBatchSize = 100;
-            for (int offset = 0; offset < resolved.size(); offset += persistenceBatchSize) {
-                List<ResolvedProviderFixture> batch = resolved.subList(
-                        offset, Math.min(offset + persistenceBatchSize, resolved.size()));
-                try {
-                    int batchSaved = fixturePersistenceService.persistFixtures(
-                            season.getId(), selectedProvider, batch);
-                    saved += batchSaved;
-                    skipped += batch.size() - batchSaved;
-                } catch (Exception ex) {
-                    failed += batch.size();
-                    log.error("Failed to persist provider {} fixture batch for league={} season={} offset={}",
-                            selectedProvider, externalLeagueId, season.getYear(), offset, ex);
-                }
-            }
+            // Every provider uses the same resumable chunk boundary. Data writes and cursor
+            // advancement join one transaction; a failed commit leaves the previous cursor intact.
+            int[] counts = persistResumableFixtureBatches(selectedProvider, season, resolved);
+            saved += counts[0];
+            skipped += counts[1];
         }
 
         log.info("Fixture ingestion via {} finished. fetched={}, saved/updated={}, skipped={}, failed={}; date range {} to {}",
                 selectedProvider, fetched, saved, skipped, failed, from, to);
         if (selectedProvider == Provider.FOOTBALL_DATA && failed > 0) {
             throw new IllegalStateException("Football-Data fixture ingestion incomplete: failed=" + failed);
+        }
+    }
+
+    private int[] persistResumableFixtureBatches(Provider provider, Season season,
+                                                 List<ResolvedProviderFixture> rows) {
+        Long leagueId = season.getLeague().getId();
+        String seasonKey = season.getYear();
+        if (rows == null || rows.isEmpty()) {
+            checkpointStore.clearProgress(provider, Dataset.FIXTURE, leagueId, seasonKey);
+            return new int[]{0, 0};
+        }
+
+        String fingerprint = fixtureFingerprint(rows);
+        int startOffset = 0;
+        long persistedBefore = 0;
+        long failedBefore = 0;
+        IngestionCheckpointProgress progress = checkpointStore.findProgress(
+                provider, Dataset.FIXTURE, leagueId, seasonKey).orElse(null);
+        if (progress != null) {
+            int cursorOffset = parseFixtureCursor(progress.cursor(), fingerprint, rows.size());
+            if (cursorOffset >= 0 && progress.processedRows() == cursorOffset) {
+                startOffset = cursorOffset;
+                persistedBefore = progress.persistedRows();
+                failedBefore = progress.failedRows();
+            } else {
+                checkpointStore.clearProgress(provider, Dataset.FIXTURE, leagueId, seasonKey);
+            }
+        }
+
+        int newlyPersisted = 0;
+        int newlySkipped = 0;
+        final int batchSize = 100;
+        for (int offset = startOffset; offset < rows.size(); offset += batchSize) {
+            final int batchStart = offset;
+            final int batchEnd = Math.min(rows.size(), offset + batchSize);
+            List<ResolvedProviderFixture> batch = List.copyOf(rows.subList(batchStart, batchEnd));
+            final long persistedBase = persistedBefore;
+            final long failedBase = failedBefore;
+            int batchSaved = batchTransaction.execute(() -> {
+                int count = fixturePersistenceService.persistFixtures(season.getId(), provider, batch);
+                checkpointStore.saveProgress(provider, Dataset.FIXTURE, leagueId, seasonKey,
+                        fingerprint + ":" + batchEnd, batchEnd,
+                        persistedBase + count, failedBase + batch.size() - count);
+                return count;
+            });
+            newlyPersisted += batchSaved;
+            newlySkipped += batch.size() - batchSaved;
+            persistedBefore += batchSaved;
+            failedBefore += batch.size() - batchSaved;
+        }
+        checkpointStore.clearProgress(provider, Dataset.FIXTURE, leagueId, seasonKey);
+        return new int[]{newlyPersisted, newlySkipped};
+    }
+
+    private static int parseFixtureCursor(String cursor, String fingerprint, int rowCount) {
+        String prefix = fingerprint + ":";
+        if (cursor == null || !cursor.startsWith(prefix)) return -1;
+        try {
+            int offset = Integer.parseInt(cursor.substring(prefix.length()));
+            return offset >= 0 && offset <= rowCount ? offset : -1;
+        } catch (NumberFormatException exception) {
+            return -1;
+        }
+    }
+
+    private static String fixtureFingerprint(List<ResolvedProviderFixture> rows) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            for (ResolvedProviderFixture row : rows) {
+                String identity = row.homeTeamId() + "|" + row.awayTeamId() + "|"
+                        + String.valueOf(row.fixture()) + "\n";
+                digest.update(identity.getBytes(StandardCharsets.UTF_8));
+            }
+            return "sha256:" + HexFormat.of().formatHex(digest.digest());
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
         }
     }
 

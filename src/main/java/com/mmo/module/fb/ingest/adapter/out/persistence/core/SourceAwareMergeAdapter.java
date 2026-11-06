@@ -4,6 +4,7 @@ import com.mmo.module.fb.domain.match.entity.Match;
 import com.mmo.module.fb.domain.match.entity.MatchFieldProvenance;
 import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import com.mmo.module.fb.domain.match.repository.MatchFieldProvenanceRepository;
+import com.mmo.module.fb.domain.match.repository.MatchRepository;
 import com.mmo.module.fb.ingest.application.model.FieldMergeCommand;
 import com.mmo.module.fb.ingest.application.port.out.SourceAwareMergePort;
 import com.mmo.module.fb.ingest.enums.Provider;
@@ -30,6 +31,7 @@ import java.util.Objects;
 public class SourceAwareMergeAdapter implements SourceAwareMergePort {
 
     private final DataSourcePolicy dataSourcePolicy;
+    private final MatchRepository matchRepository;
     private final MatchFieldProvenanceRepository provenanceRepository;
 
     @Override
@@ -55,6 +57,8 @@ public class SourceAwareMergeAdapter implements SourceAwareMergePort {
         if (valid.isEmpty()) return 0;
 
         List<Long> matchIds = valid.stream().map(command -> command.match().getId()).distinct().toList();
+        // Serialize provider merges against the same canonical fixture before reading provenance.
+        matchRepository.lockAllByIds(matchIds);
         List<String> fieldKeys = valid.stream().map(FieldMergeCommand::fieldKey).distinct().toList();
         Map<ProvenanceKey, MatchFieldProvenance> provenanceByKey = new HashMap<>();
         provenanceRepository.findAllByMatchIdInAndFieldKeyIn(matchIds, fieldKeys).forEach(provenance ->

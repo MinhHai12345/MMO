@@ -6,6 +6,11 @@ import com.mmo.module.fb.ingest.application.exception.ProviderTransportException
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.TransientDataAccessException;
+import org.springframework.transaction.TransactionException;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -98,6 +103,28 @@ public final class IngestionUnitExecutor {
             markFailureState(unit, CheckpointStatus.FAILED, exception);
             return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
                     "PROVIDER_TRANSPORT", true);
+        } catch (DuplicateKeyException exception) {
+            // A competing provider unit may have inserted the same external identity.
+            // The next scheduled attempt re-reads the unique mapping before creating it again.
+            markFailureState(unit, CheckpointStatus.FAILED, exception);
+            return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
+                    "DATABASE_IDENTITY_CONFLICT", true);
+        } catch (DataAccessResourceFailureException exception) {
+            markFailureState(unit, CheckpointStatus.FAILED, exception);
+            return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
+                    "DATABASE_CONNECTION", true);
+        } catch (TransientDataAccessException exception) {
+            markFailureState(unit, CheckpointStatus.FAILED, exception);
+            return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
+                    "DATABASE_TRANSIENT", true);
+        } catch (DataAccessException exception) {
+            markFailureState(unit, CheckpointStatus.FAILED, exception);
+            return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
+                    "DATABASE", false);
+        } catch (TransactionException exception) {
+            markFailureState(unit, CheckpointStatus.FAILED, exception);
+            return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
+                    "DATABASE_TRANSACTION", true);
         } catch (RuntimeException exception) {
             markFailureState(unit, CheckpointStatus.FAILED, exception);
             return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),

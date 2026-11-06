@@ -8,6 +8,9 @@ import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.TransientDataAccessResourceException;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -105,6 +108,28 @@ class IngestionUnitExecutorTest {
         assertTrue(transport.isRetryable());
         assertEquals("IllegalArgumentException", permanent.failureCode());
         assertFalse(permanent.isRetryable());
+    }
+
+    @Test
+    void classifiesDatabaseConnectionLossAndDeadlockAsRetryable() {
+        IngestionUnitResult connectionFailure = executor.execute(unit, false,
+                () -> { throw new DataAccessResourceFailureException("database connection lost"); });
+        IngestionUnitResult deadlock = executor.execute(unit, false,
+                () -> { throw new TransientDataAccessResourceException("deadlock victim"); });
+
+        assertEquals("DATABASE_CONNECTION", connectionFailure.failureCode());
+        assertTrue(connectionFailure.isRetryable());
+        assertEquals("DATABASE_TRANSIENT", deadlock.failureCode());
+        assertTrue(deadlock.isRetryable());
+    }
+
+    @Test
+    void classifiesConcurrentUniqueIdentityInsertAsRetryable() {
+        IngestionUnitResult result = executor.execute(unit, false,
+                () -> { throw new DuplicateKeyException("provider external identity already inserted"); });
+
+        assertEquals("DATABASE_IDENTITY_CONFLICT", result.failureCode());
+        assertTrue(result.isRetryable());
     }
 
     @Test
