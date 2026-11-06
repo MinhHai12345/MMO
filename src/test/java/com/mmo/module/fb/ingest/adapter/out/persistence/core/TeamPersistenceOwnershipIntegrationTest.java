@@ -95,7 +95,7 @@ class TeamPersistenceOwnershipIntegrationTest {
         assertEquals("Manchester United", canonical.getName());
         assertEquals("Man United", canonical.getShortName());
         assertEquals("https://football-data.example/logo.png", canonical.getLogoUrl());
-        verify(teamRepository, never()).save(any(Team.class));
+        verify(teamRepository, never()).saveAll(anyIterable());
         verify(teamExternalIdRepository).saveAll(argThat(rows ->
                 rows.iterator().hasNext()
                         && "uk-team-1".equals(((TeamExternalId) rows.iterator().next()).getExternalId())));
