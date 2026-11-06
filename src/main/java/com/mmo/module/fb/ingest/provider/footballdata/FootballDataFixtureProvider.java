@@ -5,7 +5,7 @@ import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataClient;
 import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.MatchListDto;
 import com.mmo.module.fb.ingest.provider.footballdata.mapper.FootballDataResponseMapper;
 import com.mmo.module.fb.ingest.application.model.provider.FixtureQuery;
-import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderFixture;
 import com.mmo.module.fb.ingest.application.port.out.provider.FixtureIngestionPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
