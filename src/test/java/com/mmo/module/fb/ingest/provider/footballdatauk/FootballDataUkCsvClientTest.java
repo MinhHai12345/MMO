@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.footballdatauk;
+package com.mmo.module.fb.ingest.adapter.out.provider.footballdatauk;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
