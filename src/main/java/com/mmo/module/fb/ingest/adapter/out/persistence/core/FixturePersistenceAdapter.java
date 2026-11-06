@@ -220,21 +220,21 @@ public class FixturePersistenceAdapter implements FixturePersistencePort {
             Match target = match;
             mergeFixtureField(mergeCommands, target, provider, "match_time", fixture.kickoff(),
                     target.getMatchTime() != null && !isNew, value -> target.setMatchTime((Instant) value));
-            mergeFixtureField(target, provider, "round_info", fixture.round(),
+            mergeFixtureField(mergeCommands, target, provider, "round_info", fixture.round(),
                     hasText(target.getRoundInfo()), value -> target.setRoundInfo((String) value));
-            mergeFixtureField(target, provider, "venue", fixture.venue(),
+            mergeFixtureField(mergeCommands, target, provider, "venue", fixture.venue(),
                     hasText(target.getVenue()), value -> target.setVenue((String) value));
-            mergeFixtureField(target, provider, "referee", fixture.referee(),
+            mergeFixtureField(mergeCommands, target, provider, "referee", fixture.referee(),
                     hasText(target.getReferee()), value -> target.setReferee((String) value));
 
             MatchStatus incomingStatus = toMatchStatus(fixture.status());
             if (incomingStatus != null && statusTransitionAllowed(target.getStatus(), incomingStatus)) {
-                mergeFixtureField(target, provider, "status", incomingStatus,
+                mergeFixtureField(mergeCommands, target, provider, "status", incomingStatus,
                         target.getStatus() != null && !isNew, value -> target.setStatus((MatchStatus) value));
             }
-            if (fixture.homeScore() != null) mergeFixtureField(target, provider, "home_score",
+            if (fixture.homeScore() != null) mergeFixtureField(mergeCommands, target, provider, "home_score",
                     fixture.homeScore(), target.getHomeScore() != null, value -> target.setHomeScore((Integer) value));
-            if (fixture.awayScore() != null) mergeFixtureField(target, provider, "away_score",
+            if (fixture.awayScore() != null) mergeFixtureField(mergeCommands, target, provider, "away_score",
                     fixture.awayScore(), target.getAwayScore() != null, value -> target.setAwayScore((Integer) value));
 
             if (matchesWritten.add(target.getId())) matchesToSave.add(target);
@@ -246,6 +246,8 @@ public class FixturePersistenceAdapter implements FixturePersistencePort {
             persisted++;
         }
 
+        mergeService.mergeAll(mergeCommands);
+        if (!matchesToSave.isEmpty()) matchRepository.saveAll(matchesToSave);
         if (!mappingsToInsert.isEmpty()) matchExternalIdRepository.saveAll(mappingsToInsert);
         return persisted;
     }
