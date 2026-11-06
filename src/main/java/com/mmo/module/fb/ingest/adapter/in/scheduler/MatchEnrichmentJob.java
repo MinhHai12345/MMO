@@ -2,7 +2,7 @@ package com.mmo.module.fb.ingest.adapter.in.scheduler;
 
 import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.job.AbstractJob;
-import com.mmo.module.fb.ingest.application.port.in.MatchEnrichmentService;
+import com.mmo.module.fb.ingest.application.port.in.MatchEnrichmentUseCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.DisallowConcurrentExecution;
@@ -16,12 +16,12 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class MatchEnrichmentJob extends AbstractJob<CronJob> {
 
-    private final MatchEnrichmentService matchEnrichmentService;
+    private final MatchEnrichmentUseCase matchEnrichmentUseCase;
 
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
         log.info("Starting match enrichment");
-        matchEnrichmentService.enrichFinishedMatches();
+        matchEnrichmentUseCase.enrichFinishedMatches();
         log.info("Match enrichment completed");
     }
 }
