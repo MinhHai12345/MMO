@@ -6,7 +6,7 @@ import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballClient;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsItem;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
 import com.mmo.module.fb.ingest.provider.apifootball.mapper.ApiFootballOddsMapper;
-import com.mmo.module.fb.ingest.provider.model.OddsQuery;
+import com.mmo.module.fb.ingest.application.model.provider.OddsQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import com.mmo.module.fb.ingest.application.port.out.provider.OddsIngestionPort;
 import lombok.RequiredArgsConstructor;
