@@ -12,7 +12,7 @@ import com.mmo.module.fb.domain.team.entity.Team;
 import com.mmo.module.fb.domain.team.repository.TeamRepository;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
-import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderFixture;
 import com.mmo.module.fb.ingest.application.model.ResolvedProviderFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
