@@ -1,8 +1,8 @@
 package com.mmo.module.fb.ingest.provider.apifootball.mapper;
 
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.FixtureItem;
-import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
-import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
+import com.mmo.module.fb.ingest.application.model.provider.MmoProviderDataStandardizer;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderFixture;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
