@@ -44,7 +44,7 @@ class EnrichmentPersistenceOwnershipIntegrationTest {
         FootballDataUkMatchStatisticsPersistenceAdapter statsService =
                 new FootballDataUkMatchStatisticsPersistenceAdapter(
                         statsRepository, snapshotService, policy,
-                        new SourceAwareMergeAdapter(policy,
+                        new SourceAwareMergeAdapter(policy, mock(MatchRepository.class),
                                 mock(com.mmo.module.fb.domain.match.repository.MatchFieldProvenanceRepository.class)));
 
         BookmakerRepository bookmakerRepository = mock(BookmakerRepository.class);
@@ -58,7 +58,7 @@ class EnrichmentPersistenceOwnershipIntegrationTest {
 
         MatchRepository matchRepository = mock(MatchRepository.class);
         MatchXgPersistenceAdapter xgService = new MatchXgPersistenceAdapter(matchRepository, policy,
-                new SourceAwareMergeAdapter(policy,
+                new SourceAwareMergeAdapter(policy, matchRepository,
                         mock(com.mmo.module.fb.domain.match.repository.MatchFieldProvenanceRepository.class)));
         assertFalse(xgService.upsert(Provider.FOOTBALL_DATA_UK, match,
                 new BigDecimal("0.75"), new BigDecimal("0.25")));
