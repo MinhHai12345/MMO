@@ -58,7 +58,7 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
 
     @Override
     public void syncCoreData(ProviderOverrides overrides) {
-        boolean executed = distributedLock.execute(IngestionDistributedLock.GLOBAL_INGEST_LOCK,
+        boolean executed = distributedLock.executeScoped("workflow/historical-core-backfill",
                 () -> syncCoreDataLocked(overrides));
         if (!executed) {
             log.warn("Bootstrap skipped because another ingestion workflow is running");
@@ -155,8 +155,14 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
                     .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
             for (Long seasonId : batchSeasonIds) {
                 try {
-                    runStage(providerId + "/core/season=" + seasonId,
-                            () -> provider.syncCoreSeason(seasonId, true));
+                    boolean acquired = distributedLock.executeScoped(
+                            "batch/" + providerId + "/core/season/" + seasonId,
+                            () -> runStage(providerId + "/core/season=" + seasonId,
+                                    () -> provider.syncCoreSeason(seasonId, true)));
+                    if (!acquired) {
+                        failedStages.add(providerId + "/core/season=" + seasonId
+                                + ": another node owns this season batch");
+                    }
                 } catch (RuntimeException exception) {
                     failedStages.add(providerId + "/core/season=" + seasonId
                             + ": " + exception.getMessage());
@@ -183,7 +189,7 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
                          List<IngestionUnitResult> results) {
         String name = unit.provider() + "/" + unit.dataset() + "/league=" + unit.leagueId()
                 + "/season=" + unit.season();
-        IngestionUnitResult result = new IngestionUnitExecutor(checkpointStore)
+        IngestionUnitResult result = new IngestionUnitExecutor(checkpointStore, distributedLock)
                 .execute(unit, true, () -> runStage(name, operation));
         results.add(result);
         if (!result.isSuccessful()) {
@@ -247,8 +253,14 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
                 SeasonBatchIngestionPort batchProvider = seasonBatchRegistry.require(provider);
                 for (Long seasonId : batchSeasonIds) {
                     try {
-                        runStage("multi-provider/core/" + provider + "/season=" + seasonId,
-                                () -> batchProvider.syncCoreSeason(seasonId, true));
+                        boolean acquired = distributedLock.executeScoped(
+                                "batch/" + provider + "/core/season/" + seasonId,
+                                () -> runStage("multi-provider/core/" + provider + "/season=" + seasonId,
+                                        () -> batchProvider.syncCoreSeason(seasonId, true)));
+                        if (!acquired) {
+                            failedStages.add("multi-provider/core/" + provider + "/season=" + seasonId
+                                    + ": another node owns this season batch");
+                        }
                     } catch (RuntimeException exception) {
                         failedStages.add("multi-provider/core/" + provider + "/season=" + seasonId
                                 + ": " + exception.getMessage());
