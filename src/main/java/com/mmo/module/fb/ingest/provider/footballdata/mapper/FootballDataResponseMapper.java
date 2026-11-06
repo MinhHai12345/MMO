@@ -9,7 +9,7 @@ import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.Stand
 import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.StandingsDto;
 import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.TeamDto;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderFixture;
-import com.mmo.module.fb.ingest.application.model.provider.MmoProviderDataStandardizer;
+import com.mmo.module.fb.ingest.adapter.out.provider.standardization.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderLeague;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderSeason;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderStanding;
