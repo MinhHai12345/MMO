@@ -10,6 +10,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
+import java.util.Collection;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -18,6 +21,12 @@ import java.util.List;
 
 @Repository
 public interface MatchRepository extends JpaRepository<Match, Long> {
+
+    /** Locks canonical fixtures in deterministic ID order before cross-provider field merges. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select m from Match m where m.id in :ids order by m.id")
+    List<Match> lockAllByIds(@Param("ids") Collection<Long> ids);
+
 
     @EntityGraph(attributePaths = {"season", "homeTeam", "awayTeam"})
     @Query("""
