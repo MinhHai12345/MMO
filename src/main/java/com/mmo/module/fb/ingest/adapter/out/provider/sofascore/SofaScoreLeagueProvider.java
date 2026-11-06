@@ -1,0 +1,54 @@
+package com.mmo.module.fb.ingest.adapter.out.provider.sofascore;
+
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client.AbstractSofaScoreProvider;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.SeasonDTO;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.UniqueTournamentDTO;
+
+import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderLeague;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client.SofaScoreClient;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.mapper.SofaScoreLeagueMapper;
+import com.mmo.module.fb.ingest.application.port.out.provider.LeagueIngestionPort;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.Objects;
+
+@Component
+@RequiredArgsConstructor
+public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implements LeagueIngestionPort {
+
+    private final SofaScoreLeagueMapper mapper;
+    private final SofaScoreClient sofaScoreClient;
+
+    @Override
+    public Provider getProvider() {
+        return Provider.SOFA_SCORE;
+    }
+
+    @Override
+    public List<ProviderLeague> fetchLeagues(List<Long> externalLeagueIds) {
+        return withPage(page -> {
+            List<UniqueTournamentDTO> tournaments =
+                    sofaScoreClient.fetchLeagues(page);
+            if (tournaments == null) return List.of();
+
+            return tournaments.stream()
+                    .filter(Objects::nonNull)
+                    .filter(tournament -> tournament.id() != null)
+                    .filter(tournament -> externalLeagueIds == null || externalLeagueIds.isEmpty()
+                                          || externalLeagueIds.contains(tournament.id()))
+                    .map(tournament -> {
+                        List<SeasonDTO> seasons =
+                                sofaScoreClient.fetchSeasonByTournamentId(tournament.id(), page);
+                        return mapper.toProviderLeague(tournament, seasons);
+                    })
+                    .filter(Objects::nonNull)
+                    // Do not persist catalogue entries that cannot provide season identity;
+                    // downstream team and fixture ingestion cannot process them safely.
+                    .filter(league -> league.seasons() != null && !league.seasons().isEmpty())
+                    .toList();
+        });
+    }
+}

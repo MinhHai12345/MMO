@@ -1,0 +1,116 @@
+package com.mmo.module.fb.ingest.adapter.out.provider.footballdata.mapper;
+
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.CompetitionDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.MatchDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.ScorePairDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.SeasonDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.StandingRowDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.StandingTableDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.StandingsDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.TeamDto;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderFixture;
+import com.mmo.module.fb.ingest.adapter.out.provider.standardization.MmoProviderDataStandardizer;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderLeague;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderSeason;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderStanding;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderTeam;
+import com.mmo.module.fb.domain.league.enums.StandingType;
+import org.springframework.stereotype.Component;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+@Component
+public class FootballDataResponseMapper {
+
+    public ProviderLeague toLeague(CompetitionDto competition) {
+        if (competition == null || competition.id() == null) return null;
+
+        SeasonDto currentSeason = competition.currentSeason();
+        String currentYear = seasonYear(currentSeason);
+        Map<String, SeasonDto> availableSeasonsByYear = new LinkedHashMap<>();
+        if (competition.seasons() != null) {
+            for (SeasonDto season : competition.seasons()) {
+                String year = seasonYear(season);
+                if (year != null) availableSeasonsByYear.putIfAbsent(year, season);
+            }
+        }
+        if (currentSeason != null && currentYear != null) {
+            availableSeasonsByYear.putIfAbsent(currentYear, currentSeason);
+        }
+
+        List<ProviderSeason> seasons = new ArrayList<>();
+        for (Map.Entry<String, SeasonDto> entry : availableSeasonsByYear.entrySet()) {
+            String year = entry.getKey();
+            SeasonDto season = entry.getValue();
+            String externalSeasonId = season.id() == null
+                    ? competition.id() + ":" + year : season.id().toString();
+            if (Integer.parseInt(year) > 2022) {
+                seasons.add(new ProviderSeason(externalSeasonId, year, year.equals(currentYear),
+                        season.startDate(), season.endDate()));
+            }
+        }
+
+        return new ProviderLeague(
+                competition.id().toString(),
+                competition.code() == null || competition.code().isBlank()
+                        ? competition.id().toString() : competition.code(),
+                MmoProviderDataStandardizer.leagueName(competition.name()),
+                competition.area() == null ? null : MmoProviderDataStandardizer.countryName(competition.area().name()),
+                competition.emblem(),
+                seasons);
+    }
+
+    private static String seasonYear(SeasonDto season) {
+        return season == null || season.startDate() == null
+                ? null : Integer.toString(season.startDate().getYear());
+    }
+
+    public ProviderTeam toTeam(TeamDto team) {
+        if (team == null || team.id() == null) return null;
+        String name = MmoProviderDataStandardizer.standardTeamName(team.name());
+        return new ProviderTeam(team.id().toString(), name,
+                MmoProviderDataStandardizer.teamShortName(
+                        team.tla() != null ? team.tla() : team.shortName(), name),
+                team.crest(), team.founded(),
+                MmoProviderDataStandardizer.venueName(team.venue()), null);
+    }
+
+    public ProviderFixture toFixture(MatchDto match) {
+        if (match == null || match.id() == null || match.homeTeam() == null
+            || match.homeTeam().id() == null || match.awayTeam() == null
+            || match.awayTeam().id() == null) return null;
+        Instant kickoff = match.utcDate() == null ? null : match.utcDate().toInstant();
+        ScorePairDto score = match.score() == null ? null
+                : (match.score().fullTime() != null ? match.score().fullTime() : match.score().regularTime());
+        String round = MmoProviderDataStandardizer.roundName(
+                match.matchday() == null ? match.stage() : "Matchday " + match.matchday());
+        return new ProviderFixture(match.id().toString(), match.homeTeam().id().toString(),
+                match.awayTeam().id().toString(), kickoff, round,
+                MmoProviderDataStandardizer.venueName(match.venue()), null,
+                MmoProviderDataStandardizer.fixtureStatus(match.status()),
+                score == null ? null : score.home(), score == null ? null : score.away());
+    }
+
+    public List<ProviderStanding> toStandings(StandingsDto response) {
+        List<ProviderStanding> result = new ArrayList<>();
+        if (response == null || response.standings() == null) return result;
+        for (StandingTableDto table : response.standings()) {
+            if (table == null || table.table() == null) continue;
+            StandingType type = StandingType.fromProviderValue(table.type());
+            for (StandingRowDto row : table.table()) {
+                if (row == null || row.team() == null || row.team().id() == null) continue;
+                result.add(new ProviderStanding(row.team().id().toString(), row.position(),
+                        row.points(), row.goalDifference(), MmoProviderDataStandardizer.displayText(row.form()),
+                        MmoProviderDataStandardizer.displayText(
+                                row.group() != null ? row.group() : table.group()),
+                        row.playedGames(), row.won(), row.draw(), row.lost(),
+                        row.goalsFor(), row.goalsAgainst(), type));
+            }
+        }
+        return result;
+    }
+}

@@ -1,8 +1,8 @@
-package com.mmo.module.fb.ingest.provider.footballdata.mapper;
+package com.mmo.module.fb.ingest.adapter.out.provider.footballdata.mapper;
 
-import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.AreaDto;
-import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.CompetitionDto;
-import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.SeasonDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.AreaDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.CompetitionDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.footballdata.dto.FootballDataDtos.SeasonDto;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;

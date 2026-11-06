@@ -1,0 +1,47 @@
+package com.mmo.module.fb.ingest.adapter.out.provider.sofascore;
+
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client.AbstractSofaScoreProvider;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.MatchOddDetailDTO;
+
+import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.application.model.provider.OddsQuery;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderOdds;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client.SofaScoreClient;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.mapper.SofaScoreOddsMapper;
+import com.mmo.module.fb.ingest.application.port.out.provider.OddsIngestionPort;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.Map;
+
+@Component
+@RequiredArgsConstructor
+public class SofaScoreOddsProvider extends AbstractSofaScoreProvider implements OddsIngestionPort {
+
+    private final SofaScoreOddsMapper mapper;
+    private final SofaScoreClient sofaScoreClient;
+
+    @Override
+    public Provider getProvider() {
+        return Provider.SOFA_SCORE;
+    }
+
+    @Override
+    public List<ProviderOdds> fetchOdds(OddsQuery query) {
+        if (query == null || query.fixtureExternalId() == null) return List.of();
+        final long eventId;
+        try {
+            eventId = Long.parseLong(query.fixtureExternalId());
+        } catch (NumberFormatException ex) {
+            return List.of();
+        }
+
+        return withPage(page -> {
+            Map<Long, MatchOddDetailDTO> allOdds =
+                    sofaScoreClient.fetchDailyMatchOdds(page);
+            if (allOdds == null) return List.of();
+            return mapper.toProviderOdds(allOdds.get(eventId));
+        });
+    }
+}

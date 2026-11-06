@@ -16,11 +16,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ProviderIsolationTest {
 
     private static final Path PROVIDER_ROOT =
-            Path.of("src/main/java/com/mmo/module/fb/ingest/provider");
+            Path.of("src/main/java/com/mmo/module/fb/ingest/adapter/out/provider");
     private static final List<String> PROVIDERS =
             List.of("apifootball", "footballdata", "footballdatauk", "sofascore", "understats");
     private static final Pattern PROVIDER_IMPORT = Pattern.compile(
-            "^\\s*import\\s+com\\.mmo\\.module\\.fb\\.ingest\\.provider\\."
+            "^\\s*import\\s+com\\.mmo\\.module\\.fb\\.ingest\\.adapter\\.out\\.provider\\."
                     + "(apifootball|footballdata|footballdatauk|sofascore|understats)(?:\\.|;).*");
 
     @Test

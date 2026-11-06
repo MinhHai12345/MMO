@@ -1,0 +1,66 @@
+package com.mmo.module.fb.ingest.adapter.out.provider.apifootball.mapper;
+
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.dto.ApiFootballDtos.OddsBetDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.dto.ApiFootballDtos.OddsBookmakerDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.dto.ApiFootballDtos.OddsItem;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.dto.ApiFootballDtos.OddsValueDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.standardization.MmoProviderDataStandardizer;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderOdds;
+import org.springframework.stereotype.Component;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+
+@Component
+public class ApiFootballOddsMapper {
+
+    private ProviderOdds map(OddsMappingInput input) {
+        if (input == null || input.bookmaker() == null || input.bet() == null || input.value() == null
+            || input.bookmaker().name() == null || input.bet().name() == null
+            || input.value().value() == null) {
+            return null;
+        }
+        BigDecimal odd = decimal(input.value().odd());
+        String bookmaker = MmoProviderDataStandardizer.bookmakerName(input.bookmaker().name());
+        String market = MmoProviderDataStandardizer.oddsMarketName(input.bet().name());
+        String outcome = MmoProviderDataStandardizer.oddsOutcomeName(input.value().value());
+        if (odd == null || bookmaker == null || market == null || outcome == null) return null;
+        return new ProviderOdds(bookmaker, market, outcome, odd);
+    }
+
+    public List<ProviderOdds> toModels(List<OddsItem> items) {
+        List<ProviderOdds> result = new ArrayList<>();
+        if (items == null) return result;
+        for (OddsItem item : items) {
+            if (item == null || item.bookmakers() == null) continue;
+            for (OddsBookmakerDto bookmaker : item.bookmakers()) {
+                if (bookmaker == null || bookmaker.bets() == null) continue;
+                for (OddsBetDto bet : bookmaker.bets()) {
+                    if (bet == null || bet.values() == null) continue;
+                    for (OddsValueDto value : bet.values()) {
+                        ProviderOdds mapped = map(new OddsMappingInput(bookmaker, bet, value));
+                        if (mapped != null) result.add(mapped);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    private BigDecimal decimal(String value) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            return new BigDecimal(value);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    public record OddsMappingInput(
+            OddsBookmakerDto bookmaker,
+            OddsBetDto bet,
+            OddsValueDto value
+    ) {
+    }
+}

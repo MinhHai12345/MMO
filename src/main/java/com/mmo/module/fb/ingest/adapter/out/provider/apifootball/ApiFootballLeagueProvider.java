@@ -1,0 +1,66 @@
+package com.mmo.module.fb.ingest.adapter.out.provider.apifootball;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.client.ApiFootballClient;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.dto.ApiFootballDtos.LeagueItem;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.dto.ApiFootballResponse;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.mapper.ApiFootballLeagueMapper;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderLeague;
+import com.mmo.module.fb.ingest.application.port.out.provider.LeagueIngestionPort;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+@Component
+@RequiredArgsConstructor
+public class ApiFootballLeagueProvider implements LeagueIngestionPort {
+
+    private static final TypeReference<ApiFootballResponse<LeagueItem>> RESPONSE_TYPE =
+            new TypeReference<>() {};
+
+    private final ApiFootballClient client;
+    private final ApiFootballLeagueMapper mapper;
+
+    @Override
+    public Provider getProvider() {
+        return Provider.API_FOOTBALL;
+    }
+
+    @Override
+    public List<ProviderLeague> fetchLeagues(List<Long> externalLeagueIds) {
+        List<ProviderLeague> result = new ArrayList<>();
+        if (externalLeagueIds == null || externalLeagueIds.isEmpty()) {
+            int page = 1;
+            int totalPages = 1;
+            do {
+                ApiFootballResponse<LeagueItem> response = client.get(
+                        "/leagues", Map.of("page", page), RESPONSE_TYPE);
+                if (response.response() != null) {
+                    response.response().stream().map(mapper::toModel)
+                            .filter(Objects::nonNull).forEach(result::add);
+                }
+                if (response.paging() != null && response.paging().total() != null) {
+                    totalPages = Math.max(totalPages, response.paging().total());
+                }
+                page++;
+            } while (page <= totalPages);
+            return result;
+        }
+        for (Long externalLeagueId : externalLeagueIds) {
+            if (externalLeagueId == null) continue;
+            ApiFootballResponse<LeagueItem> response = client.get(
+                    "/leagues", Map.of("id", externalLeagueId), RESPONSE_TYPE);
+            if (response.response() == null) continue;
+            response.response().stream()
+                    .map(mapper::toModel)
+                    .filter(Objects::nonNull)
+                    .forEach(result::add);
+        }
+        return result;
+    }
+}

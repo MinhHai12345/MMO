@@ -1,6 +1,6 @@
-package com.mmo.module.fb.ingest.provider.sofascore.mapper;
+package com.mmo.module.fb.ingest.adapter.out.provider.sofascore.mapper;
 
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreLineupsResponseDTO;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreLineupsResponseDTO;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
