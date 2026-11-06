@@ -6,7 +6,7 @@ import com.microsoft.playwright.TimeoutError;
 import com.mmo.AppProperties;
 import com.mmo.core.utils.DateTimeUtils;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.DynamicFetchResult;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client.DynamicFetchResult;
 import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaDailyMatchWrapper;
 import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.EventDTO;
 import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.MatchOddDetailDTO;
