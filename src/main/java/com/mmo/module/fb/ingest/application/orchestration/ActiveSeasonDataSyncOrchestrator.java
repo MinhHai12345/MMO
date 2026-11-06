@@ -74,17 +74,17 @@ public class ActiveSeasonDataSyncOrchestrator implements ActiveSeasonDataSyncUse
                 .stream().map(IngestionWorkUnit::provider).distinct().toList();
         for (Provider catalogueProvider : catalogueProviders) {
             if (!seasonBatchRegistry.supports(catalogueProvider, Dataset.LEAGUE)) {
-                runStageCollecting("catalogue/leagues/" + catalogueProvider,
+                runStageCollecting("catalogue/" + catalogueProvider + "/LEAGUE",
                         () -> leagueIngestionService.syncLeaguesForProvider(catalogueProvider), failedStages);
             }
             if (!seasonBatchRegistry.supports(catalogueProvider, Dataset.SEASON)) {
                 List<IngestionWorkUnit> seasonUnits = plan.units(
                         Dataset.SEASON, catalogueProvider, IngestionWorkUnit.Role.PRIMARY);
                 if (seasonUnits.isEmpty()) {
-                    runStageCollecting("catalogue/seasons/" + catalogueProvider,
+                    runStageCollecting("catalogue/" + catalogueProvider + "/SEASON",
                             () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider), failedStages);
                 } else {
-                    runPlannedStage("catalogue/seasons/" + catalogueProvider, Dataset.SEASON,
+                    runPlannedStage("catalogue/" + catalogueProvider + "/SEASON", Dataset.SEASON,
                             seasonUnits,
                             () -> seasonIngestionService.syncSeasonsForProvider(catalogueProvider), failedStages);
                 }
@@ -169,7 +169,7 @@ public class ActiveSeasonDataSyncOrchestrator implements ActiveSeasonDataSyncUse
      */
     private void runPlannedStage(String name, Dataset dataset, List<IngestionWorkUnit> units,
                                  Runnable operation, List<String> failedStages) {
-        boolean acquired = distributedLock.executeScoped("catalogue/" + name, () -> {
+        boolean acquired = distributedLock.executeScoped(catalogueScope(name), () -> {
             units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
                     unit.leagueId(), unit.season(), CheckpointStatus.RUNNING));
             try {
@@ -189,7 +189,7 @@ public class ActiveSeasonDataSyncOrchestrator implements ActiveSeasonDataSyncUse
 
     private void runStageCollecting(String name, Runnable operation, List<String> failedStages) {
         try {
-            boolean acquired = distributedLock.executeScoped("catalogue/" + name,
+            boolean acquired = distributedLock.executeScoped(catalogueScope(name),
                     () -> runStage(name, operation));
             if (!acquired) {
                 failedStages.add(name + ": catalogue lock is already held by another node");
@@ -198,6 +198,10 @@ public class ActiveSeasonDataSyncOrchestrator implements ActiveSeasonDataSyncUse
             failedStages.add(name + ": " + exception.getMessage());
             log.warn("Catalogue stage failed; continuing independent work units: {}", name, exception);
         }
+    }
+
+    private static String catalogueScope(String name) {
+        return name.startsWith("catalogue/") ? name : "catalogue/" + name;
     }
 
     private void runStage(String name, Runnable operation) {
