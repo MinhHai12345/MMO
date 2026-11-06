@@ -42,7 +42,7 @@ class CoreDataBackfillOrchestratorTest {
         doAnswer(invocation -> {
             ((Runnable) invocation.getArgument(1)).run();
             return true;
-        }).when(lock).execute(anyString(), any(Runnable.class));
+        }).when(lock).executeScoped(anyString(), any(Runnable.class));
 
         properties = new AppProperties();
         AppProperties.ProviderConfig footballDataConfig = new AppProperties.ProviderConfig();
@@ -148,7 +148,7 @@ class CoreDataBackfillOrchestratorTest {
 
     @Test
     void doesNotStartWorkflowWhenGlobalLockIsBusy() {
-        doReturn(false).when(lock).execute(eq(IngestionDistributedLock.GLOBAL_INGEST_LOCK), any(Runnable.class));
+        doReturn(false).when(lock).executeScoped(eq("workflow/historical-core-backfill"), any(Runnable.class));
 
         service.syncCoreData(ProviderOverrides.defaults());
 
