@@ -43,11 +43,11 @@ class FootballDataUkSeasonImporterTest {
         String fingerprint = "abc123";
         assertEquals(200, FootballDataUkSeasonImporter.parseCursorOffset(
                 "abc123:200", fingerprint, 500));
-        assertEquals(0, FootballDataUkSeasonImporter.parseCursorOffset(
+        assertEquals(-1, FootballDataUkSeasonImporter.parseCursorOffset(
                 "different:200", fingerprint, 500));
-        assertEquals(0, FootballDataUkSeasonImporter.parseCursorOffset(
+        assertEquals(-1, FootballDataUkSeasonImporter.parseCursorOffset(
                 "abc123:501", fingerprint, 500));
-        assertEquals(0, FootballDataUkSeasonImporter.parseCursorOffset(
+        assertEquals(-1, FootballDataUkSeasonImporter.parseCursorOffset(
                 "abc123:not-a-number", fingerprint, 500));
     }
 }
