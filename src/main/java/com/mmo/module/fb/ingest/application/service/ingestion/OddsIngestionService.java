@@ -10,7 +10,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.domain.match.enums.MatchEnrichmentResource;
 import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import com.mmo.module.fb.domain.match.service.MatchEnrichmentStateService;
-import com.mmo.module.fb.ingest.provider.model.OddsQuery;
+import com.mmo.module.fb.ingest.application.model.provider.OddsQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.in.OddsIngestionUseCase;
