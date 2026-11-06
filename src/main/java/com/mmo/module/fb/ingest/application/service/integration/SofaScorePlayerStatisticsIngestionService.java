@@ -2,7 +2,7 @@ package com.mmo.module.fb.ingest.application.service.integration;
 
 import com.mmo.module.fb.ingest.application.port.out.PlayerStatisticsIngestionPort;
 import com.mmo.module.fb.ingest.application.port.out.provider.PlayerLineupsIngestionPort;
-import com.mmo.module.fb.ingest.provider.model.ProviderLineups;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderLineups;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 
