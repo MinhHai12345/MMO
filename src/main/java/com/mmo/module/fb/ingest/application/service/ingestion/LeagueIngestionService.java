@@ -5,7 +5,7 @@ import com.mmo.module.fb.ingest.application.service.support.IngestionServiceSupp
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderLeague;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.out.LeaguePersistencePort;
