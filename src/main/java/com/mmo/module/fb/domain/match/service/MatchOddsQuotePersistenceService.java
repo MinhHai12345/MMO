@@ -19,6 +19,12 @@ import java.time.Instant;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.List;
+import java.util.Map;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Objects;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderOdds;
 
 /** Writes provider-specific, normalized odds quotes and their immutable price history. */
 @Service
@@ -71,6 +77,78 @@ public class MatchOddsQuotePersistenceService {
                 .recordedAt(now)
                 .build());
     }
+
+
+    /**
+     * Bulk quote merge for one match/provider snapshot. Existing quote identities are
+     * loaded once and both quote and immutable price-history rows are flushed with saveAll.
+     */
+    @Transactional
+    public void upsertAll(Match match, MatchProvider provider,
+                          Map<Bookmaker, List<ProviderOdds>> valuesByBookmaker) {
+        if (match == null || match.getId() == null || provider == null
+                || valuesByBookmaker == null || valuesByBookmaker.isEmpty()) return;
+
+        Map<QuoteIdentity, MatchOddsQuote> existing = new LinkedHashMap<>();
+        quoteRepository.findAllByMatchIdAndProvider(match.getId(), provider).forEach(quote ->
+                existing.put(identity(quote.getBookmaker().getId(), quote.getMarketType(),
+                        quote.getMarketPeriod(), quote.getLine(), quote.getOutcome()), quote));
+
+        Map<QuoteIdentity, MatchOddsQuote> pending = new LinkedHashMap<>();
+        java.util.Set<QuoteIdentity> changed = new java.util.HashSet<>();
+        Instant now = Instant.now();
+        for (Map.Entry<Bookmaker, List<ProviderOdds>> entry : valuesByBookmaker.entrySet()) {
+            Bookmaker bookmaker = entry.getKey();
+            if (bookmaker == null || bookmaker.getId() == null || entry.getValue() == null) continue;
+            for (ProviderOdds value : entry.getValue()) {
+                if (value == null || !StringUtils.hasText(value.market())
+                        || !StringUtils.hasText(value.outcome()) || value.odd() == null
+                        || value.odd().signum() <= 0) continue;
+                MatchOddsMarketType type = marketType(value.market());
+                MatchOddsPeriod period = marketPeriod(value.market());
+                String outcome = normalizeOutcome(value.outcome());
+                BigDecimal line = normalizeLine(null, value.outcome());
+                QuoteIdentity key = identity(bookmaker.getId(), type, period, line, outcome);
+                MatchOddsQuote quote = pending.get(key);
+                if (quote == null) quote = existing.get(key);
+                if (quote == null) {
+                    quote = MatchOddsQuote.builder().match(match).bookmaker(bookmaker)
+                            .provider(provider).marketType(type).marketPeriod(period)
+                            .line(line).outcome(outcome).build();
+                }
+                BigDecimal previous = quote.getOdd();
+                if (previous == null || previous.compareTo(value.odd()) != 0) changed.add(key);
+                quote.setOdd(value.odd());
+                quote.setFetchedAt(now);
+                pending.put(key, quote);
+            }
+        }
+        if (pending.isEmpty()) return;
+        List<MatchOddsQuote> saved = quoteRepository.saveAll(pending.values());
+        Map<QuoteIdentity, MatchOddsQuote> savedByKey = new LinkedHashMap<>();
+        saved.forEach(quote -> savedByKey.put(identity(quote.getBookmaker().getId(),
+                quote.getMarketType(), quote.getMarketPeriod(), quote.getLine(), quote.getOutcome()), quote));
+
+        List<OddsHistory> histories = new ArrayList<>();
+        for (QuoteIdentity key : changed) {
+            MatchOddsQuote quote = savedByKey.get(key);
+            if (quote != null) {
+                histories.add(OddsHistory.builder().quote(quote).outcome(quote.getOutcome())
+                        .line(quote.getLine()).odd(quote.getOdd()).recordedAt(now).build());
+            }
+        }
+        if (!histories.isEmpty()) historyRepository.saveAll(histories);
+    }
+
+    private static QuoteIdentity identity(Long bookmakerId, MatchOddsMarketType type,
+                                          MatchOddsPeriod period, BigDecimal line, String outcome) {
+        return new QuoteIdentity(bookmakerId, type, period,
+                line == null ? BigDecimal.ZERO.setScale(3) : line.setScale(3, java.math.RoundingMode.HALF_UP),
+                outcome);
+    }
+
+    private record QuoteIdentity(Long bookmakerId, MatchOddsMarketType type,
+                                 MatchOddsPeriod period, BigDecimal line, String outcome) {}
 
     private static MatchOddsMarketType marketType(String market) {
         String value = market.toLowerCase(Locale.ROOT);
