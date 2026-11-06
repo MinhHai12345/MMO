@@ -46,8 +46,6 @@ class TeamPersistenceOwnershipIntegrationTest {
 
         when(teamExternalIdRepository.findAllByProvider(Provider.FOOTBALL_DATA)).thenReturn(List.of());
         when(teamRepository.findAll()).thenReturn(List.of(ukFallback));
-        when(teamExternalIdRepository.findByTeamIdAndProvider(11L, Provider.FOOTBALL_DATA))
-                .thenReturn(Optional.of(footballDataId));
 
         TeamPersistenceAdapter persistence = new TeamPersistenceAdapter(teamRepository, teamExternalIdRepository, new DataSourcePolicy());
         persistence.persistTeamsForSeason(Provider.FOOTBALL_DATA, season,
@@ -87,10 +85,6 @@ class TeamPersistenceOwnershipIntegrationTest {
         when(teamExternalIdRepository.findAllByProvider(Provider.FOOTBALL_DATA_UK)).thenReturn(List.of());
         when(teamExternalIdRepository.findAllByProvider(Provider.FOOTBALL_DATA)).thenReturn(List.of(footballDataId));
         when(teamRepository.findAll()).thenReturn(List.of(canonical));
-        when(teamExternalIdRepository.findByTeamIdAndProvider(10L, Provider.FOOTBALL_DATA))
-                .thenReturn(Optional.of(footballDataId));
-        when(teamExternalIdRepository.findByTeamIdAndProvider(10L, Provider.FOOTBALL_DATA_UK))
-                .thenReturn(Optional.of(ukId));
 
         TeamPersistenceAdapter persistence = new TeamPersistenceAdapter(
                 teamRepository, teamExternalIdRepository, externalIdMappingService, new DataSourcePolicy());
