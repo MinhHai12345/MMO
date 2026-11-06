@@ -88,4 +88,16 @@ class SofaScorePlayerStatsPersistenceAdapterTest {
         verify(provenanceRepository, atLeastOnce()).saveAll(argThat(rows ->
                 containsField(rows, "player:777:xg", 55L)));
     }
+
+    private static boolean containsField(Iterable<?> rows, String fieldKey, Long matchId) {
+        for (Object row : rows) {
+            if (row instanceof MatchFieldProvenance provenance
+                    && fieldKey.equals(provenance.getFieldKey())
+                    && matchId.equals(provenance.getMatch().getId())
+                    && "SOFA_SCORE".equals(provenance.getProvider().name())) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
