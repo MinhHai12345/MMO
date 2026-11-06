@@ -36,7 +36,7 @@ import org.springframework.util.StringUtils;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CoreBackfillOrchestrator implements FootballDataBootstrapService {
+public class CoreDataBackfillOrchestrator implements FootballDataBootstrapService {
 
     private static final String INITIAL_CORE_CHECKPOINT = "CORE_INITIAL_BACKFILL";
 

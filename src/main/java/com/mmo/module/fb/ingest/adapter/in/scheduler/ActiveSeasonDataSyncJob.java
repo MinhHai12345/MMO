@@ -3,7 +3,7 @@ package com.mmo.module.fb.ingest.adapter.in.scheduler;
 import com.mmo.core.cronjob.entity.CronJob;
 import com.mmo.core.cronjob.job.AbstractJob;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.application.port.in.FootballDataSyncService;
+import com.mmo.module.fb.ingest.application.port.in.ActiveSeasonDataSyncUseCase;
 import com.mmo.module.fb.ingest.application.model.ProviderOverrides;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,9 +16,9 @@ import org.springframework.stereotype.Component;
 @Component
 @DisallowConcurrentExecution
 @RequiredArgsConstructor
-public class FootballDataSyncJob extends AbstractJob<CronJob> {
+public class ActiveSeasonDataSyncJob extends AbstractJob<CronJob> {
 
-    private final FootballDataSyncService footballDataSyncService;
+    private final ActiveSeasonDataSyncUseCase activeSeasonDataSyncUseCase;
 
     @Override
     protected void executeInternal(JobExecutionContext context, CronJob cronJob) {
@@ -31,7 +31,7 @@ public class FootballDataSyncJob extends AbstractJob<CronJob> {
         Provider oddsOverride = IngestionJobParameters.provider(context, "odds");
 
         log.info("Starting football data sync: overrides={}, oddsProviderOverride={}", overrides, oddsOverride);
-        footballDataSyncService.sync(overrides, oddsOverride);
+        activeSeasonDataSyncUseCase.sync(overrides, oddsOverride);
         log.info("Football data sync completed");
     }
 }

@@ -8,8 +8,8 @@ import com.mmo.module.fb.analytics.job.AdvancedMetricsJob;
 import com.mmo.module.fb.analytics.job.MatchProcessPredictionJob;
 import com.mmo.module.fb.analytics.job.PredictionEvaluationJob;
 import com.mmo.module.fb.analytics.job.WalkForwardBackTestJob;
-import com.mmo.module.fb.ingest.adapter.in.scheduler.FootballDataBootstrapJob;
-import com.mmo.module.fb.ingest.adapter.in.scheduler.FootballDataSyncJob;
+import com.mmo.module.fb.ingest.adapter.in.scheduler.CoreDataBackfillJob;
+import com.mmo.module.fb.ingest.adapter.in.scheduler.ActiveSeasonDataSyncJob;
 import com.mmo.module.fb.ingest.adapter.in.scheduler.MatchEnrichmentJob;
 import com.mmo.module.fb.monetization.job.SubscriptionExpiryCheckJob;
 import com.mmo.module.fb.content.job.ContentGenerationJob;
@@ -21,7 +21,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class FBCronjobInitial implements DataInitializer {
+public class FootballQuartzJobInitializer implements DataInitializer {
     private static final String FB_JOB_GROUP = "FBJobGroup";
 
     private final CronJobRepository cronJobRepository;
@@ -37,10 +37,10 @@ public class FBCronjobInitial implements DataInitializer {
 
         // Bootstrap performs/retries the one-time historical backfill. After all provider
         // checkpoints are complete it becomes a cheap no-op; recurring Core updates belong
-        // exclusively to FootballDataSyncJob.
-        createOrUpdateJob(FootballDataBootstrapJob.class,
+        // exclusively to ActiveSeasonDataSyncJob.
+        createOrUpdateJob(CoreDataBackfillJob.class,
                 "0 0 1 * * ?", "Initial historical Core backfill and daily recovery check at 01:00 UTC");
-        createOrUpdateJob(FootballDataSyncJob.class,
+        createOrUpdateJob(ActiveSeasonDataSyncJob.class,
                 "0 0 0/6 * * ?", "Incrementally synchronize canonical football data every 6 hours");
         createOrUpdateJob(MatchEnrichmentJob.class,
                 "0 30 0/12 * * ?", "Enrich match statistics and historical odds from Football-Data UK every 12 hours");

@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-class CoreSyncOrchestratorTest {
+class ActiveSeasonDataSyncOrchestratorTest {
 
     private IngestionDistributedLock lock;
     private IngestionPlanFactory planFactory;
@@ -32,7 +32,7 @@ class CoreSyncOrchestratorTest {
     private StandingsIngestionService standings;
     private SeasonBatchIngestionPort uk;
     private SeasonBatchIngestionRegistry seasonBatchRegistry;
-    private CoreSyncOrchestrator useCase;
+    private ActiveSeasonDataSyncOrchestrator useCase;
 
     @BeforeEach
     void setUp() {
@@ -56,7 +56,7 @@ class CoreSyncOrchestratorTest {
         seasonBatchRegistry = new SeasonBatchIngestionRegistry(List.of(uk));
         clearInvocations(uk);
         when(planFactory.activeSeasonPlan()).thenReturn(modernSeasonPlan());
-        useCase = new CoreSyncOrchestrator(lock, planFactory, checkpoints,
+        useCase = new ActiveSeasonDataSyncOrchestrator(lock, planFactory, checkpoints,
                 leagues, seasons, teams, fixtures, standings, seasonBatchRegistry);
     }
 

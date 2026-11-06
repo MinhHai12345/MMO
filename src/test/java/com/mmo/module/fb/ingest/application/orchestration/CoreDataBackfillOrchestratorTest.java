@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-class CoreBackfillOrchestratorTest {
+class CoreDataBackfillOrchestratorTest {
 
     private IngestionDistributedLock lock;
     private AppProperties properties;
@@ -34,7 +34,7 @@ class CoreBackfillOrchestratorTest {
     private TeamIngestionService teams;
     private FixtureIngestionService fixtures;
     private StandingsIngestionService standings;
-    private CoreBackfillOrchestrator service;
+    private CoreDataBackfillOrchestrator service;
 
     @BeforeEach
     void setUp() {
@@ -67,7 +67,7 @@ class CoreBackfillOrchestratorTest {
         standings = mock(StandingsIngestionService.class);
         when(planFactory.historicalPlan()).thenReturn(historicalFootballDataPlan());
 
-        service = new CoreBackfillOrchestrator(lock, properties, checkpoints, planFactory,
+        service = new CoreDataBackfillOrchestrator(lock, properties, checkpoints, planFactory,
                 seasonBatchRegistry, leagues, seasons, teams, fixtures, standings);
     }
 
