@@ -1,8 +1,8 @@
 package com.mmo.module.fb.ingest.provider.sofascore;
 
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
-import com.mmo.module.fb.ingest.provider.model.StandingsQuery;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderStanding;
+import com.mmo.module.fb.ingest.application.model.provider.StandingsQuery;
 import com.mmo.module.fb.ingest.provider.sofascore.client.AbstractSofaScoreProvider;
 import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.SeasonDTO;
