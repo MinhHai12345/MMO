@@ -3,7 +3,7 @@ package com.mmo.module.fb.ingest.adapter.out.persistence.core;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
 import com.mmo.module.fb.ingest.adapter.out.persistence.identity.ExternalIdMappingAdapter;
 import com.mmo.module.fb.ingest.application.port.out.LeaguePersistencePort;
