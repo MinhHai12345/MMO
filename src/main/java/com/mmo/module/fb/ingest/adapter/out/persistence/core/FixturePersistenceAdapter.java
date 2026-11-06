@@ -14,7 +14,8 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.application.port.out.FixturePersistencePort;
-import com.mmo.module.fb.ingest.application.model.ResolvedProviderFixture;\nimport com.mmo.module.fb.ingest.application.model.FieldMergeCommand;
+import com.mmo.module.fb.ingest.application.model.ResolvedProviderFixture;
+import com.mmo.module.fb.ingest.application.model.FieldMergeCommand;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderFixture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -119,7 +120,9 @@ public class FixturePersistenceAdapter implements FixturePersistencePort {
         Map<String, Long> seenExternalIds = new HashMap<>();
         int persisted = 0;
         List<MatchExternalId> mappingsToInsert = new ArrayList<>();
-        Set<Long> matchesWritten = new HashSet<>();\n        List<Match> matchesToSave = new ArrayList<>();\n        List<FieldMergeCommand> mergeCommands = new ArrayList<>();
+        Set<Long> matchesWritten = new HashSet<>();
+        List<Match> matchesToSave = new ArrayList<>();
+        List<FieldMergeCommand> mergeCommands = new ArrayList<>();
 
         for (ResolvedProviderFixture row : validRows) {
             Team home = teams.get(row.homeTeamId());
