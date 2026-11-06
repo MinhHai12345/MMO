@@ -9,7 +9,7 @@ import com.mmo.module.fb.domain.league.entity.Season;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.application.model.provider.FixtureQuery;
-import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderFixture;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.out.FixturePersistencePort;
