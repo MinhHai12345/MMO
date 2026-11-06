@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -45,56 +47,75 @@ public class OddsPersistenceAdapter implements OddsPersistencePort {
     @Override
     @Transactional
     public void persistOdds(Long matchId, Provider provider, List<ProviderOdds> values) {
+        if (matchId == null || provider == null || values == null || values.isEmpty()) return;
         Match match = matchRepository.findById(matchId)
                 .orElseThrow(() -> new IllegalArgumentException("Match not found: " + matchId));
 
-        Map<String, List<ProviderOdds>> byBookmaker = new LinkedHashMap<>();
-        if (values != null) {
-            for (ProviderOdds value : values) {
-                if (value != null && value.bookmaker() != null && !value.bookmaker().isBlank()) {
-                    byBookmaker.computeIfAbsent(value.bookmaker(), ignored -> new ArrayList<>()).add(value);
-                }
-            }
+        Map<String, List<ProviderOdds>> byBookmakerName = values.stream()
+                .filter(Objects::nonNull)
+                .filter(value -> value.bookmaker() != null && !value.bookmaker().isBlank())
+                .collect(Collectors.groupingBy(ProviderOdds::bookmaker, LinkedHashMap::new, Collectors.toList()));
+        if (byBookmakerName.isEmpty()) return;
+
+        Map<String, Bookmaker> bookmakersByName = bookmakerRepository
+                .findAllByNameIn(byBookmakerName.keySet()).stream()
+                .collect(Collectors.toMap(Bookmaker::getName, bookmaker -> bookmaker, (left, right) -> left));
+        List<Bookmaker> missingBookmakers = byBookmakerName.keySet().stream()
+                .filter(name -> !bookmakersByName.containsKey(name))
+                .map(name -> Bookmaker.builder().name(name).isActive(true).build()).toList();
+        if (!missingBookmakers.isEmpty()) {
+            bookmakerRepository.saveAll(missingBookmakers)
+                    .forEach(bookmaker -> bookmakersByName.put(bookmaker.getName(), bookmaker));
         }
 
-        for (Map.Entry<String, List<ProviderOdds>> entry : byBookmaker.entrySet()) {
-            Bookmaker bookmaker = bookmakerRepository.findByName(entry.getKey())
-                    .orElseGet(() -> bookmakerRepository.save(
-                            Bookmaker.builder().name(entry.getKey()).isActive(true).build()));
+        Map<Bookmaker, List<ProviderOdds>> valuesByBookmaker = new LinkedHashMap<>();
+        byBookmakerName.forEach((name, bookmakerValues) -> {
+            Bookmaker bookmaker = bookmakersByName.get(name);
+            if (bookmaker != null) valuesByBookmaker.put(bookmaker, bookmakerValues);
+        });
 
-            MatchOdds odds = matchOddsRepository
-                    .findByMatchIdAndBookmakerIdAndMarketName(match.getId(), bookmaker.getId(), MARKET)
-                    .orElseGet(() -> MatchOdds.builder()
-                            .match(match).bookmaker(bookmaker).marketName(MARKET).build());
-
+        Map<Long, MatchOdds> existingByBookmaker = matchOddsRepository.findAllByMatchId(matchId).stream()
+                .filter(odds -> MARKET.equals(odds.getMarketName()))
+                .collect(Collectors.toMap(odds -> odds.getBookmaker().getId(), odds -> odds, (left, right) -> left));
+        Map<Long, MatchOdds> pending = new LinkedHashMap<>();
+        Map<Long, boolean[]> resultOddsChanged = new LinkedHashMap<>();
+        for (Map.Entry<Bookmaker, List<ProviderOdds>> entry : valuesByBookmaker.entrySet()) {
+            Bookmaker bookmaker = entry.getKey();
+            MatchOdds odds = existingByBookmaker.get(bookmaker.getId());
+            if (odds == null) {
+                odds = MatchOdds.builder().match(match).bookmaker(bookmaker).marketName(MARKET).build();
+            }
             BigDecimal previousHome = odds.getHomeWinOdds();
             BigDecimal previousDraw = odds.getDrawOdds();
             BigDecimal previousAway = odds.getAwayWinOdds();
-
             for (ProviderOdds value : entry.getValue()) {
                 applyOdd(odds, value.market(), value.outcome(), value.odd());
-                quotePersistenceService.upsert(match, bookmaker, MatchProvider.fromName(provider.name()),
-                        value.market(), value.outcome(), null, value.odd());
             }
-
-            boolean resultOddsChanged = !sameOdd(previousHome, odds.getHomeWinOdds())
-                                        || !sameOdd(previousDraw, odds.getDrawOdds())
-                                        || !sameOdd(previousAway, odds.getAwayWinOdds());
-
-            odds = matchOddsRepository.save(odds);
-            if (resultOddsChanged
-                && (odds.getHomeWinOdds() != null || odds.getDrawOdds() != null || odds.getAwayWinOdds() != null)) {
-                oddsHistoryRepository.save(OddsHistory.builder()
-                        .matchOdds(odds)
-                        .homeWinOdds(odds.getHomeWinOdds())
-                        .drawOdds(odds.getDrawOdds())
-                        .awayWinOdds(odds.getAwayWinOdds())
-                        .recordedAt(Instant.now())
-                        .build());
-            }
+            boolean changed = !sameOdd(previousHome, odds.getHomeWinOdds())
+                    || !sameOdd(previousDraw, odds.getDrawOdds())
+                    || !sameOdd(previousAway, odds.getAwayWinOdds());
+            pending.put(bookmaker.getId(), odds);
+            resultOddsChanged.put(bookmaker.getId(), new boolean[]{changed});
         }
 
-        // Sync lifecycle is stored in MatchEnrichmentState, not on the canonical fixture.
+        if (!pending.isEmpty()) {
+            List<MatchOdds> savedOdds = matchOddsRepository.saveAll(pending.values());
+            List<OddsHistory> histories = new ArrayList<>();
+            for (MatchOdds odds : savedOdds) {
+                boolean changed = resultOddsChanged.getOrDefault(
+                        odds.getBookmaker().getId(), new boolean[]{false})[0];
+                if (changed && (odds.getHomeWinOdds() != null || odds.getDrawOdds() != null
+                        || odds.getAwayWinOdds() != null)) {
+                    histories.add(OddsHistory.builder().matchOdds(odds)
+                            .homeWinOdds(odds.getHomeWinOdds()).drawOdds(odds.getDrawOdds())
+                            .awayWinOdds(odds.getAwayWinOdds()).recordedAt(Instant.now()).build());
+                }
+            }
+            if (!histories.isEmpty()) oddsHistoryRepository.saveAll(histories);
+        }
+
+        // Quote identities are fetched once per match/provider and flushed as two batches.
+        quotePersistenceService.upsertAll(match, MatchProvider.fromName(provider.name()), valuesByBookmaker);
     }
 
     private static boolean sameOdd(BigDecimal left, BigDecimal right) {
