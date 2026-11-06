@@ -12,15 +12,15 @@ import java.util.regex.Pattern;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Protects the hexagonal boundary at the application-owned port contracts.
+ * Protects the dependency boundary of the complete application layer.
  *
  * <p>Ports describe capabilities required by the application. They must not
  * expose persistence/framework APIs or provider implementation details.</p>
  */
 class IngestionPortContractArchitectureTest {
 
-    private static final Path PORT_ROOT =
-            Path.of("src/main/java/com/mmo/module/fb/ingest/application/port");
+    private static final Path APPLICATION_ROOT =
+            Path.of("src/main/java/com/mmo/module/fb/ingest/application");
 
     private static final Pattern FORBIDDEN_IMPORT = Pattern.compile(
             "^\\s*import\\s+(?:"
@@ -36,7 +36,7 @@ class IngestionPortContractArchitectureTest {
                     + ").*");
 
     @Test
-    void applicationPortsMustNotExposeInfrastructureOrProviderImplementationTypes() throws IOException {
+    void applicationLayerMustNotDependOnInfrastructureOrProviderImplementationTypes() throws IOException {
         List<String> violations = new ArrayList<>();
         try (var paths = Files.walk(PORT_ROOT)) {
             paths.filter(Files::isRegularFile)
@@ -56,7 +56,7 @@ class IngestionPortContractArchitectureTest {
         }
 
         assertTrue(violations.isEmpty(),
-                () -> "Application ports must remain framework- and provider-implementation-independent:\\n"
+                () -> "Application layer must remain independent from persistence and provider implementation details:\\n"
                         + String.join("\\n", violations));
     }
 }
