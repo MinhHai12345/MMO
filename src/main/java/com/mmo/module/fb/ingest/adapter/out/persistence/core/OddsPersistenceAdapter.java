@@ -115,7 +115,12 @@ public class OddsPersistenceAdapter implements OddsPersistencePort {
         }
 
         // Quote identities are fetched once per match/provider and flushed as two batches.
-        quotePersistenceService.upsertAll(match, MatchProvider.fromName(provider.name()), valuesByBookmaker);
+        Map<Bookmaker, List<MatchOddsQuotePersistenceService.QuoteInput>> quoteInputs = new LinkedHashMap<>();
+        valuesByBookmaker.forEach((bookmaker, bookmakerValues) -> quoteInputs.put(bookmaker,
+                bookmakerValues.stream().map(value ->
+                        new MatchOddsQuotePersistenceService.QuoteInput(
+                                value.market(), value.outcome(), value.odd())).toList()));
+        quotePersistenceService.upsertAll(match, MatchProvider.fromName(provider.name()), quoteInputs);
     }
 
     private static boolean sameOdd(BigDecimal left, BigDecimal right) {
