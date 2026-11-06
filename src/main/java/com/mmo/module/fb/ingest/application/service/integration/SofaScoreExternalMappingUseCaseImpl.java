@@ -34,10 +34,10 @@ public class SofaScoreExternalMappingUseCaseImpl implements SofaScoreExternalMap
 
         SofaScoreExternalMappingResult result = new SofaScoreExternalMappingResult(
                 Provider.SOFA_SCORE.name(),
-                mappingStatePort.countLeagues(),
-                mappingStatePort.countSeasons(),
-                mappingStatePort.countTeams(),
-                mappingStatePort.countFixtures()
+                Math.toIntExact(mappingStatePort.countLeagues()),
+                Math.toIntExact(mappingStatePort.countSeasons()),
+                Math.toIntExact(mappingStatePort.countTeams()),
+                Math.toIntExact(mappingStatePort.countFixtures())
         );
         log.info("SofaScore external ID mapping finished: {}", result);
         return result;
