@@ -1,6 +1,8 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
-import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;\nimport com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
+import com.mmo.module.fb.ingest.application.exception.ProviderDataException;
+import com.mmo.module.fb.ingest.application.exception.ProviderTransportException;\nimport com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
