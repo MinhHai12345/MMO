@@ -23,6 +23,12 @@ import static org.mockito.Mockito.*;
 
 class SourceAwareMergeAdapterTest {
 
+    private MatchRepository mockMatchRepository() {
+        MatchRepository repository = mock(MatchRepository.class);
+        when(repository.lockAllByIds(anyCollection())).thenReturn(List.of());
+        return repository;
+    }
+
     private Match match2024() {
         League league = new League();
         league.setName("Premier League");
@@ -55,7 +61,7 @@ class SourceAwareMergeAdapterTest {
     void secondaryProviderMayFillButCannotOverwriteExistingUnattributedValue() {
         MatchFieldProvenanceRepository repository = mock(MatchFieldProvenanceRepository.class);
         when(repository.findAllByMatchIdInAndFieldKeyIn(anyList(), anyList())).thenReturn(List.of());
-        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), repository);
+        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), mockMatchRepository(), repository);
         AtomicInteger applied = new AtomicInteger();
 
         assertTrue(service.merge(match2024(), Provider.FOOTBALL_DATA_UK, Dataset.FIXTURE,
