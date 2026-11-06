@@ -9,7 +9,7 @@ import com.mmo.module.fb.domain.player.repository.PlayerExternalIdRepository;
 import com.mmo.module.fb.domain.player.repository.PlayerMatchStatsRepository;
 import com.mmo.module.fb.domain.player.repository.PlayerRepository;
 import com.mmo.module.fb.domain.team.entity.Team;
-import com.mmo.module.fb.ingest.application.port.out.PlayerMatchStatisticsPersistencePort;
+import com.mmo.module.fb.ingest.application.port.out.PlayerMatchStatisticsPersistencePort;\nimport com.mmo.module.fb.ingest.application.model.FieldMergeCommand;
 import com.mmo.module.fb.ingest.application.port.out.SourceAwareMergePort;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
@@ -52,15 +52,18 @@ public class SofaScorePlayerStatsPersistenceAdapter implements PlayerMatchStatis
         }
 
         List<PlayerMatchStats> toSave = new ArrayList<>();
-        addTeamPlayers(match, lineups.home(), match.getHomeTeam(), toSave, existingByExternalId);
-        addTeamPlayers(match, lineups.away(), match.getAwayTeam(), toSave, existingByExternalId);
+        List<FieldMergeCommand> mergeCommands = new ArrayList<>();
+        addTeamPlayers(match, lineups.home(), match.getHomeTeam(), toSave, existingByExternalId, mergeCommands);
+        addTeamPlayers(match, lineups.away(), match.getAwayTeam(), toSave, existingByExternalId, mergeCommands);
+        sourceAwareMergeService.mergeAll(mergeCommands);
         if (!toSave.isEmpty()) playerMatchStatsRepository.saveAll(toSave);
         return toSave.size();
     }
 
     private void addTeamPlayers(Match match, List<ProviderLineupPlayer> lineup, Team team,
                                 List<PlayerMatchStats> toSave,
-                                Map<String, PlayerMatchStats> existingByExternalId) {
+                                Map<String, PlayerMatchStats> existingByExternalId,
+                                List<FieldMergeCommand> mergeCommands) {
         if (lineup == null || team == null) return;
         for (ProviderLineupPlayer lineupPlayer : lineup) {
             if (lineupPlayer == null || lineupPlayer.externalPlayerId() == null
@@ -81,7 +84,7 @@ public class SofaScorePlayerStatsPersistenceAdapter implements PlayerMatchStatis
             stats.setPlayer(player);
             stats.setMatch(match);
             stats.setTeam(team);
-            applyStatistics(match, player.getId(), stats, lineupPlayer.statistics());
+            applyStatistics(match, player.getId(), stats, lineupPlayer.statistics(), mergeCommands);
             toSave.add(stats);
         }
     }
@@ -98,7 +101,7 @@ public class SofaScorePlayerStatsPersistenceAdapter implements PlayerMatchStatis
     }
 
     private void applyStatistics(Match match, Long playerId, PlayerMatchStats stats,
-                                 ProviderPlayerMatchStats values) {
+                                 ProviderPlayerMatchStats values, List<FieldMergeCommand> mergeCommands) {
         merge(match, playerId, "minutes_played", stats.getMinutesPlayed(),
                 values.minutesPlayed(), stats::setMinutesPlayed);
         merge(match, playerId, "goals", stats.getGoals(), values.goals(), stats::setGoals);
@@ -124,9 +127,10 @@ public class SofaScorePlayerStatsPersistenceAdapter implements PlayerMatchStatis
         merge(match, playerId, "red_cards", stats.getRedCards(), values.redCards(), stats::setRedCards);
     }
 
-    private <T> void merge(Match match, Long playerId, String field, T current, T incoming, Consumer<T> setter) {
+    private <T> void merge(Match match, Long playerId, String field, T current, T incoming,
+                           Consumer<T> setter, List<FieldMergeCommand> mergeCommands) {
         if (incoming == null || playerId == null) return;
-        sourceAwareMergeService.merge(match, Provider.SOFA_SCORE, Dataset.PLAYER_STATISTICS,
-                "player:" + playerId + ":" + field, current != null, null, () -> setter.accept(incoming));
+        mergeCommands.add(new FieldMergeCommand(match, Provider.SOFA_SCORE, Dataset.PLAYER_STATISTICS,
+                "player:" + playerId + ":" + field, current != null, null, () -> setter.accept(incoming)));
     }
 }
