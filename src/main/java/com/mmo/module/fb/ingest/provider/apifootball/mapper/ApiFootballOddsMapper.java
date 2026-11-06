@@ -4,8 +4,8 @@ import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsBet
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsBookmakerDto;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsItem;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.OddsValueDto;
-import com.mmo.module.fb.ingest.provider.model.MmoProviderDataStandardizer;
-import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
+import com.mmo.module.fb.ingest.application.model.provider.MmoProviderDataStandardizer;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderOdds;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
