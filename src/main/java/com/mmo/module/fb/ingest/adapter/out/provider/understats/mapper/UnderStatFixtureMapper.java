@@ -1,7 +1,7 @@
-package com.mmo.module.fb.ingest.provider.understats.mapper;
+package com.mmo.module.fb.ingest.adapter.out.provider.understats.mapper;
 
 import com.mmo.module.fb.ingest.application.model.provider.ProviderFixture;
-import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
+import com.mmo.module.fb.ingest.adapter.out.provider.understats.dto.UnderStatDtos;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 

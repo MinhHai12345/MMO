@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.understats;
+package com.mmo.module.fb.ingest.adapter.out.provider.understats;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.mmo.AppProperties;

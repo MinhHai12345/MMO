@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.understats;
+package com.mmo.module.fb.ingest.adapter.out.provider.understats;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.mmo.module.fb.ingest.enums.Provider;
@@ -6,8 +6,8 @@ import com.mmo.module.fb.ingest.application.model.provider.ProviderLeagueMonthly
 import com.mmo.module.fb.ingest.application.model.provider.ProviderMatchStatistics;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderTeamMatchStats;
 import com.mmo.module.fb.ingest.application.port.out.provider.HistoricalStatsIngestionProviderPort;
-import com.mmo.module.fb.ingest.provider.understats.mapper.UnderStatResponseMapper;
-import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
+import com.mmo.module.fb.ingest.adapter.out.provider.understats.mapper.UnderStatResponseMapper;
+import com.mmo.module.fb.ingest.adapter.out.provider.understats.dto.UnderStatDtos;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;

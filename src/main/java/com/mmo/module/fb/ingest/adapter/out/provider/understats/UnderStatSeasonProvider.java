@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.understats;
+package com.mmo.module.fb.ingest.adapter.out.provider.understats;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderSeason;
