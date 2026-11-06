@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Objects;
-import com.mmo.module.fb.ingest.application.model.provider.ProviderOdds;
 
 /** Writes provider-specific, normalized odds quotes and their immutable price history. */
 @Service
@@ -85,7 +84,7 @@ public class MatchOddsQuotePersistenceService {
      */
     @Transactional
     public void upsertAll(Match match, MatchProvider provider,
-                          Map<Bookmaker, List<ProviderOdds>> valuesByBookmaker) {
+                          Map<Bookmaker, List<QuoteInput>> valuesByBookmaker) {
         if (match == null || match.getId() == null || provider == null
                 || valuesByBookmaker == null || valuesByBookmaker.isEmpty()) return;
 
@@ -100,7 +99,7 @@ public class MatchOddsQuotePersistenceService {
         for (Map.Entry<Bookmaker, List<ProviderOdds>> entry : valuesByBookmaker.entrySet()) {
             Bookmaker bookmaker = entry.getKey();
             if (bookmaker == null || bookmaker.getId() == null || entry.getValue() == null) continue;
-            for (ProviderOdds value : entry.getValue()) {
+            for (QuoteInput value : entry.getValue()) {
                 if (value == null || !StringUtils.hasText(value.market())
                         || !StringUtils.hasText(value.outcome()) || value.odd() == null
                         || value.odd().signum() <= 0) continue;
@@ -146,6 +145,8 @@ public class MatchOddsQuotePersistenceService {
                 line == null ? BigDecimal.ZERO.setScale(3) : line.setScale(3, java.math.RoundingMode.HALF_UP),
                 outcome);
     }
+
+    public record QuoteInput(String market, String outcome, BigDecimal odd) {}
 
     private record QuoteIdentity(Long bookmakerId, MatchOddsMarketType type,
                                  MatchOddsPeriod period, BigDecimal line, String outcome) {}
