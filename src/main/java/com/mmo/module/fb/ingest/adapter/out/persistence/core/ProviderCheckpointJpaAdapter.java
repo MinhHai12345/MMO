@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.adapter.out.persistence.core;
 
-import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;\nimport com.mmo.module.fb.ingest.application.model.IngestionCheckpointProgress;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
+import com.mmo.module.fb.ingest.application.model.IngestionCheckpointProgress;
 import com.mmo.module.fb.ingest.adapter.out.persistence.entity.ProviderSyncCheckpoint;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
@@ -10,7 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;\nimport java.util.Optional;
+import java.time.Instant;
+import java.util.Optional;
 
 /** JPA adapter for durable provider/resource checkpoints. */
 @Component
