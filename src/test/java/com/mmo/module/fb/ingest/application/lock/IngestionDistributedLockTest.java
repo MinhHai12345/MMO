@@ -8,6 +8,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -54,6 +55,7 @@ class IngestionDistributedLockTest {
         assertTrue(executed.get());
         verify(acquireStatement).setString(1, "mmo:test:lock");
         verify(releaseStatement).setString(1, "mmo:test:lock");
+        verify(connection, never()).abort(any(Executor.class));
         verify(connection).close();
     }
 
@@ -78,6 +80,7 @@ class IngestionDistributedLockTest {
         assertFalse(result);
         assertFalse(executed.get());
         verify(connection, never()).prepareStatement("SELECT RELEASE_LOCK(?)");
+        verify(connection, never()).abort(any(Executor.class));
         verify(connection).close();
     }
 
@@ -91,6 +94,28 @@ class IngestionDistributedLockTest {
 
         assertSame(failure, thrown);
         verify(releaseStatement).executeQuery();
+        verify(connection).close();
+    }
+
+    @Test
+    void abortsOwningConnectionWhenReleaseThrows() throws Exception {
+        when(acquireResult.getInt(1)).thenReturn(1);
+        when(releaseStatement.executeQuery()).thenThrow(new SQLException("connection lost"));
+
+        assertTrue(lock.execute("mmo:test:lock", () -> { }));
+
+        verify(connection).abort(any(Executor.class));
+        verify(connection).close();
+    }
+
+    @Test
+    void abortsOwningConnectionWhenReleaseDoesNotConfirmOwnership() throws Exception {
+        when(acquireResult.getInt(1)).thenReturn(1);
+        when(releaseResult.getInt(1)).thenReturn(0);
+
+        assertTrue(lock.execute("mmo:test:lock", () -> { }));
+
+        verify(connection).abort(any(Executor.class));
         verify(connection).close();
     }
 
