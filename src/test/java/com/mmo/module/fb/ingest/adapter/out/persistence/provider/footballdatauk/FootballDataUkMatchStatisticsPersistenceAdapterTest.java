@@ -6,6 +6,7 @@ import com.mmo.module.fb.domain.league.entity.Season;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.domain.match.entity.MatchAdvancedStats;
 import com.mmo.module.fb.domain.match.repository.MatchAdvancedStatsRepository;
+import com.mmo.module.fb.domain.match.repository.MatchRepository;
 import com.mmo.module.fb.domain.match.service.MatchStatisticsSnapshotPersistenceService;
 import com.mmo.module.fb.domain.team.entity.Team;
 import org.junit.jupiter.api.Test;
@@ -39,6 +40,7 @@ class FootballDataUkMatchStatisticsPersistenceAdapterTest {
         FootballDataUkMatchStatisticsPersistenceAdapter mapper = new FootballDataUkMatchStatisticsPersistenceAdapter(
                 repository, mock(MatchStatisticsSnapshotPersistenceService.class), new DataSourcePolicy(),
                 new com.mmo.module.fb.ingest.adapter.out.persistence.core.SourceAwareMergeAdapter(new DataSourcePolicy(),
+                        mock(MatchRepository.class),
                         mock(com.mmo.module.fb.domain.match.repository.MatchFieldProvenanceRepository.class)));
         Map<String, String> row = Map.ofEntries(
                 Map.entry("FTHG", "2"), Map.entry("FTAG", "1"),
