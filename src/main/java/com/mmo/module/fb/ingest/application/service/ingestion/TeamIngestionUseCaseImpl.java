@@ -5,16 +5,15 @@ import com.mmo.module.fb.ingest.application.service.support.IngestionServiceSupp
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.domain.league.entity.Season;
-import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.provider.model.TeamQuery;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.in.TeamIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.out.TeamPersistencePort;
+import com.mmo.module.fb.ingest.application.port.out.LeagueExternalMappingPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,7 +30,7 @@ public class TeamIngestionUseCaseImpl implements TeamIngestionUseCase {
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
     private final LeagueIngestionUseCase leagueIngestionService;
-    private final LeagueExternalIdRepository leagueExternalIdRepository;
+    private final LeagueExternalMappingPort leagueExternalMappingPort;
     private final TeamPersistencePort teamPersistenceService;
 
     @Override
@@ -64,13 +63,13 @@ public class TeamIngestionUseCaseImpl implements TeamIngestionUseCase {
 
         // Team sync can run independently on a cold start, but should not refetch every
         // tournament and all season metadata when provider mappings already exist.
-        if (leagueExternalIdRepository.findAllByProvider(selectedProvider).isEmpty()) {
+        if (leagueExternalMappingPort.findAllByProvider(selectedProvider).isEmpty()) {
             leagueIngestionService.syncLeaguesForProvider(selectedProvider);
         }
 
-        Map<Long, LeagueExternalId> leagueMappingsByLeagueId = new HashMap<>();
-        leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
-                leagueMappingsByLeagueId.put(mapping.getLeague().getId(), mapping));
+        Map<Long, LeagueExternalMappingPort.LeagueMapping> leagueMappingsByLeagueId = new HashMap<>();
+        leagueExternalMappingPort.findAllByProvider(selectedProvider).forEach(mapping ->
+                leagueMappingsByLeagueId.put(mapping.leagueId(), mapping));
 
         int fetched = 0;
         int failed = 0;
@@ -93,8 +92,8 @@ public class TeamIngestionUseCaseImpl implements TeamIngestionUseCase {
                     + " season mappings for a season it owns in team ingestion");
         }
         for (Season season : seasons) {
-            LeagueExternalId leagueMapping = leagueMappingsByLeagueId.get(season.getLeague().getId());
-            String externalLeagueId = leagueMapping == null ? null : leagueMapping.getExternalId();
+            LeagueExternalMappingPort.LeagueMapping leagueMapping = leagueMappingsByLeagueId.get(season.getLeague().getId());
+            String externalLeagueId = leagueMapping == null ? null : leagueMapping.externalId();
             if (externalLeagueId == null || externalLeagueId.isBlank()) {
                 log.warn("Skipping teams for season {} and league {} because provider {} has no league ID mapping",
                         season.getYear(), season.getLeague().getId(), selectedProvider);
@@ -111,7 +110,7 @@ public class TeamIngestionUseCaseImpl implements TeamIngestionUseCase {
                     continue;
                 }
                 List<ProviderTeam> teams = providerRegistry.team(selectedProvider)
-                        .fetchTeams(new TeamQuery(parsedLeagueId, season.getYear(), leagueMapping.getIdentify()));
+                        .fetchTeams(new TeamQuery(parsedLeagueId, season.getYear(), leagueMapping.identify()));
                 if (teams == null || teams.isEmpty()) {
                     log.warn("Provider {} returned no teams for league {} season {}",
                             selectedProvider, externalLeagueId, season.getYear());

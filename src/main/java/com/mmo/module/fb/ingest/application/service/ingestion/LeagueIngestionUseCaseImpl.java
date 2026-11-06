@@ -9,7 +9,7 @@ import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.out.LeaguePersistencePort;
-import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
+import com.mmo.module.fb.ingest.application.port.out.LeagueExternalMappingPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,7 +24,7 @@ public class LeagueIngestionUseCaseImpl implements LeagueIngestionUseCase {
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
     private final LeaguePersistencePort leaguePersistenceService;
-    private final LeagueExternalIdRepository leagueExternalIdRepository;
+    private final LeagueExternalMappingPort leagueExternalMappingPort;
 
     @Override
     public void syncLeagues() {
@@ -48,7 +48,7 @@ public class LeagueIngestionUseCaseImpl implements LeagueIngestionUseCase {
         } catch (ProviderAccessException ex) {
             if (!ex.is(ProviderAccessException.Kind.RESOURCE_RESTRICTED)
                     || selectedProvider != Provider.FOOTBALL_DATA) throw ex;
-            var existingMappings = leagueExternalIdRepository.findAllByProvider(selectedProvider);
+            var existingMappings = leagueExternalMappingPort.findAllByProvider(selectedProvider);
             if (existingMappings.isEmpty()) {
                 throw new IllegalStateException(
                         "Cannot bootstrap FB: football-data.org restricts competitions and no local league mappings exist.",

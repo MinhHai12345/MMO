@@ -2,15 +2,11 @@ package com.mmo.module.fb.ingest.application.service.integration;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.application.port.out.CrawlerHealthStatePort;
+import com.mmo.module.fb.ingest.application.port.out.SofaScoreMappingStatePort;
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.in.SofaScoreBootstrapUseCase;
 import com.mmo.module.fb.ingest.application.port.in.TeamIngestionUseCase;
-import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
-import com.mmo.module.fb.domain.league.repository.SeasonExternalIdRepository;
-import com.mmo.module.fb.domain.match.repository.MatchExternalIdRepository;
-import com.mmo.module.fb.domain.match.enums.MatchProvider;
-import com.mmo.module.fb.domain.team.repository.TeamExternalIdRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,10 +35,7 @@ public class SofaScoreBootstrapUseCaseImpl implements SofaScoreBootstrapUseCase 
     private final LeagueIngestionUseCase leagueIngestionService;
     private final TeamIngestionUseCase teamIngestionService;
     private final FixtureIngestionUseCase fixtureIngestionService;
-    private final LeagueExternalIdRepository leagueExternalIdRepository;
-    private final SeasonExternalIdRepository seasonExternalIdRepository;
-    private final TeamExternalIdRepository teamExternalIdRepository;
-    private final MatchExternalIdRepository matchExternalIdRepository;
+    private final SofaScoreMappingStatePort mappingStatePort;
     private final CrawlerHealthStatePort crawlerHealthStatePort;
 
     @Override
@@ -57,11 +50,11 @@ public class SofaScoreBootstrapUseCaseImpl implements SofaScoreBootstrapUseCase 
         try {
             log.info("Starting SofaScore cold-start import: leagues/seasons -> current-season teams -> fixtures");
             leagueIngestionService.syncLeaguesForProvider(PROVIDER);
-            requireMappings("league", leagueExternalIdRepository.findAllByProvider(PROVIDER).size());
-            requireMappings("season", seasonExternalIdRepository.findAllByProvider(PROVIDER).size());
+            requireMappings("league", mappingStatePort.countLeagues());
+            requireMappings("season", mappingStatePort.countSeasons());
 
             teamIngestionService.syncTeamsForProvider(PROVIDER);
-            requireMappings("team", teamExternalIdRepository.findAllByProvider(PROVIDER).size());
+            requireMappings("team", mappingStatePort.countTeams());
 
             // Null date bounds intentionally import the complete current season, not just the
             // next 14 days, so finished matches become eligible for statistics/xG ingestion.
@@ -72,9 +65,9 @@ public class SofaScoreBootstrapUseCaseImpl implements SofaScoreBootstrapUseCase 
             crawlerHealthStatePort.markSucceeded(BOOTSTRAP_STATE_NAME, Instant.now());
 
             log.info("SofaScore cold-start import completed. leagues={}, seasons={}, teams={}, current-season fixtures={}",
-                    leagueExternalIdRepository.findAllByProvider(PROVIDER).size(),
-                    seasonExternalIdRepository.findAllByProvider(PROVIDER).size(),
-                    teamExternalIdRepository.findAllByProvider(PROVIDER).size(),
+                    mappingStatePort.countLeagues(),
+                    mappingStatePort.countSeasons(),
+                    mappingStatePort.countTeams(),
                     currentSeasonFixtures);
         } catch (RuntimeException exception) {
             crawlerHealthStatePort.markFailed(BOOTSTRAP_STATE_NAME, Instant.now(), exception.getMessage());
@@ -84,9 +77,9 @@ public class SofaScoreBootstrapUseCaseImpl implements SofaScoreBootstrapUseCase 
     }
 
     private boolean isBootstrapRequired() {
-        if (leagueExternalIdRepository.findAllByProvider(PROVIDER).isEmpty()
-                || seasonExternalIdRepository.findAllByProvider(PROVIDER).isEmpty()
-                || teamExternalIdRepository.findAllByProvider(PROVIDER).isEmpty()
+        if (mappingStatePort.countLeagues() == 0
+                || mappingStatePort.countSeasons() == 0
+                || mappingStatePort.countTeams() == 0
                 || countCurrentSeasonFixtures() == 0) {
             return true;
         }
@@ -97,17 +90,17 @@ public class SofaScoreBootstrapUseCaseImpl implements SofaScoreBootstrapUseCase 
 
     private boolean hasCurrentSeasonWithoutSofaScoreFixtures() {
         Set<Long> currentSeasonIds = new HashSet<>(
-                seasonExternalIdRepository.findCurrentSeasonIdsByProvider(PROVIDER));
+                mappingStatePort.currentSeasonIds());
         if (currentSeasonIds.isEmpty()) {
             return true;
         }
         Set<Long> mappedSeasonIds = new HashSet<>(
-                matchExternalIdRepository.findMappedCurrentSeasonIdsByProvider(MatchProvider.fromName(PROVIDER.name())));
+                mappingStatePort.mappedCurrentSeasonIds());
         return !mappedSeasonIds.containsAll(currentSeasonIds);
     }
 
     private long countCurrentSeasonFixtures() {
-        return matchExternalIdRepository.countCurrentSeasonByProvider(MatchProvider.fromName(PROVIDER.name()));
+        return mappingStatePort.countCurrentSeasonFixtures();
     }
 
     private void requireMappings(String resource, long count) {

@@ -2,20 +2,19 @@ package com.mmo.module.fb.ingest.application.service.ingestion;
 
 import com.mmo.module.fb.ingest.application.exception.ProviderAccessException;
 import com.mmo.module.fb.ingest.application.exception.ProviderTransportException;
-import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
 import com.mmo.module.fb.ingest.application.service.support.IngestionServiceSupport;
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.domain.league.entity.Season;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
-import com.mmo.module.fb.domain.team.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.out.FixturePersistencePort;
+import com.mmo.module.fb.ingest.application.port.out.LeagueExternalMappingPort;
+import com.mmo.module.fb.ingest.application.port.out.TeamExternalMappingPort;
 import com.mmo.module.fb.ingest.application.model.ResolvedProviderFixture;
 import com.mmo.module.fb.ingest.application.port.in.TeamIngestionUseCase;
 import lombok.RequiredArgsConstructor;
@@ -36,8 +35,8 @@ public class FixtureIngestionUseCaseImpl implements FixtureIngestionUseCase {
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
     private final TeamIngestionUseCase teamIngestionService;
-    private final LeagueExternalIdRepository leagueExternalIdRepository;
-    private final TeamExternalIdRepository teamExternalIdRepository;
+    private final LeagueExternalMappingPort leagueExternalMappingPort;
+    private final TeamExternalMappingPort teamExternalMappingPort;
     private final FixturePersistencePort fixturePersistenceService;
 
     @Override
@@ -78,7 +77,7 @@ public class FixtureIngestionUseCaseImpl implements FixtureIngestionUseCase {
         }
 
         // Recover from a cold start, but do not re-fetch every team's roster on each fixture poll.
-        if (teamExternalIdRepository.findAllByProvider(selectedProvider).isEmpty()) {
+        if (teamExternalMappingPort.findAllByProvider(selectedProvider).isEmpty()) {
             if (onlySeasonId != null) {
                 teamIngestionService.syncSeasonForProvider(selectedProvider, onlySeasonId);
             } else if (includeHistoricalSeasons) {
@@ -105,12 +104,12 @@ public class FixtureIngestionUseCaseImpl implements FixtureIngestionUseCase {
             throw new IllegalStateException("Missing " + selectedProvider
                     + " season mappings for a season it owns in fixture ingestion");
         }
-        Map<Long, LeagueExternalId> leagueMappingsByLeagueId = new HashMap<>();
-        leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
-                leagueMappingsByLeagueId.put(mapping.getLeague().getId(), mapping));
+        Map<Long, LeagueExternalMappingPort.LeagueMapping> leagueMappingsByLeagueId = new HashMap<>();
+        leagueExternalMappingPort.findAllByProvider(selectedProvider).forEach(mapping ->
+                leagueMappingsByLeagueId.put(mapping.leagueId(), mapping));
         Map<String, Long> teamIdsByExternalId = new HashMap<>();
-        teamExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
-                teamIdsByExternalId.put(mapping.getExternalId(), mapping.getTeam().getId()));
+        teamExternalMappingPort.findAllByProvider(selectedProvider).forEach(mapping ->
+                teamIdsByExternalId.put(mapping.externalId(), mapping.teamId()));
 
         int saved = 0;
         int skipped = 0;
@@ -119,7 +118,7 @@ public class FixtureIngestionUseCaseImpl implements FixtureIngestionUseCase {
         for (Season season : seasons) {
             var leagueMapping = leagueMappingsByLeagueId.get(season.getLeague().getId());
             Long externalLeagueId = IngestionServiceSupport.parseExternalId(
-                    leagueMapping == null ? null : leagueMapping.getExternalId());
+                    leagueMapping == null ? null : leagueMapping.externalId());
             if (externalLeagueId == null) {
                 log.warn("Skipping season {} for league {} because provider {} has no league ID mapping",
                         season.getYear(), season.getLeague().getId(), selectedProvider);
@@ -132,7 +131,7 @@ public class FixtureIngestionUseCaseImpl implements FixtureIngestionUseCase {
             try {
                 fixtures = providerRegistry.fixture(selectedProvider).fetchFixtures(
                         new FixtureQuery(externalLeagueId, season.getYear(), from, to,
-                                leagueMapping == null ? null : leagueMapping.getIdentify()));
+                                leagueMapping == null ? null : leagueMapping.identify()));
             } catch (ProviderAccessException ex) {
                 if (ex.is(ProviderAccessException.Kind.RESOURCE_RESTRICTED)) {
                     if (selectedProvider != Provider.FOOTBALL_DATA) throw ex;

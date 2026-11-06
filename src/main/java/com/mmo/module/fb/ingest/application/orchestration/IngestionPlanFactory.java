@@ -1,8 +1,8 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.module.fb.domain.league.entity.Season;
-import com.mmo.module.fb.domain.league.repository.SeasonRepository;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
+import com.mmo.module.fb.ingest.application.port.out.SeasonIngestionQueryPort;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.policy.ProviderRoute;
 import lombok.RequiredArgsConstructor;
@@ -32,17 +32,17 @@ public class IngestionPlanFactory {
             Dataset.UPCOMING_ODDS
     );
 
-    private final SeasonRepository seasonRepository;
+    private final SeasonIngestionQueryPort seasonQueryPort;
     private final DataSourcePolicy dataSourcePolicy;
 
     public IngestionPlan activeSeasonPlan() {
-        return create(seasonRepository.findAllForActiveLeagues().stream()
+        return create(seasonQueryPort.findAllForActiveLeagues().stream()
                 .filter(Season::isActive)
                 .toList());
     }
 
     public IngestionPlan historicalPlan() {
-        return create(seasonRepository.findAllForActiveLeagues());
+        return create(seasonQueryPort.findAllForActiveLeagues());
     }
 
     private IngestionPlan create(List<Season> seasons) {

@@ -5,6 +5,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.application.port.out.MatchXgPersistencePort;
+import com.mmo.module.fb.ingest.application.port.out.SofaScoreMatchEnrichmentQueryPort;
 import com.mmo.module.fb.ingest.application.port.out.SourceAwareMergePort;
 import com.mmo.module.fb.ingest.application.port.out.MatchStatisticsIngestionPort;
 import com.mmo.module.fb.ingest.provider.model.ProviderMatchAdvancedStatistics;
@@ -12,11 +13,6 @@ import com.mmo.module.fb.ingest.application.port.out.provider.MatchStatisticsIng
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.domain.match.entity.Match;
 import com.mmo.module.fb.domain.match.entity.MatchAdvancedStats;
-import com.mmo.module.fb.domain.match.entity.MatchExternalId;
-import com.mmo.module.fb.domain.match.enums.MatchStatus;
-import com.mmo.module.fb.domain.match.repository.MatchAdvancedStatsRepository;
-import com.mmo.module.fb.domain.match.repository.MatchExternalIdRepository;
-import com.mmo.module.fb.domain.match.repository.MatchRepository;
 import com.mmo.module.fb.domain.match.enums.MatchEnrichmentResource;
 import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import com.mmo.module.fb.domain.match.service.MatchEnrichmentStateService;
@@ -24,7 +20,6 @@ import com.mmo.module.fb.domain.match.service.MatchStatisticsSnapshotPersistence
 import com.mmo.module.fb.domain.team.entity.Team;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -51,9 +46,7 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
     private static final int RETRY_HOURS = 24;
 
     private final ProviderIngestionRegistry providerRegistry;
-    private final MatchRepository matchRepository;
-    private final MatchExternalIdRepository matchExternalIdRepository;
-    private final MatchAdvancedStatsRepository matchAdvancedStatsRepository;
+    private final SofaScoreMatchEnrichmentQueryPort matchEnrichmentQueryPort;
     private final MatchStatisticsSnapshotPersistenceService snapshotPersistenceService;
     private final MatchEnrichmentStateService enrichmentStateService;
     private final DataSourcePolicy dataSourcePolicy;
@@ -61,11 +54,8 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
     private final SourceAwareMergePort sourceAwareMergeService;
 
     public void storeMatchStatistics() {
-        List<Match> targetMatches = matchRepository.findFinishedMatchesMissingAdvancedStats(
-                MatchStatus.FINISHED, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS,
-                MatchEnrichmentStatus.SUCCEEDED,
-                MatchEnrichmentStatus.IN_PROGRESS,
-                Instant.now().minus(RETRY_HOURS, ChronoUnit.HOURS), PageRequest.of(0, BATCH_SIZE));
+        List<Match> targetMatches = matchEnrichmentQueryPort.findMatchesMissingAdvancedStatistics(
+                Instant.now().minus(RETRY_HOURS, ChronoUnit.HOURS), BATCH_SIZE);
 
         if (targetMatches == null || targetMatches.isEmpty()) {
             log.debug("No finished matches are missing SofaScore advanced statistics");
@@ -79,16 +69,16 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
         for (Match match : targetMatches) {
             enrichmentStateService.start(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
             try {
-                Optional<MatchExternalId> mapping = matchExternalIdRepository
-                        .findByMatchIdAndProvider(match.getId(), MatchProvider.SOFA_SCORE);
-                if (mapping.isEmpty()) {
+                Optional<String> providerMatchId = matchEnrichmentQueryPort
+                        .findProviderMatchId(match.getId(), MatchProvider.SOFA_SCORE);
+                if (providerMatchId.isEmpty()) {
                     enrichmentStateService.skipped(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
                     skipped++;
                     continue;
                 }
 
                 Optional<ProviderMatchAdvancedStatistics> snapshot =
-                        provider.fetchMatchStatistics(mapping.get().getExternalId());
+                        provider.fetchMatchStatistics(providerMatchId.get());
                 if (snapshot.isEmpty()) {
                         enrichmentStateService.empty(match, MatchProvider.SOFA_SCORE, MatchEnrichmentResource.TEAM_STATISTICS);
                     skipped++;
@@ -141,7 +131,7 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
         List<MatchAdvancedStats> statsToSave = new ArrayList<>(2);
         if (homeStats != null && (hasAdvancedMetrics(homeStats) || hasMatchXg)) statsToSave.add(homeStats);
         if (awayStats != null && (hasAdvancedMetrics(awayStats) || hasMatchXg)) statsToSave.add(awayStats);
-        if (!statsToSave.isEmpty()) matchAdvancedStatsRepository.saveAll(statsToSave);
+        if (!statsToSave.isEmpty()) matchEnrichmentQueryPort.saveAdvancedStatistics(statsToSave);
     }
 
     private MatchAdvancedStats upsertTeamStatistics(
@@ -150,8 +140,8 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
 
         snapshotPersistenceService.upsert(match, team, MatchProvider.SOFA_SCORE, values);
 
-        MatchAdvancedStats stats = matchAdvancedStatsRepository
-                .findByMatchIdAndTeamId(match.getId(), team.getId())
+        MatchAdvancedStats stats = matchEnrichmentQueryPort
+                .findTeamAdvancedStats(match.getId(), team.getId())
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
 
         setDecimalIfPresent(match, team, "ppda", values, stats.getPpda(), stats::setPpda,

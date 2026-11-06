@@ -3,14 +3,10 @@ package com.mmo.module.fb.ingest.application.service.integration;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.application.model.SofaScoreExternalMappingResult;
 import com.mmo.module.fb.ingest.application.port.in.SofaScoreExternalMappingUseCase;
-import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.in.TeamIngestionUseCase;
-import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
-import com.mmo.module.fb.domain.league.repository.SeasonExternalIdRepository;
-import com.mmo.module.fb.domain.match.repository.MatchExternalIdRepository;
-import com.mmo.module.fb.domain.team.repository.TeamExternalIdRepository;
+import com.mmo.module.fb.ingest.application.port.out.SofaScoreMappingStatePort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,10 +23,7 @@ public class SofaScoreExternalMappingUseCaseImpl implements SofaScoreExternalMap
     private final LeagueIngestionUseCase leagueIngestionService;
     private final TeamIngestionUseCase teamIngestionService;
     private final FixtureIngestionUseCase fixtureIngestionService;
-    private final LeagueExternalIdRepository leagueExternalIdRepository;
-    private final SeasonExternalIdRepository seasonExternalIdRepository;
-    private final TeamExternalIdRepository teamExternalIdRepository;
-    private final MatchExternalIdRepository matchExternalIdRepository;
+    private final SofaScoreMappingStatePort mappingStatePort;
 
     @Override
     public SofaScoreExternalMappingResult mapExistingCoreData() {
@@ -41,10 +34,10 @@ public class SofaScoreExternalMappingUseCaseImpl implements SofaScoreExternalMap
 
         SofaScoreExternalMappingResult result = new SofaScoreExternalMappingResult(
                 Provider.SOFA_SCORE.name(),
-                leagueExternalIdRepository.findAllByProvider(Provider.SOFA_SCORE).size(),
-                seasonExternalIdRepository.findAllByProvider(Provider.SOFA_SCORE).size(),
-                teamExternalIdRepository.findAllByProvider(Provider.SOFA_SCORE).size(),
-                matchExternalIdRepository.findAllByProvider(MatchProvider.fromName(Provider.SOFA_SCORE.name())).size()
+                Math.toIntExact(mappingStatePort.countLeagues()),
+                Math.toIntExact(mappingStatePort.countSeasons()),
+                Math.toIntExact(mappingStatePort.countTeams()),
+                Math.toIntExact(mappingStatePort.countFixtures())
         );
         log.info("SofaScore external ID mapping finished: {}", result);
         return result;

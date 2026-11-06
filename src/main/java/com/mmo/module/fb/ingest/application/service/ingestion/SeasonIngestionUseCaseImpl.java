@@ -8,9 +8,8 @@ import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
 import com.mmo.module.fb.ingest.provider.model.SeasonQuery;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.out.LeaguePersistencePort;
+import com.mmo.module.fb.ingest.application.port.out.LeagueExternalMappingPort;
 import com.mmo.module.fb.ingest.application.port.in.SeasonIngestionUseCase;
-import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
-import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,7 +24,7 @@ import java.util.List;
 public class SeasonIngestionUseCaseImpl implements SeasonIngestionUseCase {
     private final ProviderIngestionRegistry providerRegistry;
     private final IngestionServiceSupport ingestionSupport;
-    private final LeagueExternalIdRepository leagueExternalIdRepository;
+    private final LeagueExternalMappingPort leagueExternalMappingPort;
     private final LeaguePersistencePort leaguePersistencePort;
 
     @Override
@@ -37,7 +36,7 @@ public class SeasonIngestionUseCaseImpl implements SeasonIngestionUseCase {
             return;
         }
 
-        List<LeagueExternalId> leagueMappings = leagueExternalIdRepository.findAllByProvider(selectedProvider);
+        List<LeagueExternalMappingPort.LeagueMapping> leagueMappings = leagueExternalMappingPort.findAllByProvider(selectedProvider);
         if (leagueMappings.isEmpty()) {
             throw new IllegalStateException("Cannot ingest seasons from " + selectedProvider
                     + " before its league mappings have been synchronized");
@@ -45,26 +44,26 @@ public class SeasonIngestionUseCaseImpl implements SeasonIngestionUseCase {
 
         int discovered = 0;
         int failed = 0;
-        for (LeagueExternalId mapping : leagueMappings) {
-            if (mapping.getLeague() == null || !StringUtils.hasText(mapping.getExternalId())) continue;
+        for (LeagueExternalMappingPort.LeagueMapping mapping : leagueMappings) {
+            if (mapping.leagueId() == null || !StringUtils.hasText(mapping.externalId())) continue;
             try {
                 List<ProviderSeason> seasons = providerRegistry.season(selectedProvider).fetchSeasons(
-                        new SeasonQuery(mapping.getExternalId(), mapping.getIdentify()));
+                        new SeasonQuery(mapping.externalId(), mapping.identify()));
                 if (seasons == null || seasons.isEmpty()) {
                     log.warn("Provider {} returned no seasons for league externalId={}",
-                            selectedProvider, mapping.getExternalId());
+                            selectedProvider, mapping.externalId());
                     continue;
                 }
-                var league = mapping.getLeague();
+                
                 ProviderLeague sourceLeague = new ProviderLeague(
-                        mapping.getExternalId(), mapping.getIdentify(), league.getName(),
-                        league.getCountry(), league.getLogoUrl(), seasons);
+                        mapping.externalId(), mapping.identify(), mapping.name(),
+                        mapping.country(), mapping.logoUrl(), seasons);
                 leaguePersistencePort.persistLeagues(selectedProvider, List.of(sourceLeague));
                 discovered += seasons.size();
             } catch (RuntimeException ex) {
                 failed++;
                 log.error("Season ingestion failed for provider {} leagueExternalId={}: {}",
-                        selectedProvider, mapping.getExternalId(), ex.getMessage(), ex);
+                        selectedProvider, mapping.externalId(), ex.getMessage(), ex);
             }
         }
         log.info("Season ingestion via {} completed. discovered={}, failed={}",

@@ -4,10 +4,8 @@ import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
+import com.mmo.module.fb.ingest.application.port.out.SeasonIngestionQueryPort;
 import com.mmo.module.fb.domain.league.entity.Season;
-import com.mmo.module.fb.domain.league.entity.SeasonExternalId;
-import com.mmo.module.fb.domain.league.repository.SeasonExternalIdRepository;
-import com.mmo.module.fb.domain.league.repository.SeasonRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -24,8 +22,8 @@ import java.util.Map;
 public class IngestionServiceSupport {
 
     private final AppProperties properties;
-    private final SeasonRepository seasonRepository;
-    private final SeasonExternalIdRepository seasonExternalIdRepository;
+    private final SeasonIngestionQueryPort seasonQueryPort;
+    
     private final DataSourcePolicy dataSourcePolicy;
 
     public void requireProviderEnabled(Provider provider, String resource) {
@@ -54,8 +52,7 @@ public class IngestionServiceSupport {
 
     public List<Season> seasonsToSync(Provider provider, Dataset dataset) {
         Map<Long, Season> mapped = new LinkedHashMap<>();
-        for (SeasonExternalId mapping : seasonExternalIdRepository.findAllByProvider(provider)) {
-            Season season = mapping.getSeason();
+        for (Season season : seasonQueryPort.findMappedSeasons(provider)) {
             if (season != null && season.isActive() && season.getYear() != null
                 && season.getLeague() != null && Boolean.TRUE.equals(season.getLeague().getIsActive())
                 && dataSourcePolicy.isPrimary(provider, dataset, season)) {
@@ -75,8 +72,7 @@ public class IngestionServiceSupport {
 
     public List<Season> allMappedSeasonsToSync(Provider provider, Dataset dataset) {
         Map<Long, Season> mapped = new LinkedHashMap<>();
-        for (SeasonExternalId mapping : seasonExternalIdRepository.findAllByProvider(provider)) {
-            Season season = mapping.getSeason();
+        for (Season season : seasonQueryPort.findMappedSeasons(provider)) {
             if (season != null && season.getId() != null && season.getYear() != null
                     && season.getLeague() != null
                     && Boolean.TRUE.equals(season.getLeague().getIsActive())
@@ -88,18 +84,18 @@ public class IngestionServiceSupport {
     }
 
     public boolean hasAnySeasons(boolean includeHistorical) {
-        return seasonRepository.findAllForActiveLeagues().stream()
+        return seasonQueryPort.findAllForActiveLeagues().stream()
                 .anyMatch(season -> includeHistorical || season.isActive());
     }
 
     public boolean hasAnySeasonOwnedBy(Provider provider, Dataset dataset, boolean includeHistorical) {
-        return seasonRepository.findAllForActiveLeagues().stream()
+        return seasonQueryPort.findAllForActiveLeagues().stream()
                 .filter(season -> includeHistorical || season.isActive())
                 .anyMatch(season -> dataSourcePolicy.isPrimary(provider, dataset, season));
     }
 
     public List<Season> standingsSeasonsToSync(Provider provider) {
-        return seasonRepository.findAllForActiveLeagues().stream()
+        return seasonQueryPort.findAllForActiveLeagues().stream()
                 .filter(Season::isActive)
                 .filter(season -> dataSourcePolicy.isPrimary(provider, Dataset.STANDINGS, season))
                 .toList();
