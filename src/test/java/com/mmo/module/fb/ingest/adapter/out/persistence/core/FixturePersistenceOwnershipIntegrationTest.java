@@ -48,7 +48,7 @@ class FixturePersistenceOwnershipIntegrationTest {
         DataSourcePolicy policy = new DataSourcePolicy();
         persistence = new FixturePersistenceAdapter(seasonRepository, teamRepository,
                 matchRepository, matchExternalIdRepository, policy,
-                new SourceAwareMergeAdapter(policy, provenanceRepository));
+                new SourceAwareMergeAdapter(policy, matchRepository, provenanceRepository));
 
         League league = new League();
         league.setId(39L);
