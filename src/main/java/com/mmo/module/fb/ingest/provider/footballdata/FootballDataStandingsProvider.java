@@ -3,7 +3,7 @@ package com.mmo.module.fb.ingest.provider.footballdata;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataClient;
 import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.StandingsDto;
-import com.mmo.module.fb.ingest.provider.footballdata.mapper.FootballDataMapper;
+import com.mmo.module.fb.ingest.provider.footballdata.mapper.FootballDataResponseMapper;
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
 import com.mmo.module.fb.ingest.provider.model.StandingsQuery;
 import com.mmo.module.fb.ingest.application.port.out.provider.StandingsIngestionPort;
@@ -17,7 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class FootballDataStandingsProvider implements StandingsIngestionPort {
     private final FootballDataClient client;
-    private final FootballDataMapper mapper;
+    private final FootballDataResponseMapper mapper;
 
     @Override
     public Provider getProvider() { return Provider.FOOTBALL_DATA; }

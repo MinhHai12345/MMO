@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-public class FootballDataMapper {
+public class FootballDataResponseMapper {
 
     public ProviderLeague toLeague(CompetitionDto competition) {
         if (competition == null || competition.id() == null) return null;

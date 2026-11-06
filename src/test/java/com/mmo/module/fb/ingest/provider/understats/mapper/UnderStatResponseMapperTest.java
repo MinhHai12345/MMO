@@ -9,8 +9,8 @@ import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class UnderStatMapperTest {
-    private final UnderStatMapper mapper = new UnderStatMapper();
+class UnderStatResponseMapperTest {
+    private final UnderStatResponseMapper mapper = new UnderStatResponseMapper();
 
     @Test
     void standardizesLeagueTeamPlayerAndPositionValues() {

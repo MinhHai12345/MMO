@@ -50,7 +50,7 @@ import java.util.function.Consumer;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class UnderStatSyncService implements HistoricalStatisticsIngestionPort {
+public class UnderStatHistoricalStatisticsImporter implements HistoricalStatisticsIngestionPort {
 
     private static final Provider PROVIDER = Provider.UNDER_STATS;
     private static final Duration FIXTURE_MATCH_WINDOW = Duration.ofHours(6);

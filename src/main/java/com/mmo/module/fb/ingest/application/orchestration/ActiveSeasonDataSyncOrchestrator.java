@@ -27,7 +27,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CoreSyncOrchestrator implements FootballDataSyncService {
+public class ActiveSeasonDataSyncOrchestrator implements FootballDataSyncService {
 
     private final IngestionDistributedLock distributedLock;
     private final IngestionPlanFactory planFactory;

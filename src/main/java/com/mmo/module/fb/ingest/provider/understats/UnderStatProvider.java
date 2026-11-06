@@ -6,7 +6,7 @@ import com.mmo.module.fb.ingest.provider.model.ProviderLeagueMonthlyStats;
 import com.mmo.module.fb.ingest.provider.model.ProviderMatchStatistics;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeamMatchStats;
 import com.mmo.module.fb.ingest.application.port.out.provider.HistoricalStatsIngestionProviderPort;
-import com.mmo.module.fb.ingest.provider.understats.mapper.UnderStatMapper;
+import com.mmo.module.fb.ingest.provider.understats.mapper.UnderStatResponseMapper;
 import com.mmo.module.fb.ingest.provider.understats.dto.UnderStatDtos;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -32,7 +32,7 @@ public class UnderStatProvider implements HistoricalStatsIngestionProviderPort {
 
     private static final long CACHE_TTL_SECONDS = 600;
     private final UnderStatClient client;
-    private final UnderStatMapper mapper;
+    private final UnderStatResponseMapper mapper;
     private final ConcurrentMap<String, CachedLeagueData> leagueCache = new ConcurrentHashMap<>();
 
     @Override

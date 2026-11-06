@@ -64,7 +64,7 @@ import java.util.Optional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class FootballDataUkSyncService implements SeasonBatchIngestionPort {
+public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
     private static final Provider PROVIDER = Provider.FOOTBALL_DATA_UK;
     private static final MatchProvider MATCH_PROVIDER = MatchProvider.fromName(PROVIDER.name());
     private static final ZoneId SOURCE_ZONE = ZoneId.of("Europe/London");

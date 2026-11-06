@@ -6,7 +6,7 @@ import com.mmo.module.fb.publish.model.PredictionData;
 import org.springframework.stereotype.Component;
 
 @Component
-public class MatchPrediction2VideoContentMapper extends AbstractMapper<PredictionData, VideoContent> {
+public class PredictionDataToVideoContentMapper extends AbstractMapper<PredictionData, VideoContent> {
 
     @Override
     public VideoContent map(PredictionData source, VideoContent target) {
