@@ -777,8 +777,11 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         if (resumable) {
             IngestionCheckpointProgress progress = checkpointStore.findProgress(
                     PROVIDER, Dataset.FIXTURE, leagueId, seasonYear).orElse(null);
-            if (progress != null && progress.cursor().startsWith(fingerprint + ":")) {
-                startOffset = parseCursorOffset(progress.cursor(), fingerprint, rows.size());
+            int candidateOffset = progress == null ? -1
+                    : parseCursorOffset(progress.cursor(), fingerprint, rows.size());
+            if (progress != null && candidateOffset >= 0
+                    && progress.processedRows() == candidateOffset) {
+                startOffset = candidateOffset;
                 processedRows = startOffset;
                 persistedRows = progress.persistedRows();
                 failedRows = progress.failedRows();
