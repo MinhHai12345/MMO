@@ -45,17 +45,38 @@ public class SofaScorePlayerStatsPersistenceAdapter implements PlayerMatchStatis
         Match match = matchRepository.findById(matchId).orElse(null);
         if (match == null) return 0;
 
+        List<PlayerMatchStats> existingStats = playerMatchStatsRepository.findAllByMatchIdOrderByIdAsc(matchId);
+        List<Long> existingPlayerIds = existingStats.stream()
+                .filter(stats -> stats.getPlayer() != null && stats.getPlayer().getId() != null)
+                .map(stats -> stats.getPlayer().getId()).distinct().toList();
         Map<String, PlayerMatchStats> existingByExternalId = new HashMap<>();
-        for (PlayerMatchStats stats : playerMatchStatsRepository.findAllByMatchIdOrderByIdAsc(matchId)) {
-            if (stats.getPlayer() == null) continue;
-            playerExternalIdRepository.findByPlayerIdAndProvider(stats.getPlayer().getId(), Provider.SOFA_SCORE)
-                    .ifPresent(mapping -> existingByExternalId.put(mapping.getExternalId(), stats));
+        if (!existingPlayerIds.isEmpty()) {
+            playerExternalIdRepository.findAllByPlayerIdInAndProvider(existingPlayerIds, Provider.SOFA_SCORE)
+                    .forEach(mapping -> existingStats.stream()
+                            .filter(stats -> stats.getPlayer() != null
+                                    && Objects.equals(stats.getPlayer().getId(), mapping.getPlayer().getId()))
+                            .findFirst()
+                            .ifPresent(stats -> existingByExternalId.put(mapping.getExternalId(), stats)));
+        }
+
+        List<String> incomingExternalIds = java.util.stream.Stream.concat(
+                        lineups.home().stream(), lineups.away().stream())
+                .filter(Objects::nonNull)
+                .map(ProviderLineupPlayer::externalPlayerId)
+                .filter(Objects::nonNull).distinct().toList();
+        Map<String, PlayerExternalId> playerMappingsByExternalId = new HashMap<>();
+        if (!incomingExternalIds.isEmpty()) {
+            playerExternalIdRepository.findAllByProviderAndExternalIdIn(
+                    Provider.SOFA_SCORE, incomingExternalIds)
+                    .forEach(mapping -> playerMappingsByExternalId.put(mapping.getExternalId(), mapping));
         }
 
         List<PlayerMatchStats> toSave = new ArrayList<>();
         List<FieldMergeCommand> mergeCommands = new ArrayList<>();
-        addTeamPlayers(match, lineups.home(), match.getHomeTeam(), toSave, existingByExternalId, mergeCommands);
-        addTeamPlayers(match, lineups.away(), match.getAwayTeam(), toSave, existingByExternalId, mergeCommands);
+        addTeamPlayers(match, lineups.home(), match.getHomeTeam(), toSave,
+                existingByExternalId, playerMappingsByExternalId, mergeCommands);
+        addTeamPlayers(match, lineups.away(), match.getAwayTeam(), toSave,
+                existingByExternalId, playerMappingsByExternalId, mergeCommands);
         sourceAwareMergeService.mergeAll(mergeCommands);
         if (!toSave.isEmpty()) playerMatchStatsRepository.saveAll(toSave);
         return toSave.size();
@@ -64,6 +85,7 @@ public class SofaScorePlayerStatsPersistenceAdapter implements PlayerMatchStatis
     private void addTeamPlayers(Match match, List<ProviderLineupPlayer> lineup, Team team,
                                 List<PlayerMatchStats> toSave,
                                 Map<String, PlayerMatchStats> existingByExternalId,
+                                Map<String, PlayerExternalId> playerMappingsByExternalId,
                                 List<FieldMergeCommand> mergeCommands) {
         if (lineup == null || team == null) return;
         for (ProviderLineupPlayer lineupPlayer : lineup) {
@@ -73,9 +95,16 @@ public class SofaScorePlayerStatsPersistenceAdapter implements PlayerMatchStatis
                 continue;
             }
             String externalId = lineupPlayer.externalPlayerId();
-            Player player = playerExternalIdRepository.findByProviderAndExternalId(Provider.SOFA_SCORE, externalId)
-                    .map(PlayerExternalId::getPlayer)
-                    .orElseGet(() -> createPlayer(lineupPlayer, team, externalId));
+            PlayerExternalId mapping = playerMappingsByExternalId.get(externalId);
+            Player player;
+            if (mapping != null) {
+                player = mapping.getPlayer();
+            } else {
+                player = createPlayer(lineupPlayer, team, externalId);
+                PlayerExternalId createdMapping = playerExternalIdRepository.findByProviderAndExternalId(
+                        Provider.SOFA_SCORE, externalId).orElseThrow();
+                playerMappingsByExternalId.put(externalId, createdMapping);
+            }
             if (player.getTeam() == null || !Objects.equals(player.getTeam().getId(), team.getId())) {
                 player.setTeam(team);
                 player = playerRepository.save(player);
