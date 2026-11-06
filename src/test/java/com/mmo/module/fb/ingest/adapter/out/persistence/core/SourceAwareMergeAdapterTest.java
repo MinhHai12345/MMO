@@ -6,6 +6,7 @@ import com.mmo.module.fb.domain.match.entity.Match;
 import com.mmo.module.fb.domain.match.entity.MatchFieldProvenance;
 import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import com.mmo.module.fb.domain.match.repository.MatchFieldProvenanceRepository;
+import com.mmo.module.fb.domain.match.repository.MatchRepository;
 import com.mmo.module.fb.ingest.application.model.FieldMergeCommand;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
@@ -38,7 +39,9 @@ class SourceAwareMergeAdapterTest {
     void primaryProviderCanRefreshItsOwnedField() {
         MatchFieldProvenanceRepository repository = mock(MatchFieldProvenanceRepository.class);
         when(repository.findAllByMatchIdInAndFieldKeyIn(anyList(), anyList())).thenReturn(List.of());
-        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), repository);
+        MatchRepository matchRepository = mock(MatchRepository.class);
+        when(matchRepository.lockAllByIds(anyCollection())).thenReturn(List.of());
+        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), matchRepository, repository);
         AtomicInteger applied = new AtomicInteger();
 
         assertTrue(service.merge(match2024(), Provider.FOOTBALL_DATA, Dataset.FIXTURE,
