@@ -19,7 +19,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class LeagueIngestionUseCaseImpl implements LeagueIngestionUseCase {
+public class LeagueIngestionService implements LeagueIngestionUseCase {
     private final ProviderIngestionRegistry providerRegistry;
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;

@@ -29,7 +29,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class FixtureIngestionUseCaseImpl implements FixtureIngestionUseCase {
+public class FixtureIngestionService implements FixtureIngestionUseCase {
 
     private final ProviderIngestionRegistry providerRegistry;
     private final AppProperties appProperties;
