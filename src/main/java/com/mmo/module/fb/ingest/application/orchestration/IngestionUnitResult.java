@@ -34,8 +34,12 @@ public record IngestionUnitResult(
     }
 
     public static IngestionUnitResult skipped(IngestionWorkUnit unit) {
+        return skipped(unit, "Already satisfied by a terminal historical checkpoint");
+    }
+
+    public static IngestionUnitResult skipped(IngestionWorkUnit unit, String reason) {
         return new IngestionUnitResult(unit, CheckpointStatus.PENDING, null, null, null, null,
-                true, 0, "Already satisfied by a terminal historical checkpoint");
+                true, 0, reason);
     }
 
     public static IngestionUnitResult notAvailable(IngestionWorkUnit unit, String message, long durationMillis) {
