@@ -3,8 +3,8 @@ package com.mmo.module.fb.ingest.application.orchestration;
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.model.ProviderOverrides;
+import com.mmo.module.fb.ingest.application.port.in.ActiveSeasonDataSyncUseCase;
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
-import com.mmo.module.fb.ingest.application.port.in.FootballDataSyncService;
 import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.SeasonIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionService;
@@ -27,7 +27,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ActiveSeasonDataSyncOrchestrator implements FootballDataSyncService {
+public class ActiveSeasonDataSyncOrchestrator implements ActiveSeasonDataSyncUseCase {
 
     private final IngestionDistributedLock distributedLock;
     private final IngestionPlanFactory planFactory;
@@ -67,9 +67,6 @@ public class ActiveSeasonDataSyncOrchestrator implements FootballDataSyncService
 
         List<String> failedStages = new java.util.ArrayList<>();
         List<IngestionUnitResult> unitResults = new java.util.ArrayList<>();
-        // Initialize each season catalogue represented in the plan. Providers with a
-        // season-batch capability own their catalogue preparation; ordinary providers use
-        // the season ingestion port. No provider implementation is injected here.
         List<Provider> catalogueProviders = plan.units(Dataset.SEASON, IngestionWorkUnit.Role.PRIMARY)
                 .stream().map(IngestionWorkUnit::provider).distinct().toList();
         for (Provider catalogueProvider : catalogueProviders) {
@@ -156,11 +153,6 @@ public class ActiveSeasonDataSyncOrchestrator implements FootballDataSyncService
         }
     }
 
-    /**
-     * Catalogue synchronization is provider-wide by contract. Its season checkpoints are
-     * transitioned together because the provider API does not expose an individual season
-     * catalogue endpoint; all resource datasets below remain season-scoped.
-     */
     private void runPlannedStage(String name, Dataset dataset, List<IngestionWorkUnit> units,
                                  Runnable operation, List<String> failedStages) {
         units.forEach(unit -> checkpointStore.markStatus(unit.provider(), dataset,
