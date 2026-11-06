@@ -24,7 +24,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class LeaguePersistencePortImpl implements LeaguePersistencePort {
+public class LeaguePersistenceAdapter implements LeaguePersistencePort {
 
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;

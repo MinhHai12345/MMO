@@ -20,7 +20,7 @@ import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
-public class StandingsPersistencePortImpl implements StandingsPersistencePort {
+public class StandingsPersistenceAdapter implements StandingsPersistencePort {
 
     private final SeasonRepository seasonRepository;
     private final TeamRepository teamRepository;

@@ -27,7 +27,7 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class TeamPersistencePortImpl implements TeamPersistencePort {
+public class TeamPersistenceAdapter implements TeamPersistencePort {
 
     private final TeamRepository teamRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;

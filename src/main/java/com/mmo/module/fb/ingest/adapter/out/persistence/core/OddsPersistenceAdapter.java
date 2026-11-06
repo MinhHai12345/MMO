@@ -26,7 +26,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-public class OddsPersistencePortImpl implements OddsPersistencePort {
+public class OddsPersistenceAdapter implements OddsPersistencePort {
 
     private static final String MARKET = "PREMATCH";
 
