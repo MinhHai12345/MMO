@@ -147,9 +147,8 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
                 team = teamRepository.save(team);
             }
 
-            externalIdMappingService.registerTeam(team, selectedProvider, source.externalId());
-            TeamExternalId savedMapping = teamExternalIdRepository
-                    .findByTeamIdAndProvider(team.getId(), selectedProvider).orElseThrow();
+            TeamExternalId savedMapping = externalIdMappingService.registerTeam(
+                    team, selectedProvider, source.externalId());
             teamsByExternalId.put(source.externalId(), team);
             mappingByTeamId.put(team.getId(), savedMapping);
             if (selectedProvider == Provider.UNDER_STATS) {
