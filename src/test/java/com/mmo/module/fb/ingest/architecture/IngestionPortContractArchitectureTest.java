@@ -29,7 +29,8 @@ class IngestionPortContractArchitectureTest {
                     + "javax\\.persistence\\.|"
                     + "com\\.mmo\\.module\\.fb\\.ingest\\.adapter\\.|"
                     + "com\\.mmo\\.module\\.fb\\.domain\\.[^;]*\\.repository\\.|"
-                    + "com\\.mmo\\.module\\.fb\\.ingest\\.provider\\."
+                    + "com\\.mmo\\.module\\.fb\\.ingest\\.provider\\.model\\."
+                    + "|com\\.mmo\\.module\\.fb\\.ingest\\.provider\\."
                     + "(?:apifootball|footballdata|footballdatauk|sofascore|understats)\\."
                     + "(?:client|dto|mapper)(?:\\.|;)"
                     + ").*");
