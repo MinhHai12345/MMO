@@ -5,7 +5,7 @@ import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballClient;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.FixtureItem;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
 import com.mmo.module.fb.ingest.provider.apifootball.mapper.ApiFootballFixtureMapper;
-import com.mmo.module.fb.ingest.provider.model.FixtureQuery;
+import com.mmo.module.fb.ingest.application.model.provider.FixtureQuery;
 import com.mmo.module.fb.ingest.provider.model.ProviderFixture;
 import com.mmo.module.fb.ingest.application.port.out.provider.FixtureIngestionPort;
 import com.mmo.module.fb.ingest.enums.Provider;
