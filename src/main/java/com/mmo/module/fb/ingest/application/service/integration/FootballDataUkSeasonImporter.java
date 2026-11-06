@@ -892,12 +892,12 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
 
     static int parseCursorOffset(String cursor, String fingerprint, int rowCount) {
         String prefix = fingerprint + ":";
-        if (cursor == null || !cursor.startsWith(prefix)) return 0;
+        if (cursor == null || !cursor.startsWith(prefix)) return -1;
         try {
             int offset = Integer.parseInt(cursor.substring(prefix.length()));
-            return offset >= 0 && offset <= rowCount ? offset : 0;
+            return offset >= 0 && offset <= rowCount ? offset : -1;
         } catch (NumberFormatException exception) {
-            return 0;
+            return -1;
         }
     }
 
