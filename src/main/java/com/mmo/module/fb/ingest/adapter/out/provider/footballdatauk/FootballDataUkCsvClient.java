@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.footballdatauk;
+package com.mmo.module.fb.ingest.adapter.out.provider.footballdatauk;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
