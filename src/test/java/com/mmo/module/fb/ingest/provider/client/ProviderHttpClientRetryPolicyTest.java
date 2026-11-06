@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.client;
+package com.mmo.module.fb.ingest.adapter.out.provider.shared.client;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
