@@ -76,11 +76,11 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
         validateProvider(leagueCatalogueProvider);
         validateProvider(seasonCatalogueProvider);
         if (!seasonBatchRegistry.supports(leagueCatalogueProvider, Dataset.LEAGUE)) {
-            runStageCollecting("league-catalogue/" + leagueCatalogueProvider,
+            runStageCollecting("catalogue/" + leagueCatalogueProvider + "/LEAGUE",
                     () -> leagueIngestionService.syncLeaguesForProvider(leagueCatalogueProvider), failedStages);
         }
         if (!seasonBatchRegistry.supports(seasonCatalogueProvider, Dataset.SEASON)) {
-            runStageCollecting("season-catalogue/" + seasonCatalogueProvider,
+            runStageCollecting("catalogue/" + seasonCatalogueProvider + "/SEASON",
                     () -> seasonIngestionService.syncSeasonsForProvider(seasonCatalogueProvider), failedStages);
         }
 
@@ -101,7 +101,7 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
             if (!seasonBatchRegistry.supports(provider.getProvider(), Dataset.SEASON)) continue;
             try {
                 boolean acquired = distributedLock.executeScoped(
-                        "catalogue/" + provider.getProvider() + "/prepare-historical-seasons",
+                        "catalogue/" + provider.getProvider() + "/SEASON",
                         () -> runStage(provider.getProvider() + "/prepare-historical-seasons",
                                 provider::prepareHistoricalSeasons));
                 if (!acquired) {
@@ -311,7 +311,7 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
 
     private void runStageCollecting(String name, Runnable operation, List<String> failedStages) {
         try {
-            boolean acquired = distributedLock.executeScoped("catalogue/" + name,
+            boolean acquired = distributedLock.executeScoped(catalogueScope(name),
                     () -> runStage(name, operation));
             if (!acquired) {
                 failedStages.add(name + ": catalogue lock is already held by another node");
@@ -320,6 +320,10 @@ public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
             failedStages.add(name + ": " + exception.getMessage());
             log.warn("Catalogue stage failed; continuing independent backfill units: {}", name, exception);
         }
+    }
+
+    private static String catalogueScope(String name) {
+        return name.startsWith("catalogue/") ? name : "catalogue/" + name;
     }
 
     private void runStage(String name, Runnable operation) {
