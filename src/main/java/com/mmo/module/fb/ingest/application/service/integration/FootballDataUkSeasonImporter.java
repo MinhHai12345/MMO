@@ -3,7 +3,7 @@ package com.mmo.module.fb.ingest.application.service.integration;
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
-import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
+import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;\nimport com.mmo.module.fb.ingest.application.model.IngestionCheckpointProgress;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
@@ -40,7 +40,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.text.Normalizer;
+import java.text.Normalizer;\nimport java.nio.charset.StandardCharsets;\nimport java.security.MessageDigest;\nimport java.security.NoSuchAlgorithmException;\nimport java.util.HexFormat;\nimport java.util.Comparator;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -216,7 +216,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         Long leagueId = season.getLeague().getId();
         markCoreCheckpoint(leagueId, season.getYear(), CheckpointStatus.RUNNING);
         try {
-            ImportResult result = syncSeason(season, mapping, config);
+            ImportResult result = syncSeason(season, mapping, config, historical);
             if (result.csvRows() == 0) {
                 markCoreCheckpoint(leagueId, season.getYear(), CheckpointStatus.NOT_AVAILABLE);
                 return;
@@ -349,7 +349,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
 
                 markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.RUNNING);
                 try {
-                    ImportResult result = syncSeason(season, mapping, config);
+                    ImportResult result = syncSeason(season, mapping, config, true);
                     importedFixtures += result.createdFixtures();
                     if (result.csvRows() == 0) {
                         unavailableSeasons++;
@@ -443,7 +443,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
             for (Season season : activeSeasons) {
                 markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.RUNNING);
                 try {
-                    ImportResult result = syncSeason(season, mapping, config);
+                    ImportResult result = syncSeason(season, mapping, config, false);
                     if (result.csvRows() == 0) {
                         markCoreCheckpoint(league.getId(), season.getYear(), CheckpointStatus.NOT_AVAILABLE);
                         log.info("Football-Data.co.uk active-season CSV not available: league={}, season={}",
@@ -751,88 +751,167 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
 
     public ImportResult syncSeason(Season season, LeagueExternalId leagueMapping,
                                    AppProperties.ProviderConfig config) {
+        return syncSeason(season, leagueMapping, config, false);
+    }
+
+    /**
+     * Processes historical CSVs in bounded chunks. The cursor is committed only after the
+     * rows in that chunk have been persisted. A crash before cursor commit replays at most
+     * one chunk; deterministic external identities make that replay idempotent.
+     */
+    private ImportResult syncSeason(Season season, LeagueExternalId leagueMapping,
+                                    AppProperties.ProviderConfig config, boolean resumable) {
         List<Map<String, String>> rows = matchDataProvider.fetchSeason(
                 config.getUri(), season.getYear(), leagueMapping.getIdentify());
-        int createdFixtures = 0;
-        int importedTeams = 0;
-        int importedFixtures = 0;
-        int unmatched = 0;
-        java.util.Set<Long> resolvedTeamIds = new java.util.HashSet<>();
-
-        for (Map<String, String> row : rows) {
-            try {
-                String homeName = valueAny(row, "HOMETEAM", "HOME TEAM");
-                String awayName = valueAny(row, "AWAYTEAM", "AWAY TEAM");
-                LocalDate date = parseDate(value(row, "DATE"));
-                if (!StringUtils.hasText(homeName) || !StringUtils.hasText(awayName) || date == null) {
-                    unmatched++;
-                    continue;
-                }
-
-                Team home = resolveTeam(leagueMapping.getIdentify(), homeName, season);
-                Team away = resolveTeam(leagueMapping.getIdentify(), awayName, season);
-                resolvedTeamIds.add(home.getId());
-                resolvedTeamIds.add(away.getId());
-                if (home.getId().equals(away.getId())) {
-                    unmatched++;
-                    continue;
-                }
-
-                LocalTime time = parseTime(value(row, "TIME"));
-                Instant kickoff = date.atTime(time == null ? LocalTime.NOON : time)
-                        .atZone(SOURCE_ZONE).toInstant();
-                String fixtureExternalId = fixtureExternalId(leagueMapping.getIdentify(), season, home, away);
-
-                Optional<MatchExternalId> existingExternalId = persistencePort.findMatchMappingByProvider(MATCH_PROVIDER, fixtureExternalId);
-                Match match = existingExternalId.map(MatchExternalId::getMatch)
-                        .orElseGet(() -> resolveOrCreateFixture(season, home, away, kickoff));
-                boolean footballDataOwnsCore = match.getId() != null
-                        && persistencePort.findMatchMappingByMatchId(
-                                match.getId(), MatchProvider.fromName(Provider.FOOTBALL_DATA.name())).isPresent();
-                boolean ukOwnsFixtureCore = dataSourcePolicy.isPrimary(
-                        PROVIDER, Dataset.FIXTURE, season);
-                boolean mayUseUkFallback = dataSourcePolicy.mayFallbackForCore(
-                        PROVIDER, Dataset.FIXTURE, season, footballDataOwnsCore);
-                boolean preservePrimaryCore = !ukOwnsFixtureCore && !mayUseUkFallback;
-                if (!ukOwnsFixtureCore && !mayUseUkFallback && !footballDataOwnsCore) {
-                    unmatched++;
-                    continue;
-                }
-                if (!preservePrimaryCore || match.getMatchTime() == null) {
-                    match.setMatchTime(kickoff);
-                }
-                // Season-aware ownership: UK is primary through 2022; from 2023 it may
-                // only fill a missing Football-Data fixture, never replace mapped FD core fields.
-                updateFixtureResult(match, row, preservePrimaryCore);
-                Optional<MatchExternalId> mapping = match.getId() == null ? Optional.empty()
-                        : persistencePort.findMatchMappingByMatchId(match.getId(), MatchProvider.fromName(PROVIDER.name()));
-                if (mapping.isPresent()) {
-                    MatchExternalId externalId = mapping.get();
-                    if (!fixtureExternalId.equals(externalId.getExternalId())) {
-                        externalId.setExternalId(fixtureExternalId);
-                        persistencePort.saveMatchMapping(externalId);
-                    }
-                } else if (match.getId() != null) {
-                    persistencePort.registerMatchExternalId(match, PROVIDER, fixtureExternalId);
-                }
-                if (match.getId() == null) {
-                    match = persistencePort.saveMatch(match);
-                    persistencePort.registerMatchExternalId(match, PROVIDER, fixtureExternalId);
-                    createdFixtures++;
-                } else {
-                    persistencePort.saveMatch(match);
-                }
-                importedFixtures++;
-                // Core import owns fixture identity, kickoff, status and result only.
-                // Statistics and odds are imported by the independent Match Enrichment workflow.
-            } catch (RuntimeException ex) {
-                unmatched++;
-                log.warn("Skip invalid Football-Data.co.uk row: season={}, home={}, away={}, reason={}",
-                        season.getYear(), value(row, "HOMETEAM"), value(row, "AWAYTEAM"), ex.getMessage());
-            }
+        Long leagueId = season.getLeague().getId();
+        String seasonYear = season.getYear();
+        if (rows.isEmpty()) {
+            checkpointStore.clearProgress(PROVIDER, Dataset.FIXTURE, leagueId, seasonYear);
+            return new ImportResult(0, 0, 0, 0, 0);
         }
-        importedTeams = resolvedTeamIds.size();
+
+        String fingerprint = csvFingerprint(rows);
+        long processedRows = 0;
+        long persistedRows = 0;
+        long failedRows = 0;
+        int startOffset = 0;
+        if (resumable) {
+            IngestionCheckpointProgress progress = checkpointStore.findProgress(
+                    PROVIDER, Dataset.FIXTURE, leagueId, seasonYear).orElse(null);
+            if (progress != null && progress.cursor().startsWith(fingerprint + ":")) {
+                startOffset = parseCursorOffset(progress.cursor(), fingerprint, rows.size());
+                processedRows = startOffset;
+                persistedRows = progress.persistedRows();
+                failedRows = progress.failedRows();
+            } else if (progress != null) {
+                // The source CSV changed; a previous row offset is no longer safe.
+                checkpointStore.clearProgress(PROVIDER, Dataset.FIXTURE, leagueId, seasonYear);
+            }
+        } else {
+            checkpointStore.clearProgress(PROVIDER, Dataset.FIXTURE, leagueId, seasonYear);
+        }
+
+        int createdFixtures = 0;
+        Set<Long> resolvedTeamIds = new HashSet<>();
+        int importedFixtures = Math.toIntExact(Math.min(Integer.MAX_VALUE, persistedRows));
+        int unmatched = Math.toIntExact(Math.min(Integer.MAX_VALUE, failedRows));
+
+        for (int batchStart = startOffset; batchStart < rows.size(); batchStart += 100) {
+            int batchEnd = Math.min(rows.size(), batchStart + 100);
+            for (int rowIndex = batchStart; rowIndex < batchEnd; rowIndex++) {
+                Map<String, String> row = rows.get(rowIndex);
+                try {
+                    String homeName = valueAny(row, "HOMETEAM", "HOME TEAM");
+                    String awayName = valueAny(row, "AWAYTEAM", "AWAY TEAM");
+                    LocalDate date = parseDate(value(row, "DATE"));
+                    if (!StringUtils.hasText(homeName) || !StringUtils.hasText(awayName) || date == null) {
+                        unmatched++;
+                        continue;
+                    }
+
+                    Team home = resolveTeam(leagueMapping.getIdentify(), homeName, season);
+                    Team away = resolveTeam(leagueMapping.getIdentify(), awayName, season);
+                    resolvedTeamIds.add(home.getId());
+                    resolvedTeamIds.add(away.getId());
+                    if (home.getId().equals(away.getId())) {
+                        unmatched++;
+                        continue;
+                    }
+
+                    LocalTime time = parseTime(value(row, "TIME"));
+                    Instant kickoff = date.atTime(time == null ? LocalTime.NOON : time)
+                            .atZone(SOURCE_ZONE).toInstant();
+                    String fixtureExternalId = fixtureExternalId(leagueMapping.getIdentify(), season, home, away);
+
+                    Optional<MatchExternalId> existingExternalId =
+                            persistencePort.findMatchMappingByProvider(MATCH_PROVIDER, fixtureExternalId);
+                    Match match = existingExternalId.map(MatchExternalId::getMatch)
+                            .orElseGet(() -> resolveOrCreateFixture(season, home, away, kickoff));
+                    boolean footballDataOwnsCore = match.getId() != null
+                            && persistencePort.findMatchMappingByMatchId(
+                                    match.getId(), MatchProvider.fromName(Provider.FOOTBALL_DATA.name())).isPresent();
+                    boolean ukOwnsFixtureCore = dataSourcePolicy.isPrimary(PROVIDER, Dataset.FIXTURE, season);
+                    boolean mayUseUkFallback = dataSourcePolicy.mayFallbackForCore(
+                            PROVIDER, Dataset.FIXTURE, season, footballDataOwnsCore);
+                    boolean preservePrimaryCore = !ukOwnsFixtureCore && !mayUseUkFallback;
+                    if (!ukOwnsFixtureCore && !mayUseUkFallback && !footballDataOwnsCore) {
+                        unmatched++;
+                        continue;
+                    }
+                    if (!preservePrimaryCore || match.getMatchTime() == null) {
+                        match.setMatchTime(kickoff);
+                    }
+                    updateFixtureResult(match, row, preservePrimaryCore);
+                    Optional<MatchExternalId> mapping = match.getId() == null ? Optional.empty()
+                            : persistencePort.findMatchMappingByMatchId(
+                                    match.getId(), MatchProvider.fromName(PROVIDER.name()));
+                    if (mapping.isPresent()) {
+                        MatchExternalId externalId = mapping.get();
+                        if (!fixtureExternalId.equals(externalId.getExternalId())) {
+                            externalId.setExternalId(fixtureExternalId);
+                            persistencePort.saveMatchMapping(externalId);
+                        }
+                    } else if (match.getId() != null) {
+                        persistencePort.registerMatchExternalId(match, PROVIDER, fixtureExternalId);
+                    }
+                    if (match.getId() == null) {
+                        match = persistencePort.saveMatch(match);
+                        persistencePort.registerMatchExternalId(match, PROVIDER, fixtureExternalId);
+                        createdFixtures++;
+                    } else {
+                        persistencePort.saveMatch(match);
+                    }
+                    importedFixtures++;
+                } catch (RuntimeException exception) {
+                    unmatched++;
+                    log.warn("Skip invalid Football-Data.co.uk row: season={}, home={}, away={}, reason={}",
+                            season.getYear(), value(row, "HOMETEAM"), value(row, "AWAYTEAM"),
+                            exception.getMessage());
+                }
+            }
+
+            processedRows = batchEnd;
+            persistedRows = importedFixtures;
+            failedRows = unmatched;
+            checkpointStore.saveProgress(PROVIDER, Dataset.FIXTURE, leagueId, seasonYear,
+                    fingerprint + ":" + batchEnd, processedRows, persistedRows, failedRows);
+        }
+
+        checkpointStore.clearProgress(PROVIDER, Dataset.FIXTURE, leagueId, seasonYear);
+        int importedTeams = resolvedTeamIds.size();
         return new ImportResult(rows.size(), createdFixtures, importedTeams, importedFixtures, unmatched);
+    }
+
+    private static int parseCursorOffset(String cursor, String fingerprint, int rowCount) {
+        String prefix = fingerprint + ":";
+        if (cursor == null || !cursor.startsWith(prefix)) return 0;
+        try {
+            int offset = Integer.parseInt(cursor.substring(prefix.length()));
+            return offset >= 0 && offset <= rowCount ? offset : 0;
+        } catch (NumberFormatException exception) {
+            return 0;
+        }
+    }
+
+    private static String csvFingerprint(List<Map<String, String>> rows) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            for (Map<String, String> row : rows) {
+                if (row != null) {
+                    row.entrySet().stream().sorted(Map.Entry.comparingByKey())
+                            .forEach(entry -> {
+                                digest.update(entry.getKey().getBytes(StandardCharsets.UTF_8));
+                                digest.update((byte) 0);
+                                digest.update(String.valueOf(entry.getValue()).getBytes(StandardCharsets.UTF_8));
+                                digest.update((byte) 0);
+                            });
+                }
+                digest.update((byte) 0x7f);
+            }
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable for CSV fingerprinting", exception);
+        }
     }
 
     private Season getOrCreateSeason(League league, int startYear, LocalDate today) {
