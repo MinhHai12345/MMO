@@ -7,6 +7,7 @@ import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.transaction.TransactionException;
 
@@ -101,6 +102,10 @@ public final class IngestionUnitExecutor {
             markFailureState(unit, CheckpointStatus.FAILED, exception);
             return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
                     "PROVIDER_TRANSPORT", true);
+        } catch (DataAccessResourceFailureException exception) {
+            markFailureState(unit, CheckpointStatus.FAILED, exception);
+            return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
+                    "DATABASE_CONNECTION", true);
         } catch (TransientDataAccessException exception) {
             markFailureState(unit, CheckpointStatus.FAILED, exception);
             return IngestionUnitResult.failed(unit, exception.getMessage(), elapsedMillis(startedAt),
