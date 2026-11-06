@@ -19,6 +19,8 @@ class ApplicationDependencyDirectionTest {
 
     private static final Pattern FORBIDDEN_IMPORT = Pattern.compile(
             "^\\s*import\\s+com\\.mmo\\.module\\.fb\\.ingest\\.(?:adapter\\.|repository\\.|entity\\.|service\\.|provider\\.spi\\.)"
+                    + "|^\\s*import\\s+com\\.mmo\\.module\\.fb\\.domain\\.[^;]*\\.repository\\."
+                    + "|^\\s*import\\s+org\\.springframework\\.data\\.(?:jpa|repository)\\."
                     + "|^\\s*import\\s+com\\.mmo\\.module\\.fb\\.ingest\\.provider\\."
                     + "(?:apifootball|footballdata|footballdatauk|sofascore|understats)\\."
                     + "(?:client|dto|mapper)(?:\\.|;)");

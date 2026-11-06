@@ -2,10 +2,10 @@ package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.module.fb.domain.league.entity.League;
 import com.mmo.module.fb.domain.league.entity.Season;
-import com.mmo.module.fb.domain.league.repository.SeasonRepository;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
+import com.mmo.module.fb.ingest.application.port.out.SeasonIngestionQueryPort;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -17,7 +17,7 @@ class IngestionPlanFactoryTest {
 
     @Test
     void buildsPrimaryAndFallbackUnitsPerDatasetAndSeason() {
-        SeasonRepository repository = mock(SeasonRepository.class);
+        SeasonIngestionQueryPort repository = mock(SeasonIngestionQueryPort.class);
         List<Season> seasons = List.of(
                 season(1L, 39L, "Premier League", "2021/2022", true),
                 season(2L, 39L, "Premier League", "2024/2025", true),
@@ -54,7 +54,7 @@ class IngestionPlanFactoryTest {
 
     @Test
     void historicalPlanIncludesInactiveSeasonsButStillHonorsPolicy() {
-        SeasonRepository repository = mock(SeasonRepository.class);
+        SeasonIngestionQueryPort repository = mock(SeasonIngestionQueryPort.class);
         List<Season> seasons = List.of(
                 season(1L, 39L, "Premier League", "2018/2019", false)
         );

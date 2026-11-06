@@ -6,16 +6,15 @@ import com.mmo.module.fb.ingest.application.service.support.IngestionServiceSupp
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.domain.league.entity.Season;
-import com.mmo.module.fb.domain.team.entity.TeamExternalId;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
-import com.mmo.module.fb.domain.team.repository.TeamExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
 import com.mmo.module.fb.ingest.provider.model.StandingsQuery;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.out.provider.StandingsIngestionPort;
 import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.out.StandingsPersistencePort;
+import com.mmo.module.fb.ingest.application.port.out.LeagueExternalMappingPort;
+import com.mmo.module.fb.ingest.application.port.out.TeamExternalMappingPort;
 import com.mmo.module.fb.ingest.application.port.in.TeamIngestionUseCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,8 +33,8 @@ public class StandingsIngestionUseCaseImpl implements StandingsIngestionUseCase 
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
     private final TeamIngestionUseCase teamIngestionService;
-    private final LeagueExternalIdRepository leagueExternalIdRepository;
-    private final TeamExternalIdRepository teamExternalIdRepository;
+    private final LeagueExternalMappingPort leagueExternalMappingPort;
+    private final TeamExternalMappingPort teamExternalMappingPort;
     private final StandingsPersistencePort standingsPersistenceService;
 
     @Override
@@ -63,7 +62,7 @@ public class StandingsIngestionUseCaseImpl implements StandingsIngestionUseCase 
 
         // Allow standalone scheduled runs to bootstrap missing team mappings without repeating
         // the full teams endpoint on every standings refresh.
-        if (teamExternalIdRepository.findAllByProvider(selectedProvider).isEmpty()) {
+        if (teamExternalMappingPort.findAllByProvider(selectedProvider).isEmpty()) {
             if (onlySeasonId != null) {
                 teamIngestionService.syncSeasonForProvider(selectedProvider, onlySeasonId);
             } else {
@@ -73,12 +72,12 @@ public class StandingsIngestionUseCaseImpl implements StandingsIngestionUseCase 
         StandingsIngestionPort provider = providerRegistry.standings(selectedProvider);
 
         Map<Long, String> leagueExternalIdsByLeagueId = new HashMap<>();
-        leagueExternalIdRepository.findAllByProvider(selectedProvider).forEach(mapping ->
-                leagueExternalIdsByLeagueId.put(mapping.getLeague().getId(), mapping.getExternalId()));
+        leagueExternalMappingPort.findAllByProvider(selectedProvider).forEach(mapping ->
+                leagueExternalIdsByLeagueId.put(mapping.leagueId(), mapping.externalId()));
 
         Map<String, Long> teamIdsByExternalId = new HashMap<>();
-        for (TeamExternalId mapping : teamExternalIdRepository.findAllByProvider(selectedProvider)) {
-            teamIdsByExternalId.put(mapping.getExternalId(), mapping.getTeam().getId());
+        for (TeamExternalMappingPort.TeamMapping mapping : teamExternalMappingPort.findAllByProvider(selectedProvider)) {
+            teamIdsByExternalId.put(mapping.externalId(), mapping.teamId());
         }
 
         int saved = 0;

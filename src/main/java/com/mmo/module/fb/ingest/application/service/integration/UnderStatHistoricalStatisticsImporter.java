@@ -7,25 +7,17 @@ import com.mmo.module.fb.ingest.provider.model.ProviderMatchStatistics;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeamMatchStats;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.application.port.out.MatchXgPersistencePort;
+import com.mmo.module.fb.ingest.application.port.out.UnderStatHistoricalDataPort;
 import com.mmo.module.fb.ingest.application.port.out.SourceAwareMergePort;
 import com.mmo.module.fb.ingest.application.port.out.provider.HistoricalStatsIngestionProviderPort;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.out.ExternalIdMappingPort;
-import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
 import com.mmo.module.fb.domain.league.entity.Season;
-import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
-import com.mmo.module.fb.domain.league.repository.SeasonRepository;
 import com.mmo.module.fb.domain.match.entity.Match;
 import com.mmo.module.fb.domain.match.entity.MatchAdvancedStats;
-import com.mmo.module.fb.domain.match.entity.MatchExternalId;
-import com.mmo.module.fb.domain.match.repository.MatchAdvancedStatsRepository;
-import com.mmo.module.fb.domain.match.repository.MatchExternalIdRepository;
-import com.mmo.module.fb.domain.match.repository.MatchRepository;
 import com.mmo.module.fb.domain.match.service.MatchStatisticsSnapshotPersistenceService;
 import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import com.mmo.module.fb.domain.team.entity.Team;
-import com.mmo.module.fb.domain.team.entity.TeamExternalId;
-import com.mmo.module.fb.domain.team.repository.TeamExternalIdRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -58,12 +50,7 @@ public class UnderStatHistoricalStatisticsImporter implements HistoricalStatisti
 
     private final AppProperties appProperties;
     private final ProviderIngestionRegistry providerRegistry;
-    private final SeasonRepository seasonRepository;
-    private final LeagueExternalIdRepository leagueExternalIdRepository;
-    private final TeamExternalIdRepository teamExternalIdRepository;
-    private final MatchRepository matchRepository;
-    private final MatchExternalIdRepository matchExternalIdRepository;
-    private final MatchAdvancedStatsRepository matchAdvancedStatsRepository;
+    private final UnderStatHistoricalDataPort historicalDataPort;
     private final MatchStatisticsSnapshotPersistenceService snapshotPersistenceService;
     private final ExternalIdMappingPort externalIdMappingService;
     private final MatchXgPersistencePort matchXgPersistenceService;
@@ -81,7 +68,7 @@ public class UnderStatHistoricalStatisticsImporter implements HistoricalStatisti
             return;
         }
 
-        List<Season> activeSeasons = seasonRepository.findByIsActiveTrueAndLeagueIsNotNullAndYearIsNotNull();
+        List<Season> activeSeasons = historicalDataPort.findActiveSeasons();
         if (activeSeasons.isEmpty()) {
             log.info("UnderStat sync has no active seasons. Set fb_seasons.is_active=true for seasons to ingest.");
             return;
@@ -113,17 +100,18 @@ public class UnderStatHistoricalStatisticsImporter implements HistoricalStatisti
 
     private boolean syncSeason(HistoricalStatsIngestionProviderPort provider, Season season) {
         if (season.getLeague() == null || season.getLeague().getId() == null) return false;
-        LeagueExternalId mapping = leagueExternalIdRepository
-                .findByLeagueIdAndProvider(season.getLeague().getId(), PROVIDER)
+        String leagueIdentify = historicalDataPort
+                .findLeagueIdentify(season.getLeague().getId(), PROVIDER)
+                .filter(StringUtils::hasText)
+                .map(String::trim)
                 .orElse(null);
-        if (mapping == null || !StringUtils.hasText(mapping.getIdentify())) {
+        if (leagueIdentify == null) {
             log.warn("Skipping UnderStat seasonId={} because league {} has no UNDER_STATS identify mapping",
                     season.getId(), season.getLeague().getId());
             return false;
         }
 
         int providerYear = parseSeasonYear(season.getYear());
-        String leagueIdentify = mapping.getIdentify().trim();
         List<ProviderMatchStatistics> matches = provider.fetchLeagueMatches(leagueIdentify, providerYear);
         int xgUpdated = 0;
         for (ProviderMatchStatistics source : matches) {
@@ -141,10 +129,7 @@ public class UnderStatHistoricalStatisticsImporter implements HistoricalStatisti
                     provider.fetchTeamHistory(leagueIdentify, providerTeamId, providerYear);
             for (ProviderTeamMatchStats stats : history) {
                 if (stats == null || !StringUtils.hasText(stats.externalMatchId())) continue;
-                Match match = matchExternalIdRepository
-                        .findByProviderAndExternalId(MatchProvider.fromName(PROVIDER.name()), stats.externalMatchId())
-                        .map(MatchExternalId::getMatch)
-                        .orElse(null);
+                Match match = historicalDataPort.findMatch(PROVIDER, stats.externalMatchId()).orElse(null);
                 if (match == null || match.getSeason() == null
                         || !season.getId().equals(match.getSeason().getId())) continue;
                 persistTeamStats(match, team, stats);
@@ -159,13 +144,11 @@ public class UnderStatHistoricalStatisticsImporter implements HistoricalStatisti
     }
 
     private Match persistMatchIdentityAndXg(Season season, ProviderMatchStatistics source) {
-        Match match = matchExternalIdRepository.findByProviderAndExternalId(MatchProvider.fromName(PROVIDER.name()), source.externalMatchId())
-                .map(MatchExternalId::getMatch)
-                .orElse(null);
+        Match match = historicalDataPort.findMatch(PROVIDER, source.externalMatchId()).orElse(null);
         Instant kickoff = source.kickoff() == null ? null : source.kickoff().toInstant(ZoneOffset.UTC);
 
         if (match == null && kickoff != null) {
-            List<Match> candidates = matchRepository.findFixtureCandidatesBySeasonAndTime(
+            List<Match> candidates = historicalDataPort.findFixtureCandidates(
                     season.getId(), kickoff.minus(FIXTURE_MATCH_WINDOW), kickoff.plus(FIXTURE_MATCH_WINDOW));
             if (source.result() && source.homeScore() != null && source.awayScore() != null) {
                 List<Match> scoreMatches = candidates.stream()
@@ -221,7 +204,7 @@ public class UnderStatHistoricalStatisticsImporter implements HistoricalStatisti
 
         // Understat is an enrichment source, never the owner of canonical fixture scores.
         matchXgPersistenceService.upsert(PROVIDER, match, source.homeXg(), source.awayXg());
-        return matchRepository.save(match);
+        return historicalDataPort.saveMatch(match);
     }
 
     private void registerTeamIdentity(Team team, String providerTeamId) {
@@ -249,15 +232,13 @@ public class UnderStatHistoricalStatisticsImporter implements HistoricalStatisti
 
     private Team resolveTeam(String externalId) {
         if (!StringUtils.hasText(externalId)) return null;
-        return teamExternalIdRepository.findByProviderAndExternalId(PROVIDER, externalId)
-                .map(TeamExternalId::getTeam)
-                .orElse(null);
+        return historicalDataPort.findTeam(PROVIDER, externalId).orElse(null);
     }
 
     private void persistTeamStats(Match match, Team team, ProviderTeamMatchStats source) {
         snapshotPersistenceService.upsert(match, team, MatchProvider.fromName(PROVIDER.name()), source);
-        MatchAdvancedStats stats = matchAdvancedStatsRepository
-                .findByMatchIdAndTeamId(match.getId(), team.getId())
+        MatchAdvancedStats stats = historicalDataPort
+                .findTeamStatistics(match.getId(), team.getId())
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
         BigDecimal ppda = source.ppdaDef() == null || source.ppdaDef() == 0 || source.ppdaAtt() == null
                 ? null : BigDecimal.valueOf(source.ppdaAtt())
@@ -282,7 +263,7 @@ public class UnderStatHistoricalStatisticsImporter implements HistoricalStatisti
         changed |= mergeMetric(match, team, "points", stats.getPoints(), source.points(), stats::setPoints);
         changed |= mergeMetric(match, team, "npx_goal_difference", stats.getNpxGoalDifference(),
                 source.npxGoalDifference(), stats::setNpxGoalDifference);
-        if (changed) matchAdvancedStatsRepository.save(stats);
+        if (changed) historicalDataPort.saveTeamStatistics(stats);
     }
 
     private <T> boolean mergeMetric(Match match, Team team, String field, T current,

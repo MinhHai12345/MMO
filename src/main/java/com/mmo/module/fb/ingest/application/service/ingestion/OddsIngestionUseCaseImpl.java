@@ -5,11 +5,8 @@ import com.mmo.module.fb.ingest.application.service.support.IngestionServiceSupp
 
 import com.mmo.AppProperties;
 import com.mmo.module.fb.domain.match.entity.Match;
-import com.mmo.module.fb.domain.match.entity.MatchExternalId;
 import com.mmo.module.fb.domain.match.enums.MatchStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.domain.match.repository.MatchExternalIdRepository;
-import com.mmo.module.fb.domain.match.repository.MatchRepository;
 import com.mmo.module.fb.domain.match.enums.MatchEnrichmentResource;
 import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import com.mmo.module.fb.domain.match.service.MatchEnrichmentStateService;
@@ -19,10 +16,10 @@ import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.in.OddsIngestionUseCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.out.OddsPersistencePort;
+import com.mmo.module.fb.ingest.application.port.out.UpcomingOddsMatchQueryPort;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -42,8 +39,8 @@ public class OddsIngestionUseCaseImpl implements OddsIngestionUseCase {
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
     private final FixtureIngestionUseCase fixtureIngestionService;
-    private final MatchRepository matchRepository;
-    private final MatchExternalIdRepository matchExternalIdRepository;
+    private final UpcomingOddsMatchQueryPort upcomingOddsMatchQueryPort;
+    
     private final OddsPersistencePort oddsPersistenceService;
     private final MatchEnrichmentStateService enrichmentStateService;
 
@@ -62,8 +59,7 @@ public class OddsIngestionUseCaseImpl implements OddsIngestionUseCase {
 
         Instant now = Instant.now();
         Instant until = now.plus(72, ChronoUnit.HOURS);
-        List<Match> scheduledMatches = matchRepository.findByStatusAndMatchTimeBetweenOrderByMatchTimeAsc(
-                MatchStatus.SCHEDULED, now, until);
+        List<Match> scheduledMatches = upcomingOddsMatchQueryPort.findScheduledMatches(now, until);
         Map<Long, String> fixtureIdsByMatchId = loadFixtureIds(selectedProvider);
 
         final Map<Long, String> checkFixtureIds = fixtureIdsByMatchId;
@@ -75,11 +71,10 @@ public class OddsIngestionUseCaseImpl implements OddsIngestionUseCase {
             fixtureIdsByMatchId = loadFixtureIds(selectedProvider);
         }
 
-        List<Match> upcoming = matchRepository.findUpcomingWithProviderMapping(
-                MatchStatus.SCHEDULED, now, until, MatchProvider.fromName(selectedProvider.name()), MatchEnrichmentResource.ODDS,
-                MatchEnrichmentStatus.SUCCEEDED,
-                MatchEnrichmentStatus.IN_PROGRESS,
-                now.minus(30, ChronoUnit.MINUTES), PageRequest.of(0, MAX_FIXTURES_PER_RUN));
+        List<Match> upcoming = upcomingOddsMatchQueryPort.findEligibleUpcomingMatches(
+                MatchStatus.SCHEDULED, now, until, MatchProvider.fromName(selectedProvider.name()),
+                MatchEnrichmentResource.ODDS, MatchEnrichmentStatus.SUCCEEDED,
+                MatchEnrichmentStatus.IN_PROGRESS, now.minus(30, ChronoUnit.MINUTES), MAX_FIXTURES_PER_RUN);
 
         int processed = 0;
         for (Match match : upcoming) {
@@ -111,11 +106,11 @@ public class OddsIngestionUseCaseImpl implements OddsIngestionUseCase {
     }
 
     private Map<Long, String> loadFixtureIds(Provider provider) {
-        List<MatchExternalId> mappings = matchExternalIdRepository.findAllByProvider(MatchProvider.fromName(provider.name()));
+        List<UpcomingOddsMatchQueryPort.FixtureMapping> mappings =
+                upcomingOddsMatchQueryPort.findFixtureMappings(MatchProvider.fromName(provider.name()));
         Map<Long, String> fixtureIdsByMatchId = new HashMap<>();
         mappings.forEach(mapping -> {
-            Long matchId = mapping.getMatch().getId();
-            fixtureIdsByMatchId.put(matchId, mapping.getExternalId());
+            fixtureIdsByMatchId.put(mapping.matchId(), mapping.externalId());
         });
         return fixtureIdsByMatchId;
     }
