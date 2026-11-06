@@ -14,7 +14,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.application.port.out.FixturePersistencePort;
-import com.mmo.module.fb.ingest.application.model.ResolvedProviderFixture;
+import com.mmo.module.fb.ingest.application.model.ResolvedProviderFixture;\nimport com.mmo.module.fb.ingest.application.model.FieldMergeCommand;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderFixture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -119,7 +119,7 @@ public class FixturePersistenceAdapter implements FixturePersistencePort {
         Map<String, Long> seenExternalIds = new HashMap<>();
         int persisted = 0;
         List<MatchExternalId> mappingsToInsert = new ArrayList<>();
-        Set<Long> matchesWritten = new HashSet<>();
+        Set<Long> matchesWritten = new HashSet<>();\n        List<Match> matchesToSave = new ArrayList<>();\n        List<FieldMergeCommand> mergeCommands = new ArrayList<>();
 
         for (ResolvedProviderFixture row : validRows) {
             Team home = teams.get(row.homeTeamId());
@@ -218,7 +218,7 @@ public class FixturePersistenceAdapter implements FixturePersistencePort {
                 match = matchRepository.save(match);
             }
             Match target = match;
-            mergeFixtureField(target, provider, "match_time", fixture.kickoff(),
+            mergeFixtureField(mergeCommands, target, provider, "match_time", fixture.kickoff(),
                     target.getMatchTime() != null && !isNew, value -> target.setMatchTime((Instant) value));
             mergeFixtureField(target, provider, "round_info", fixture.round(),
                     hasText(target.getRoundInfo()), value -> target.setRoundInfo((String) value));
@@ -237,7 +237,7 @@ public class FixturePersistenceAdapter implements FixturePersistencePort {
             if (fixture.awayScore() != null) mergeFixtureField(target, provider, "away_score",
                     fixture.awayScore(), target.getAwayScore() != null, value -> target.setAwayScore((Integer) value));
 
-            if (matchesWritten.add(target.getId())) matchRepository.save(target);
+            if (matchesWritten.add(target.getId())) matchesToSave.add(target);
             if (knownIdentity == null) {
                 mappingsToInsert.add(newMapping(target, domainProvider, externalId));
                 providerIdentityByMatchId.put(target.getId(), newMapping(target, domainProvider, externalId));
@@ -265,11 +265,12 @@ public class FixturePersistenceAdapter implements FixturePersistencePort {
                 || provider == Provider.FOOTBALL_DATA_UK;
     }
 
-    private void mergeFixtureField(Match match, Provider provider, String field, Object incoming,
-                                   boolean currentPresent, Consumer<Object> setter) {
+    private void mergeFixtureField(List<FieldMergeCommand> commands, Match match, Provider provider,
+                                   String field, Object incoming, boolean currentPresent,
+                                   Consumer<Object> setter) {
         if (incoming == null) return;
-        mergeService.merge(match, provider, Dataset.FIXTURE, field, currentPresent, null,
-                () -> setter.accept(incoming));
+        commands.add(new FieldMergeCommand(match, provider, Dataset.FIXTURE, field,
+                currentPresent, null, () -> setter.accept(incoming)));
     }
 
     private static boolean statusTransitionAllowed(MatchStatus current, MatchStatus incoming) {
