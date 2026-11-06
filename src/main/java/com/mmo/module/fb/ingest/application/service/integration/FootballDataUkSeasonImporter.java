@@ -40,8 +40,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.text.Normalizer;\nimport java.nio.charset.StandardCharsets;\nimport java.security.MessageDigest;\nimport java.security.NoSuchAlgorithmException;\nimport java.util.HexFormat;\nimport java.util.Comparator;
-import java.math.BigDecimal;
+import java.text.Normalizer;\nimport java.nio.charset.StandardCharsets;\nimport java.security.MessageDigest;\nimport java.security.NoSuchAlgorithmException;\nimport java.util.HexFormat;\nimport java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -223,7 +222,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
             }
 
             saveSeasonMapping(season, mapping);
-            CheckpointStatus teamStatus = datasetStatus(result.importedTeams(), result.unmatchedRows());
+            CheckpointStatus teamStatus = datasetStatus(result.csvRows(), result.unmatchedRows());
             CheckpointStatus fixtureStatus = datasetStatus(result.importedFixtures(), result.unmatchedRows());
             markCoreDatasetCheckpoints(leagueId, season.getYear(), CheckpointStatus.COMPLETED,
                     teamStatus, fixtureStatus);
@@ -362,8 +361,8 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                         saveSeasonMapping(season, mapping);
                         markCoreDatasetCheckpoints(league.getId(), season.getYear(),
                                 CheckpointStatus.COMPLETED,
-                                result.importedTeams() > 0 ? CheckpointStatus.COMPLETED : CheckpointStatus.NOT_AVAILABLE,
-                                result.importedFixtures() > 0 ? CheckpointStatus.COMPLETED : CheckpointStatus.NOT_AVAILABLE);
+                                datasetStatus(result.csvRows(), result.unmatchedRows()),
+                                datasetStatus(result.csvRows(), result.unmatchedRows()));
                     } else {
                         incompleteSeasons++;
                         markCoreDatasetCheckpoints(league.getId(), season.getYear(),
@@ -460,8 +459,8 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                     saveSeasonMapping(season, mapping);
                     markCoreDatasetCheckpoints(league.getId(), season.getYear(),
                             CheckpointStatus.COMPLETED,
-                            result.importedTeams() > 0 ? CheckpointStatus.COMPLETED : CheckpointStatus.NOT_AVAILABLE,
-                            result.importedFixtures() > 0 ? CheckpointStatus.COMPLETED : CheckpointStatus.NOT_AVAILABLE);
+                            datasetStatus(result.csvRows(), result.unmatchedRows()),
+                            datasetStatus(result.csvRows(), result.unmatchedRows()));
                     importedSeasons++;
                     log.info("Football-Data.co.uk active-season Core sync: league={}, season={}, rows={}, createdFixtures={}",
                             league.getName(), season.getYear(), result.csvRows(), result.createdFixtures());
