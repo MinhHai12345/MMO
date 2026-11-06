@@ -14,7 +14,7 @@ import com.mmo.module.fb.domain.player.repository.PlayerMatchStatsRepository;
 import com.mmo.module.fb.domain.player.repository.PlayerRepository;
 import com.mmo.module.fb.domain.team.entity.Team;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.adapter.out.persistence.core.SourceAwareMergeService;
+import com.mmo.module.fb.ingest.adapter.out.persistence.core.SourceAwareMergeAdapter;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.provider.model.ProviderLineupPlayer;
 import com.mmo.module.fb.ingest.provider.model.ProviderLineups;
@@ -65,7 +65,7 @@ class SofaScorePlayerStatsPersistenceAdapterTest {
                         .player(player).provider(Provider.SOFA_SCORE).externalId("123").build()));
 
         DataSourcePolicy policy = new DataSourcePolicy();
-        SourceAwareMergeService mergeService = new SourceAwareMergeService(policy, provenanceRepository);
+        SourceAwareMergeAdapter mergeService = new SourceAwareMergeAdapter(policy, provenanceRepository);
         SofaScorePlayerStatsPersistenceAdapter service = new SofaScorePlayerStatsPersistenceAdapter(
                 matchRepository, playerRepository, externalIdRepository, statsRepository, mergeService);
 
