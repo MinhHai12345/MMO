@@ -809,6 +809,10 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
             int batchEnd = Math.min(rows.size(), batchStart + 100);
             for (int rowIndex = batchStart; rowIndex < batchEnd; rowIndex++) {
                 Map<String, String> row = rows.get(rowIndex);
+                if (row == null) {
+                    unmatched++;
+                    continue;
+                }
                 try {
                     String homeName = valueAny(row, "HOMETEAM", "HOME TEAM");
                     String awayName = valueAny(row, "AWAYTEAM", "AWAY TEAM");
