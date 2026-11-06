@@ -13,9 +13,9 @@ import com.mmo.module.fb.ingest.application.port.out.PlayerMatchStatisticsPersis
 import com.mmo.module.fb.ingest.application.port.out.SourceAwareMergePort;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.provider.model.ProviderLineupPlayer;
-import com.mmo.module.fb.ingest.provider.model.ProviderLineups;
-import com.mmo.module.fb.ingest.provider.model.ProviderPlayerMatchStats;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderLineupPlayer;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderLineups;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderPlayerMatchStats;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
