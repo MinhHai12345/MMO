@@ -4,7 +4,7 @@ import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.model.ProviderOverrides;
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
-import com.mmo.module.fb.ingest.application.port.in.FootballDataSyncService;
+import com.mmo.module.fb.ingest.application.port.in.ActiveSeasonDataSyncUseCase;
 import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.SeasonIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionService;
@@ -27,7 +27,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ActiveSeasonDataSyncOrchestrator implements FootballDataSyncService {
+public class ActiveSeasonDataSyncOrchestrator implements ActiveSeasonDataSyncUseCase {
 
     private final IngestionDistributedLock distributedLock;
     private final IngestionPlanFactory planFactory;
