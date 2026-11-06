@@ -103,28 +103,28 @@ public class SofaScorePlayerStatsPersistenceAdapter implements PlayerMatchStatis
     private void applyStatistics(Match match, Long playerId, PlayerMatchStats stats,
                                  ProviderPlayerMatchStats values, List<FieldMergeCommand> mergeCommands) {
         merge(match, playerId, "minutes_played", stats.getMinutesPlayed(),
-                values.minutesPlayed(), stats::setMinutesPlayed);
-        merge(match, playerId, "goals", stats.getGoals(), values.goals(), stats::setGoals);
-        merge(match, playerId, "assists", stats.getAssists(), values.assists(), stats::setAssists);
-        merge(match, playerId, "shots", stats.getShots(), values.shots(), stats::setShots);
+                values.minutesPlayed(), stats::setMinutesPlayed, mergeCommands);
+        merge(match, playerId, "goals", stats.getGoals(), values.goals(), stats::setGoals, mergeCommands);
+        merge(match, playerId, "assists", stats.getAssists(), values.assists(), stats::setAssists, mergeCommands);
+        merge(match, playerId, "shots", stats.getShots(), values.shots(), stats::setShots, mergeCommands);
         merge(match, playerId, "shots_on_target", stats.getShotsOnTarget(),
-                values.shotsOnTarget(), stats::setShotsOnTarget);
-        merge(match, playerId, "xg", stats.getXg(), values.xg(), stats::setXg);
-        merge(match, playerId, "xa", stats.getXa(), values.xa(), stats::setXa);
-        merge(match, playerId, "passes", stats.getPasses(), values.passes(), stats::setPasses);
+                values.shotsOnTarget(), stats::setShotsOnTarget, mergeCommands);
+        merge(match, playerId, "xg", stats.getXg(), values.xg(), stats::setXg, mergeCommands);
+        merge(match, playerId, "xa", stats.getXa(), values.xa(), stats::setXa, mergeCommands);
+        merge(match, playerId, "passes", stats.getPasses(), values.passes(), stats::setPasses, mergeCommands);
         merge(match, playerId, "pass_accuracy", stats.getPassAccuracy(),
-                values.passAccuracy(), stats::setPassAccuracy);
-        merge(match, playerId, "key_passes", stats.getKeyPasses(), values.keyPasses(), stats::setKeyPasses);
-        merge(match, playerId, "tackles", stats.getTackles(), values.tackles(), stats::setTackles);
+                values.passAccuracy(), stats::setPassAccuracy, mergeCommands);
+        merge(match, playerId, "key_passes", stats.getKeyPasses(), values.keyPasses(), stats::setKeyPasses, mergeCommands);
+        merge(match, playerId, "tackles", stats.getTackles(), values.tackles(), stats::setTackles, mergeCommands);
         merge(match, playerId, "interceptions", stats.getInterceptions(),
-                values.interceptions(), stats::setInterceptions);
-        merge(match, playerId, "duels_won", stats.getDuelsWon(), values.duelsWon(), stats::setDuelsWon);
-        merge(match, playerId, "dribbles", stats.getDribbles(), values.dribbles(), stats::setDribbles);
-        merge(match, playerId, "fouls_drawn", stats.getFoulsDrawn(), values.foulsDrawn(), stats::setFoulsDrawn);
+                values.interceptions(), stats::setInterceptions, mergeCommands);
+        merge(match, playerId, "duels_won", stats.getDuelsWon(), values.duelsWon(), stats::setDuelsWon, mergeCommands);
+        merge(match, playerId, "dribbles", stats.getDribbles(), values.dribbles(), stats::setDribbles, mergeCommands);
+        merge(match, playerId, "fouls_drawn", stats.getFoulsDrawn(), values.foulsDrawn(), stats::setFoulsDrawn, mergeCommands);
         merge(match, playerId, "fouls_committed", stats.getFoulsCommitted(),
-                values.foulsCommitted(), stats::setFoulsCommitted);
-        merge(match, playerId, "yellow_cards", stats.getYellowCards(), values.yellowCards(), stats::setYellowCards);
-        merge(match, playerId, "red_cards", stats.getRedCards(), values.redCards(), stats::setRedCards);
+                values.foulsCommitted(), stats::setFoulsCommitted, mergeCommands);
+        merge(match, playerId, "yellow_cards", stats.getYellowCards(), values.yellowCards(), stats::setYellowCards, mergeCommands);
+        merge(match, playerId, "red_cards", stats.getRedCards(), values.redCards(), stats::setRedCards, mergeCommands);
     }
 
     private <T> void merge(Match match, Long playerId, String field, T current, T incoming,
