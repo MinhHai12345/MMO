@@ -116,7 +116,7 @@ class FixturePersistenceOwnershipIntegrationTest {
 
         assertEquals(1, saved);
         assertEquals(902L, ukFallback.getId());
-        verify(matchRepository).save(ukFallback);
+        verify(matchRepository).saveAll(argThat(matches -> matches.iterator().next() == ukFallback));
         verify(matchExternalIdRepository).saveAll(argThat(mappings ->
                 count(mappings) == 1
                         && "fd-fixture-1".equals(mappings.iterator().next().getExternalId())));
