@@ -58,6 +58,28 @@ class ProviderCheckpointJpaAdapterIntegrationTest {
     }
 
     @Test
+    void persistsAndClearsResumableBatchProgressWithoutChangingCheckpointIdentity() {
+        checkpointStore.markStatus(Provider.FOOTBALL_DATA_UK, Dataset.FIXTURE,
+                39L, "2021/2022", CheckpointStatus.RUNNING);
+        checkpointStore.saveProgress(Provider.FOOTBALL_DATA_UK, Dataset.FIXTURE,
+                39L, "2021/2022", "sha256:row=200", 200, 187, 13);
+
+        var progress = checkpointStore.findProgress(Provider.FOOTBALL_DATA_UK, Dataset.FIXTURE,
+                39L, "2021/2022").orElseThrow();
+        assertEquals("sha256:row=200", progress.cursor());
+        assertEquals(200, progress.processedRows());
+        assertEquals(187, progress.persistedRows());
+        assertEquals(13, progress.failedRows());
+
+        checkpointStore.clearProgress(Provider.FOOTBALL_DATA_UK, Dataset.FIXTURE,
+                39L, "2021/2022");
+        assertTrue(checkpointStore.findProgress(Provider.FOOTBALL_DATA_UK, Dataset.FIXTURE,
+                39L, "2021/2022").isEmpty());
+        assertFalse(checkpointStore.isCompleted(Provider.FOOTBALL_DATA_UK, Dataset.FIXTURE,
+                39L, "2021/2022"));
+    }
+
+    @Test
     void legacyCheckpointWithoutStatusRemainsCompleted() {
         var legacy = new com.mmo.module.fb.ingest.adapter.out.persistence.entity.ProviderSyncCheckpoint();
         legacy.setProvider(Provider.FOOTBALL_DATA_UK);
