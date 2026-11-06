@@ -26,7 +26,7 @@ import java.util.function.Consumer;
  */
 @Service
 @RequiredArgsConstructor
-public class FootballDataUkMatchStatisticsPersistenceService implements FootballDataUkMatchStatisticsPersistencePort {
+public class FootballDataUkMatchStatisticsPersistenceAdapter implements FootballDataUkMatchStatisticsPersistencePort {
 
     private final MatchAdvancedStatsRepository statsRepository;
     private final MatchStatisticsSnapshotPersistenceService snapshotPersistenceService;

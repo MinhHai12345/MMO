@@ -30,7 +30,7 @@ import java.util.function.Consumer;
 /** Persists provider-neutral player match metrics and source provenance. */
 @Service
 @RequiredArgsConstructor
-public class SofaScorePlayerStatsPersistenceService implements PlayerMatchStatisticsPersistencePort {
+public class SofaScorePlayerStatsPersistenceAdapter implements PlayerMatchStatisticsPersistencePort {
     private final MatchRepository matchRepository;
     private final PlayerRepository playerRepository;
     private final PlayerExternalIdRepository playerExternalIdRepository;

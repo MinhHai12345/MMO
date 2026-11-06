@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-class SofaScorePlayerStatsPersistenceServiceTest {
+class SofaScorePlayerStatsPersistenceAdapterTest {
 
     @Test
     void persistsPlayerMetricsWithMatchAndPlayerScopedProvenance() {
@@ -66,7 +66,7 @@ class SofaScorePlayerStatsPersistenceServiceTest {
 
         DataSourcePolicy policy = new DataSourcePolicy();
         SourceAwareMergeService mergeService = new SourceAwareMergeService(policy, provenanceRepository);
-        SofaScorePlayerStatsPersistenceService service = new SofaScorePlayerStatsPersistenceService(
+        SofaScorePlayerStatsPersistenceAdapter service = new SofaScorePlayerStatsPersistenceAdapter(
                 matchRepository, playerRepository, externalIdRepository, statsRepository, mergeService);
 
         var statistics = new ProviderPlayerMatchStats(

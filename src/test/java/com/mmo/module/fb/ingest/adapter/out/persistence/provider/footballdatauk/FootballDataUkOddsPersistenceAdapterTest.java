@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-class FootballDataUkOddsPersistenceServiceTest {
+class FootballDataUkOddsPersistenceAdapterTest {
 
     @Test
     void mapsOpeningClosingOddsAndAggregateMetadataIntoCore() {
@@ -34,7 +34,7 @@ class FootballDataUkOddsPersistenceServiceTest {
         Match match = new Match();
         match.setId(99L);
         match.setSeason(supportedSeason());
-        FootballDataUkOddsPersistenceService mapper = new FootballDataUkOddsPersistenceService(
+        FootballDataUkOddsPersistenceAdapter mapper = new FootballDataUkOddsPersistenceAdapter(
                 bookmakers, oddsRepository, mock(MatchOddsQuotePersistenceService.class), new DataSourcePolicy());
         Map<String, String> row = Map.ofEntries(
                 Map.entry("B365H", "2.10"), Map.entry("B365D", "3.30"), Map.entry("B365A", "3.60"),
@@ -88,7 +88,7 @@ class FootballDataUkOddsPersistenceServiceTest {
         Match match = new Match();
         match.setId(101L);
         match.setSeason(supportedSeason());
-        FootballDataUkOddsPersistenceService mapper = new FootballDataUkOddsPersistenceService(
+        FootballDataUkOddsPersistenceAdapter mapper = new FootballDataUkOddsPersistenceAdapter(
                 bookmakers, oddsRepository, mock(MatchOddsQuotePersistenceService.class), new DataSourcePolicy());
 
         mapper.persist(match, Map.of("B365H", "2.1"));

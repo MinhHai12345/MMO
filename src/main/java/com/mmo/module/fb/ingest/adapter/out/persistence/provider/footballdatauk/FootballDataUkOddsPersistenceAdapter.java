@@ -27,7 +27,7 @@ import java.util.function.Consumer;
  */
 @Service
 @RequiredArgsConstructor
-public class FootballDataUkOddsPersistenceService implements FootballDataUkOddsPersistencePort {
+public class FootballDataUkOddsPersistenceAdapter implements FootballDataUkOddsPersistencePort {
 
     private static final List<BookmakerSource> BOOKMAKERS = List.of(
             new BookmakerSource("1XBet", List.of("1XB"), List.of("1XB"), List.of("1XB")),
