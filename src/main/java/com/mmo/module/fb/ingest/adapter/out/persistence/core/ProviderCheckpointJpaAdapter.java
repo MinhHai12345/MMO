@@ -95,6 +95,7 @@ public class ProviderCheckpointJpaAdapter implements ProviderCheckpointPort {
                 .orElseGet(ProviderSyncCheckpoint::new);
         checkpoint.setProvider(provider);
         checkpoint.setCheckpointKey(checkpointKey);
+        if (checkpoint.getStatus() == null) checkpoint.setStatus(CheckpointStatus.RUNNING);
         checkpoint.setCursorValue(cursor);
         checkpoint.setProcessedRows(processedRows);
         checkpoint.setPersistedRows(persistedRows);
