@@ -1,7 +1,7 @@
 package com.mmo.module.fb.ingest.application.orchestration;
 
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
-import com.mmo.module.fb.ingest.application.port.in.MatchEnrichmentService;
+import com.mmo.module.fb.ingest.application.port.in.MatchEnrichmentUseCase;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 import com.mmo.module.fb.ingest.application.registry.SeasonBatchIngestionRegistry;
@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class MatchEnrichmentOrchestrator implements MatchEnrichmentService {
+public class MatchEnrichmentOrchestrator implements MatchEnrichmentUseCase {
 
     private static final String ENRICHMENT_INITIAL_CHECKPOINT = "MATCH_ENRICHMENT_INITIAL";
 

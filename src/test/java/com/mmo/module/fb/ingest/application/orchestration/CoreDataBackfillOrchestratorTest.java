@@ -3,11 +3,11 @@ package com.mmo.module.fb.ingest.application.orchestration;
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.model.ProviderOverrides;
-import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
-import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
-import com.mmo.module.fb.ingest.application.port.in.SeasonIngestionService;
-import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionService;
-import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionUseCase;
+import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionUseCase;
+import com.mmo.module.fb.ingest.application.port.in.SeasonIngestionUseCase;
+import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionUseCase;
+import com.mmo.module.fb.ingest.application.port.in.TeamIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.application.port.out.provider.SeasonBatchIngestionPort;
 import com.mmo.module.fb.ingest.application.registry.SeasonBatchIngestionRegistry;
@@ -29,11 +29,11 @@ class CoreDataBackfillOrchestratorTest {
     private IngestionPlanFactory planFactory;
     private SeasonBatchIngestionPort footballDataUk;
     private SeasonBatchIngestionRegistry seasonBatchRegistry;
-    private LeagueIngestionService leagues;
-    private SeasonIngestionService seasons;
-    private TeamIngestionService teams;
-    private FixtureIngestionService fixtures;
-    private StandingsIngestionService standings;
+    private LeagueIngestionUseCase leagues;
+    private SeasonIngestionUseCase seasons;
+    private TeamIngestionUseCase teams;
+    private FixtureIngestionUseCase fixtures;
+    private StandingsIngestionUseCase standings;
     private CoreDataBackfillOrchestrator service;
 
     @BeforeEach
@@ -60,11 +60,11 @@ class CoreDataBackfillOrchestratorTest {
                 Dataset.MATCH_XG, Dataset.HISTORICAL_ODDS));
         seasonBatchRegistry = new SeasonBatchIngestionRegistry(List.of(footballDataUk));
         clearInvocations(footballDataUk);
-        leagues = mock(LeagueIngestionService.class);
-        seasons = mock(SeasonIngestionService.class);
-        teams = mock(TeamIngestionService.class);
-        fixtures = mock(FixtureIngestionService.class);
-        standings = mock(StandingsIngestionService.class);
+        leagues = mock(LeagueIngestionUseCase.class);
+        seasons = mock(SeasonIngestionUseCase.class);
+        teams = mock(TeamIngestionUseCase.class);
+        fixtures = mock(FixtureIngestionUseCase.class);
+        standings = mock(StandingsIngestionUseCase.class);
         when(planFactory.historicalPlan()).thenReturn(historicalFootballDataPlan());
 
         service = new CoreDataBackfillOrchestrator(lock, properties, checkpoints, planFactory,

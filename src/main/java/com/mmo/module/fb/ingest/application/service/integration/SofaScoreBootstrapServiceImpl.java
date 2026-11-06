@@ -2,10 +2,10 @@ package com.mmo.module.fb.ingest.application.service.integration;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.application.port.out.CrawlerHealthStatePort;
-import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
-import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
-import com.mmo.module.fb.ingest.application.port.in.SofaScoreBootstrapService;
-import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionUseCase;
+import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionUseCase;
+import com.mmo.module.fb.ingest.application.port.in.SofaScoreBootstrapUseCase;
+import com.mmo.module.fb.ingest.application.port.in.TeamIngestionUseCase;
 import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.domain.league.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.domain.match.repository.MatchExternalIdRepository;
@@ -31,14 +31,14 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SofaScoreBootstrapServiceImpl implements SofaScoreBootstrapService {
+public class SofaScoreBootstrapUseCaseImpl implements SofaScoreBootstrapUseCase {
 
     private static final Provider PROVIDER = Provider.SOFA_SCORE;
     private static final String BOOTSTRAP_STATE_NAME = "SOFA_SCORE_CORE_BOOTSTRAP";
 
-    private final LeagueIngestionService leagueIngestionService;
-    private final TeamIngestionService teamIngestionService;
-    private final FixtureIngestionService fixtureIngestionService;
+    private final LeagueIngestionUseCase leagueIngestionService;
+    private final TeamIngestionUseCase teamIngestionService;
+    private final FixtureIngestionUseCase fixtureIngestionService;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final SeasonExternalIdRepository seasonExternalIdRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;

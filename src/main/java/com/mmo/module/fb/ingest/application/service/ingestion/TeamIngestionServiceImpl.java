@@ -12,8 +12,8 @@ import com.mmo.module.fb.domain.league.repository.LeagueExternalIdRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
 import com.mmo.module.fb.ingest.provider.model.TeamQuery;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
-import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
-import com.mmo.module.fb.ingest.application.port.in.TeamIngestionService;
+import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionUseCase;
+import com.mmo.module.fb.ingest.application.port.in.TeamIngestionUseCase;
 import com.mmo.module.fb.ingest.application.port.out.TeamPersistencePort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,11 +26,11 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class TeamIngestionServiceImpl implements TeamIngestionService {
+public class TeamIngestionUseCaseImpl implements TeamIngestionUseCase {
     private final ProviderIngestionRegistry providerRegistry;
     private final AppProperties appProperties;
     private final IngestionServiceSupport ingestionSupport;
-    private final LeagueIngestionService leagueIngestionService;
+    private final LeagueIngestionUseCase leagueIngestionService;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
     private final TeamPersistencePort teamPersistenceService;
 
