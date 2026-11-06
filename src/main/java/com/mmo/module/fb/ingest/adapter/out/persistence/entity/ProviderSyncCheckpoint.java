@@ -1,8 +1,8 @@
 package com.mmo.module.fb.ingest.adapter.out.persistence.entity;
 
 import com.mmo.core.entity.AbstractEntity;
-import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
+import com.mmo.module.fb.ingest.enums.Provider;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -15,10 +15,7 @@ import lombok.Setter;
 
 import java.time.Instant;
 
-/**
- * Durable marker for a completed provider/resource bootstrap.
- * A marker is written only after every required stage in the initial backfill succeeds.
- */
+/** Durable state and optional resumable cursor for one provider-scoped ingestion unit. */
 @Entity
 @Table(name = "fb_provider_sync_checkpoints",
         uniqueConstraints = @UniqueConstraint(
@@ -47,4 +44,19 @@ public class ProviderSyncCheckpoint extends AbstractEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "checkpoint_status", length = 24)
     private CheckpointStatus status;
+
+    @Column(name = "cursor_value", length = 1024)
+    private String cursorValue;
+
+    @Column(name = "processed_rows", nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    private long processedRows;
+
+    @Column(name = "persisted_rows", nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    private long persistedRows;
+
+    @Column(name = "failed_rows", nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    private long failedRows;
+
+    @Column(name = "progress_updated_at")
+    private Instant progressUpdatedAt;
 }
