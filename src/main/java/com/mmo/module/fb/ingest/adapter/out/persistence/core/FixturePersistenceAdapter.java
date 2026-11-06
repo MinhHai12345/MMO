@@ -39,7 +39,7 @@ public class FixturePersistenceAdapter implements FixturePersistencePort {
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final DataSourcePolicy dataSourcePolicy;
-    private final SourceAwareMergeService mergeService;
+    private final SourceAwareMergeAdapter mergeService;
 
     @Override
     @Transactional

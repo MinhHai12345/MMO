@@ -5,7 +5,7 @@ import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
 import com.mmo.module.fb.ingest.provider.model.ProviderSeason;
-import com.mmo.module.fb.ingest.adapter.out.persistence.identity.ExternalIdMappingService;
+import com.mmo.module.fb.ingest.adapter.out.persistence.identity.ExternalIdMappingAdapter;
 import com.mmo.module.fb.ingest.application.port.out.LeaguePersistencePort;
 import com.mmo.module.fb.domain.league.entity.League;
 import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
@@ -29,7 +29,7 @@ public class LeaguePersistenceAdapter implements LeaguePersistencePort {
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
     private final LeagueExternalIdRepository leagueExternalIdRepository;
-    private final ExternalIdMappingService externalIdMappingService;
+    private final ExternalIdMappingAdapter externalIdMappingService;
     private final DataSourcePolicy dataSourcePolicy;
 
     /**

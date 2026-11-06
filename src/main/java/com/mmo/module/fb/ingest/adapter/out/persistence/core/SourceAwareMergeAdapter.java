@@ -22,7 +22,7 @@ import java.time.Instant;
  */
 @Service
 @RequiredArgsConstructor
-public class SourceAwareMergeService implements SourceAwareMergePort {
+public class SourceAwareMergeAdapter implements SourceAwareMergePort {
 
     private final DataSourcePolicy dataSourcePolicy;
     private final MatchFieldProvenanceRepository provenanceRepository;

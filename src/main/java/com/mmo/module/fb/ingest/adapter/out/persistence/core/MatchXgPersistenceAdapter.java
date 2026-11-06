@@ -15,11 +15,11 @@ import java.math.BigDecimal;
 /** Persistence boundary for canonical fixture-level xG with field-level source ownership. */
 @Service
 @RequiredArgsConstructor
-public class MatchXgPersistenceService implements MatchXgPersistencePort {
+public class MatchXgPersistenceAdapter implements MatchXgPersistencePort {
 
     private final MatchRepository matchRepository;
     private final DataSourcePolicy dataSourcePolicy;
-    private final SourceAwareMergeService sourceAwareMergeService;
+    private final SourceAwareMergeAdapter sourceAwareMergeService;
 
     @Override
     @Transactional

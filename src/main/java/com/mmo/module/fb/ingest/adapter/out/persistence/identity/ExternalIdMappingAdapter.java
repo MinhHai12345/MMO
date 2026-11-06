@@ -31,7 +31,7 @@ import java.util.Optional;
  */
 @Service
 @Transactional
-public class ExternalIdMappingService implements com.mmo.module.fb.ingest.application.port.out.ExternalIdMappingPort {
+public class ExternalIdMappingAdapter implements com.mmo.module.fb.ingest.application.port.out.ExternalIdMappingPort {
 
     private final LeagueExternalIdRepository leagueExternalIds;
     private final SeasonExternalIdRepository seasonExternalIds;
@@ -39,7 +39,7 @@ public class ExternalIdMappingService implements com.mmo.module.fb.ingest.applic
     private final MatchExternalIdRepository matchExternalIds;
     private final PlayerExternalIdRepository playerExternalIds;
 
-    public ExternalIdMappingService(LeagueExternalIdRepository leagueExternalIds,
+    public ExternalIdMappingAdapter(LeagueExternalIdRepository leagueExternalIds,
                                     SeasonExternalIdRepository seasonExternalIds,
                                     TeamExternalIdRepository teamExternalIds,
                                     MatchExternalIdRepository matchExternalIds,
