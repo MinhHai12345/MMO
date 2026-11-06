@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.model;
+package com.mmo.module.fb.ingest.adapter.out.provider.standardization;
 
 import org.springframework.util.StringUtils;
 
