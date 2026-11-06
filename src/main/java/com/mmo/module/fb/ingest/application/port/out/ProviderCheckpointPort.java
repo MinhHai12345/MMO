@@ -1,11 +1,11 @@
 package com.mmo.module.fb.ingest.application.port.out;
 
-import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.application.model.IngestionCheckpointProgress;
+import com.mmo.module.fb.ingest.enums.CheckpointStatus;
+import com.mmo.module.fb.ingest.enums.Provider;
+import com.mmo.module.fb.ingest.policy.Dataset;
 
 import java.util.Optional;
-import com.mmo.module.fb.ingest.enums.CheckpointStatus;
-import com.mmo.module.fb.ingest.policy.Dataset;
 
 /** Application-owned checkpoint contract; persistence details stay in the adapter layer. */
 public interface ProviderCheckpointPort {
@@ -27,6 +27,23 @@ public interface ProviderCheckpointPort {
 
     void markStatus(Provider provider, Dataset dataset, Long leagueId,
                     String season, CheckpointStatus status);
+
+    /** Returns the last committed batch cursor for a provider/dataset/league/season unit. */
+    default Optional<IngestionCheckpointProgress> findProgress(
+            Provider provider, Dataset dataset, Long leagueId, String season) {
+        return Optional.empty();
+    }
+
+    /** Persists progress only after the corresponding batch has been durably written. */
+    default void saveProgress(Provider provider, Dataset dataset, Long leagueId, String season,
+                              String cursor, long processedRows, long persistedRows, long failedRows) {
+        throw new UnsupportedOperationException("Checkpoint progress is not supported by this adapter");
+    }
+
+    /** Clears a completed or invalidated cursor while preserving the terminal checkpoint state. */
+    default void clearProgress(Provider provider, Dataset dataset, Long leagueId, String season) {
+        // Optional for adapters that do not persist resumable progress.
+    }
 
     static String checkpointKey(Dataset dataset, Long leagueId, String season) {
         if (dataset == null || leagueId == null || season == null || season.isBlank()) {
