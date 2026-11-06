@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.client;
+package com.mmo.module.fb.ingest.adapter.out.provider.shared.client;
 
 /** A successful transport that did not produce a usable provider response. */
 public class ProviderResponseException extends RuntimeException {

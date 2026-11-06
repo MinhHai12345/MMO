@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.client;
+package com.mmo.module.fb.ingest.adapter.out.provider.shared.client;
 
 /**
  * @deprecated Use the provider-neutral application exception in orchestration code.
