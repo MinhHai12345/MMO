@@ -7,7 +7,6 @@ import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.application.port.out.IngestionBatchTransactionPort;
 import org.springframework.dao.DataAccessException;
 import org.springframework.transaction.TransactionException;
-import jakarta.persistence.PersistenceException;
 import com.mmo.module.fb.ingest.application.model.IngestionCheckpointProgress;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.enums.CheckpointStatus;
@@ -886,7 +885,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                             persistencePort.saveMatch(match);
                         }
                         current.importedFixtures++;
-                    } catch (DataAccessException | TransactionException | PersistenceException databaseException) {
+                    } catch (DataAccessException | TransactionException databaseException) {
                         throw databaseException;
                     } catch (RuntimeException invalidRow) {
                         current.unmatched++;
