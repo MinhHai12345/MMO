@@ -5,14 +5,14 @@ import com.mmo.module.fb.ingest.application.port.out.FootballDataUkMatchStatisti
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.adapter.out.persistence.core.SourceAwareMergeService;
+import com.mmo.module.fb.ingest.adapter.out.persistence.core.SourceAwareMergeAdapter;
 import com.mmo.module.fb.domain.match.entity.MatchAdvancedStats;
 import com.mmo.module.fb.domain.match.repository.MatchAdvancedStatsRepository;
 import com.mmo.module.fb.domain.match.service.MatchStatisticsSnapshotPersistenceService;
 import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import com.mmo.module.fb.domain.team.entity.Team;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -24,14 +24,14 @@ import java.util.function.Consumer;
  * Maps Football-Data.co.uk team statistics into the shared MMO Core model.
  * Missing values remain null; free kicks conceded are never mislabeled as fouls.
  */
-@Service
+@Repository
 @RequiredArgsConstructor
 public class FootballDataUkMatchStatisticsPersistenceAdapter implements FootballDataUkMatchStatisticsPersistencePort {
 
     private final MatchAdvancedStatsRepository statsRepository;
     private final MatchStatisticsSnapshotPersistenceService snapshotPersistenceService;
     private final DataSourcePolicy dataSourcePolicy;
-    private final SourceAwareMergeService sourceAwareMergeService;
+    private final SourceAwareMergeAdapter sourceAwareMergeService;
 
     @Override
     @Transactional

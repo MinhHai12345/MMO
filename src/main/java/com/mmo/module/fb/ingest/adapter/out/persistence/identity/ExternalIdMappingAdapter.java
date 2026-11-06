@@ -17,7 +17,7 @@ import com.mmo.module.fb.domain.match.repository.MatchExternalIdRepository;
 import com.mmo.module.fb.domain.player.repository.PlayerExternalIdRepository;
 import com.mmo.module.fb.domain.league.repository.SeasonExternalIdRepository;
 import com.mmo.module.fb.domain.team.repository.TeamExternalIdRepository;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
@@ -29,7 +29,7 @@ import java.util.Optional;
  * only in mapping tables. Legacy entity-level IDs cannot identify their source
  * provider. Existing mappings are never silently reassigned to another entity.</p>
  */
-@Service
+@Repository
 @Transactional
 public class ExternalIdMappingAdapter implements com.mmo.module.fb.ingest.application.port.out.ExternalIdMappingPort {
 

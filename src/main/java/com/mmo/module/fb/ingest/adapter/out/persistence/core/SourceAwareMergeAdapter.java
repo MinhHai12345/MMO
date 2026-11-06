@@ -10,7 +10,7 @@ import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.policy.ProviderRoute;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -20,7 +20,7 @@ import java.time.Instant;
  * may only fill null canonical fields (or refresh fields they previously supplied), and
  * stale source revisions never replace newer revisions from the same provider.
  */
-@Service
+@Repository
 @RequiredArgsConstructor
 public class SourceAwareMergeAdapter implements SourceAwareMergePort {
 

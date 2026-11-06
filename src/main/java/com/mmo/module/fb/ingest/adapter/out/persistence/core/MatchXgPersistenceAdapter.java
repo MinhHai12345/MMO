@@ -7,13 +7,13 @@ import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.domain.match.entity.Match;
 import com.mmo.module.fb.domain.match.repository.MatchRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
 /** Persistence boundary for canonical fixture-level xG with field-level source ownership. */
-@Service
+@Repository
 @RequiredArgsConstructor
 public class MatchXgPersistenceAdapter implements MatchXgPersistencePort {
 
