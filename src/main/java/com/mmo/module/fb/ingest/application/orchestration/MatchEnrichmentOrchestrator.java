@@ -29,7 +29,7 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentUseCase {
 
     @Override
     public void enrichFinishedMatches() {
-        boolean executed = distributedLock.execute(IngestionDistributedLock.GLOBAL_INGEST_LOCK,
+        boolean executed = distributedLock.executeScoped("workflow/match-enrichment",
                 this::enrichFinishedMatchesLocked);
         if (!executed) {
             log.warn("Match enrichment skipped because another ingestion workflow is running");
@@ -59,8 +59,14 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentUseCase {
                     providerId, historicalSeasonIds.size(), activeSeasonIds.size());
             for (Long seasonId : historicalSeasonIds) {
                 try {
-                    runStage(providerId + "/historical-enrichment/season=" + seasonId,
-                            () -> provider.syncEnrichmentSeason(seasonId, true));
+                    boolean acquired = distributedLock.executeScoped(
+                            "batch/" + providerId + "/enrichment/season/" + seasonId,
+                            () -> runStage(providerId + "/historical-enrichment/season=" + seasonId,
+                                    () -> provider.syncEnrichmentSeason(seasonId, true)));
+                    if (!acquired) {
+                        providerFailures.add(providerId + "/historical/season=" + seasonId
+                                + ": another node owns this season batch");
+                    }
                 } catch (RuntimeException exception) {
                     providerFailures.add(providerId + "/historical/season=" + seasonId
                             + ": " + exception.getMessage());
@@ -68,8 +74,14 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentUseCase {
             }
             for (Long seasonId : activeSeasonIds) {
                 try {
-                    runStage(providerId + "/active-enrichment/season=" + seasonId,
-                            () -> provider.syncEnrichmentSeason(seasonId, false));
+                    boolean acquired = distributedLock.executeScoped(
+                            "batch/" + providerId + "/enrichment/season/" + seasonId,
+                            () -> runStage(providerId + "/active-enrichment/season=" + seasonId,
+                                    () -> provider.syncEnrichmentSeason(seasonId, false)));
+                    if (!acquired) {
+                        providerFailures.add(providerId + "/active/season=" + seasonId
+                                + ": another node owns this season batch");
+                    }
                 } catch (RuntimeException exception) {
                     providerFailures.add(providerId + "/active/season=" + seasonId
                             + ": " + exception.getMessage());
