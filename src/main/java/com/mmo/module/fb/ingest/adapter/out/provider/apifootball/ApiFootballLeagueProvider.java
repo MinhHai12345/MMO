@@ -1,11 +1,11 @@
-package com.mmo.module.fb.ingest.provider.apifootball;
+package com.mmo.module.fb.ingest.adapter.out.provider.apifootball;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballClient;
-import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.LeagueItem;
-import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
-import com.mmo.module.fb.ingest.provider.apifootball.mapper.ApiFootballLeagueMapper;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.client.ApiFootballClient;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.dto.ApiFootballDtos.LeagueItem;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.dto.ApiFootballResponse;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.mapper.ApiFootballLeagueMapper;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderLeague;
 import com.mmo.module.fb.ingest.application.port.out.provider.LeagueIngestionPort;
 import lombok.RequiredArgsConstructor;

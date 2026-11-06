@@ -1,4 +1,4 @@
-package com.mmo.module.fb.ingest.provider.apifootball.dto;
+package com.mmo.module.fb.ingest.adapter.out.provider.apifootball.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 

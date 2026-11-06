@@ -1,11 +1,11 @@
-package com.mmo.module.fb.ingest.provider.apifootball;
+package com.mmo.module.fb.ingest.adapter.out.provider.apifootball;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballClient;
-import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.TeamItem;
-import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
-import com.mmo.module.fb.ingest.provider.apifootball.mapper.ApiFootballTeamMapper;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.client.ApiFootballClient;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.dto.ApiFootballDtos.TeamItem;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.dto.ApiFootballResponse;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.mapper.ApiFootballTeamMapper;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderTeam;
 import com.mmo.module.fb.ingest.application.model.provider.TeamQuery;
 import com.mmo.module.fb.ingest.application.port.out.provider.TeamIngestionPort;

@@ -1,9 +1,9 @@
-package com.mmo.module.fb.ingest.provider.apifootball.client;
+package com.mmo.module.fb.ingest.adapter.out.provider.apifootball.client;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.dto.ApiFootballResponse;
 import com.mmo.module.fb.ingest.provider.client.AbstractProviderClient;
 import com.mmo.module.fb.ingest.provider.client.ProviderHttpClient;
 import org.springframework.http.HttpHeaders;

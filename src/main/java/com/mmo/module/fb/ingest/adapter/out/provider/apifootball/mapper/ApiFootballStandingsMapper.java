@@ -1,7 +1,7 @@
-package com.mmo.module.fb.ingest.provider.apifootball.mapper;
+package com.mmo.module.fb.ingest.adapter.out.provider.apifootball.mapper;
 
-import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.StandingRowDto;
-import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.StandingsItem;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.dto.ApiFootballDtos.StandingRowDto;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.dto.ApiFootballDtos.StandingsItem;
 import com.mmo.module.fb.ingest.adapter.out.provider.standardization.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderStanding;
 import org.springframework.stereotype.Component;

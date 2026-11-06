@@ -1,11 +1,11 @@
-package com.mmo.module.fb.ingest.provider.apifootball;
+package com.mmo.module.fb.ingest.adapter.out.provider.apifootball;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.apifootball.client.ApiFootballClient;
-import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.StandingsItem;
-import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballResponse;
-import com.mmo.module.fb.ingest.provider.apifootball.mapper.ApiFootballStandingsMapper;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.client.ApiFootballClient;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.dto.ApiFootballDtos.StandingsItem;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.dto.ApiFootballResponse;
+import com.mmo.module.fb.ingest.adapter.out.provider.apifootball.mapper.ApiFootballStandingsMapper;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderStanding;
 import com.mmo.module.fb.ingest.application.model.provider.StandingsQuery;
 import com.mmo.module.fb.ingest.application.port.out.provider.StandingsIngestionPort;
