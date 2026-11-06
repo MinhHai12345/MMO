@@ -1,10 +1,11 @@
 package com.mmo.module.fb.ingest.adapter.out.persistence.core;
 
 import com.mmo.module.fb.domain.match.entity.Match;
-import com.mmo.module.fb.ingest.application.port.out.SourceAwareMergePort;
 import com.mmo.module.fb.domain.match.entity.MatchFieldProvenance;
 import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import com.mmo.module.fb.domain.match.repository.MatchFieldProvenanceRepository;
+import com.mmo.module.fb.ingest.application.model.FieldMergeCommand;
+import com.mmo.module.fb.ingest.application.port.out.SourceAwareMergePort;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
@@ -14,11 +15,15 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 /**
- * Field-level merge gate. Primary sources may refresh their own fields; secondary sources
- * may only fill null canonical fields (or refresh fields they previously supplied), and
- * stale source revisions never replace newer revisions from the same provider.
+ * Field-level merge gate. Provenance is prefetched once per batch and flushed with
+ * saveAll, avoiding a provenance SELECT/UPSERT for every field of every fixture.
  */
 @Repository
 @RequiredArgsConstructor
@@ -31,39 +36,71 @@ public class SourceAwareMergeAdapter implements SourceAwareMergePort {
     @Transactional
     public boolean merge(Match match, Provider provider, Dataset dataset, String fieldKey,
                          boolean currentValuePresent, Instant sourceUpdatedAt, Runnable applyValue) {
-        if (match == null || match.getId() == null || provider == null || dataset == null
-                || fieldKey == null || fieldKey.isBlank() || applyValue == null) {
-            return false;
+        return mergeAll(List.of(new FieldMergeCommand(match, provider, dataset, fieldKey,
+                currentValuePresent, sourceUpdatedAt, applyValue))) == 1;
+    }
+
+    @Override
+    @Transactional
+    public int mergeAll(List<FieldMergeCommand> commands) {
+        if (commands == null || commands.isEmpty()) return 0;
+
+        List<FieldMergeCommand> valid = commands.stream()
+                .filter(Objects::nonNull)
+                .filter(command -> command.match() != null && command.match().getId() != null
+                        && command.provider() != null && command.dataset() != null
+                        && command.fieldKey() != null && !command.fieldKey().isBlank()
+                        && command.applyValue() != null)
+                .toList();
+        if (valid.isEmpty()) return 0;
+
+        List<Long> matchIds = valid.stream().map(command -> command.match().getId()).distinct().toList();
+        List<String> fieldKeys = valid.stream().map(FieldMergeCommand::fieldKey).distinct().toList();
+        Map<ProvenanceKey, MatchFieldProvenance> provenanceByKey = new HashMap<>();
+        provenanceRepository.findAllByMatchIdInAndFieldKeyIn(matchIds, fieldKeys).forEach(provenance ->
+                provenanceByKey.put(new ProvenanceKey(
+                        provenance.getMatch().getId(), provenance.getFieldKey()), provenance));
+
+        List<MatchFieldProvenance> changedProvenance = new ArrayList<>();
+        int applied = 0;
+        for (FieldMergeCommand command : valid) {
+            Match match = command.match();
+            Provider provider = command.provider();
+            Dataset dataset = command.dataset();
+            ProviderRoute route = dataSourcePolicy.route(dataset, match.getSeason());
+            if (!route.allows(provider)) continue;
+
+            ProvenanceKey key = new ProvenanceKey(match.getId(), command.fieldKey());
+            MatchFieldProvenance current = provenanceByKey.get(key);
+            MatchProvider domainProvider = MatchProvider.fromName(provider.name());
+            boolean sameSource = current != null && current.getProvider() == domainProvider;
+            boolean primary = route.primary() == provider;
+
+            if (!primary && !sameSource && command.currentValuePresent()) continue;
+            if (sameSource && command.sourceUpdatedAt() != null && current.getSourceUpdatedAt() != null
+                    && command.sourceUpdatedAt().isBefore(current.getSourceUpdatedAt())) {
+                continue;
+            }
+
+            command.applyValue().run();
+            MatchFieldProvenance provenance = current == null
+                    ? MatchFieldProvenance.builder().match(match).fieldKey(command.fieldKey()).build()
+                    : current;
+            provenance.setDatasetKey(dataset.name());
+            provenance.setProvider(domainProvider);
+            provenance.setSourceUpdatedAt(command.sourceUpdatedAt());
+            provenance.setFetchedAt(Instant.now());
+            provenanceByKey.put(key, provenance);
+            changedProvenance.add(provenance);
+            applied++;
         }
 
-        ProviderRoute route = dataSourcePolicy.route(dataset, match.getSeason());
-        if (!route.allows(provider)) return false;
-
-        MatchProvider domainProvider = MatchProvider.fromName(provider.name());
-        MatchFieldProvenance current = provenanceRepository
-                .findByMatchIdAndFieldKey(match.getId(), fieldKey).orElse(null);
-        boolean sameSource = current != null && current.getProvider() == domainProvider;
-        boolean primary = route.primary() == provider;
-
-        if (!primary) {
-            // Secondary sources are strictly fill-only unless they own the existing value.
-            if (!sameSource && currentValuePresent) return false;
+        if (!changedProvenance.isEmpty()) {
+            provenanceRepository.saveAll(changedProvenance.stream().distinct().toList());
         }
+        return applied;
+    }
 
-        if (sameSource && sourceUpdatedAt != null && current.getSourceUpdatedAt() != null
-                && sourceUpdatedAt.isBefore(current.getSourceUpdatedAt())) {
-            return false;
-        }
-
-        applyValue.run();
-        MatchFieldProvenance provenance = current == null
-                ? MatchFieldProvenance.builder().match(match).fieldKey(fieldKey).build()
-                : current;
-        provenance.setDatasetKey(dataset.name());
-        provenance.setProvider(domainProvider);
-        provenance.setSourceUpdatedAt(sourceUpdatedAt);
-        provenance.setFetchedAt(Instant.now());
-        provenanceRepository.save(provenance);
-        return true;
+    private record ProvenanceKey(Long matchId, String fieldKey) {
     }
 }
