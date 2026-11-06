@@ -54,7 +54,7 @@ public record IngestionExecutionReport(List<IngestionUnitResult> results) {
                 .map(result -> result.unit().provider() + "/" + result.unit().dataset()
                         + "/league=" + result.unit().leagueId()
                         + "/season=" + result.unit().season()
-                        + " status=" + result.status() + " reason=" + result.message())
+                        + " status=" + result.status() + " code=" + result.failureCode()\n                        + " retryable=" + result.retryable() + " reason=" + result.message())
                 .toList();
         if (!errors.isEmpty()) {
             throw new IllegalStateException(workflow + " incomplete: " + summary() + "; errors=" + errors);
