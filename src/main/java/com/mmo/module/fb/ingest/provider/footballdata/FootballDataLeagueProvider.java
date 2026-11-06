@@ -5,7 +5,7 @@ import com.mmo.module.fb.ingest.provider.footballdata.client.FootballDataClient;
 import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.CompetitionDto;
 import com.mmo.module.fb.ingest.provider.footballdata.dto.FootballDataDtos.CompetitionListDto;
 import com.mmo.module.fb.ingest.provider.footballdata.mapper.FootballDataResponseMapper;
-import com.mmo.module.fb.ingest.provider.model.ProviderLeague;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderLeague;
 import com.mmo.module.fb.ingest.application.port.out.provider.LeagueIngestionPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
