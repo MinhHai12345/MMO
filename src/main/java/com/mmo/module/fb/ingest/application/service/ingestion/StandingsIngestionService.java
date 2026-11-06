@@ -7,8 +7,8 @@ import com.mmo.module.fb.ingest.application.service.support.IngestionServiceSupp
 import com.mmo.AppProperties;
 import com.mmo.module.fb.domain.league.entity.Season;
 import com.mmo.module.fb.ingest.enums.Provider;
-import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
-import com.mmo.module.fb.ingest.provider.model.StandingsQuery;
+import com.mmo.module.fb.ingest.application.model.provider.ProviderStanding;
+import com.mmo.module.fb.ingest.application.model.provider.StandingsQuery;
 import com.mmo.module.fb.ingest.application.registry.ProviderIngestionRegistry;
 import com.mmo.module.fb.ingest.application.port.out.provider.StandingsIngestionPort;
 import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionUseCase;
