@@ -14,14 +14,15 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.Executor;
 
 /**
- * Serializes all ingest workflows across Quartz jobs and application instances.
+ * Serializes ingestion workflows across Quartz jobs and application instances.
  *
- * <p>MySQL advisory locks are scoped to the database server and owned by a physical
- * connection. The connection is deliberately held for the whole operation and the
- * lock is released in a finally block. Closing the connection is the final safety net
- * if release itself fails.</p>
+ * <p>MySQL advisory locks belong to a database session, not a transaction. The
+ * connection is held for the operation and the lock is explicitly released in a
+ * finally block. If release cannot be confirmed, the physical connection is aborted:
+ * closing a HikariCP proxy alone may only return the still-locked session to the pool.</p>
  *
  * <p>Do not add @Transactional to callers: the lock must be held on this dedicated
  * connection, independently from the short database transactions used by repositories.</p>
@@ -33,6 +34,7 @@ public class IngestionDistributedLock {
     public static final String GLOBAL_INGEST_LOCK = "mmo:fb:ingest:global";
     private static final String ACQUIRE_SQL = "SELECT GET_LOCK(?, 0)";
     private static final String RELEASE_SQL = "SELECT RELEASE_LOCK(?)";
+    private static final Executor DIRECT_EXECUTOR = Runnable::run;
 
     private final DataSource dataSource;
 
@@ -41,7 +43,7 @@ public class IngestionDistributedLock {
     }
 
     /**
-     * Executes an ingest workflow only when the global database lock is acquired.
+     * Executes an ingest workflow only when the database lock is acquired.
      *
      * @return true when the operation ran; false when another instance/job owns the lock
      */
@@ -111,16 +113,33 @@ public class IngestionDistributedLock {
     }
 
     private void release(Connection connection, String lockName) {
+        boolean released = false;
         try (PreparedStatement statement = connection.prepareStatement(RELEASE_SQL)) {
             statement.setString(1, lockName);
             try (ResultSet resultSet = statement.executeQuery()) {
-                if (!resultSet.next() || resultSet.getInt(1) != 1 || resultSet.wasNull()) {
-                    log.error("MySQL ingestion lock release did not return success: {}", lockName);
-                }
+                released = resultSet.next() && resultSet.getInt(1) == 1 && !resultSet.wasNull();
             }
         } catch (SQLException exception) {
-            // Closing the owning connection releases a MySQL advisory lock as a fallback.
-            log.error("Failed to explicitly release ingestion lock {}; connection close will release it",
+            log.error("Failed to explicitly release ingestion lock {}", lockName, exception);
+        }
+
+        if (!released) {
+            log.error("MySQL ingestion lock release was not confirmed; aborting its owning connection: {}",
+                    lockName);
+            abortConnection(connection, lockName);
+        }
+    }
+
+    /**
+     * Connection.close() on a pool proxy does not necessarily close the physical
+     * MySQL session. JDBC abort forces the driver/pool to discard that session so
+     * a session-scoped advisory lock cannot leak into a later borrower.
+     */
+    private void abortConnection(Connection connection, String lockName) {
+        try {
+            connection.abort(DIRECT_EXECUTOR);
+        } catch (SQLException | RuntimeException exception) {
+            log.error("Unable to abort connection holding ingestion lock {}; manual recovery may be required",
                     lockName, exception);
         }
     }
