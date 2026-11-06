@@ -6,7 +6,7 @@ import com.mmo.module.fb.ingest.application.exception.ProviderTransportException
 import com.mmo.module.fb.ingest.application.lock.IngestionDistributedLock;
 import com.mmo.module.fb.ingest.application.model.ProviderOverrides;
 import com.mmo.module.fb.ingest.application.port.in.FixtureIngestionService;
-import com.mmo.module.fb.ingest.application.port.in.FootballDataBootstrapService;
+import com.mmo.module.fb.ingest.application.port.in.CoreDataBackfillUseCase;
 import com.mmo.module.fb.ingest.application.port.in.LeagueIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.SeasonIngestionService;
 import com.mmo.module.fb.ingest.application.port.in.StandingsIngestionService;
@@ -36,7 +36,7 @@ import org.springframework.util.StringUtils;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CoreDataBackfillOrchestrator implements FootballDataBootstrapService {
+public class CoreDataBackfillOrchestrator implements CoreDataBackfillUseCase {
 
     private static final String INITIAL_CORE_CHECKPOINT = "CORE_INITIAL_BACKFILL";
 
