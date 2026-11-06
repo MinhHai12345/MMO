@@ -2,7 +2,7 @@ package com.mmo.module.fb.ingest.provider.apifootball.mapper;
 
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.LeagueItem;
 import com.mmo.module.fb.ingest.provider.apifootball.dto.ApiFootballDtos.LeagueSeasonDto;
-import com.mmo.module.fb.ingest.application.model.provider.MmoProviderDataStandardizer;
+import com.mmo.module.fb.ingest.adapter.out.provider.standardization.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderLeague;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderSeason;
 import org.springframework.stereotype.Component;
