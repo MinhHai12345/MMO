@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SofaScoreExternalMappingUseCaseImpl implements SofaScoreExternalMappingUseCase {
+public class SofaScoreExternalMappingService implements SofaScoreExternalMappingUseCase {
 
     private final LeagueIngestionUseCase leagueIngestionService;
     private final TeamIngestionUseCase teamIngestionService;
