@@ -881,7 +881,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         return new ImportResult(rows.size(), createdFixtures, importedTeams, importedFixtures, unmatched);
     }
 
-    private static int parseCursorOffset(String cursor, String fingerprint, int rowCount) {
+    static int parseCursorOffset(String cursor, String fingerprint, int rowCount) {
         String prefix = fingerprint + ":";
         if (cursor == null || !cursor.startsWith(prefix)) return 0;
         try {
@@ -892,7 +892,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         }
     }
 
-    private static String csvFingerprint(List<Map<String, String>> rows) {
+    static String csvFingerprint(List<Map<String, String>> rows) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             for (Map<String, String> row : rows) {
