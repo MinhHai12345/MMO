@@ -9,6 +9,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.TransientDataAccessResourceException;
 import org.junit.jupiter.api.Test;
 
@@ -120,6 +121,15 @@ class IngestionUnitExecutorTest {
         assertTrue(connectionFailure.isRetryable());
         assertEquals("DATABASE_TRANSIENT", deadlock.failureCode());
         assertTrue(deadlock.isRetryable());
+    }
+
+    @Test
+    void classifiesConcurrentUniqueIdentityInsertAsRetryable() {
+        IngestionUnitResult result = executor.execute(unit, false,
+                () -> { throw new DuplicateKeyException("provider external identity already inserted"); });
+
+        assertEquals("DATABASE_IDENTITY_CONFLICT", result.failureCode());
+        assertTrue(result.isRetryable());
     }
 
     @Test
