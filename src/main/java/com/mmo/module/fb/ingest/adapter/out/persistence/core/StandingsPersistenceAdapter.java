@@ -13,12 +13,12 @@ import com.mmo.module.fb.domain.team.repository.TeamRepository;
 import com.mmo.module.fb.ingest.provider.model.ProviderStanding;
 import com.mmo.module.fb.ingest.application.port.out.StandingsPersistencePort;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 
-@Service
+@Repository
 @RequiredArgsConstructor
 public class StandingsPersistenceAdapter implements StandingsPersistencePort {
 

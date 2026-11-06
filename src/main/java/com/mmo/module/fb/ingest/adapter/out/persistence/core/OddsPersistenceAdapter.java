@@ -14,7 +14,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.provider.model.ProviderOdds;
 import com.mmo.module.fb.ingest.application.port.out.OddsPersistencePort;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -24,7 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-@Service
+@Repository
 @RequiredArgsConstructor
 public class OddsPersistenceAdapter implements OddsPersistencePort {
 
