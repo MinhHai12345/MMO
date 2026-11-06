@@ -51,6 +51,10 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
             teamsByExternalId.put(mapping.getExternalId(), mapping.getTeam());
             mappingByTeamId.put(mapping.getTeam().getId(), mapping);
         });
+        // Resolve fallback ownership in one query, not one SELECT per incoming team.
+        Set<Long> footballDataOwnedTeamIds = teamExternalIdRepository
+                .findAllByProvider(Provider.FOOTBALL_DATA).stream()
+                .map(mapping -> mapping.getTeam().getId()).collect(java.util.stream.Collectors.toSet());
 
         // A Football-Data API team can arrive after the UK CSV fallback created the
         // canonical team. Match a unique standardized name before creating another row.
@@ -101,8 +105,7 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
             }
             boolean primaryOwner = dataSourcePolicy.isPrimary(selectedProvider, Dataset.TEAM, season);
             boolean primaryIdentityExists = team != null
-                    && teamExternalIdRepository.findByTeamIdAndProvider(
-                            team.getId(), Provider.FOOTBALL_DATA).isPresent();
+                    && footballDataOwnedTeamIds.contains(team.getId());
             boolean allowedFallback = dataSourcePolicy.mayFallbackForCore(
                     selectedProvider, Dataset.TEAM, season, primaryIdentityExists);
             boolean canWriteCore = primaryOwner || allowedFallback;
