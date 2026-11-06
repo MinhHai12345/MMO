@@ -96,7 +96,7 @@ public class MatchOddsQuotePersistenceService {
         Map<QuoteIdentity, MatchOddsQuote> pending = new LinkedHashMap<>();
         java.util.Set<QuoteIdentity> changed = new java.util.HashSet<>();
         Instant now = Instant.now();
-        for (Map.Entry<Bookmaker, List<ProviderOdds>> entry : valuesByBookmaker.entrySet()) {
+        for (Map.Entry<Bookmaker, List<QuoteInput>> entry : valuesByBookmaker.entrySet()) {
             Bookmaker bookmaker = entry.getKey();
             if (bookmaker == null || bookmaker.getId() == null || entry.getValue() == null) continue;
             for (QuoteInput value : entry.getValue()) {
