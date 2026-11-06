@@ -9,4 +9,6 @@ import java.util.Optional;
 public interface MatchFieldProvenanceRepository extends JpaRepository<MatchFieldProvenance, Long> {
     Optional<MatchFieldProvenance> findByMatchIdAndFieldKey(Long matchId, String fieldKey);
     List<MatchFieldProvenance> findAllByMatchId(Long matchId);
+    List<MatchFieldProvenance> findAllByMatchIdInAndFieldKeyIn(
+            List<Long> matchIds, List<String> fieldKeys);
 }
