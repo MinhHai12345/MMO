@@ -11,8 +11,8 @@ import com.mmo.module.fb.domain.match.repository.MatchOddsRepository;
 import com.mmo.module.fb.domain.match.service.MatchStatisticsSnapshotPersistenceService;
 import com.mmo.module.fb.domain.match.service.MatchOddsQuotePersistenceService;
 import com.mmo.module.fb.domain.match.entity.Match;
-import com.mmo.module.fb.ingest.adapter.out.persistence.provider.footballdatauk.FootballDataUkMatchStatisticsPersistenceService;
-import com.mmo.module.fb.ingest.adapter.out.persistence.provider.footballdatauk.FootballDataUkOddsPersistenceService;
+import com.mmo.module.fb.ingest.adapter.out.persistence.provider.footballdatauk.FootballDataUkMatchStatisticsPersistenceAdapter;
+import com.mmo.module.fb.ingest.adapter.out.persistence.provider.footballdatauk.FootballDataUkOddsPersistenceAdapter;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -41,24 +41,24 @@ class EnrichmentPersistenceOwnershipIntegrationTest {
         MatchStatisticsSnapshotPersistenceService snapshotService =
                 mock(MatchStatisticsSnapshotPersistenceService.class);
         DataSourcePolicy policy = new DataSourcePolicy();
-        FootballDataUkMatchStatisticsPersistenceService statsService =
-                new FootballDataUkMatchStatisticsPersistenceService(
+        FootballDataUkMatchStatisticsPersistenceAdapter statsService =
+                new FootballDataUkMatchStatisticsPersistenceAdapter(
                         statsRepository, snapshotService, policy,
-                        new SourceAwareMergeService(policy,
+                        new SourceAwareMergeAdapter(policy,
                                 mock(com.mmo.module.fb.domain.match.repository.MatchFieldProvenanceRepository.class)));
 
         BookmakerRepository bookmakerRepository = mock(BookmakerRepository.class);
         MatchOddsRepository oddsRepository = mock(MatchOddsRepository.class);
         MatchOddsQuotePersistenceService quoteService = mock(MatchOddsQuotePersistenceService.class);
-        FootballDataUkOddsPersistenceService oddsService = new FootballDataUkOddsPersistenceService(
+        FootballDataUkOddsPersistenceAdapter oddsService = new FootballDataUkOddsPersistenceAdapter(
                 bookmakerRepository, oddsRepository, quoteService, new DataSourcePolicy());
 
         assertEquals(0, statsService.persist(match, Map.of("HS", "10", "AS", "8")));
         assertEquals(0, oddsService.persist(match, Map.of("B365H", "2.0", "B365D", "3.0", "B365A", "4.0")));
 
         MatchRepository matchRepository = mock(MatchRepository.class);
-        MatchXgPersistenceService xgService = new MatchXgPersistenceService(matchRepository, policy,
-                new SourceAwareMergeService(policy,
+        MatchXgPersistenceAdapter xgService = new MatchXgPersistenceAdapter(matchRepository, policy,
+                new SourceAwareMergeAdapter(policy,
                         mock(com.mmo.module.fb.domain.match.repository.MatchFieldProvenanceRepository.class)));
         assertFalse(xgService.upsert(Provider.FOOTBALL_DATA_UK, match,
                 new BigDecimal("0.75"), new BigDecimal("0.25")));
