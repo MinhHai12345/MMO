@@ -66,7 +66,8 @@ class SofaScorePlayerStatsPersistenceAdapterTest {
                 .thenReturn(List.of(playerMapping));
 
         DataSourcePolicy policy = new DataSourcePolicy();
-        SourceAwareMergeAdapter mergeService = new SourceAwareMergeAdapter(policy, provenanceRepository);
+        when(matchRepository.lockAllByIds(anyCollection())).thenReturn(List.of());
+        SourceAwareMergeAdapter mergeService = new SourceAwareMergeAdapter(policy, matchRepository, provenanceRepository);
         SofaScorePlayerStatsPersistenceAdapter service = new SofaScorePlayerStatsPersistenceAdapter(
                 matchRepository, playerRepository, externalIdRepository, statsRepository, mergeService);
 
