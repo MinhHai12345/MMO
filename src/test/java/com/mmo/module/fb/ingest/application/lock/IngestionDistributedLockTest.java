@@ -136,4 +136,20 @@ class IngestionDistributedLockTest {
                 () -> lock.execute("x".repeat(65), () -> { }));
         verifyNoInteractions(dataSource);
     }
+
+    @Test
+    void derivesStableBoundedMySqlLockNameFromLogicalScope() throws Exception {
+        when(acquireResult.getInt(1)).thenReturn(1);
+        String scope = "unit/FOOTBALL_DATA/FIXTURE/39/2024/2025";
+
+        assertTrue(lock.executeScoped(scope, () -> { }));
+
+        org.mockito.ArgumentCaptor<String> captor =
+                org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(acquireStatement).setString(eq(1), captor.capture());
+        String lockName = captor.getValue();
+        assertTrue(lockName.startsWith("mmo:fb:ingest:"));
+        assertTrue(lockName.length() <= 64);
+        verify(releaseStatement).setString(1, lockName);
+    }
 }
