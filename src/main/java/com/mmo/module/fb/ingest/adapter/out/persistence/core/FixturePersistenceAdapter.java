@@ -16,6 +16,7 @@ import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.application.port.out.FixturePersistencePort;
 import com.mmo.module.fb.ingest.application.model.ResolvedProviderFixture;
 import com.mmo.module.fb.ingest.application.model.FieldMergeCommand;
+import com.mmo.module.fb.ingest.application.port.out.SourceAwareMergePort;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderFixture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,7 +41,7 @@ public class FixturePersistenceAdapter implements FixturePersistencePort {
     private final MatchRepository matchRepository;
     private final MatchExternalIdRepository matchExternalIdRepository;
     private final DataSourcePolicy dataSourcePolicy;
-    private final SourceAwareMergeAdapter mergeService;
+    private final SourceAwareMergePort mergeService;
 
     @Override
     @Transactional
