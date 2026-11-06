@@ -57,6 +57,11 @@ public class LeagueStanding extends AbstractEntity {
     @Column(name = "group_name", length = 100)
     private String groupName;
 
+    /** Prevents concurrent season snapshots from silently overwriting each other. */
+    @Version
+    @Column(name = "version")
+    private Long version;
+
     @Column(name = "last_synced_at")
     private Instant lastSyncedAt;
 }
