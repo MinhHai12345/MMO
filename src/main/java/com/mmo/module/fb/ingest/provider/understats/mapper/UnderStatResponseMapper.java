@@ -15,7 +15,7 @@ import java.util.Locale;
 
 /** Converts Understat transport values to MMO's shared domain vocabulary. */
 @Component
-public class UnderStatMapper {
+public class UnderStatResponseMapper {
     private static final DateTimeFormatter SOURCE_DATETIME =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 

@@ -10,7 +10,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class FootballDataMapperTest {
+class FootballDataResponseMapperTest {
 
     @Test
     void exposesFreeTierSeasonsFrom2023ThroughCurrentSeason() {
@@ -24,7 +24,7 @@ class FootballDataMapperTest {
                 new AreaDto(2072L, "England", "ENG", null),
                 null, current, seasons);
 
-        var mapped = new FootballDataMapper().toLeague(competition);
+        var mapped = new FootballDataResponseMapper().toLeague(competition);
 
         assertEquals(List.of("2023", "2024", "2025", "2026"),
                 mapped.seasons().stream().map(season -> season.year()).toList());

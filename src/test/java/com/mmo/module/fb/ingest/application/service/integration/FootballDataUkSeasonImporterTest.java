@@ -7,15 +7,15 @@ import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class FootballDataUkSyncServiceTest {
+class FootballDataUkSeasonImporterTest {
 
     @Test
     void selectsCurrentFootballSeasonForIncrementalImport() {
-        assertEquals(2026, FootballDataUkSyncService.currentSeasonStartYear(
+        assertEquals(2026, FootballDataUkSeasonImporter.currentSeasonStartYear(
                 LocalDate.of(2026, 11, 4)));
-        assertEquals(2025, FootballDataUkSyncService.currentSeasonStartYear(
+        assertEquals(2025, FootballDataUkSeasonImporter.currentSeasonStartYear(
                 LocalDate.of(2026, 3, 31)));
-        assertEquals(2026, FootballDataUkSyncService.currentSeasonStartYear(
+        assertEquals(2026, FootballDataUkSeasonImporter.currentSeasonStartYear(
                 LocalDate.of(2026, 7, 1)));
     }
 }
