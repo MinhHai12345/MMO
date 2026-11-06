@@ -1,6 +1,6 @@
 package com.mmo.module.fb.ingest.provider.sofascore.mapper;
 
-import com.mmo.module.fb.ingest.application.model.provider.MmoProviderDataStandardizer;
+import com.mmo.module.fb.ingest.adapter.out.provider.standardization.MmoProviderDataStandardizer;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderStanding;
 import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.StandingGroupDTO;
 import org.springframework.stereotype.Component;
