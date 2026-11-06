@@ -1,14 +1,14 @@
-package com.mmo.module.fb.ingest.provider.sofascore;
+package com.mmo.module.fb.ingest.adapter.out.provider.sofascore;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderTeam;
 import com.mmo.module.fb.ingest.application.model.provider.TeamQuery;
-import com.mmo.module.fb.ingest.provider.sofascore.client.AbstractSofaScoreProvider;
-import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.SeasonDTO;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.StandingGroupDTO;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.StandingRowDTO;
-import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreTeamMapper;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client.AbstractSofaScoreProvider;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client.SofaScoreClient;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.SeasonDTO;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.StandingGroupDTO;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.StandingRowDTO;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.mapper.SofaScoreTeamMapper;
 import com.mmo.module.fb.ingest.application.port.out.provider.TeamIngestionPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

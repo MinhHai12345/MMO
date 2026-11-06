@@ -1,13 +1,13 @@
-package com.mmo.module.fb.ingest.provider.sofascore;
+package com.mmo.module.fb.ingest.adapter.out.provider.sofascore;
 
-import com.mmo.module.fb.ingest.provider.sofascore.client.AbstractSofaScoreProvider;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.MatchOddDetailDTO;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client.AbstractSofaScoreProvider;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.MatchOddDetailDTO;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.application.model.provider.OddsQuery;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderOdds;
-import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
-import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreOddsMapper;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client.SofaScoreClient;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.mapper.SofaScoreOddsMapper;
 import com.mmo.module.fb.ingest.application.port.out.provider.OddsIngestionPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

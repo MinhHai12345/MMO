@@ -1,15 +1,15 @@
-package com.mmo.module.fb.ingest.provider.sofascore;
+package com.mmo.module.fb.ingest.adapter.out.provider.sofascore;
 
 import com.microsoft.playwright.Page;
 import com.mmo.AppProperties;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.application.model.provider.FixtureQuery;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderFixture;
-import com.mmo.module.fb.ingest.provider.sofascore.client.AbstractSofaScoreProvider;
-import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreClient;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.MatchesResponseDTO;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.SeasonDTO;
-import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreFixtureMapper;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client.AbstractSofaScoreProvider;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client.SofaScoreClient;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.MatchesResponseDTO;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.SeasonDTO;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.mapper.SofaScoreFixtureMapper;
 import com.mmo.module.fb.ingest.application.port.out.provider.FixtureIngestionPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

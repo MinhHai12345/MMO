@@ -1,9 +1,9 @@
-package com.mmo.module.fb.ingest.provider.sofascore.client;
+package com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client;
 
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO;
 
 import com.microsoft.playwright.Page;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaDailyMatchWrapper;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaDailyMatchWrapper;
 
 import java.util.List;
 import java.util.Map;

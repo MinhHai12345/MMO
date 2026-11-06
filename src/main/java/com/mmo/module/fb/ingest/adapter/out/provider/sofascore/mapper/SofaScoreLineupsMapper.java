@@ -1,9 +1,9 @@
-package com.mmo.module.fb.ingest.provider.sofascore.mapper;
+package com.mmo.module.fb.ingest.adapter.out.provider.sofascore.mapper;
 
 import com.mmo.module.fb.ingest.application.model.provider.ProviderLineupPlayer;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderLineups;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderPlayerMatchStats;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreLineupsResponseDTO;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreLineupsResponseDTO;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;

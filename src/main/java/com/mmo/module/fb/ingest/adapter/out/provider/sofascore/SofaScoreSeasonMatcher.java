@@ -1,6 +1,6 @@
-package com.mmo.module.fb.ingest.provider.sofascore;
+package com.mmo.module.fb.ingest.adapter.out.provider.sofascore;
 
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.SeasonDTO;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.SeasonDTO;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

@@ -1,9 +1,9 @@
-package com.mmo.module.fb.ingest.provider.sofascore.mapper;
+package com.mmo.module.fb.ingest.adapter.out.provider.sofascore.mapper;
 
 import com.mmo.module.fb.ingest.application.model.provider.ProviderMatchAdvancedStatistics;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.GroupDTO;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.PeriodStatisticsDTO;
-import com.mmo.module.fb.ingest.provider.sofascore.dto.SofaScoreResponseDTO.StatisticItemDTO;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.GroupDTO;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.PeriodStatisticsDTO;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.StatisticItemDTO;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 

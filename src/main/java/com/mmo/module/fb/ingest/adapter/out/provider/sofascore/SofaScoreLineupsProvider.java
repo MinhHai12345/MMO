@@ -1,9 +1,9 @@
-package com.mmo.module.fb.ingest.provider.sofascore;
+package com.mmo.module.fb.ingest.adapter.out.provider.sofascore;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderLineups;
-import com.mmo.module.fb.ingest.provider.sofascore.client.SofaScoreLineupsClient;
-import com.mmo.module.fb.ingest.provider.sofascore.mapper.SofaScoreLineupsMapper;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client.SofaScoreLineupsClient;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.mapper.SofaScoreLineupsMapper;
 import com.mmo.module.fb.ingest.application.port.out.provider.PlayerLineupsIngestionPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
