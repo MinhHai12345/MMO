@@ -82,7 +82,7 @@ class SofaScorePlayerStatsPersistenceAdapterTest {
             PlayerMatchStats saved = rows.iterator().next();
             return saved.getGoals() == 2 && saved.getXg().signum() == 0;
         }));
-        verify(provenanceRepository, times(2)).saveAll(anyList());
+        verify(provenanceRepository, times(1)).saveAll(anyList());
         verify(provenanceRepository, atLeastOnce()).saveAll(argThat(rows ->
                 containsField(rows, "player:777:goals", 55L)));
         verify(provenanceRepository, atLeastOnce()).saveAll(argThat(rows ->
