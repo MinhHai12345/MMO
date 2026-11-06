@@ -41,7 +41,7 @@ public class ActiveSeasonDataSyncOrchestrator implements ActiveSeasonDataSyncUse
 
     @Override
     public void sync(ProviderOverrides overrides, Provider oddsProviderOverride) {
-        boolean executed = distributedLock.execute(IngestionDistributedLock.GLOBAL_INGEST_LOCK,
+        boolean executed = distributedLock.executeScoped("workflow/active-season",
                 () -> syncLocked(overrides, oddsProviderOverride));
         if (!executed) {
             log.warn("Core sync skipped because another ingestion workflow is running");
@@ -116,8 +116,14 @@ public class ActiveSeasonDataSyncOrchestrator implements ActiveSeasonDataSyncUse
                     .map(IngestionWorkUnit::seasonId).distinct().sorted().toList();
             for (Long seasonId : activeSeasonIds) {
                 try {
-                    runStage(providerId + "/active-core/season=" + seasonId,
-                            () -> provider.syncCoreSeason(seasonId, false));
+                    boolean acquired = distributedLock.executeScoped(
+                            "batch/" + providerId + "/core/season/" + seasonId,
+                            () -> runStage(providerId + "/active-core/season=" + seasonId,
+                                    () -> provider.syncCoreSeason(seasonId, false)));
+                    if (!acquired) {
+                        failedStages.add(providerId + "/active-core/season=" + seasonId
+                                + ": another node owns this season batch");
+                    }
                 } catch (RuntimeException exception) {
                     failedStages.add(providerId + "/active-core/season=" + seasonId
                             + ": " + exception.getMessage());
@@ -147,7 +153,7 @@ public class ActiveSeasonDataSyncOrchestrator implements ActiveSeasonDataSyncUse
                          List<IngestionUnitResult> results) {
         String name = unit.provider() + "/" + unit.dataset() + "/league=" + unit.leagueId()
                 + "/season=" + unit.season();
-        IngestionUnitResult result = new IngestionUnitExecutor(checkpointStore)
+        IngestionUnitResult result = new IngestionUnitExecutor(checkpointStore, distributedLock)
                 .execute(unit, false, () -> runStage(name, operation));
         results.add(result);
         if (!result.isSuccessful()) {
