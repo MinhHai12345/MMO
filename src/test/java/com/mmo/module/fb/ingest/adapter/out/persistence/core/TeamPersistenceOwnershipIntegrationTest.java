@@ -3,7 +3,7 @@ package com.mmo.module.fb.ingest.adapter.out.persistence.core;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.provider.model.ProviderTeam;
-import com.mmo.module.fb.ingest.adapter.out.persistence.identity.ExternalIdMappingService;
+import com.mmo.module.fb.ingest.adapter.out.persistence.identity.ExternalIdMappingAdapter;
 import com.mmo.module.fb.domain.league.entity.League;
 import com.mmo.module.fb.domain.league.entity.Season;
 import com.mmo.module.fb.domain.team.entity.Team;
@@ -26,7 +26,7 @@ class TeamPersistenceOwnershipIntegrationTest {
 
     @Mock private TeamRepository teamRepository;
     @Mock private TeamExternalIdRepository teamExternalIdRepository;
-    @Mock private ExternalIdMappingService externalIdMappingService;
+    @Mock private ExternalIdMappingAdapter externalIdMappingService;
 
     @Test
     void footballDataAdoptsExistingUkFallbackTeamInsteadOfCreatingDuplicate() {
@@ -52,7 +52,7 @@ class TeamPersistenceOwnershipIntegrationTest {
                 .thenReturn(Optional.empty(), Optional.of(footballDataId));
         when(teamRepository.save(any(Team.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        TeamPersistencePortImpl persistence = new TeamPersistencePortImpl(
+        TeamPersistenceAdapter persistence = new TeamPersistenceAdapter(
                 teamRepository, teamExternalIdRepository, externalIdMappingService, new DataSourcePolicy());
         persistence.persistTeamsForSeason(Provider.FOOTBALL_DATA, season,
                 List.of(new ProviderTeam("66", "Manchester United", "Man Utd",
@@ -92,7 +92,7 @@ class TeamPersistenceOwnershipIntegrationTest {
         when(teamExternalIdRepository.findByTeamIdAndProvider(10L, Provider.FOOTBALL_DATA_UK))
                 .thenReturn(Optional.of(ukId));
 
-        TeamPersistencePortImpl persistence = new TeamPersistencePortImpl(
+        TeamPersistenceAdapter persistence = new TeamPersistenceAdapter(
                 teamRepository, teamExternalIdRepository, externalIdMappingService, new DataSourcePolicy());
 
         persistence.persistTeamsForSeason(Provider.FOOTBALL_DATA_UK, season,
