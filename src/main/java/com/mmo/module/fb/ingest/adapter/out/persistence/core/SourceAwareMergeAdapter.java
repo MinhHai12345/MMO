@@ -1,6 +1,8 @@
 package com.mmo.module.fb.ingest.adapter.out.persistence.core;
 
 import com.mmo.module.fb.domain.match.entity.Match;
+import com.mmo.module.fb.domain.league.entity.Season;
+import com.mmo.module.fb.domain.league.repository.SeasonRepository;
 import com.mmo.module.fb.domain.match.entity.MatchFieldProvenance;
 import com.mmo.module.fb.domain.match.enums.MatchProvider;
 import com.mmo.module.fb.domain.match.repository.MatchFieldProvenanceRepository;
@@ -21,6 +23,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Field-level merge gate. Provenance is prefetched once per batch and flushed with
@@ -32,6 +37,7 @@ public class SourceAwareMergeAdapter implements SourceAwareMergePort {
 
     private final DataSourcePolicy dataSourcePolicy;
     private final MatchRepository matchRepository;
+    private final SeasonRepository seasonRepository;
     private final MatchFieldProvenanceRepository provenanceRepository;
 
     @Override
@@ -57,6 +63,15 @@ public class SourceAwareMergeAdapter implements SourceAwareMergePort {
         if (valid.isEmpty()) return 0;
 
         List<Long> matchIds = valid.stream().map(command -> command.match().getId()).distinct().toList();
+        Set<Long> seasonIds = valid.stream()
+                .map(command -> command.match().getSeason())
+                .filter(Objects::nonNull)
+                .map(Season::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, Season> seasonsById = seasonIds.isEmpty() ? Map.of()
+                : seasonRepository.findAllWithLeagueByIdIn(seasonIds).stream()
+                        .collect(Collectors.toMap(Season::getId, Function.identity(), (left, right) -> left));
         // Serialize provider merges against the same canonical fixture before reading provenance.
         matchRepository.lockAllByIds(matchIds);
         List<String> fieldKeys = valid.stream().map(FieldMergeCommand::fieldKey).distinct().toList();
@@ -71,7 +86,9 @@ public class SourceAwareMergeAdapter implements SourceAwareMergePort {
             Match match = command.match();
             Provider provider = command.provider();
             Dataset dataset = command.dataset();
-            ProviderRoute route = dataSourcePolicy.route(dataset, match.getSeason());
+            Season season = match.getSeason() == null ? null : seasonsById.get(match.getSeason().getId());
+            if (season == null) continue;
+            ProviderRoute route = dataSourcePolicy.route(dataset, season);
             if (!route.allows(provider)) continue;
 
             ProvenanceKey key = new ProvenanceKey(match.getId(), command.fieldKey());
