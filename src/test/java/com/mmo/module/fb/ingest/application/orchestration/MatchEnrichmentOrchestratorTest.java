@@ -44,7 +44,7 @@ class MatchEnrichmentOrchestratorTest {
     }
 
     @Test
-    void runsHistoricalRecoveryAndActiveRefreshWithoutLegacyGlobalGates() {
+    void runsHistoricalRecoveryAndActiveRefreshAfterCoreBackfillCompletes() {
         useCase.enrichFinishedMatches();
 
         verify(lock).executeScoped(eq("workflow/match-enrichment"), any(Runnable.class));
