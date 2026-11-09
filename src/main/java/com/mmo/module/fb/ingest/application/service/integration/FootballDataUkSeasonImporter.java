@@ -296,8 +296,8 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
             EnrichmentResult result = enrichRows(season, mapping, rows);
             markEnrichmentCheckpoint(leagueId, season.getYear(), result);
             if (result.unmatchedRows() > 0) {
-                throw new IngestionPartialException("Football-Data UK enrichment has "
-                        + result.unmatchedRows() + " unmatched rows");
+                throw new IngestionPartialException("Football-Data UK enrichment incomplete: "
+                        + result.unmatchedSummary());
             }
         } catch (ProviderDataException exception) {
             if (exception.isNotAvailable()) {
@@ -679,57 +679,86 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         int importedStats = 0;
         int importedXg = 0;
         int importedOdds = 0;
-        int unmatched = 0;
-        for (Map<String, String> row : rows) {
+        int invalidRows = 0;
+        int teamNotFoundRows = 0;
+        int fixtureNotFoundRows = 0;
+        int ambiguousFixtureRows = 0;
+        int diagnosticSamples = 0;
+
+        for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
+            Map<String, String> row = rows.get(rowIndex);
+            String homeName = valueAny(row, "HOMETEAM", "HOME TEAM");
+            String awayName = valueAny(row, "AWAYTEAM", "AWAY TEAM");
+            LocalDate date = parseDate(value(row, "DATE"));
+            if (row == null || !StringUtils.hasText(homeName)
+                    || !StringUtils.hasText(awayName) || date == null) {
+                invalidRows++;
+                diagnosticSamples = logEnrichmentMismatch(season, rowIndex + 1, row,
+                        "invalid date or missing home/away team", diagnosticSamples);
+                continue;
+            }
+
+            Team home = findExistingTeam(leagueMapping.getIdentify(), homeName);
+            Team away = findExistingTeam(leagueMapping.getIdentify(), awayName);
+            if (home == null || away == null || home.getId().equals(away.getId())) {
+                teamNotFoundRows++;
+                diagnosticSamples = logEnrichmentMismatch(season, rowIndex + 1, row,
+                        home == null || away == null ? "team mapping not found" : "home and away resolve to the same team",
+                        diagnosticSamples);
+                continue;
+            }
+
+            LocalTime time = parseTime(value(row, "TIME"));
+            Instant kickoff = date.atTime(time == null ? LocalTime.NOON : time)
+                    .atZone(SOURCE_ZONE).toInstant();
+            String externalId = fixtureExternalId(
+                    leagueMapping.getIdentify(), season.getYear(), home.getId(), away.getId(), date);
+            Match match;
             try {
-                String homeName = valueAny(row, "HOMETEAM", "HOME TEAM");
-                String awayName = valueAny(row, "AWAYTEAM", "AWAY TEAM");
-                LocalDate date = parseDate(value(row, "DATE"));
-                if (!StringUtils.hasText(homeName) || !StringUtils.hasText(awayName) || date == null) {
-                    unmatched++;
-                    continue;
-                }
-
-                Team home = findExistingTeam(leagueMapping.getIdentify(), homeName);
-                Team away = findExistingTeam(leagueMapping.getIdentify(), awayName);
-                if (home == null || away == null || home.getId().equals(away.getId())) {
-                    unmatched++;
-                    continue;
-                }
-
-                LocalTime time = parseTime(value(row, "TIME"));
-                Instant kickoff = date.atTime(time == null ? LocalTime.NOON : time)
-                        .atZone(SOURCE_ZONE).toInstant();
-                String externalId = fixtureExternalId(
-                        leagueMapping.getIdentify(), season.getYear(), home.getId(), away.getId(), date);
-                Match match = persistencePort.findMatchMappingByProvider(MATCH_PROVIDER, externalId)
+                match = persistencePort.findMatchMappingByProvider(MATCH_PROVIDER, externalId)
                         .map(MatchExternalId::getMatch)
                         .orElseGet(() -> findFixtureCandidate(season, home, away, kickoff));
+            } catch (AmbiguousFixtureCandidateException ambiguous) {
+                ambiguousFixtureRows++;
+                diagnosticSamples = logEnrichmentMismatch(season, rowIndex + 1, row,
+                        ambiguous.getMessage(), diagnosticSamples);
+                continue;
+            }
 
-                if (match == null) {
-                    unmatched++;
-                    continue;
-                }
+            if (match == null) {
+                fixtureNotFoundRows++;
+                diagnosticSamples = logEnrichmentMismatch(season, rowIndex + 1, row,
+                        "canonical fixture not found within kickoff matching window", diagnosticSamples);
+                continue;
+            }
 
-                BigDecimal homeXg = decimalMetric(value(row, "HXG"));
-                BigDecimal awayXg = decimalMetric(value(row, "AXG"));
-                matchXgPersistenceService.upsert(PROVIDER, match, homeXg, awayXg);
-                if (homeXg != null || awayXg != null) importedXg++;
-                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_STATISTICS, season.getYear())) {
-                    importedStats += statisticsMapper.persist(match, row);
-                }
-                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.HISTORICAL_ODDS, season.getYear())) {
-                    importedOdds += oddsMapper.persist(match, row);
-                }
-            } catch (LazyInitializationException infrastructureException) {
-                throw infrastructureException;
-            } catch (RuntimeException exception) {
-                unmatched++;
-                log.debug("Skip unmatched Football-Data UK enrichment row: season={}, reason={}",
-                        season.getYear(), exception.getMessage());
+            // Persistence and mapping failures deliberately propagate. They must fail the
+            // stage with their real cause instead of being counted as unmatched CSV rows.
+            BigDecimal homeXg = decimalMetric(value(row, "HXG"));
+            BigDecimal awayXg = decimalMetric(value(row, "AXG"));
+            matchXgPersistenceService.upsert(PROVIDER, match, homeXg, awayXg);
+            if (homeXg != null || awayXg != null) importedXg++;
+            if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_STATISTICS, season.getYear())) {
+                importedStats += statisticsMapper.persist(match, row);
+            }
+            if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.HISTORICAL_ODDS, season.getYear())) {
+                importedOdds += oddsMapper.persist(match, row);
             }
         }
-        return new EnrichmentResult(rows.size(), importedStats, importedXg, importedOdds, unmatched);
+        return new EnrichmentResult(rows.size(), importedStats, importedXg, importedOdds,
+                invalidRows, teamNotFoundRows, fixtureNotFoundRows, ambiguousFixtureRows);
+    }
+
+    private int logEnrichmentMismatch(
+            Season season, int rowNumber, Map<String, String> row, String reason, int sampleCount) {
+        if (sampleCount >= 10) return sampleCount;
+        log.warn("Football-Data UK enrichment row not matched: season={}, row={}, reason={}, date={}, time={}, home={}, away={}",
+                season.getYear(), rowNumber, reason,
+                row == null ? null : value(row, "DATE"),
+                row == null ? null : value(row, "TIME"),
+                valueAny(row, "HOMETEAM", "HOME TEAM"),
+                valueAny(row, "AWAYTEAM", "AWAY TEAM"));
+        return sampleCount + 1;
     }
 
     private Team findExistingTeam(String leagueCode, String providerName) {
@@ -754,7 +783,32 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
     }
 
     private record EnrichmentResult(
-            int csvRows, int importedTeamStats, int importedXg, int importedOdds, int unmatchedRows) {
+            int csvRows,
+            int importedTeamStats,
+            int importedXg,
+            int importedOdds,
+            int invalidRows,
+            int teamNotFoundRows,
+            int fixtureNotFoundRows,
+            int ambiguousFixtureRows) {
+
+        private int unmatchedRows() {
+            return invalidRows + teamNotFoundRows + fixtureNotFoundRows + ambiguousFixtureRows;
+        }
+
+        private String unmatchedSummary() {
+            return "unmatchedRows=" + unmatchedRows()
+                    + " [invalidRows=" + invalidRows
+                    + ", teamNotFoundRows=" + teamNotFoundRows
+                    + ", fixtureNotFoundRows=" + fixtureNotFoundRows
+                    + ", ambiguousFixtureRows=" + ambiguousFixtureRows + "]";
+        }
+    }
+
+    static final class AmbiguousFixtureCandidateException extends IllegalStateException {
+        AmbiguousFixtureCandidateException(String message) {
+            super(message);
+        }
     }
 
     public ImportResult syncSeason(Season season, LeagueExternalId leagueMapping,
@@ -1180,7 +1234,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
             String candidateIds = closest.stream()
                     .map(candidate -> String.valueOf(candidate.getId()))
                     .toList().toString();
-            throw new IllegalStateException("Ambiguous fixture candidates for kickoff="
+            throw new AmbiguousFixtureCandidateException("Ambiguous fixture candidates for kickoff="
                     + kickoff + ", equally close matchIds=" + candidateIds);
         }
         return Optional.of(closest.get(0));
