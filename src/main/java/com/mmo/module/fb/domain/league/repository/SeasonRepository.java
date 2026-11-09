@@ -23,7 +23,7 @@ public interface SeasonRepository extends JpaRepository<Season, Long> {
     Optional<Season> findByLeague_IdAndYear(Long leagueId, String year);
 
     /** Loads the league eagerly for policies that need league metadata from detached match graphs. */
-    @Query("select s from Season s join fetch s.league where s.id = :seasonId")
+    @Query("select s from Season s join fetch s.league where s.id = ?1")
     Optional<Season> findWithLeagueById(Long seasonId);
 
     @EntityGraph(attributePaths = {"league"})
