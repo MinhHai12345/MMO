@@ -11,6 +11,7 @@ import com.mmo.module.fb.analytics.job.WalkForwardBackTestJob;
 import com.mmo.module.fb.ingest.adapter.in.scheduler.CoreDataBackfillJob;
 import com.mmo.module.fb.ingest.adapter.in.scheduler.ActiveSeasonDataSyncJob;
 import com.mmo.module.fb.ingest.adapter.in.scheduler.MatchEnrichmentJob;
+import com.mmo.module.fb.ingest.adapter.in.scheduler.FullDataRebuildJob;
 import com.mmo.module.fb.monetization.job.SubscriptionExpiryCheckJob;
 import com.mmo.module.fb.content.job.ContentGenerationJob;
 import com.mmo.module.fb.workflow.job.PublicationWorkerQuartzJob;
@@ -44,6 +45,11 @@ public class FootballQuartzJobInitializer implements DataInitializer {
                 "0 0 0/6 * * ?", "Incrementally synchronize canonical football data every 6 hours");
         createOrUpdateJob(MatchEnrichmentJob.class,
                 "0 30 0/12 * * ?", "Enrich match statistics and historical odds from Football-Data UK every 12 hours");
+
+        // Manual-only operational job. Its distant-future cron trigger keeps a durable
+        // Quartz JobDetail registered; operators start it through the protected API.
+        createOrUpdateJob(FullDataRebuildJob.class,
+                "0 0 0 1 1 ? 2099", "Manual-only full data rebuild; trigger through the protected ingestion admin API");
 
         // Analytics and evaluation jobs own their own schedules. The content job never
         // triggers already-scheduled jobs, avoiding duplicate executions.
