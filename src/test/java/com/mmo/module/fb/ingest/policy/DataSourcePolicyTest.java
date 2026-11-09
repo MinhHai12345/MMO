@@ -63,6 +63,17 @@ class DataSourcePolicyTest {
     }
 
     @Test
+    void scalarSeasonRoutingSupportsDetachedIngestionContexts() {
+        assertTrue(policy.isPrimary(Provider.FOOTBALL_DATA_UK, Dataset.TEAM, "2022/2023"));
+        assertFalse(policy.isPrimary(Provider.FOOTBALL_DATA_UK, Dataset.FIXTURE, "2023/2024"));
+        assertTrue(policy.isAllowed(Provider.FOOTBALL_DATA_UK, Dataset.FIXTURE, "2023/2024"));
+        assertTrue(policy.mayFallbackForCore(
+                Provider.FOOTBALL_DATA_UK, Dataset.FIXTURE, "2023/2024", false));
+        assertFalse(policy.mayFallbackForCore(
+                Provider.FOOTBALL_DATA_UK, Dataset.FIXTURE, "2023/2024", true));
+    }
+
+    @Test
     void upcomingOddsRemainDisabled() {
         assertNull(policy.route(Dataset.UPCOMING_ODDS, 2026).primary());
     }
