@@ -98,6 +98,9 @@ app:
 
   # Ingestion owns all football-data provider configuration and provider routing.
   ingestion:
+    operations:
+      # Required to enable the protected full-rebuild API. Leave empty to disable it.
+      api-key: ${INGESTION_ADMIN_API_KEY:}
     providers:
       league: ${INGESTION_LEAGUE_PROVIDER:FOOTBALL_DATA}
       season: ${INGESTION_SEASON_PROVIDER:${INGESTION_LEAGUE_PROVIDER:FOOTBALL_DATA}}

@@ -29,7 +29,7 @@ class MatchEnrichmentOrchestratorTest {
             return true;
         }).when(lock).executeScoped(anyString(), any(Runnable.class));
         checkpoints = mock(ProviderCheckpointPort.class);
-        when(checkpoints.isCompleted(any(), anyString())).thenReturn(false);
+        when(checkpoints.isCompleted(any(), anyString())).thenReturn(true);
         planFactory = mock(IngestionPlanFactory.class);
         when(planFactory.historicalPlan()).thenReturn(enrichmentPlan());
         when(planFactory.activeSeasonPlan()).thenReturn(enrichmentPlan());
@@ -44,7 +44,7 @@ class MatchEnrichmentOrchestratorTest {
     }
 
     @Test
-    void runsHistoricalRecoveryAndActiveRefreshWithoutLegacyGlobalGates() {
+    void runsHistoricalRecoveryAndActiveRefreshAfterCoreBackfillCompletes() {
         useCase.enrichFinishedMatches();
 
         verify(lock).executeScoped(eq("workflow/match-enrichment"), any(Runnable.class));
@@ -52,7 +52,20 @@ class MatchEnrichmentOrchestratorTest {
         verify(footballDataUk).syncEnrichmentSeason(10L, true);
         verify(footballDataUk).syncEnrichmentSeason(10L, false);
         verify(checkpoints).markCompleted(Provider.FOOTBALL_DATA_UK, "MATCH_ENRICHMENT_INITIAL");
-        verify(checkpoints, never()).isCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL");
+        verify(checkpoints).isCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL");
+    }
+
+    @Test
+    void blocksHistoricalAndActiveEnrichmentUntilCoreBackfillCompletes() {
+        when(checkpoints.isCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL"))
+                .thenReturn(false);
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> useCase.enrichFinishedMatches());
+
+        verify(checkpoints).isCompleted(Provider.FOOTBALL_DATA_UK, "CORE_INITIAL_BACKFILL");
+        verify(footballDataUk, never()).syncEnrichmentSeason(anyLong(), anyBoolean());
+        verify(checkpoints, never()).markCompleted(Provider.FOOTBALL_DATA_UK, "MATCH_ENRICHMENT_INITIAL");
     }
 
     @Test

@@ -52,6 +52,11 @@ public class MatchEnrichmentOrchestrator implements MatchEnrichmentUseCase {
         for (SeasonBatchIngestionPort provider : enrichmentProviders) {
             Provider providerId = provider.getProvider();
             java.util.List<String> providerFailures = new java.util.ArrayList<>();
+            if (!checkpointStore.isCompleted(providerId, "CORE_INITIAL_BACKFILL")) {
+                throw new IllegalStateException("Match enrichment is blocked: core historical backfill "
+                        + "has not completed for provider " + providerId
+                        + ". Run CoreDataBackfillUseCase before enrichment.");
+            }
             java.util.List<Long> historicalSeasonIds = seasonIdsForProvider(historicalPlan, providerId);
             java.util.List<Long> activeSeasonIds = seasonIdsForProvider(activePlan, providerId);
 
