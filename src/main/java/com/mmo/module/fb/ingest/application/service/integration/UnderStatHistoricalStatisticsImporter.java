@@ -203,7 +203,7 @@ public class UnderStatHistoricalStatisticsImporter implements HistoricalStatisti
         }
 
         // Understat is an enrichment source, never the owner of canonical fixture scores.
-        matchXgPersistenceService.upsert(PROVIDER, match, source.homeXg(), source.awayXg());
+        matchXgPersistenceService.upsert(PROVIDER, match, season.getYear(), source.homeXg(), source.awayXg());
         return historicalDataPort.saveMatch(match);
     }
 
