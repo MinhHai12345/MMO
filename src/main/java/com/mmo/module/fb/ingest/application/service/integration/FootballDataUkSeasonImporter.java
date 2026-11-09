@@ -216,16 +216,17 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
             log.debug("Skipping non-active Football-Data UK season {}", season.getYear());
             return;
         }
-        LeagueExternalId mapping = persistencePort.findLeagueMapping(season.getLeague().getId(), PROVIDER)
-                .orElseThrow(() -> new IllegalStateException("Missing Football-Data UK league mapping for "
-                        + season.getLeague().getName()));
+        // League is a LAZY association. Use its proxy identifier only; never dereference
+        // League#getName here because this scheduler entry point may run detached.
+        Long leagueId = season.getLeague().getId();
+        LeagueExternalId mapping = persistencePort.findLeagueMapping(leagueId, PROVIDER)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Missing Football-Data UK league mapping for leagueId=" + leagueId));
         if (historical && isHistoricalSeasonImported(season, mapping)) {
-            log.debug("Skipping terminal Football-Data UK Core season: league={}, season={}",
-                    season.getLeague().getName(), season.getYear());
+            log.debug("Skipping terminal Football-Data UK Core season: leagueId={}, season={}",
+                    leagueId, season.getYear());
             return;
         }
-
-        Long leagueId = season.getLeague().getId();
         markCoreCheckpoint(leagueId, season.getYear(), CheckpointStatus.RUNNING);
         try {
             ImportResult result = syncSeason(season, mapping, config, historical);
@@ -277,10 +278,11 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         if (historical && season.isActive()) return;
         if (!historical && !season.isActive()) return;
 
-        LeagueExternalId mapping = persistencePort.findLeagueMapping(season.getLeague().getId(), PROVIDER)
-                .orElseThrow(() -> new IllegalStateException("Missing Football-Data UK league mapping for "
-                        + season.getLeague().getName()));
+        // Do not initialize the LAZY League proxy outside the persistence session.
         Long leagueId = season.getLeague().getId();
+        LeagueExternalId mapping = persistencePort.findLeagueMapping(leagueId, PROVIDER)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Missing Football-Data UK league mapping for leagueId=" + leagueId));
         if (historical && isEnrichmentCheckpointSatisfied(leagueId, season.getYear())) return;
 
         markEnrichmentCheckpoint(leagueId, season.getYear(), CheckpointStatus.RUNNING);
