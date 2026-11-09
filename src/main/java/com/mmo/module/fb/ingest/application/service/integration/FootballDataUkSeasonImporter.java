@@ -756,8 +756,8 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                 season.getYear(), rowNumber, reason,
                 row == null ? null : value(row, "DATE"),
                 row == null ? null : value(row, "TIME"),
-                valueAny(row, "HOMETEAM", "HOME TEAM"),
-                valueAny(row, "AWAYTEAM", "AWAY TEAM"));
+                row == null ? "" : valueAny(row, "HOMETEAM", "HOME TEAM"),
+                row == null ? "" : valueAny(row, "AWAYTEAM", "AWAY TEAM"));
         return sampleCount + 1;
     }
 
