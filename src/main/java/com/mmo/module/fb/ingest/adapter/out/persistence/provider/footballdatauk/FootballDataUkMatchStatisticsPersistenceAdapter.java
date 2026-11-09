@@ -1,6 +1,8 @@
 package com.mmo.module.fb.ingest.adapter.out.persistence.provider.footballdatauk;
 
 import com.mmo.module.fb.domain.match.entity.Match;
+import com.mmo.module.fb.domain.league.entity.Season;
+import com.mmo.module.fb.domain.league.repository.SeasonRepository;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkMatchStatisticsPersistencePort;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
@@ -29,6 +31,7 @@ import java.util.function.Consumer;
 public class FootballDataUkMatchStatisticsPersistenceAdapter implements FootballDataUkMatchStatisticsPersistencePort {
 
     private final MatchAdvancedStatsRepository statsRepository;
+    private final SeasonRepository seasonRepository;
     private final MatchStatisticsSnapshotPersistenceService snapshotPersistenceService;
     private final DataSourcePolicy dataSourcePolicy;
     private final SourceAwareMergeAdapter sourceAwareMergeService;
@@ -36,8 +39,15 @@ public class FootballDataUkMatchStatisticsPersistenceAdapter implements Football
     @Override
     @Transactional
     public int persist(Match match, Map<String, String> row) {
-        if (match == null || match.getSeason() == null
-                || !dataSourcePolicy.isPrimary(Provider.FOOTBALL_DATA_UK, Dataset.MATCH_STATISTICS, match.getSeason())) {
+        if (match == null || match.getSeason() == null || match.getSeason().getId() == null) {
+            return 0;
+        }
+
+        // Match instances are often passed across ingestion transaction boundaries.
+        // Never let DataSourcePolicy dereference Season#league on that detached graph.
+        Season season = seasonRepository.findWithLeagueById(match.getSeason().getId()).orElse(null);
+        if (season == null || !dataSourcePolicy.isPrimary(
+                Provider.FOOTBALL_DATA_UK, Dataset.MATCH_STATISTICS, season)) {
             return 0;
         }
         int saved = 0;
