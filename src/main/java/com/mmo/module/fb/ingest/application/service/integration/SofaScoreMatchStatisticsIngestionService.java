@@ -111,15 +111,18 @@ public class SofaScoreMatchStatisticsIngestionService implements MatchStatistics
     }
 
     private void persistMatchStatistics(Match match, ProviderMatchAdvancedStatistics snapshot) {
-        if (match.getSeason() == null
-                || !dataSourcePolicy.isAllowed(Provider.SOFA_SCORE, Dataset.MATCH_STATISTICS, match.getSeason())) {
+        // The candidate query fetches Match#season. Pass its scalar year through the
+        // persistence port instead of letting downstream adapters traverse JPA proxies.
+        String seasonYear = match.getSeason() == null ? null : match.getSeason().getYear();
+        if (seasonYear == null || seasonYear.isBlank()
+                || !dataSourcePolicy.isAllowed(Provider.SOFA_SCORE, Dataset.MATCH_STATISTICS, seasonYear)) {
             return;
         }
         Instant now = Instant.now();
 
         BigDecimal homeXg = statisticValue(snapshot.home(), "expectedGoals", "xg");
         BigDecimal awayXg = statisticValue(snapshot.away(), "expectedGoals", "xg");
-        matchXgPersistenceService.upsert(Provider.SOFA_SCORE, match, homeXg, awayXg);
+        matchXgPersistenceService.upsert(Provider.SOFA_SCORE, match, seasonYear, homeXg, awayXg);
 
         MatchAdvancedStats homeStats = upsertTeamStatistics(
                 match, match.getHomeTeam(), snapshot.home(), now);
