@@ -100,7 +100,7 @@ app:
   ingestion:
     operations:
       # Required to enable the protected full-rebuild API. Leave empty to disable it.
-      api-key: ${INGESTION_ADMIN_API_KEY:}
+      api-key: ${INGESTION_ADMIN_API_KEY:mock}
     providers:
       league: ${INGESTION_LEAGUE_PROVIDER:FOOTBALL_DATA}
       season: ${INGESTION_SEASON_PROVIDER:${INGESTION_LEAGUE_PROVIDER:FOOTBALL_DATA}}
