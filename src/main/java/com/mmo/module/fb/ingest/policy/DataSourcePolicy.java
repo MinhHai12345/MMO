@@ -82,6 +82,25 @@ public class DataSourcePolicy {
     }
 
     /**
+     * Evaluates provider routing from scalar season data. Use this overload in
+     * chunked ingestion where JPA entities may be detached between transactions.
+     * The caller must already have resolved the provider/league mapping.
+     */
+    public boolean isAllowed(Provider provider, Dataset dataset, String season) {
+        return route(dataset, season).allows(provider);
+    }
+
+    /**
+     * Scalar counterpart for ingestion batches. It deliberately avoids dereferencing
+     * Season#getLeague(), which may be a lazy proxy outside the persistence session.
+     */
+    public boolean mayFallbackForCore(Provider provider, Dataset dataset, String season,
+                                      boolean primaryIdentityExists) {
+        ProviderRoute route = route(dataset, season);
+        return provider != null && route.secondary().contains(provider) && !primaryIdentityExists;
+    }
+
+    /**
      * A secondary source may fill an entity that has no primary-provider identity.
      * Once the primary provider has mapped that entity, the primary provider owns its
      * core fields and secondary updates must be restricted to their own datasets.
