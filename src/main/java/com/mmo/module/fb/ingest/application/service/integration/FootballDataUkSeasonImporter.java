@@ -725,7 +725,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                 throw infrastructureException;
             } catch (RuntimeException exception) {
                 unmatched++;
-                log.debug("Skip unmatched Football-Data UK enrichment row: season={}, reason={}"
+                log.debug("Skip unmatched Football-Data UK enrichment row: season={}, reason={}",
                         season.getYear(), exception.getMessage());
             }
         }
