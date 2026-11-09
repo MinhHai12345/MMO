@@ -88,9 +88,10 @@ class FootballDataUkSeasonImporterTest {
         Match first = Match.builder().matchTime(kickoff.minusSeconds(3600)).build();
         Match second = Match.builder().matchTime(kickoff.plusSeconds(3600)).build();
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> FootballDataUkSeasonImporter.closestFixtureCandidate(
-                        List.of(first, second), kickoff));
+        FootballDataUkSeasonImporter.AmbiguousFixtureCandidateException exception =
+                assertThrows(FootballDataUkSeasonImporter.AmbiguousFixtureCandidateException.class,
+                        () -> FootballDataUkSeasonImporter.closestFixtureCandidate(
+                                List.of(first, second), kickoff));
 
         assertTrue(exception.getMessage().contains("equally close"));
     }
