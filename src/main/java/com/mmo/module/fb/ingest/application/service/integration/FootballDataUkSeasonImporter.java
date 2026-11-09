@@ -52,6 +52,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -697,14 +698,11 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                 LocalTime time = parseTime(value(row, "TIME"));
                 Instant kickoff = date.atTime(time == null ? LocalTime.NOON : time)
                         .atZone(SOURCE_ZONE).toInstant();
-                String externalId = fixtureExternalId(leagueMapping.getIdentify(), season, home, away);
+                String externalId = fixtureExternalId(
+                        leagueMapping.getIdentify(), season.getYear(), home.getId(), away.getId(), date);
                 Match match = persistencePort.findMatchMappingByProvider(MATCH_PROVIDER, externalId)
                         .map(MatchExternalId::getMatch)
-                        .orElseGet(() -> persistencePort.findMatchMappingByProvider(
-                                        MATCH_PROVIDER, legacyFixtureExternalId(
-                                                leagueMapping.getIdentify(), season, homeName, awayName))
-                                .map(MatchExternalId::getMatch)
-                                .orElseGet(() -> findFixtureCandidate(season, home, away, kickoff)));
+                        .orElseGet(() -> findFixtureCandidate(season, home, away, kickoff));
 
                 if (match == null) {
                     unmatched++;
@@ -749,21 +747,8 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
     }
 
     private Match findFixtureCandidate(Season season, Team home, Team away, Instant kickoff) {
-        Instant start = season.getStartDate() == null
-                ? kickoff.minusSeconds(18 * 3600L)
-                : season.getStartDate().atStartOfDay(SOURCE_ZONE).toInstant();
-        Instant end = season.getEndDate() == null
-                ? kickoff.plusSeconds(18 * 3600L)
-                : season.getEndDate().plusDays(1).atStartOfDay(SOURCE_ZONE).toInstant();
-        List<Match> candidates = persistencePort.findFixtureCandidates(
-                season.getId(), home.getId(), away.getId(), start, end);
-        return candidates.size() == 1 ? candidates.get(0) : null;
-    }
-
-    private static String legacyFixtureExternalId(
-            String leagueCode, Season season, String home, String away) {
-        return normalize(leagueCode) + ":" + seasonCode(season.getYear()) + ":"
-                + normalize(home) + ":" + normalize(away);
+        List<Match> candidates = findSeasonFixtureCandidates(season, home, away, kickoff);
+        return closestFixtureCandidate(candidates, kickoff).orElse(null);
     }
 
     private record EnrichmentResult(
@@ -855,7 +840,8 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                         LocalTime time = parseTime(value(row, "TIME"));
                         Instant kickoff = date.atTime(time == null ? LocalTime.NOON : time)
                                 .atZone(SOURCE_ZONE).toInstant();
-                        String fixtureExternalId = fixtureExternalId(leagueMapping.getIdentify(), season, home, away);
+                        String fixtureExternalId = fixtureExternalId(
+                                leagueMapping.getIdentify(), season.getYear(), home.getId(), away.getId(), date);
 
                         Optional<MatchExternalId> existingExternalId =
                                 persistencePort.findMatchMappingByProvider(MATCH_PROVIDER, fixtureExternalId);
@@ -1137,20 +1123,65 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
     }
 
     private Match resolveOrCreateFixture(Season season, Team home, Team away, Instant kickoff) {
+        List<Match> candidates = findSeasonFixtureCandidates(season, home, away, kickoff);
+        return closestFixtureCandidate(candidates, kickoff)
+                .orElseGet(() -> Match.builder().season(season).homeTeam(home).awayTeam(away)
+                        .matchTime(kickoff).status(MatchStatus.SCHEDULED).build());
+    }
+
+    /**
+     * Loads same-direction fixtures in the season. A team pair can legitimately meet
+     * more than once in a season (league and cup/play-off fixtures), so season-wide
+     * uniqueness is not a valid fixture identity.
+     */
+    private List<Match> findSeasonFixtureCandidates(
+            Season season, Team home, Team away, Instant kickoff) {
         Instant seasonStart = season.getStartDate() == null
                 ? kickoff.minusSeconds(18 * 3600L)
                 : season.getStartDate().atStartOfDay(SOURCE_ZONE).toInstant();
         Instant seasonEnd = season.getEndDate() == null
                 ? kickoff.plusSeconds(18 * 3600L)
                 : season.getEndDate().plusDays(1).atStartOfDay(SOURCE_ZONE).toInstant();
-        List<Match> candidates = persistencePort.findFixtureCandidates(
+        return persistencePort.findFixtureCandidates(
                 season.getId(), home.getId(), away.getId(), seasonStart, seasonEnd);
-        if (candidates.size() == 1) return candidates.get(0);
-        if (candidates.size() > 1) {
-            throw new IllegalStateException("Ambiguous core fixture candidates");
+    }
+
+    /**
+     * Match provider rows by kickoff rather than by team pair alone. The 36-hour
+     * tolerance accommodates source timezone/clock differences and missing CSV times
+     * (which are represented as noon). Equally close candidates remain an error; never
+     * select an arbitrary canonical fixture.
+     */
+    static Optional<Match> closestFixtureCandidate(List<Match> candidates, Instant kickoff) {
+        if (candidates == null || candidates.isEmpty() || kickoff == null) {
+            return Optional.empty();
         }
-        return Match.builder().season(season).homeTeam(home).awayTeam(away)
-                .matchTime(kickoff).status(MatchStatus.SCHEDULED).build();
+
+        List<Match> nearby = candidates.stream()
+                .filter(candidate -> candidate != null && candidate.getMatchTime() != null)
+                .filter(candidate -> Duration.between(kickoff, candidate.getMatchTime()).abs()
+                        .compareTo(Duration.ofHours(36)) <= 0)
+                .toList();
+        if (nearby.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Duration closestDistance = nearby.stream()
+                .map(candidate -> Duration.between(kickoff, candidate.getMatchTime()).abs())
+                .min(Duration::compareTo)
+                .orElseThrow();
+        List<Match> closest = nearby.stream()
+                .filter(candidate -> Duration.between(kickoff, candidate.getMatchTime()).abs()
+                        .equals(closestDistance))
+                .toList();
+        if (closest.size() > 1) {
+            String candidateIds = closest.stream()
+                    .map(candidate -> String.valueOf(candidate.getId()))
+                    .toList().toString();
+            throw new IllegalStateException("Ambiguous fixture candidates for kickoff="
+                    + kickoff + ", equally close matchIds=" + candidateIds);
+        }
+        return Optional.of(closest.get(0));
     }
 
     private void updateFixtureResult(Match match, Map<String, String> row, boolean preservePrimaryProvider) {
@@ -1234,10 +1265,18 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         return digits.substring(2, 4) + String.format(Locale.ROOT, "%02d", (startYear + 1) % 100);
     }
 
-    private static String fixtureExternalId(String leagueCode, Season season, Team home, Team away) {
-        // Canonical team IDs make the provider identity stable across historical name aliases.
-        return normalize(leagueCode) + ":" + seasonCode(season.getYear()) + ":"
-                + home.getId() + ":" + away.getId();
+    /**
+     * Football-Data UK has no stable fixture ID. Include the source kickoff date so
+     * repeated home/away pairings in one season (league plus cup/play-offs) do not
+     * collapse into the same provider mapping. Keep team IDs canonical across aliases.
+     */
+    static String fixtureExternalId(
+            String leagueCode, String season, Long homeTeamId, Long awayTeamId, LocalDate kickoffDate) {
+        if (kickoffDate == null) {
+            throw new IllegalArgumentException("kickoffDate must not be null");
+        }
+        return normalize(leagueCode) + ":" + seasonCode(season) + ":" + kickoffDate + ":"
+                + homeTeamId + ":" + awayTeamId;
     }
 
     private static final List<DateTimeFormatter> SUPPORTED_CSV_DATES = List.of(
