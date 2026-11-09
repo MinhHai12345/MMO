@@ -614,7 +614,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                             leagueMapping.getLeague().getId()).stream()
                     .filter(Season::isActive)
                     .filter(season -> dataSourcePolicy.isPrimary(
-                            PROVIDER, Dataset.MATCH_STATISTICS, season))
+                            PROVIDER, Dataset.MATCH_STATISTICS, season.getYear()))
                     .toList();
             for (Season season : activeSeasons) {
                 Long leagueId = leagueMapping.getLeague().getId();
@@ -715,15 +715,17 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                 BigDecimal awayXg = decimalMetric(value(row, "AXG"));
                 matchXgPersistenceService.upsert(PROVIDER, match, homeXg, awayXg);
                 if (homeXg != null || awayXg != null) importedXg++;
-                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_STATISTICS, season)) {
+                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_STATISTICS, season.getYear())) {
                     importedStats += statisticsMapper.persist(match, row);
                 }
-                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.HISTORICAL_ODDS, season)) {
+                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.HISTORICAL_ODDS, season.getYear())) {
                     importedOdds += oddsMapper.persist(match, row);
                 }
+            } catch (LazyInitializationException infrastructureException) {
+                throw infrastructureException;
             } catch (RuntimeException exception) {
                 unmatched++;
-                log.debug("Skip unmatched Football-Data UK enrichment row: season={}, reason={}",
+                log.debug("Skip unmatched Football-Data UK enrichment row: season={}, reason={}"
                         season.getYear(), exception.getMessage());
             }
         }
