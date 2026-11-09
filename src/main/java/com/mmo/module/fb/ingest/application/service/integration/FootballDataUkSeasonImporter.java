@@ -736,13 +736,13 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
             // stage with their real cause instead of being counted as unmatched CSV rows.
             BigDecimal homeXg = decimalMetric(value(row, "HXG"));
             BigDecimal awayXg = decimalMetric(value(row, "AXG"));
-            matchXgPersistenceService.upsert(PROVIDER, match, homeXg, awayXg);
+            matchXgPersistenceService.upsert(PROVIDER, match, season.getYear(), homeXg, awayXg);
             if (homeXg != null || awayXg != null) importedXg++;
             if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_STATISTICS, season.getYear())) {
-                importedStats += statisticsMapper.persist(match, row);
+                importedStats += statisticsMapper.persist(match, season.getYear(), row);
             }
             if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.HISTORICAL_ODDS, season.getYear())) {
-                importedOdds += oddsMapper.persist(match, row);
+                importedOdds += oddsMapper.persist(match, season.getYear(), row);
             }
         }
         return new EnrichmentResult(rows.size(), importedStats, importedXg, importedOdds,
