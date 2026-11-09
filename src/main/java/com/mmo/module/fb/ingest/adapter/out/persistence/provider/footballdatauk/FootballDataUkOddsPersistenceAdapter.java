@@ -95,20 +95,20 @@ public class FootballDataUkOddsPersistenceAdapter implements FootballDataUkOddsP
         BigDecimal away = firstOdds(row, source.oneXTwoPrefixes(), period, "A");
         int saved = persistIfPresent(match, source.name(), false,
                 closing ? "1X2_CLOSE" : "1X2_OPEN", null,
-                home, draw, away, null, null, null, null, null);
+                home, draw, away, null, null, null, null, null, quoteBatch);
 
         BigDecimal over = firstOdds(row, source.totalsPrefixes(), period, ">2.5");
         BigDecimal under = firstOdds(row, source.totalsPrefixes(), period, "<2.5");
         saved += persistIfPresent(match, source.name(), false,
                 closing ? "OU25_CLOSE" : "OU25_OPEN", null,
-                null, null, null, over, under, null, null, null);
+                null, null, null, over, under, null, null, null, quoteBatch);
 
         BigDecimal line = firstSigned(row, source.handicapPrefixes(), period, "AH");
         BigDecimal handicapHome = firstOdds(row, source.handicapPrefixes(), period, "AHH");
         BigDecimal handicapAway = firstOdds(row, source.handicapPrefixes(), period, "AHA");
         saved += persistIfPresent(match, source.name(), false,
                 closing ? "AH_CLOSE" : "AH_OPEN", line,
-                null, null, null, null, null, handicapHome, handicapAway, null);
+                null, null, null, null, null, handicapHome, handicapAway, null, quoteBatch);
         return saved;
     }
 
@@ -134,7 +134,7 @@ public class FootballDataUkOddsPersistenceAdapter implements FootballDataUkOddsP
                 : decimalSigned(value(row, "AHH"));
         Integer ahCount = source.betBrain() ? integer(value(row, "BBAH")) : null;
         saved += persistIfPresent(match, source.name(), true, "AH_OPEN", ahLine,
-                null, null, null, null, null, ahHome, ahAway, ahCount);
+                null, null, null, null, null, ahHome, ahAway, ahCount, quoteBatch);
         return saved;
     }
 
