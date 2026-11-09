@@ -19,6 +19,8 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.function.Consumer;
 
 /**
@@ -73,18 +75,20 @@ public class FootballDataUkOddsPersistenceAdapter implements FootballDataUkOddsP
             return 0;
         }
         int saved = 0;
+        Map<Bookmaker, List<MatchOddsQuotePersistenceService.QuoteInput>> quoteBatch = new LinkedHashMap<>();
         for (BookmakerSource source : BOOKMAKERS) {
-            saved += persistBookmaker(match, row, source, false);
-            saved += persistBookmaker(match, row, source, true);
+            saved += persistBookmaker(match, row, source, false, quoteBatch);
+            saved += persistBookmaker(match, row, source, true, quoteBatch);
         }
         for (AggregateSource source : AGGREGATES) {
-            saved += persistAggregate(match, row, source);
+            saved += persistAggregate(match, row, source, quoteBatch);
         }
+        quotePersistenceService.upsertAll(match, MatchProvider.FOOTBALL_DATA_UK, quoteBatch);
         return saved;
     }
 
     private int persistBookmaker(Match match, Map<String, String> row,
-                                 BookmakerSource source, boolean closing) {
+                                 BookmakerSource source, boolean closing, Map<Bookmaker, List<MatchOddsQuotePersistenceService.QuoteInput>> quoteBatch) {
         String period = closing ? "C" : "";
         BigDecimal home = firstOdds(row, source.oneXTwoPrefixes(), period, "H");
         BigDecimal draw = firstOdds(row, source.oneXTwoPrefixes(), period, "D");
@@ -108,20 +112,20 @@ public class FootballDataUkOddsPersistenceAdapter implements FootballDataUkOddsP
         return saved;
     }
 
-    private int persistAggregate(Match match, Map<String, String> row, AggregateSource source) {
+    private int persistAggregate(Match match, Map<String, String> row, AggregateSource source, Map<Bookmaker, List<MatchOddsQuotePersistenceService.QuoteInput>> quoteBatch) {
         String prefix = source.prefix();
         Integer oneXTwoCount = source.betBrain() ? integer(value(row, "BB1X2")) : null;
         BigDecimal home = decimalOdds(value(row, prefix + "H"));
         BigDecimal draw = decimalOdds(value(row, prefix + "D"));
         BigDecimal away = decimalOdds(value(row, prefix + "A"));
         int saved = persistIfPresent(match, source.name(), true, "1X2_OPEN", null,
-                home, draw, away, null, null, null, null, oneXTwoCount);
+                home, draw, away, null, null, null, null, oneXTwoCount, quoteBatch);
 
         BigDecimal over = decimalOdds(value(row, prefix + ">2.5"));
         BigDecimal under = decimalOdds(value(row, prefix + "<2.5"));
         Integer totalsCount = source.betBrain() ? integer(value(row, "BBOU")) : null;
         saved += persistIfPresent(match, source.name(), true, "OU25_OPEN", null,
-                null, null, null, over, under, null, null, totalsCount);
+                null, null, null, over, under, null, null, totalsCount, quoteBatch);
 
         BigDecimal ahHome = decimalOdds(value(row, prefix + "AHH"));
         BigDecimal ahAway = decimalOdds(value(row, prefix + "AHA"));
@@ -139,7 +143,7 @@ public class FootballDataUkOddsPersistenceAdapter implements FootballDataUkOddsP
                                  BigDecimal home, BigDecimal draw, BigDecimal away,
                                  BigDecimal over, BigDecimal under,
                                  BigDecimal asianHome, BigDecimal asianAway,
-                                 Integer bookmakerCount) {
+                                 Integer bookmakerCount, Map<Bookmaker, List<MatchOddsQuotePersistenceService.QuoteInput>> quoteBatch) {
         boolean hasOdds = home != null || draw != null || away != null || over != null || under != null
                 || asianHome != null || asianAway != null;
         if (!hasOdds) return 0;
@@ -163,27 +167,26 @@ public class FootballDataUkOddsPersistenceAdapter implements FootballDataUkOddsP
         changed |= setIfMissing(odds.getBookmakerCount(), bookmakerCount, odds::setBookmakerCount);
         if (changed) matchOddsRepository.save(odds);
 
-        // Keep the normalized quote store authoritative for analytics while retaining
-        // the legacy grouped row for existing API consumers.
         if (market.startsWith("1X2")) {
-            quotePersistenceService.upsert(match, bookmaker, MatchProvider.FOOTBALL_DATA_UK,
-                    market, "HOME", null, home);
-            quotePersistenceService.upsert(match, bookmaker, MatchProvider.FOOTBALL_DATA_UK,
-                    market, "DRAW", null, draw);
-            quotePersistenceService.upsert(match, bookmaker, MatchProvider.FOOTBALL_DATA_UK,
-                    market, "AWAY", null, away);
+            addQuote(quoteBatch, bookmaker, market, "HOME", null, home);
+            addQuote(quoteBatch, bookmaker, market, "DRAW", null, draw);
+            addQuote(quoteBatch, bookmaker, market, "AWAY", null, away);
         } else if (market.startsWith("OU25")) {
-            quotePersistenceService.upsert(match, bookmaker, MatchProvider.FOOTBALL_DATA_UK,
-                    market, "Over 2.5", new BigDecimal("2.5"), over);
-            quotePersistenceService.upsert(match, bookmaker, MatchProvider.FOOTBALL_DATA_UK,
-                    market, "Under 2.5", new BigDecimal("2.5"), under);
+            addQuote(quoteBatch, bookmaker, market, "Over 2.5", new BigDecimal("2.5"), over);
+            addQuote(quoteBatch, bookmaker, market, "Under 2.5", new BigDecimal("2.5"), under);
         } else if (market.startsWith("AH")) {
-            quotePersistenceService.upsert(match, bookmaker, MatchProvider.FOOTBALL_DATA_UK,
-                    market, "HOME", line, asianHome);
-            quotePersistenceService.upsert(match, bookmaker, MatchProvider.FOOTBALL_DATA_UK,
-                    market, "AWAY", line, asianAway);
+            addQuote(quoteBatch, bookmaker, market, "HOME", line, asianHome);
+            addQuote(quoteBatch, bookmaker, market, "AWAY", line, asianAway);
         }
         return changed ? 1 : 0;
+    }
+
+    private void addQuote(Map<Bookmaker, List<MatchOddsQuotePersistenceService.QuoteInput>> quoteBatch,
+                          Bookmaker bookmaker, String market, String outcome,
+                          BigDecimal line, BigDecimal odd) {
+        if (odd == null || odd.signum() <= 0) return;
+        quoteBatch.computeIfAbsent(bookmaker, ignored -> new ArrayList<>())
+                .add(new MatchOddsQuotePersistenceService.QuoteInput(market, outcome, line, odd));
     }
 
     private Bookmaker resolveBookmaker(String canonicalName, boolean aggregate) {

@@ -6,6 +6,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
 import com.mmo.module.fb.ingest.adapter.out.persistence.core.SourceAwareMergeAdapter;
+import com.mmo.module.fb.ingest.application.model.FieldMergeCommand;
 import com.mmo.module.fb.domain.match.entity.MatchAdvancedStats;
 import com.mmo.module.fb.domain.match.repository.MatchAdvancedStatsRepository;
 import com.mmo.module.fb.domain.match.service.MatchStatisticsSnapshotPersistenceService;
@@ -18,6 +19,8 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 /**
@@ -36,19 +39,31 @@ public class FootballDataUkMatchStatisticsPersistenceAdapter implements Football
     @Override
     @Transactional
     public int persist(Match match, String seasonYear, Map<String, String> row) {
-        // Season year is supplied by the importer; do not traverse detached Match#season#league.
         if (match == null || seasonYear == null || seasonYear.isBlank()
                 || !dataSourcePolicy.isPrimary(
                         Provider.FOOTBALL_DATA_UK, Dataset.MATCH_STATISTICS, seasonYear)) {
             return 0;
         }
-        int saved = 0;
-        if (persistSide(match, match.getHomeTeam(), row, "H")) saved++;
-        if (persistSide(match, match.getAwayTeam(), row, "A")) saved++;
-        return saved;
+
+        // Collect every field mutation for both teams, then run the source/provenance
+        // gate once. The previous implementation called merge() for every statistic,
+        // repeating match locks, season routing and provenance SELECTs per field.
+        List<FieldMergeCommand> commands = new ArrayList<>();
+        List<MatchAdvancedStats> changedSides = new ArrayList<>(2);
+        MatchAdvancedStats home = persistSide(match, match.getHomeTeam(), row, "H", commands);
+        MatchAdvancedStats away = persistSide(match, match.getAwayTeam(), row, "A", commands);
+        if (home != null) changedSides.add(home);
+        if (away != null) changedSides.add(away);
+        if (commands.isEmpty()) return 0;
+
+        int applied = sourceAwareMergeService.mergeAll(commands);
+        if (applied == 0) return 0;
+        statsRepository.saveAll(changedSides);
+        return changedSides.size();
     }
 
-    private boolean persistSide(Match match, Team team, Map<String, String> row, String side) {
+    private MatchAdvancedStats persistSide(Match match, Team team, Map<String, String> row,
+                                           String side, List<FieldMergeCommand> commands) {
         Integer shots = integer(value(row, side + "S"));
         Integer onTarget = integer(value(row, side + "ST"));
         Integer hitWoodwork = integer(value(row, side + "HW"));
@@ -75,68 +90,44 @@ public class FootballDataUkMatchStatisticsPersistenceAdapter implements Football
                 && fouls == null && freeKicksConceded == null && offsides == null
                 && yellow == null && red == null && bookingPoints == null
                 && xg == null && scored == null) {
-            return false;
+            return null;
         }
 
         snapshotPersistenceService.upsert(match, team, MatchProvider.FOOTBALL_DATA_UK, row);
-
         MatchAdvancedStats stats = statsRepository.findByMatchIdAndTeamId(match.getId(), team.getId())
                 .orElseGet(() -> MatchAdvancedStats.builder().match(match).team(team).build());
-        boolean changed = false;
 
-        changed |= setIfMissing(match, team, "total_shots", stats.getTotalShots(), shots, stats::setTotalShots);
-        changed |= setIfMissing(match, team, "shots_on_target", stats.getShotsOnTarget(), onTarget, stats::setShotsOnTarget);
-        changed |= setIfMissing(match, team, "hit_woodwork", stats.getHitWoodwork(), hitWoodwork, stats::setHitWoodwork);
-        changed |= setIfMissing(match, team, "corner_kicks", stats.getCornerKicks(), corners, stats::setCornerKicks);
-        changed |= setIfMissing(match, team, "fouls", stats.getFouls(), fouls, stats::setFouls);
-        changed |= setIfMissing(match, team, "free_kicks_conceded", stats.getFreeKicksConceded(), freeKicksConceded, stats::setFreeKicksConceded);
-        changed |= setIfMissing(match, team, "offsides", stats.getOffsides(), offsides, stats::setOffsides);
-        changed |= setIfMissing(match, team, "yellow_cards", stats.getYellowCards(), yellow, stats::setYellowCards);
-        changed |= setIfMissing(match, team, "red_cards", stats.getRedCards(), red, stats::setRedCards);
-        changed |= setIfMissing(match, team, "booking_points", stats.getBookingPoints(), bookingPoints, stats::setBookingPoints);
-        changed |= setIfMissing(match, team, "xg", stats.getXg(), xg, stats::setXg);
-        changed |= setIfMissing(match, team, "xga_against", stats.getXga(), xga, stats::setXga);
-        changed |= setIfMissing(match, team, "scored", stats.getScored(), scored, stats::setScored);
+        addMerge(commands, match, team, "total_shots", stats.getTotalShots(), shots, stats::setTotalShots);
+        addMerge(commands, match, team, "shots_on_target", stats.getShotsOnTarget(), onTarget, stats::setShotsOnTarget);
+        addMerge(commands, match, team, "hit_woodwork", stats.getHitWoodwork(), hitWoodwork, stats::setHitWoodwork);
+        addMerge(commands, match, team, "corner_kicks", stats.getCornerKicks(), corners, stats::setCornerKicks);
+        addMerge(commands, match, team, "fouls", stats.getFouls(), fouls, stats::setFouls);
+        addMerge(commands, match, team, "free_kicks_conceded", stats.getFreeKicksConceded(), freeKicksConceded, stats::setFreeKicksConceded);
+        addMerge(commands, match, team, "offsides", stats.getOffsides(), offsides, stats::setOffsides);
+        addMerge(commands, match, team, "yellow_cards", stats.getYellowCards(), yellow, stats::setYellowCards);
+        addMerge(commands, match, team, "red_cards", stats.getRedCards(), red, stats::setRedCards);
+        addMerge(commands, match, team, "booking_points", stats.getBookingPoints(), bookingPoints, stats::setBookingPoints);
+        addMerge(commands, match, team, "xg", stats.getXg(), xg, stats::setXg);
+        addMerge(commands, match, team, "xga_against", stats.getXga(), xga, stats::setXga);
+        addMerge(commands, match, team, "scored", stats.getScored(), scored, stats::setScored);
 
-        // Derived outcome metrics are also source-attributed; they must not become
-        // unattributed canonical values that later providers cannot reconcile.
         if (outcome != null) {
-            changed |= mergeValue(match, team, "result", stats.getResult(), outcome, stats::setResult);
-            changed |= mergeValue(match, team, "wins", stats.getWins(),
-                    "W".equals(outcome) ? 1 : 0, stats::setWins);
-            changed |= mergeValue(match, team, "draws", stats.getDraws(),
-                    "D".equals(outcome) ? 1 : 0, stats::setDraws);
-            changed |= mergeValue(match, team, "losses", stats.getLosses(),
-                    "L".equals(outcome) ? 1 : 0, stats::setLosses);
-            changed |= mergeValue(match, team, "points", stats.getPoints(),
+            addMerge(commands, match, team, "result", stats.getResult(), outcome, stats::setResult);
+            addMerge(commands, match, team, "wins", stats.getWins(), "W".equals(outcome) ? 1 : 0, stats::setWins);
+            addMerge(commands, match, team, "draws", stats.getDraws(), "D".equals(outcome) ? 1 : 0, stats::setDraws);
+            addMerge(commands, match, team, "losses", stats.getLosses(), "L".equals(outcome) ? 1 : 0, stats::setLosses);
+            addMerge(commands, match, team, "points", stats.getPoints(),
                     "W".equals(outcome) ? 3 : "D".equals(outcome) ? 1 : 0, stats::setPoints);
         }
-
-        if (!changed) return false;
-        // Canonical row is a merged analytics projection; source provenance is stored separately.
-        statsRepository.save(stats);
-        return true;
+        return stats;
     }
 
-    private <T> boolean mergeValue(Match match, Team team, String field,
-                                    T current, T incoming, Consumer<T> setter) {
-        if (incoming == null) return false;
-        return sourceAwareMergeService.merge(match, Provider.FOOTBALL_DATA_UK, Dataset.MATCH_STATISTICS,
-                "team:" + team.getId() + ":" + field, current != null, null, () -> setter.accept(incoming));
-    }
-
-    private boolean setIfMissing(Match match, Team team, String field,
-                                 Integer current, Integer incoming, Consumer<Integer> setter) {
-        if (incoming == null) return false;
-        return sourceAwareMergeService.merge(match, Provider.FOOTBALL_DATA_UK, Dataset.MATCH_STATISTICS,
-                "team:" + team.getId() + ":" + field, current != null, null, () -> setter.accept(incoming));
-    }
-
-    private boolean setIfMissing(Match match, Team team, String field,
-                                 BigDecimal current, BigDecimal incoming, Consumer<BigDecimal> setter) {
-        if (incoming == null) return false;
-        return sourceAwareMergeService.merge(match, Provider.FOOTBALL_DATA_UK, Dataset.MATCH_STATISTICS,
-                "team:" + team.getId() + ":" + field, current != null, null, () -> setter.accept(incoming));
+    private <T> void addMerge(List<FieldMergeCommand> commands, Match match, Team team,
+                              String field, T current, T incoming, Consumer<T> setter) {
+        if (incoming == null) return;
+        commands.add(new FieldMergeCommand(match, Provider.FOOTBALL_DATA_UK,
+                Dataset.MATCH_STATISTICS, "team:" + team.getId() + ":" + field,
+                current != null, null, () -> setter.accept(incoming)));
     }
 
     private static Integer integer(String raw) {

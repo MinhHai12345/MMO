@@ -106,7 +106,7 @@ public class MatchOddsQuotePersistenceService {
                 MatchOddsMarketType type = marketType(value.market());
                 MatchOddsPeriod period = marketPeriod(value.market());
                 String outcome = normalizeOutcome(value.outcome());
-                BigDecimal line = normalizeLine(null, value.outcome());
+                BigDecimal line = normalizeLine(value.line(), value.outcome());
                 QuoteIdentity key = identity(bookmaker.getId(), type, period, line, outcome);
                 MatchOddsQuote quote = pending.get(key);
                 if (quote == null) quote = existing.get(key);
@@ -146,7 +146,11 @@ public class MatchOddsQuotePersistenceService {
                 outcome);
     }
 
-    public record QuoteInput(String market, String outcome, BigDecimal odd) {}
+    public record QuoteInput(String market, String outcome, BigDecimal line, BigDecimal odd) {
+        public QuoteInput(String market, String outcome, BigDecimal odd) {
+            this(market, outcome, null, odd);
+        }
+    }
 
     private record QuoteIdentity(Long bookmakerId, MatchOddsMarketType type,
                                  MatchOddsPeriod period, BigDecimal line, String outcome) {}
