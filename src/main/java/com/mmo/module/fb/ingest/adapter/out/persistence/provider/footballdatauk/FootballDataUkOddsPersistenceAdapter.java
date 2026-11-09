@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
+import java.util.HashMap;
 import java.util.function.Consumer;
 
 /**
@@ -76,56 +78,62 @@ public class FootballDataUkOddsPersistenceAdapter implements FootballDataUkOddsP
         }
         int saved = 0;
         Map<Bookmaker, List<MatchOddsQuotePersistenceService.QuoteInput>> quoteBatch = new LinkedHashMap<>();
+        Map<String, Bookmaker> bookmakerCache = prefetchBookmakers();
+        Map<String, MatchOdds> oddsByKey = matchOddsRepository.findAllByMatchId(match.getId()).stream()
+                .collect(Collectors.toMap(odds -> oddsKey(odds.getBookmaker().getId(), odds.getMarketName()),
+                        odds -> odds, (left, right) -> left));
+        List<MatchOdds> changedOdds = new ArrayList<>();
         for (BookmakerSource source : BOOKMAKERS) {
-            saved += persistBookmaker(match, row, source, false, quoteBatch);
-            saved += persistBookmaker(match, row, source, true, quoteBatch);
+            saved += persistBookmaker(match, row, source, false, quoteBatch, bookmakerCache, oddsByKey, changedOdds);
+            saved += persistBookmaker(match, row, source, true, quoteBatch, bookmakerCache, oddsByKey, changedOdds);
         }
         for (AggregateSource source : AGGREGATES) {
-            saved += persistAggregate(match, row, source, quoteBatch);
+            saved += persistAggregate(match, row, source, quoteBatch, bookmakerCache, oddsByKey, changedOdds);
         }
+        if (!changedOdds.isEmpty()) matchOddsRepository.saveAll(changedOdds);
         quotePersistenceService.upsertAll(match, MatchProvider.FOOTBALL_DATA_UK, quoteBatch);
         return saved;
     }
 
     private int persistBookmaker(Match match, Map<String, String> row,
-                                 BookmakerSource source, boolean closing, Map<Bookmaker, List<MatchOddsQuotePersistenceService.QuoteInput>> quoteBatch) {
+                                 BookmakerSource source, boolean closing, Map<Bookmaker, List<MatchOddsQuotePersistenceService.QuoteInput>> quoteBatch, Map<String, Bookmaker> bookmakerCache, Map<String, MatchOdds> oddsByKey, List<MatchOdds> changedOdds) {
         String period = closing ? "C" : "";
         BigDecimal home = firstOdds(row, source.oneXTwoPrefixes(), period, "H");
         BigDecimal draw = firstOdds(row, source.oneXTwoPrefixes(), period, "D");
         BigDecimal away = firstOdds(row, source.oneXTwoPrefixes(), period, "A");
         int saved = persistIfPresent(match, source.name(), false,
                 closing ? "1X2_CLOSE" : "1X2_OPEN", null,
-                home, draw, away, null, null, null, null, null, quoteBatch);
+                home, draw, away, null, null, null, null, null, quoteBatch, bookmakerCache, oddsByKey, changedOdds);
 
         BigDecimal over = firstOdds(row, source.totalsPrefixes(), period, ">2.5");
         BigDecimal under = firstOdds(row, source.totalsPrefixes(), period, "<2.5");
         saved += persistIfPresent(match, source.name(), false,
                 closing ? "OU25_CLOSE" : "OU25_OPEN", null,
-                null, null, null, over, under, null, null, null, quoteBatch);
+                null, null, null, over, under, null, null, null, quoteBatch, bookmakerCache, oddsByKey, changedOdds);
 
         BigDecimal line = firstSigned(row, source.handicapPrefixes(), period, "AH");
         BigDecimal handicapHome = firstOdds(row, source.handicapPrefixes(), period, "AHH");
         BigDecimal handicapAway = firstOdds(row, source.handicapPrefixes(), period, "AHA");
         saved += persistIfPresent(match, source.name(), false,
                 closing ? "AH_CLOSE" : "AH_OPEN", line,
-                null, null, null, null, null, handicapHome, handicapAway, null, quoteBatch);
+                null, null, null, null, null, handicapHome, handicapAway, null, quoteBatch, bookmakerCache, oddsByKey, changedOdds);
         return saved;
     }
 
-    private int persistAggregate(Match match, Map<String, String> row, AggregateSource source, Map<Bookmaker, List<MatchOddsQuotePersistenceService.QuoteInput>> quoteBatch) {
+    private int persistAggregate(Match match, Map<String, String> row, AggregateSource source, Map<Bookmaker, List<MatchOddsQuotePersistenceService.QuoteInput>> quoteBatch, Map<String, Bookmaker> bookmakerCache, Map<String, MatchOdds> oddsByKey, List<MatchOdds> changedOdds) {
         String prefix = source.prefix();
         Integer oneXTwoCount = source.betBrain() ? integer(value(row, "BB1X2")) : null;
         BigDecimal home = decimalOdds(value(row, prefix + "H"));
         BigDecimal draw = decimalOdds(value(row, prefix + "D"));
         BigDecimal away = decimalOdds(value(row, prefix + "A"));
         int saved = persistIfPresent(match, source.name(), true, "1X2_OPEN", null,
-                home, draw, away, null, null, null, null, oneXTwoCount, quoteBatch);
+                home, draw, away, null, null, null, null, oneXTwoCount, quoteBatch, bookmakerCache, oddsByKey, changedOdds);
 
         BigDecimal over = decimalOdds(value(row, prefix + ">2.5"));
         BigDecimal under = decimalOdds(value(row, prefix + "<2.5"));
         Integer totalsCount = source.betBrain() ? integer(value(row, "BBOU")) : null;
         saved += persistIfPresent(match, source.name(), true, "OU25_OPEN", null,
-                null, null, null, over, under, null, null, totalsCount, quoteBatch);
+                null, null, null, over, under, null, null, totalsCount, quoteBatch, bookmakerCache, oddsByKey, changedOdds);
 
         BigDecimal ahHome = decimalOdds(value(row, prefix + "AHH"));
         BigDecimal ahAway = decimalOdds(value(row, prefix + "AHA"));
@@ -134,7 +142,7 @@ public class FootballDataUkOddsPersistenceAdapter implements FootballDataUkOddsP
                 : decimalSigned(value(row, "AHH"));
         Integer ahCount = source.betBrain() ? integer(value(row, "BBAH")) : null;
         saved += persistIfPresent(match, source.name(), true, "AH_OPEN", ahLine,
-                null, null, null, null, null, ahHome, ahAway, ahCount, quoteBatch);
+                null, null, null, null, null, ahHome, ahAway, ahCount, quoteBatch, bookmakerCache, oddsByKey, changedOdds);
         return saved;
     }
 
@@ -143,17 +151,18 @@ public class FootballDataUkOddsPersistenceAdapter implements FootballDataUkOddsP
                                  BigDecimal home, BigDecimal draw, BigDecimal away,
                                  BigDecimal over, BigDecimal under,
                                  BigDecimal asianHome, BigDecimal asianAway,
-                                 Integer bookmakerCount, Map<Bookmaker, List<MatchOddsQuotePersistenceService.QuoteInput>> quoteBatch) {
+                                 Integer bookmakerCount, Map<Bookmaker, List<MatchOddsQuotePersistenceService.QuoteInput>> quoteBatch,
+                                 Map<String, Bookmaker> bookmakerCache, Map<String, MatchOdds> oddsByKey,
+                                 List<MatchOdds> changedOdds) {
         boolean hasOdds = home != null || draw != null || away != null || over != null || under != null
                 || asianHome != null || asianAway != null;
         if (!hasOdds) return 0;
 
-        Bookmaker bookmaker = resolveBookmaker(bookmakerName, aggregate);
+        Bookmaker bookmaker = resolveBookmaker(bookmakerName, aggregate, bookmakerCache);
 
-        MatchOdds odds = matchOddsRepository.findByMatchIdAndBookmakerIdAndMarketName(
-                        match.getId(), bookmaker.getId(), market)
-                .orElseGet(() -> MatchOdds.builder()
-                        .match(match).bookmaker(bookmaker).marketName(market).build());
+        String key = oddsKey(bookmaker.getId(), market);
+        MatchOdds odds = oddsByKey.computeIfAbsent(key, ignored -> MatchOdds.builder()
+                .match(match).bookmaker(bookmaker).marketName(market).build());
 
         boolean changed = false;
         changed |= setIfMissing(odds.getAsianHandicapLine(), line, odds::setAsianHandicapLine);
@@ -165,7 +174,7 @@ public class FootballDataUkOddsPersistenceAdapter implements FootballDataUkOddsP
         changed |= setIfMissing(odds.getAsianHandicapHome(), asianHome, odds::setAsianHandicapHome);
         changed |= setIfMissing(odds.getAsianHandicapAway(), asianAway, odds::setAsianHandicapAway);
         changed |= setIfMissing(odds.getBookmakerCount(), bookmakerCount, odds::setBookmakerCount);
-        if (changed) matchOddsRepository.save(odds);
+        if (changed && !changedOdds.contains(odds)) changedOdds.add(odds);
 
         if (market.startsWith("1X2")) {
             addQuote(quoteBatch, bookmaker, market, "HOME", null, home);
@@ -189,32 +198,45 @@ public class FootballDataUkOddsPersistenceAdapter implements FootballDataUkOddsP
                 .add(new MatchOddsQuotePersistenceService.QuoteInput(market, outcome, line, odd));
     }
 
-    private Bookmaker resolveBookmaker(String canonicalName, boolean aggregate) {
-        String sourceType = aggregate ? "MARKET_AGGREGATE" : "BOOKMAKER";
-        Bookmaker bookmaker = bookmakerRepository.findByName(canonicalName).orElse(null);
+    private Map<String, Bookmaker> prefetchBookmakers() {
+        List<String> names = new ArrayList<>();
+        BOOKMAKERS.forEach(source -> {
+            names.add(source.name());
+            String legacy = legacyBookmakerName(source.name());
+            if (legacy != null) names.add(legacy);
+        });
+        AGGREGATES.forEach(source -> {
+            names.add(source.name());
+            String legacy = legacyBookmakerName(source.name());
+            if (legacy != null) names.add(legacy);
+        });
+        return bookmakerRepository.findAllByNameIn(names).stream()
+                .collect(Collectors.toMap(Bookmaker::getName, bookmaker -> bookmaker, (left, right) -> left));
+    }
 
-        // Rename records created by the first importer version instead of creating
-        // duplicate bookmaker identities and leaving their historical odds orphaned.
+    private static String oddsKey(Long bookmakerId, String marketName) {
+        return bookmakerId + ":" + marketName;
+    }
+
+    private Bookmaker resolveBookmaker(String canonicalName, boolean aggregate,
+                                       Map<String, Bookmaker> bookmakerCache) {
+        String sourceType = aggregate ? "MARKET_AGGREGATE" : "BOOKMAKER";
+        Bookmaker bookmaker = bookmakerCache.get(canonicalName);
         if (bookmaker == null) {
             String legacyName = legacyBookmakerName(canonicalName);
             if (legacyName != null) {
-                bookmaker = bookmakerRepository.findByName(legacyName).orElse(null);
-                if (bookmaker != null) {
-                    bookmaker.setName(canonicalName);
-                }
+                bookmaker = bookmakerCache.get(legacyName);
+                if (bookmaker != null) bookmaker.setName(canonicalName);
             }
         }
-
         if (bookmaker == null) {
-            bookmaker = Bookmaker.builder()
-                    .name(canonicalName)
-                    .sourceType(sourceType)
-                    .isActive(true)
-                    .build();
+            bookmaker = Bookmaker.builder().name(canonicalName).sourceType(sourceType).isActive(true).build();
         } else if (!sourceType.equals(bookmaker.getSourceType())) {
             bookmaker.setSourceType(sourceType);
         }
-        return bookmakerRepository.save(bookmaker);
+        bookmaker = bookmakerRepository.save(bookmaker);
+        bookmakerCache.put(canonicalName, bookmaker);
+        return bookmaker;
     }
 
     private String legacyBookmakerName(String canonicalName) {
