@@ -687,9 +687,9 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
 
         for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
             Map<String, String> row = rows.get(rowIndex);
-            String homeName = valueAny(row, "HOMETEAM", "HOME TEAM");
-            String awayName = valueAny(row, "AWAYTEAM", "AWAY TEAM");
-            LocalDate date = parseDate(value(row, "DATE"));
+            String homeName = row == null ? "" : valueAny(row, "HOMETEAM", "HOME TEAM");
+            String awayName = row == null ? "" : valueAny(row, "AWAYTEAM", "AWAY TEAM");
+            LocalDate date = row == null ? null : parseDate(value(row, "DATE"));
             if (row == null || !StringUtils.hasText(homeName)
                     || !StringUtils.hasText(awayName) || date == null) {
                 invalidRows++;
