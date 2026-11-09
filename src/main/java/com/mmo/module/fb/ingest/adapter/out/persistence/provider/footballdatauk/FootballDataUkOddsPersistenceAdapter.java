@@ -222,19 +222,26 @@ public class FootballDataUkOddsPersistenceAdapter implements FootballDataUkOddsP
                                        Map<String, Bookmaker> bookmakerCache) {
         String sourceType = aggregate ? "MARKET_AGGREGATE" : "BOOKMAKER";
         Bookmaker bookmaker = bookmakerCache.get(canonicalName);
+        boolean changed = false;
         if (bookmaker == null) {
             String legacyName = legacyBookmakerName(canonicalName);
             if (legacyName != null) {
                 bookmaker = bookmakerCache.get(legacyName);
-                if (bookmaker != null) bookmaker.setName(canonicalName);
+                if (bookmaker != null) {
+                    bookmaker.setName(canonicalName);
+                    changed = true;
+                }
             }
         }
         if (bookmaker == null) {
-            bookmaker = Bookmaker.builder().name(canonicalName).sourceType(sourceType).isActive(true).build();
+            bookmaker = Bookmaker.builder().name(canonicalName)
+                    .sourceType(sourceType).isActive(true).build();
+            changed = true;
         } else if (!sourceType.equals(bookmaker.getSourceType())) {
             bookmaker.setSourceType(sourceType);
+            changed = true;
         }
-        bookmaker = bookmakerRepository.save(bookmaker);
+        if (changed) bookmaker = bookmakerRepository.save(bookmaker);
         bookmakerCache.put(canonicalName, bookmaker);
         return bookmaker;
     }
