@@ -698,14 +698,11 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                 LocalTime time = parseTime(value(row, "TIME"));
                 Instant kickoff = date.atTime(time == null ? LocalTime.NOON : time)
                         .atZone(SOURCE_ZONE).toInstant();
-                String externalId = fixtureExternalId(leagueMapping.getIdentify(), season, home, away);
+                String externalId = fixtureExternalId(
+                        leagueMapping.getIdentify(), season.getYear(), home.getId(), away.getId(), date);
                 Match match = persistencePort.findMatchMappingByProvider(MATCH_PROVIDER, externalId)
                         .map(MatchExternalId::getMatch)
-                        .orElseGet(() -> persistencePort.findMatchMappingByProvider(
-                                        MATCH_PROVIDER, legacyFixtureExternalId(
-                                                leagueMapping.getIdentify(), season, homeName, awayName))
-                                .map(MatchExternalId::getMatch)
-                                .orElseGet(() -> findFixtureCandidate(season, home, away, kickoff)));
+                        .orElseGet(() -> findFixtureCandidate(season, home, away, kickoff));
 
                 if (match == null) {
                     unmatched++;
@@ -752,12 +749,6 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
     private Match findFixtureCandidate(Season season, Team home, Team away, Instant kickoff) {
         List<Match> candidates = findSeasonFixtureCandidates(season, home, away, kickoff);
         return closestFixtureCandidate(candidates, kickoff).orElse(null);
-    }
-
-    private static String legacyFixtureExternalId(
-            String leagueCode, Season season, String home, String away) {
-        return normalize(leagueCode) + ":" + seasonCode(season.getYear()) + ":"
-                + normalize(home) + ":" + normalize(away);
     }
 
     private record EnrichmentResult(
@@ -849,7 +840,8 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                         LocalTime time = parseTime(value(row, "TIME"));
                         Instant kickoff = date.atTime(time == null ? LocalTime.NOON : time)
                                 .atZone(SOURCE_ZONE).toInstant();
-                        String fixtureExternalId = fixtureExternalId(leagueMapping.getIdentify(), season, home, away);
+                        String fixtureExternalId = fixtureExternalId(
+                                leagueMapping.getIdentify(), season.getYear(), home.getId(), away.getId(), date);
 
                         Optional<MatchExternalId> existingExternalId =
                                 persistencePort.findMatchMappingByProvider(MATCH_PROVIDER, fixtureExternalId);
@@ -1273,10 +1265,18 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         return digits.substring(2, 4) + String.format(Locale.ROOT, "%02d", (startYear + 1) % 100);
     }
 
-    private static String fixtureExternalId(String leagueCode, Season season, Team home, Team away) {
-        // Canonical team IDs make the provider identity stable across historical name aliases.
-        return normalize(leagueCode) + ":" + seasonCode(season.getYear()) + ":"
-                + home.getId() + ":" + away.getId();
+    /**
+     * Football-Data UK has no stable fixture ID. Include the source kickoff date so
+     * repeated home/away pairings in one season (league plus cup/play-offs) do not
+     * collapse into the same provider mapping. Keep team IDs canonical across aliases.
+     */
+    static String fixtureExternalId(
+            String leagueCode, String season, Long homeTeamId, Long awayTeamId, LocalDate kickoffDate) {
+        if (kickoffDate == null) {
+            throw new IllegalArgumentException("kickoffDate must not be null");
+        }
+        return normalize(leagueCode) + ":" + seasonCode(season) + ":" + kickoffDate + ":"
+                + homeTeamId + ":" + awayTeamId;
     }
 
     private static final List<DateTimeFormatter> SUPPORTED_CSV_DATES = List.of(
