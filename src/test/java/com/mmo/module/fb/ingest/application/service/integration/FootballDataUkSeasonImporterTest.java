@@ -2,6 +2,10 @@ package com.mmo.module.fb.ingest.application.service.integration;
 
 import org.junit.jupiter.api.Test;
 
+import com.mmo.module.fb.domain.match.entity.Match;
+
+import java.time.Instant;
+
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,6 +40,46 @@ class FootballDataUkSeasonImporterTest {
         assertNotEquals(
                 FootballDataUkSeasonImporter.csvFingerprint(List.of(first)),
                 FootballDataUkSeasonImporter.csvFingerprint(List.of(Map.of("DATE", "02/08/26", "HOME", "Arsenal"))));
+    }
+
+    @Test
+    void matchesRepeatedHomeAwayPairByKickoffInsteadOfSeasonWideUniqueness() {
+        Match novemberFixture = Match.builder()
+                .matchTime(Instant.parse("2024-11-09T15:00:00Z"))
+                .build();
+        Match mayFixture = Match.builder()
+                .matchTime(Instant.parse("2025-05-13T19:00:00Z"))
+                .build();
+
+        assertSame(novemberFixture, FootballDataUkSeasonImporter.closestFixtureCandidate(
+                List.of(novemberFixture, mayFixture),
+                Instant.parse("2024-11-09T15:00:00Z")).orElseThrow());
+        assertSame(mayFixture, FootballDataUkSeasonImporter.closestFixtureCandidate(
+                List.of(novemberFixture, mayFixture),
+                Instant.parse("2025-05-13T19:00:00Z")).orElseThrow());
+    }
+
+    @Test
+    void doesNotReuseSameTeamPairFixtureWhenKickoffIsOutsideMatchingWindow() {
+        Match oldFixture = Match.builder()
+                .matchTime(Instant.parse("2024-11-09T15:00:00Z"))
+                .build();
+
+        assertTrue(FootballDataUkSeasonImporter.closestFixtureCandidate(
+                List.of(oldFixture), Instant.parse("2025-05-13T19:00:00Z")).isEmpty());
+    }
+
+    @Test
+    void rejectsEquallyCloseFixtureCandidatesInsteadOfPickingArbitrarily() {
+        Instant kickoff = Instant.parse("2024-11-09T15:00:00Z");
+        Match first = Match.builder().matchTime(kickoff.minusSeconds(3600)).build();
+        Match second = Match.builder().matchTime(kickoff.plusSeconds(3600)).build();
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> FootballDataUkSeasonImporter.closestFixtureCandidate(
+                        List.of(first, second), kickoff));
+
+        assertTrue(exception.getMessage().contains("equally close"));
     }
 
     @Test
