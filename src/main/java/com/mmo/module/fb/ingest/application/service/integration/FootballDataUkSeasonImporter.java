@@ -6,6 +6,7 @@ import com.mmo.module.fb.ingest.application.exception.IngestionPartialException;
 import com.mmo.module.fb.ingest.application.port.out.ProviderCheckpointPort;
 import com.mmo.module.fb.ingest.application.port.out.IngestionBatchTransactionPort;
 import org.springframework.dao.DataAccessException;
+import org.hibernate.LazyInitializationException;
 import org.springframework.transaction.TransactionException;
 import com.mmo.module.fb.ingest.application.model.IngestionCheckpointProgress;
 import com.mmo.module.fb.ingest.enums.Provider;
@@ -455,7 +456,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
             League league = mapping.getLeague();
             List<Season> activeSeasons = persistencePort.findSeasonsByLeagueId(league.getId()).stream()
                     .filter(Season::isActive)
-                    .filter(season -> dataSourcePolicy.isAllowed(PROVIDER, Dataset.FIXTURE, season))
+                    .filter(season -> dataSourcePolicy.isAllowed(PROVIDER, Dataset.FIXTURE, season.getYear()))
                     .toList();
 
             for (Season season : activeSeasons) {
@@ -613,7 +614,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                             leagueMapping.getLeague().getId()).stream()
                     .filter(Season::isActive)
                     .filter(season -> dataSourcePolicy.isPrimary(
-                            PROVIDER, Dataset.MATCH_STATISTICS, season))
+                            PROVIDER, Dataset.MATCH_STATISTICS, season.getYear()))
                     .toList();
             for (Season season : activeSeasons) {
                 Long leagueId = leagueMapping.getLeague().getId();
@@ -714,12 +715,14 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                 BigDecimal awayXg = decimalMetric(value(row, "AXG"));
                 matchXgPersistenceService.upsert(PROVIDER, match, homeXg, awayXg);
                 if (homeXg != null || awayXg != null) importedXg++;
-                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_STATISTICS, season)) {
+                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_STATISTICS, season.getYear())) {
                     importedStats += statisticsMapper.persist(match, row);
                 }
-                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.HISTORICAL_ODDS, season)) {
+                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.HISTORICAL_ODDS, season.getYear())) {
                     importedOdds += oddsMapper.persist(match, row);
                 }
+            } catch (LazyInitializationException infrastructureException) {
+                throw infrastructureException;
             } catch (RuntimeException exception) {
                 unmatched++;
                 log.debug("Skip unmatched Football-Data UK enrichment row: season={}, reason={}",
@@ -861,9 +864,9 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                         boolean footballDataOwnsCore = match.getId() != null
                                 && persistencePort.findMatchMappingByMatchId(
                                         match.getId(), MatchProvider.fromName(Provider.FOOTBALL_DATA.name())).isPresent();
-                        boolean ukOwnsFixtureCore = dataSourcePolicy.isPrimary(PROVIDER, Dataset.FIXTURE, season);
+                        boolean ukOwnsFixtureCore = dataSourcePolicy.isPrimary(PROVIDER, Dataset.FIXTURE, season.getYear());
                         boolean mayUseUkFallback = dataSourcePolicy.mayFallbackForCore(
-                                PROVIDER, Dataset.FIXTURE, season, footballDataOwnsCore);
+                                PROVIDER, Dataset.FIXTURE, season.getYear(), footballDataOwnsCore);
                         boolean preservePrimaryCore = !ukOwnsFixtureCore && !mayUseUkFallback;
                         if (!ukOwnsFixtureCore && !mayUseUkFallback && !footballDataOwnsCore) {
                             current.unmatched++;
@@ -893,6 +896,10 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                             persistencePort.saveMatch(match);
                         }
                         current.importedFixtures++;
+                    } catch (LazyInitializationException infrastructureException) {
+                        // A detached JPA proxy is a programming/transaction-boundary failure,
+                        // never a malformed source row. Roll back the whole batch and fail fast.
+                        throw infrastructureException;
                     } catch (DataAccessException | TransactionException databaseException) {
                         throw databaseException;
                     } catch (RuntimeException invalidRow) {
@@ -968,18 +975,18 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         if (existing.isPresent()) {
             season = existing.get();
             boolean footballDataOwnsSeason = persistencePort.findSeasonMapping(season.getId(), Provider.FOOTBALL_DATA).isPresent();
-            boolean mayUpdate = dataSourcePolicy.isPrimary(PROVIDER, Dataset.SEASON, season)
+            boolean mayUpdate = dataSourcePolicy.isPrimary(PROVIDER, Dataset.SEASON, season.getYear())
                     || dataSourcePolicy.mayFallbackForCore(
-                            PROVIDER, Dataset.SEASON, season, footballDataOwnsSeason);
+                            PROVIDER, Dataset.SEASON, season.getYear(), footballDataOwnsSeason);
             if (!mayUpdate) return season;
         } else {
             // UK may create a season only when it owns the season dataset or is the
             // explicitly permitted fallback because the primary provider has no identity.
             Season candidate = Season.builder()
                     .league(league).year(year).startDate(start).endDate(end).build();
-            boolean mayCreate = dataSourcePolicy.isPrimary(PROVIDER, Dataset.SEASON, candidate)
+            boolean mayCreate = dataSourcePolicy.isPrimary(PROVIDER, Dataset.SEASON, candidate.getYear())
                     || dataSourcePolicy.mayFallbackForCore(
-                            PROVIDER, Dataset.SEASON, candidate, false);
+                            PROVIDER, Dataset.SEASON, candidate.getYear(), false);
             if (!mayCreate) {
                 throw new IllegalStateException("Football-Data UK is not allowed to create season "
                         + year + " for league " + league.getName());
@@ -1101,9 +1108,9 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         boolean footballDataOwnsTeam = team != null
                 && persistencePort.findTeamMappingByTeamId(
                         team.getId(), Provider.FOOTBALL_DATA).isPresent();
-        boolean ukOwnsTeam = dataSourcePolicy.isPrimary(PROVIDER, Dataset.TEAM, season);
+        boolean ukOwnsTeam = dataSourcePolicy.isPrimary(PROVIDER, Dataset.TEAM, season.getYear());
         boolean mayUseUkFallback = dataSourcePolicy.mayFallbackForCore(
-                PROVIDER, Dataset.TEAM, season, footballDataOwnsTeam);
+                PROVIDER, Dataset.TEAM, season.getYear(), footballDataOwnsTeam);
         if (team == null) {
             if (!ukOwnsTeam && !mayUseUkFallback) {
                 throw new IllegalStateException("Football-Data UK is not allowed to create team "
