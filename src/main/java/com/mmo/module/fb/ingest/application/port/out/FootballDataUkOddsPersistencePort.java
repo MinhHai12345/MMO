@@ -6,5 +6,5 @@ import java.util.Map;
 
 /** Outbound persistence port for Football-Data.co.uk historical odds. */
 public interface FootballDataUkOddsPersistencePort {
-    int persist(Match match, Map<String, String> row);
+    int persist(Match match, String seasonYear, Map<String, String> row);
 }
