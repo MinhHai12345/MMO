@@ -26,6 +26,10 @@ public interface SeasonRepository extends JpaRepository<Season, Long> {
     @Query("select s from Season s join fetch s.league where s.id = ?1")
     Optional<Season> findWithLeagueById(Long seasonId);
 
+    /** Batch-loads policy metadata for detached matches without an N+1 query. */
+    @Query("select distinct s from Season s join fetch s.league where s.id in ?1")
+    List<Season> findAllWithLeagueByIdIn(java.util.Collection<Long> seasonIds);
+
     @EntityGraph(attributePaths = {"league"})
     List<Season> findByLeague_Id(Long leagueId);
 
