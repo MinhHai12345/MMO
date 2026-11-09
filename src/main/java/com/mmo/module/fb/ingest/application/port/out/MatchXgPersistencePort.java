@@ -7,5 +7,5 @@ import java.math.BigDecimal;
 
 /** Outbound persistence port for source-aware fixture xG updates. */
 public interface MatchXgPersistencePort {
-    boolean upsert(Provider provider, Match match, BigDecimal homeXg, BigDecimal awayXg);
+    boolean upsert(Provider provider, Match match, String seasonYear, BigDecimal homeXg, BigDecimal awayXg);
 }

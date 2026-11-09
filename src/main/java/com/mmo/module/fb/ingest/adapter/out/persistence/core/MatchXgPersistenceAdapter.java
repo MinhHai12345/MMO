@@ -23,9 +23,11 @@ public class MatchXgPersistenceAdapter implements MatchXgPersistencePort {
 
     @Override
     @Transactional
-    public boolean upsert(Provider provider, Match match, BigDecimal homeXg, BigDecimal awayXg) {
-        if (match == null || match.getSeason() == null || (homeXg == null && awayXg == null)
-                || !dataSourcePolicy.isAllowed(provider, Dataset.MATCH_XG, match.getSeason())) return false;
+    public boolean upsert(Provider provider, Match match, String seasonYear,
+                          BigDecimal homeXg, BigDecimal awayXg) {
+        if (match == null || seasonYear == null || seasonYear.isBlank()
+                || (homeXg == null && awayXg == null)
+                || !dataSourcePolicy.isAllowed(provider, Dataset.MATCH_XG, seasonYear)) return false;
 
         boolean changed = false;
         if (homeXg != null && homeXg.signum() >= 0) {

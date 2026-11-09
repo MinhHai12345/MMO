@@ -67,9 +67,9 @@ public class FootballDataUkOddsPersistenceAdapter implements FootballDataUkOddsP
 
     @Override
     @Transactional
-    public int persist(Match match, Map<String, String> row) {
-        if (match == null || match.getSeason() == null
-                || !dataSourcePolicy.isPrimary(Provider.FOOTBALL_DATA_UK, Dataset.HISTORICAL_ODDS, match.getSeason())) {
+    public int persist(Match match, String seasonYear, Map<String, String> row) {
+        if (match == null || seasonYear == null || seasonYear.isBlank()
+                || !dataSourcePolicy.isPrimary(Provider.FOOTBALL_DATA_UK, Dataset.HISTORICAL_ODDS, seasonYear)) {
             return 0;
         }
         int saved = 0;
