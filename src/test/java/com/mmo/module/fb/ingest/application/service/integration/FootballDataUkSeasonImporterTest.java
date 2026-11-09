@@ -60,6 +60,19 @@ class FootballDataUkSeasonImporterTest {
     }
 
     @Test
+    void createsDifferentProviderFixtureIdentityForRepeatedPairOnDifferentDates() {
+        String novemberFixture = FootballDataUkSeasonImporter.fixtureExternalId(
+                "E1", "2024/2025", 1879L, 1883L, LocalDate.of(2024, 11, 9));
+        String mayFixture = FootballDataUkSeasonImporter.fixtureExternalId(
+                "E1", "2024/2025", 1879L, 1883L, LocalDate.of(2025, 5, 13));
+        String reverseFixture = FootballDataUkSeasonImporter.fixtureExternalId(
+                "E1", "2024/2025", 1883L, 1879L, LocalDate.of(2024, 11, 9));
+
+        assertNotEquals(novemberFixture, mayFixture);
+        assertNotEquals(novemberFixture, reverseFixture);
+    }
+
+    @Test
     void doesNotReuseSameTeamPairFixtureWhenKickoffIsOutsideMatchingWindow() {
         Match oldFixture = Match.builder()
                 .matchTime(Instant.parse("2024-11-09T15:00:00Z"))
