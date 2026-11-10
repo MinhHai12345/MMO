@@ -5,12 +5,16 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 
 public interface MatchOddsRepository extends JpaRepository<MatchOdds, Long> {
 
     Optional<MatchOdds> findByMatchIdAndBookmakerIdAndMarketName(
             Long matchId, Long bookmakerId, String marketName);
+
+    @EntityGraph(attributePaths = {"bookmaker"})
+    List<MatchOdds> findAllByMatchIdIn(Collection<Long> matchIds);
 
     @EntityGraph(attributePaths = {"bookmaker"})
     List<MatchOdds> findAllByMatchId(Long matchId);
