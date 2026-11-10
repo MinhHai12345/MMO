@@ -16,4 +16,8 @@ public interface FootballWorkflowRunRepository extends JpaRepository<FootballWor
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from FootballWorkflowRunEntity r where r.idempotencyKey = :key")
     Optional<FootballWorkflowRunEntity> findByIdempotencyKeyForUpdate(@Param("key") String key);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from FootballWorkflowRunEntity r where r.id = :id")
+    Optional<FootballWorkflowRunEntity> findByIdForUpdate(@Param("id") Long id);
 }
