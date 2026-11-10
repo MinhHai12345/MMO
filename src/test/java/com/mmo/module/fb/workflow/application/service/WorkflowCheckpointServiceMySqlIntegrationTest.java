@@ -86,7 +86,8 @@ class WorkflowCheckpointServiceMySqlIntegrationTest {
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch start = new CountDownLatch(1);
 
-        try (ExecutorService workers = Executors.newFixedThreadPool(2)) {
+        ExecutorService workers = Executors.newFixedThreadPool(2);
+        try {
             Future<String> firstClaim = workers.submit(() -> claimAfterBarrier(runId, ready, start));
             Future<String> secondClaim = workers.submit(() -> claimAfterBarrier(runId, ready, start));
 
@@ -103,6 +104,8 @@ class WorkflowCheckpointServiceMySqlIntegrationTest {
             assertEquals(FootballWorkflowStatus.RUNNING, persistedRun.getStatus());
             assertEquals(ownerToken, persistedRun.getExecutionToken());
             assertTrue(persistedRun.getLeaseUntil().isAfter(Instant.now()));
+        } finally {
+            workers.shutdownNow();
         }
     }
 
