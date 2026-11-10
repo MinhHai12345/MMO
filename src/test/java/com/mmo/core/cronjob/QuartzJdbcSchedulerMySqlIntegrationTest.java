@@ -49,6 +49,7 @@ class QuartzJdbcSchedulerMySqlIntegrationTest {
         if (jdbcTemplate.queryForList("SHOW TABLES LIKE 'QRTZ_JOB_DETAILS'").isEmpty()) {
             ResourceDatabasePopulator schema = new ResourceDatabasePopulator(
                     new ClassPathResource("org/quartz/impl/jdbcjobstore/tables_mysql_innodb.sql"));
+            schema.setCommentPrefixes("--", "#");
             schema.execute(dataSource);
         }
     }
