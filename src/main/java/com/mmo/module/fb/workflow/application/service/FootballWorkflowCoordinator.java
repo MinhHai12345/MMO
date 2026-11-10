@@ -3,6 +3,7 @@ package com.mmo.module.fb.workflow.application.service;
 import com.mmo.module.fb.analytics.service.AdvancedMetricsProcessingService;
 import com.mmo.module.fb.analytics.service.MatchPredictionProcessingService;
 import com.mmo.module.fb.content.entity.ContentWorkflowRunEntity;
+import com.mmo.module.fb.content.repository.ContentWorkflowRunRepository;
 import com.mmo.module.fb.content.service.ContentDraftService.DraftFormat;
 import com.mmo.module.fb.content.service.ContentLifecycleService;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowCommand;
@@ -10,9 +11,11 @@ import com.mmo.module.fb.ingest.application.port.in.FullDataRebuildUseCase;
 import com.mmo.module.fb.workflow.application.port.in.FootballWorkflowUseCase;
 import com.mmo.module.fb.workflow.application.port.in.FootballWorkflowUseCase.WorkflowReport;
 import com.mmo.module.fb.workflow.application.port.in.FootballWorkflowUseCase.WorkflowStep;
+import com.mmo.module.fb.workflow.domain.enums.FootballWorkflowStage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -20,18 +23,8 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
-/**
- * Synchronous application coordinator for the football data-to-content pipeline.
- *
- * <p>It invokes application use cases directly; it never schedules or waits for nested
- * Quartz jobs. The existing ingestion rebuild use case owns the core-sync and enrichment
- * ordering, while this coordinator orders analytics and content after that prerequisite.</p>
- *
- * <p>Durable workflow-run/stage checkpoints are intentionally handled by a subsequent
- * persistence layer. Content generation already receives the same UTC-date idempotency
- * key as the existing scheduled content job, preventing duplicate daily drafts.</p>
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -44,6 +37,9 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
     private final AdvancedMetricsProcessingService advancedMetricsProcessingService;
     private final MatchPredictionProcessingService matchPredictionProcessingService;
     private final ContentLifecycleService contentLifecycleService;
+    private final ContentWorkflowRunRepository contentWorkflowRunRepository;
+    private final WorkflowCheckpointService checkpointService;
+    private final DataReadinessGateService readinessGateService;
 
     @Override
     public WorkflowReport runDaily() {
@@ -52,134 +48,171 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
 
     @Override
     public WorkflowReport run(LocalDate utcDate, BooleanSupplier stopRequested) {
-        if (utcDate == null) {
-            throw new IllegalArgumentException("utcDate is required");
-        }
+        if (utcDate == null) throw new IllegalArgumentException("utcDate is required");
         BooleanSupplier stop = stopRequested == null ? () -> false : stopRequested;
         Instant startedAt = Instant.now();
         List<WorkflowStep> steps = new ArrayList<>();
         Long contentRunId = null;
         int draftsGenerated = 0;
         int contentFailures = 0;
+        Long workflowRunId = getOrCreateRun("football-workflow-" + utcDate);
 
-        if (stop.getAsBoolean()) {
-            return report("INTERRUPTED", utcDate, startedAt, steps, null, 0, 0);
+        if (checkpointService.isRunCompleted(workflowRunId)) {
+            ContentWorkflowRunEntity completedContentRun = contentWorkflowRunRepository
+                    .findByIdempotencyKey("scheduled-content-" + utcDate).orElse(null);
+            return report("COMPLETED", utcDate, startedAt, steps,
+                    completedContentRun == null ? null : completedContentRun.getId(),
+                    completedContentRun == null ? 0 : completedContentRun.getDraftsGenerated(),
+                    completedContentRun == null ? 0 : completedContentRun.getFailures());
+        }
+        String executionToken = checkpointService.claimRun(workflowRunId);
+        if (executionToken == null) {
+            return report("ALREADY_RUNNING", utcDate, startedAt, steps, null, 0, 0);
         }
 
-        StageOutcome ingestion = executeStage("DATA_INGESTION_AND_ENRICHMENT",
-                fullDataRebuildUseCase::rebuildAllData);
-        steps.add(ingestion.step());
-        if (!ingestion.successful()) {
-            return report("FAILED", utcDate, startedAt, steps, null, 0, 0);
-        }
-        if (stop.getAsBoolean()) {
-            return report("INTERRUPTED", utcDate, startedAt, steps, null, 0, 0);
+        if (!executeStage(workflowRunId, executionToken, FootballWorkflowStage.DATA_INGESTION, stop,
+                () -> {
+                    fullDataRebuildUseCase.rebuildAllData();
+                    return "Core data ingestion and enrichment completed.";
+                }, steps)) {
+            if (stop.getAsBoolean()) checkpointService.releaseRun(workflowRunId, executionToken);
+            return report(stageStatus(stop, steps), utcDate, startedAt, steps, null, 0, 0);
         }
 
-        long metricsStarted = System.nanoTime();
+        if (!executeStage(workflowRunId, executionToken, FootballWorkflowStage.DATA_READINESS, stop,
+                () -> {
+                    DataReadinessGateService.ReadinessReport readiness = readinessGateService.evaluate();
+                    if (!readiness.ready()) {
+                        String details = readiness.seasons().stream()
+                                .filter(season -> !season.issues().isEmpty())
+                                .map(season -> season.league() + " " + season.season() + ": "
+                                        + String.join(",", season.issues()))
+                                .reduce((left, right) -> left + "; " + right).orElse("No season readiness data.");
+                        throw new IllegalStateException("Data readiness gate rejected analytics processing: " + details);
+                    }
+                    return "Validated " + readiness.seasons().size() + " league-season datasets.";
+                }, steps)) {
+            if (stop.getAsBoolean()) checkpointService.releaseRun(workflowRunId, executionToken);
+            return report(stageStatus(stop, steps), utcDate, startedAt, steps, null, 0, 0);
+        }
+
+        if (!executeStage(workflowRunId, executionToken, FootballWorkflowStage.ADVANCED_METRICS, stop,
+                () -> {
+                    var metrics = advancedMetricsProcessingService.process(stop);
+                    if (!"COMPLETED".equals(metrics.status())) {
+                        throw new IllegalStateException("Advanced metrics processing status: " + metrics.status());
+                    }
+                    return "teamFormsUpdated=" + metrics.teamFormsUpdated()
+                            + ", h2hRecordsUpdated=" + metrics.h2hRecordsUpdated();
+                }, steps)) {
+            if (stop.getAsBoolean()) checkpointService.releaseRun(workflowRunId, executionToken);
+            return report(stageStatus(stop, steps), utcDate, startedAt, steps, null, 0, 0);
+        }
+
+        if (!executeStage(workflowRunId, executionToken, FootballWorkflowStage.PREDICTIONS, stop,
+                () -> {
+                    var predictions = matchPredictionProcessingService.processUpcomingMatches(stop);
+                    if (predictions.stopped() || predictions.failed() > 0) {
+                        throw new IllegalStateException("Prediction processing incomplete: candidates="
+                                + predictions.candidates() + ", processed=" + predictions.processed()
+                                + ", failed=" + predictions.failed());
+                    }
+                    return "candidates=" + predictions.candidates() + ", processed="
+                            + predictions.processed() + ", skipped=" + predictions.skipped();
+                }, steps)) {
+            if (stop.getAsBoolean()) checkpointService.releaseRun(workflowRunId, executionToken);
+            return report(stageStatus(stop, steps), utcDate, startedAt, steps, null, 0, 0);
+        }
+
+        final ContentWorkflowRunEntity[] contentRunHolder = new ContentWorkflowRunEntity[1];
+        if (!executeStage(workflowRunId, executionToken, FootballWorkflowStage.PRE_MATCH_CONTENT, stop,
+                () -> {
+                    Instant from = utcDate.atStartOfDay().toInstant(ZoneOffset.UTC);
+                    Instant to = utcDate.plusDays(CONTENT_WINDOW_DAYS).atStartOfDay().toInstant(ZoneOffset.UTC);
+                    WorkflowCommand command = new WorkflowCommand(from, to, null, CONTENT_LIMIT, DraftFormat.PRE_MATCH);
+                    contentRunHolder[0] = contentLifecycleService.generate(command, "scheduled-content-" + utcDate);
+                    ContentWorkflowRunEntity contentRun = contentRunHolder[0];
+                    return "runId=" + contentRun.getId() + ", draftsGenerated=" + contentRun.getDraftsGenerated()
+                            + ", failures=" + contentRun.getFailures();
+                }, steps)) {
+            if (stop.getAsBoolean()) checkpointService.releaseRun(workflowRunId, executionToken);
+            return report(stageStatus(stop, steps), utcDate, startedAt, steps, null, 0, 0);
+        }
+
+        ContentWorkflowRunEntity completedContentRun = contentRunHolder[0] != null
+                ? contentRunHolder[0]
+                : contentWorkflowRunRepository.findByIdempotencyKey("scheduled-content-" + utcDate).orElse(null);
+        if (completedContentRun != null) {
+            contentRunId = completedContentRun.getId();
+            draftsGenerated = completedContentRun.getDraftsGenerated();
+            contentFailures = completedContentRun.getFailures();
+        }
+        checkpointService.completeRun(workflowRunId, executionToken);
+        return report(contentFailures > 0 ? "COMPLETED_WITH_ERRORS" : "COMPLETED",
+                utcDate, startedAt, steps, contentRunId, draftsGenerated, contentFailures);
+    }
+
+    private Long getOrCreateRun(String idempotencyKey) {
         try {
-            var metrics = advancedMetricsProcessingService.process(stop);
-            String status = metrics.status();
-            steps.add(step("ADVANCED_METRICS", status, metricsStarted,
-                    "teamFormsUpdated=" + metrics.teamFormsUpdated()
-                            + ", h2hRecordsUpdated=" + metrics.h2hRecordsUpdated()));
-            if ("INTERRUPTED".equals(status) || stop.getAsBoolean()) {
-                return report("INTERRUPTED", utcDate, startedAt, steps, null, 0, 0);
-            }
-            if (!"COMPLETED".equals(status)) {
-                return report("FAILED", utcDate, startedAt, steps, null, 0, 0);
-            }
-        } catch (RuntimeException exception) {
-            steps.add(step("ADVANCED_METRICS", "FAILED", metricsStarted, describe(exception)));
-            log.error("Football workflow failed at ADVANCED_METRICS", exception);
-            return report("FAILED", utcDate, startedAt, steps, null, 0, 0);
-        }
-
-        if (stop.getAsBoolean()) {
-            return report("INTERRUPTED", utcDate, startedAt, steps, null, 0, 0);
-        }
-
-        long predictionStarted = System.nanoTime();
-        try {
-            var predictions = matchPredictionProcessingService.processUpcomingMatches(stop);
-            String status = predictions.status();
-            steps.add(step("PREDICTIONS", status, predictionStarted,
-                    "candidates=" + predictions.candidates()
-                            + ", processed=" + predictions.processed()
-                            + ", skipped=" + predictions.skipped()
-                            + ", failed=" + predictions.failed()));
-            if (predictions.stopped() || stop.getAsBoolean()) {
-                return report("INTERRUPTED", utcDate, startedAt, steps, null, 0, 0);
-            }
-            if (predictions.failed() > 0) {
-                return report("FAILED", utcDate, startedAt, steps, null, 0, 0);
-            }
-        } catch (RuntimeException exception) {
-            steps.add(step("PREDICTIONS", "FAILED", predictionStarted, describe(exception)));
-            log.error("Football workflow failed at PREDICTIONS", exception);
-            return report("FAILED", utcDate, startedAt, steps, null, 0, 0);
-        }
-
-        if (stop.getAsBoolean()) {
-            return report("INTERRUPTED", utcDate, startedAt, steps, null, 0, 0);
-        }
-
-        long contentStarted = System.nanoTime();
-        try {
-            Instant from = utcDate.atStartOfDay().toInstant(ZoneOffset.UTC);
-            Instant to = utcDate.plusDays(CONTENT_WINDOW_DAYS).atStartOfDay().toInstant(ZoneOffset.UTC);
-            WorkflowCommand command = new WorkflowCommand(from, to, null, CONTENT_LIMIT, DraftFormat.PRE_MATCH);
-            String idempotencyKey = "scheduled-content-" + utcDate;
-            ContentWorkflowRunEntity contentRun = contentLifecycleService.generate(command, idempotencyKey);
-            contentRunId = contentRun.getId();
-            draftsGenerated = contentRun.getDraftsGenerated();
-            contentFailures = contentRun.getFailures();
-            String status = contentRun.getStatus() == null ? "UNKNOWN" : contentRun.getStatus();
-            steps.add(step("PRE_MATCH_CONTENT", status, contentStarted,
-                    "runId=" + contentRunId + ", draftsGenerated=" + draftsGenerated
-                            + ", failures=" + contentFailures));
-            String overallStatus = contentFailures > 0 ? "COMPLETED_WITH_ERRORS" : "COMPLETED";
-            return report(overallStatus, utcDate, startedAt, steps,
-                    contentRunId, draftsGenerated, contentFailures);
-        } catch (RuntimeException exception) {
-            steps.add(step("PRE_MATCH_CONTENT", "FAILED", contentStarted, describe(exception)));
-            log.error("Football workflow failed at PRE_MATCH_CONTENT", exception);
-            return report("FAILED", utcDate, startedAt, steps, null, 0, 1);
+            return checkpointService.getOrCreateRun(idempotencyKey);
+        } catch (DataIntegrityViolationException concurrentCreation) {
+            // Another scheduler node may have inserted the unique key between lookup and insert.
+            return checkpointService.getOrCreateRun(idempotencyKey);
         }
     }
 
-    private StageOutcome executeStage(String name, Runnable operation) {
+    private boolean executeStage(Long runId, String executionToken, FootballWorkflowStage stage, BooleanSupplier stop,
+                                 Supplier<String> operation, List<WorkflowStep> steps) {
+        if (stage != FootballWorkflowStage.DATA_READINESS && checkpointService.isStageCompleted(runId, stage)) {
+            steps.add(new WorkflowStep(stage.name(), "SKIPPED", 0, "Previously completed checkpoint reused."));
+            return true;
+        }
+        if (stop.getAsBoolean()) return false;
+
         long started = System.nanoTime();
         try {
-            log.info("Football workflow stage STARTED: {}", name);
-            operation.run();
-            WorkflowStep step = step(name, "COMPLETED", started, "Stage completed.");
-            log.info("Football workflow stage COMPLETED: {} durationMs={}", name, step.durationMillis());
-            return new StageOutcome(step, true);
+            checkpointService.startStage(runId, stage, executionToken);
+            log.info("Football workflow stage STARTED: {}", stage);
+            String message = operation.get();
+            checkpointService.completeStage(runId, stage, executionToken);
+            steps.add(step(stage, "COMPLETED", started, message));
+            log.info("Football workflow stage COMPLETED: {} durationMs={}", stage,
+                    Math.max(0, (System.nanoTime() - started) / 1_000_000));
+            return true;
         } catch (RuntimeException exception) {
-            WorkflowStep step = step(name, "FAILED", started, describe(exception));
-            log.error("Football workflow stage FAILED: {}", name, exception);
-            return new StageOutcome(step, false);
+            String reason = describe(exception);
+            if (stop.getAsBoolean()) {
+                steps.add(step(stage, "INTERRUPTED", started, reason));
+                log.info("Football workflow stage interrupted: {}", stage);
+                return false;
+            }
+            checkpointService.failStage(runId, stage, reason, executionToken);
+            steps.add(step(stage, "FAILED", started, reason));
+            log.error("Football workflow stage FAILED: {}", stage, exception);
+            return false;
         }
     }
 
-    private WorkflowStep step(String name, String status, long startedNanos, String message) {
-        return new WorkflowStep(name, status,
+    private WorkflowStep step(FootballWorkflowStage stage, String status, long startedNanos, String message) {
+        return new WorkflowStep(stage.name(), status,
                 Math.max(0, (System.nanoTime() - startedNanos) / 1_000_000), message);
     }
 
+    private String stageStatus(BooleanSupplier stop, List<WorkflowStep> steps) {
+        if (stop.getAsBoolean()) return "INTERRUPTED";
+        return steps.stream().anyMatch(step -> "FAILED".equals(step.status())) ? "FAILED" : "INTERRUPTED";
+    }
+
     private WorkflowReport report(String status, LocalDate utcDate, Instant startedAt,
-                                   List<WorkflowStep> steps, Long contentRunId,
-                                   int draftsGenerated, int contentFailures) {
+                                  List<WorkflowStep> steps, Long contentRunId,
+                                  int draftsGenerated, int contentFailures) {
         return new WorkflowReport(status, utcDate, startedAt, Instant.now(), steps,
                 contentRunId, draftsGenerated, contentFailures);
     }
 
     private String describe(RuntimeException exception) {
         String message = exception.getMessage();
-        return exception.getClass().getSimpleName() + (message == null || message.isBlank() ? "" : ": " + message);
-    }
-
-    private record StageOutcome(WorkflowStep step, boolean successful) {
+        return exception.getClass().getSimpleName()
+                + (message == null || message.isBlank() ? "" : ": " + message);
     }
 }

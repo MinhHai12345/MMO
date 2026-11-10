@@ -147,3 +147,11 @@ app:
     bootstrap-on-start: ${APP_SYNC_BOOTSTRAP_ON_START:true}
     max-event-pages: ${SOFA_SCORE_MAX_EVENT_PAGES:20}
     max-rounds: ${SOFA_SCORE_MAX_ROUNDS:50}
+
+mmo:
+  workflow:
+    readiness:
+      minimum-score-coverage: ${MMO_WORKFLOW_MIN_SCORE_COVERAGE:0.95}
+      minimum-xg-coverage: ${MMO_WORKFLOW_MIN_XG_COVERAGE:0.80}
+      minimum-team-statistics-coverage: ${MMO_WORKFLOW_MIN_TEAM_STATS_COVERAGE:0.80}
+      maximum-snapshot-age-hours: ${MMO_WORKFLOW_MAX_SNAPSHOT_AGE_HOURS:72}

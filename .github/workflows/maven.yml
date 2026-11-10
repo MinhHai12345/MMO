@@ -1,5 +1,10 @@
 name: Maven verification
 
+# 👇 THÊM ĐOẠN NÀY ĐỂ TỰ ĐỘNG HỦY BUILD CŨ KHI PUSH COMMIT MỚI LÊN PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
   push:
