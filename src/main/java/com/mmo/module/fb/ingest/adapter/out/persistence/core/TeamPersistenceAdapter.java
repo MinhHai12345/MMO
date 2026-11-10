@@ -73,13 +73,13 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
             String canonicalName = teamIdentityResolver.canonicalName(source.name());
             if (canonicalName == null || canonicalName.isBlank()) {
                 log.warn("Skipping team with invalid canonical name from {} (external ID={})",
-                        selectedProvider, standardizedSource.externalId());
+                        selectedProvider, source.externalId());
                 continue;
             }
             ProviderTeam standardizedSource = new ProviderTeam(
-                    standardizedSource.externalId(), canonicalName,
-                    teamIdentityResolver.canonicalName(standardizedSource.shortName()),
-                    standardizedSource.logoUrl(), standardizedSource.foundedYear(), standardizedSource.stadiumName(), standardizedSource.stadiumCapacity());
+                    source.externalId(), canonicalName,
+                    teamIdentityResolver.canonicalName(source.shortName()),
+                    source.logoUrl(), source.foundedYear(), source.stadiumName(), source.stadiumCapacity());
 
             Team team = teamsByExternalId.get(standardizedSource.externalId());
             if (team == null) {
