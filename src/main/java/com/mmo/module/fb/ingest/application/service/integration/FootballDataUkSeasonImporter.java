@@ -19,6 +19,7 @@ import com.mmo.module.fb.ingest.application.port.out.MatchXgPersistencePort;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkMatchStatisticsPersistencePort;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkOddsPersistencePort;
 import com.mmo.module.fb.ingest.application.port.out.MmoDataStandardizationPort;
+import com.mmo.module.fb.ingest.application.identity.CanonicalTeamIdentityResolver;
 import com.mmo.module.fb.ingest.application.port.out.FootballDataUkImportPersistencePort;
 
 import com.mmo.module.fb.domain.league.entity.League;
@@ -93,6 +94,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
     private final DataSourcePolicy dataSourcePolicy;
     private final FootballDataUkSeasonDataPort matchDataProvider;
     private final MmoDataStandardizationPort dataStandardizer;
+    private final CanonicalTeamIdentityResolver teamIdentityResolver;
     private final FootballDataUkImportPersistencePort persistencePort;
     private final MatchXgPersistencePort matchXgPersistenceService;
     private final FootballDataUkMatchStatisticsPersistencePort statisticsMapper;
@@ -713,9 +715,22 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
             Team away = findExistingTeamCached(leagueMapping.getIdentify(), awayName, teamCache);
             if (home == null || away == null || home.getId().equals(away.getId())) {
                 teamNotFoundRows++;
-                diagnosticSamples = logEnrichmentMismatch(season, rowIndex + 1, row,
-                        home == null || away == null ? "team mapping not found" : "home and away resolve to the same team",
-                        diagnosticSamples);
+                String mismatchReason;
+                if (home != null && away != null) {
+                    mismatchReason = "home and away resolve to the same team";
+                } else {
+                    List<Team> homeCandidates = teamIdentityResolver.findCandidates(
+                            homeName, teamCache.byCanonicalName, teamCache.byMatchKey);
+                    List<Team> awayCandidates = teamIdentityResolver.findCandidates(
+                            awayName, teamCache.byCanonicalName, teamCache.byMatchKey);
+                    mismatchReason = "team identity unresolved: canonicalHome="
+                            + teamIdentityResolver.canonicalName(homeName) + ", homeCandidates="
+                            + homeCandidates.size() + ", canonicalAway="
+                            + teamIdentityResolver.canonicalName(awayName) + ", awayCandidates="
+                            + awayCandidates.size();
+                }
+                diagnosticSamples = logEnrichmentMismatch(
+                        season, rowIndex + 1, row, mismatchReason, diagnosticSamples);
                 continue;
             }
 
@@ -834,17 +849,13 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
     private Team findExistingTeamCached(String leagueCode, String providerName, TeamCache cache) {
         Team mapped = cache.byExternalId.get(normalize(leagueCode) + ":" + normalize(providerName));
         if (mapped != null) return mapped;
-        String canonicalName = dataStandardizer.teamName(providerName);
+
+        String canonicalName = teamIdentityResolver.canonicalName(providerName);
         if (!StringUtils.hasText(canonicalName)) return null;
         mapped = cache.byExternalId.get("TEAM:" + normalize(canonicalName));
         if (mapped != null) return mapped;
-        List<Team> exact = cache.byCanonicalName.getOrDefault(
-                canonicalName.toLowerCase(Locale.ROOT), List.of());
-        if (exact.size() == 1) return exact.get(0);
-        if (exact.size() > 1) return null;
-        List<Team> normalized = cache.byMatchKey.getOrDefault(
-                dataStandardizer.teamNameMatchKey(canonicalName), List.of());
-        return normalized.size() == 1 ? normalized.get(0) : null;
+
+        return teamIdentityResolver.resolve(providerName, cache.byCanonicalName, cache.byMatchKey);
     }
 
     private record MatchedEnrichmentRow(Match match, Map<String, String> row,
@@ -1289,8 +1300,8 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         Set<String> canonicalNames = new HashSet<>();
         for (Map<String, String> row : rows) {
             if (row == null) continue;
-            String home = dataStandardizer.teamName(valueAny(row, "HOMETEAM", "HOME TEAM"));
-            String away = dataStandardizer.teamName(valueAny(row, "AWAYTEAM", "AWAY TEAM"));
+            String home = teamIdentityResolver.canonicalName(valueAny(row, "HOMETEAM", "HOME TEAM"));
+            String away = teamIdentityResolver.canonicalName(valueAny(row, "AWAYTEAM", "AWAY TEAM"));
             if (StringUtils.hasText(home)) canonicalNames.add(home);
             if (StringUtils.hasText(away)) canonicalNames.add(away);
         }
@@ -1303,7 +1314,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         Team mapped = cache.byExternalId.get(legacyExternalId);
         if (mapped != null) return mapped;
 
-        String canonicalName = dataStandardizer.teamName(providerName);
+        String canonicalName = teamIdentityResolver.canonicalName(providerName);
         if (!StringUtils.hasText(canonicalName)) {
             throw new IllegalArgumentException("Football-Data UK team name is blank");
         }
@@ -1311,21 +1322,13 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         mapped = cache.byExternalId.get(canonicalExternalId);
         if (mapped != null) return mapped;
 
-        List<Team> exact = cache.byCanonicalName.getOrDefault(canonicalName.toLowerCase(Locale.ROOT), List.of());
-        if (exact.size() > 1) {
-            throw new IllegalStateException("Ambiguous canonical team name from Football-Data UK: "
-                    + canonicalName + " (matches=" + exact.size() + ")");
+        List<Team> candidates = teamIdentityResolver.findCandidates(
+                providerName, cache.byCanonicalName, cache.byMatchKey);
+        if (candidates.size() > 1) {
+            throw new IllegalStateException("Ambiguous canonical team identity from Football-Data UK: "
+                    + canonicalName + " (matches=" + candidates.size() + ")");
         }
-        Team team = exact.isEmpty() ? null : exact.get(0);
-        if (team == null) {
-            List<Team> normalized = cache.byMatchKey.getOrDefault(
-                    dataStandardizer.teamNameMatchKey(canonicalName), List.of());
-            if (normalized.size() > 1) {
-                throw new IllegalStateException("Ambiguous normalized team identity from Football-Data UK: "
-                        + canonicalName + " (matches=" + normalized.size() + ")");
-            }
-            if (normalized.size() == 1) team = normalized.get(0);
-        }
+        Team team = candidates.isEmpty() ? null : candidates.get(0);
         boolean footballDataOwnsTeam = team != null && cache.footballDataOwnedTeamIds.contains(team.getId());
         boolean ukOwnsTeam = dataSourcePolicy.isPrimary(PROVIDER, Dataset.TEAM, season.getYear());
         boolean mayUseUkFallback = dataSourcePolicy.mayFallbackForCore(
@@ -1385,17 +1388,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         }
 
         private void addTeam(Team team) {
-            if (team == null || team.getName() == null) return;
-            List<Team> teams = byCanonicalName.computeIfAbsent(
-                    team.getName().toLowerCase(Locale.ROOT), ignored -> new ArrayList<>());
-            if (teams.stream().noneMatch(existing -> existing.getId().equals(team.getId()))) teams.add(team);
-            String matchKey = dataStandardizer.teamNameMatchKey(team.getName());
-            if (StringUtils.hasText(matchKey)) {
-                List<Team> matches = byMatchKey.computeIfAbsent(matchKey, ignored -> new ArrayList<>());
-                if (matches.stream().noneMatch(existing -> existing.getId().equals(team.getId()))) {
-                    matches.add(team);
-                }
-            }
+            teamIdentityResolver.addTeam(byCanonicalName, byMatchKey, team);
         }
     }
 
