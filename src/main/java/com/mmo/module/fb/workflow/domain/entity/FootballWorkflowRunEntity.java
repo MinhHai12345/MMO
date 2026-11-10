@@ -48,6 +48,9 @@ public class FootballWorkflowRunEntity extends AbstractEntity {
     @Column(name = "completed_at")
     private Instant completedAt;
 
+    @Column(name = "lease_until")
+    private Instant leaseUntil;
+
     @Version
     private Long version;
 
@@ -70,6 +73,7 @@ public class FootballWorkflowRunEntity extends AbstractEntity {
         status = FootballWorkflowStatus.COMPLETED;
         completedAt = Instant.now();
         failureReason = null;
+        leaseUntil = null;
     }
 
     public void fail(String reason) {
@@ -77,11 +81,13 @@ public class FootballWorkflowRunEntity extends AbstractEntity {
         failureReason = reason;
         retryCount++;
         completedAt = Instant.now();
+        leaseUntil = null;
     }
 
     public void prepareForResume() {
         status = FootballWorkflowStatus.PENDING;
         failureReason = null;
         completedAt = null;
+        leaseUntil = null;
     }
 }
