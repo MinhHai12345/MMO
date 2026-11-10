@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.adapter.out.persistence.core;
 
 import com.mmo.module.fb.domain.league.entity.League;
 import com.mmo.module.fb.domain.league.entity.Season;
+import com.mmo.module.fb.domain.league.repository.SeasonRepository;
 import com.mmo.module.fb.domain.match.entity.Match;
 import com.mmo.module.fb.domain.match.entity.MatchFieldProvenance;
 import com.mmo.module.fb.domain.match.enums.MatchProvider;
@@ -23,6 +24,8 @@ import static org.mockito.Mockito.*;
 
 class SourceAwareMergeAdapterTest {
 
+    private final SeasonRepository seasonRepository = mock(SeasonRepository.class);
+
     private MatchRepository mockMatchRepository() {
         MatchRepository repository = mock(MatchRepository.class);
         when(repository.lockAllByIds(anyCollection())).thenReturn(List.of());
@@ -33,8 +36,11 @@ class SourceAwareMergeAdapterTest {
         League league = new League();
         league.setName("Premier League");
         Season season = new Season();
+        league.setId(1L);
+        season.setId(2024L);
         season.setYear("2024/2025");
         season.setLeague(league);
+        when(seasonRepository.findAllWithLeagueByIdIn(anyCollection())).thenReturn(List.of(season));
         Match match = new Match();
         match.setId(99L);
         match.setSeason(season);
@@ -47,7 +53,7 @@ class SourceAwareMergeAdapterTest {
         when(repository.findAllByMatchIdInAndFieldKeyIn(anyList(), anyList())).thenReturn(List.of());
         MatchRepository matchRepository = mock(MatchRepository.class);
         when(matchRepository.lockAllByIds(anyCollection())).thenReturn(List.of());
-        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), matchRepository, repository);
+        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), matchRepository, seasonRepository, repository);
         AtomicInteger applied = new AtomicInteger();
 
         assertTrue(service.merge(match2024(), Provider.FOOTBALL_DATA, Dataset.FIXTURE,
@@ -61,7 +67,7 @@ class SourceAwareMergeAdapterTest {
     void secondaryProviderMayFillButCannotOverwriteExistingUnattributedValue() {
         MatchFieldProvenanceRepository repository = mock(MatchFieldProvenanceRepository.class);
         when(repository.findAllByMatchIdInAndFieldKeyIn(anyList(), anyList())).thenReturn(List.of());
-        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), mockMatchRepository(), repository);
+        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), mockMatchRepository(), seasonRepository, repository);
         AtomicInteger applied = new AtomicInteger();
 
         assertTrue(service.merge(match2024(), Provider.FOOTBALL_DATA_UK, Dataset.FIXTURE,
@@ -75,7 +81,7 @@ class SourceAwareMergeAdapterTest {
     void understatCanFillMissingXgButCannotOverwriteExistingPrimaryValue() {
         MatchFieldProvenanceRepository repository = mock(MatchFieldProvenanceRepository.class);
         when(repository.findAllByMatchIdInAndFieldKeyIn(anyList(), anyList())).thenReturn(List.of());
-        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), mockMatchRepository(), repository);
+        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), mockMatchRepository(), seasonRepository, repository);
         AtomicInteger applied = new AtomicInteger();
 
         assertTrue(service.merge(match2024(), Provider.UNDER_STATS, Dataset.MATCH_XG,
@@ -93,7 +99,7 @@ class SourceAwareMergeAdapterTest {
                 .provider(MatchProvider.FOOTBALL_DATA)
                 .sourceUpdatedAt(Instant.parse("2026-01-02T00:00:00Z")).build();
         when(repository.findAllByMatchIdInAndFieldKeyIn(anyList(), anyList())).thenReturn(List.of(current));
-        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), mockMatchRepository(), repository);
+        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), mockMatchRepository(), seasonRepository, repository);
         AtomicInteger applied = new AtomicInteger();
 
         assertFalse(service.merge(match2024(), Provider.FOOTBALL_DATA, Dataset.FIXTURE,
@@ -106,7 +112,7 @@ class SourceAwareMergeAdapterTest {
     void prefetchesAndPersistsProvenanceOnceForMultipleFields() {
         MatchFieldProvenanceRepository repository = mock(MatchFieldProvenanceRepository.class);
         when(repository.findAllByMatchIdInAndFieldKeyIn(anyList(), anyList())).thenReturn(List.of());
-        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), mockMatchRepository(), repository);
+        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), mockMatchRepository(), seasonRepository, repository);
         Match match = match2024();
         AtomicInteger applied = new AtomicInteger();
         List<FieldMergeCommand> commands = List.of(
