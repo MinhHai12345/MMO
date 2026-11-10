@@ -166,6 +166,7 @@ public final class MmoProviderDataStandardizer {
             Map.entry("Levante UD", "Levante"),
             Map.entry("Levante", "Levante"),
             Map.entry("Málaga CF", "Málaga"),
+            Map.entry("Malaga", "Málaga"),
             Map.entry("Mallorca", "Mallorca"),
             Map.entry("RCD Mallorca", "Mallorca"),
             Map.entry("Real Betis Balompié", "Real Betis"),
