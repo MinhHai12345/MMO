@@ -151,19 +151,19 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
             if (canWriteCore && (selectedProvider == Provider.FOOTBALL_DATA
                     || selectedProvider == Provider.UNDER_STATS
                     || selectedProvider == Provider.FOOTBALL_DATA_UK)) {
-                if (team.getName() == null || team.getName().isBlank()) team.setName(source.name());
+                if (team.getName() == null || team.getName().isBlank()) team.setName(standardizedSource.name());
                 if (team.getShortName() == null || team.getShortName().isBlank()) {
-                    team.setShortName(source.shortName());
+                    team.setShortName(standardizedSource.shortName());
                 }
                 if (team.getSlug() == null || team.getSlug().isBlank()) {
-                    team.setSlug(slug(source.name()) + "-" + selectedProvider.name().toLowerCase()
-                            + "-" + source.externalId());
+                    team.setSlug(slug(standardizedSource.name()) + "-" + selectedProvider.name().toLowerCase()
+                            + "-" + standardizedSource.externalId());
                 }
-                if (source.logoUrl() != null && !source.logoUrl().isBlank()) team.setLogoUrl(source.logoUrl());
-                if (source.foundedYear() != null) team.setFoundedYear(source.foundedYear());
+                if (standardizedSource.logoUrl() != null && !standardizedSource.logoUrl().isBlank()) team.setLogoUrl(standardizedSource.logoUrl());
+                if (standardizedSource.foundedYear() != null) team.setFoundedYear(standardizedSource.foundedYear());
                 team.setIsActive(true);
-                if (source.stadiumName() != null) team.setStadiumName(source.stadiumName());
-                if (source.stadiumCapacity() != null) team.setStadiumCapacity(source.stadiumCapacity());
+                if (standardizedSource.stadiumName() != null) team.setStadiumName(standardizedSource.stadiumName());
+                if (standardizedSource.stadiumCapacity() != null) team.setStadiumCapacity(standardizedSource.stadiumCapacity());
                 teamsToSave.add(team);
             }
 
