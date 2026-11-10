@@ -832,19 +832,29 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
     }
 
     private Team findExistingTeamCached(String leagueCode, String providerName, TeamCache cache) {
-        Team mapped = cache.byExternalId.get(normalize(leagueCode) + ":" + normalize(providerName));
-        if (mapped != null) return mapped;
         String canonicalName = dataStandardizer.teamName(providerName);
         if (!StringUtils.hasText(canonicalName)) return null;
+
+        String expectedMatchKey = dataStandardizer.teamNameMatchKey(canonicalName);
+        Team mapped = cache.byExternalId.get(normalize(leagueCode) + ":" + normalize(providerName));
+        if (hasCanonicalIdentity(mapped, expectedMatchKey)) return mapped;
+
         mapped = cache.byExternalId.get("TEAM:" + normalize(canonicalName));
-        if (mapped != null) return mapped;
+        if (mapped != null) return hasCanonicalIdentity(mapped, expectedMatchKey) ? mapped : null;
+
         List<Team> exact = cache.byCanonicalName.getOrDefault(
                 canonicalName.toLowerCase(Locale.ROOT), List.of());
         if (exact.size() == 1) return exact.get(0);
         if (exact.size() > 1) return null;
-        List<Team> normalized = cache.byMatchKey.getOrDefault(
-                dataStandardizer.teamNameMatchKey(canonicalName), List.of());
+        List<Team> normalized = cache.byMatchKey.getOrDefault(expectedMatchKey, List.of());
         return normalized.size() == 1 ? normalized.get(0) : null;
+    }
+
+    private boolean hasCanonicalIdentity(Team team, String expectedMatchKey) {
+        if (team == null || !StringUtils.hasText(team.getName()) || !StringUtils.hasText(expectedMatchKey)) {
+            return false;
+        }
+        return expectedMatchKey.equals(dataStandardizer.teamNameMatchKey(team.getName()));
     }
 
     private record MatchedEnrichmentRow(Match match, Map<String, String> row,
@@ -1299,17 +1309,29 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
     }
 
     private Team resolveTeamCached(String leagueCode, String providerName, Season season, TeamCache cache) {
-        String legacyExternalId = normalize(leagueCode) + ":" + normalize(providerName);
-        Team mapped = cache.byExternalId.get(legacyExternalId);
-        if (mapped != null) return mapped;
-
+        // Canonicalize before consulting either legacy or current provider identity mappings.
         String canonicalName = dataStandardizer.teamName(providerName);
         if (!StringUtils.hasText(canonicalName)) {
             throw new IllegalArgumentException("Football-Data UK team name is blank");
         }
+        String expectedMatchKey = dataStandardizer.teamNameMatchKey(canonicalName);
+        String legacyExternalId = normalize(leagueCode) + ":" + normalize(providerName);
+        Team mapped = cache.byExternalId.get(legacyExternalId);
+        if (hasCanonicalIdentity(mapped, expectedMatchKey)) return mapped;
+        if (mapped != null) {
+            log.warn("Ignoring Football-Data UK legacy team mapping with a canonical-name mismatch: "
+                            + "providerName={}, mappedTeamId={}, mappedTeamName={}, canonicalName={}",
+                    providerName, mapped.getId(), mapped.getName(), canonicalName);
+        }
+
         String canonicalExternalId = "TEAM:" + normalize(canonicalName);
         mapped = cache.byExternalId.get(canonicalExternalId);
-        if (mapped != null) return mapped;
+        if (mapped != null) {
+            if (hasCanonicalIdentity(mapped, expectedMatchKey)) return mapped;
+            throw new IllegalStateException("Football-Data UK canonical team mapping conflicts with team name: "
+                    + canonicalName + " (mappedTeamId=" + mapped.getId()
+                    + ", mappedTeamName=" + mapped.getName() + ")");
+        }
 
         List<Team> exact = cache.byCanonicalName.getOrDefault(canonicalName.toLowerCase(Locale.ROOT), List.of());
         if (exact.size() > 1) {
