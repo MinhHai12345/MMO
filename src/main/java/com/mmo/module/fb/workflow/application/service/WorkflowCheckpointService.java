@@ -96,7 +96,7 @@ public class WorkflowCheckpointService {
                     return created;
                 });
         if (execution.getStatus() == FootballWorkflowStageStatus.COMPLETED) {
-            return;
+            execution.setStatus(FootballWorkflowStageStatus.PENDING);
         }
         execution.start();
         run.start(stage);
