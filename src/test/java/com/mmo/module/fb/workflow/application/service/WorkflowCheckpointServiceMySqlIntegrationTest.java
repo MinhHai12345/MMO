@@ -21,6 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -73,6 +78,76 @@ class WorkflowCheckpointServiceMySqlIntegrationTest {
         assertEquals(FootballWorkflowStatus.RUNNING, persistedRun.getStatus());
         assertEquals(firstToken, persistedRun.getExecutionToken());
         assertTrue(persistedRun.getLeaseUntil().isAfter(Instant.now()));
+    }
+
+    @Test
+    void shouldAllowOnlyOneConcurrentNodeToClaimTheSameRun() throws Exception {
+        Long runId = checkpointService.getOrCreateRun(uniqueKey());
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+
+        try (ExecutorService workers = Executors.newFixedThreadPool(2)) {
+            Future<String> firstClaim = workers.submit(() -> claimAfterBarrier(runId, ready, start));
+            Future<String> secondClaim = workers.submit(() -> claimAfterBarrier(runId, ready, start));
+
+            assertTrue(ready.await(10, TimeUnit.SECONDS), "Both coordinator workers should be ready");
+            start.countDown();
+
+            String firstToken = firstClaim.get(20, TimeUnit.SECONDS);
+            String secondToken = secondClaim.get(20, TimeUnit.SECONDS);
+
+            assertNotEquals(firstToken == null, secondToken == null,
+                    "Exactly one coordinator must acquire the execution lease");
+            String ownerToken = firstToken == null ? secondToken : firstToken;
+            FootballWorkflowRunEntity persistedRun = runRepository.findById(runId).orElseThrow();
+            assertEquals(FootballWorkflowStatus.RUNNING, persistedRun.getStatus());
+            assertEquals(ownerToken, persistedRun.getExecutionToken());
+            assertTrue(persistedRun.getLeaseUntil().isAfter(Instant.now()));
+        }
+    }
+
+    @Test
+    void shouldRejectStaleOwnerReleaseAfterAnotherNodeTakesOver() {
+        Long runId = checkpointService.getOrCreateRun(uniqueKey());
+        String previousToken = checkpointService.claimRun(runId);
+        checkpointService.startStage(runId, FootballWorkflowStage.DATA_INGESTION, previousToken);
+        expireLease(runId);
+
+        String currentToken = checkpointService.claimRun(runId);
+        assertNotNull(currentToken);
+        assertNotEquals(previousToken, currentToken);
+
+        assertThrows(IllegalStateException.class,
+                () -> checkpointService.releaseRun(runId, previousToken));
+
+        FootballWorkflowRunEntity persistedRun = runRepository.findById(runId).orElseThrow();
+        assertEquals(FootballWorkflowStatus.RUNNING, persistedRun.getStatus());
+        assertEquals(currentToken, persistedRun.getExecutionToken());
+        assertTrue(persistedRun.getLeaseUntil().isAfter(Instant.now()));
+    }
+
+    @Test
+    void shouldNotAllowACompletedRunToBeClaimedAgain() {
+        Long runId = checkpointService.getOrCreateRun(uniqueKey());
+        String token = checkpointService.claimRun(runId);
+
+        checkpointService.startStage(runId, FootballWorkflowStage.DATA_INGESTION, token);
+        checkpointService.completeStage(runId, FootballWorkflowStage.DATA_INGESTION, token);
+        checkpointService.completeRun(runId, token);
+
+        assertNull(checkpointService.claimRun(runId));
+        FootballWorkflowRunEntity persistedRun = runRepository.findById(runId).orElseThrow();
+        assertEquals(FootballWorkflowStatus.COMPLETED, persistedRun.getStatus());
+        assertNull(persistedRun.getExecutionToken());
+        assertNull(persistedRun.getLeaseUntil());
+    }
+
+    private String claimAfterBarrier(Long runId, CountDownLatch ready, CountDownLatch start) throws Exception {
+        ready.countDown();
+        if (!start.await(10, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("Timed out waiting for concurrent claim barrier");
+        }
+        return checkpointService.claimRun(runId);
     }
 
     @Test
