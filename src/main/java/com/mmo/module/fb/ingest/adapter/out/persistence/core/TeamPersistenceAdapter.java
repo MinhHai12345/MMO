@@ -35,8 +35,11 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
     @Override
     @Transactional
     public void persistTeamsForSeason(Provider selectedProvider, Season season, List<ProviderTeam> teams) {
-        if (season == null || (!dataSourcePolicy.isPrimary(selectedProvider, Dataset.TEAM, season)
-                && !dataSourcePolicy.route(Dataset.TEAM, season).secondary().contains(selectedProvider))) {
+        boolean routeAllowsCoreIngestion = season != null
+                && (dataSourcePolicy.isPrimary(selectedProvider, Dataset.TEAM, season)
+                || dataSourcePolicy.route(Dataset.TEAM, season).secondary().contains(selectedProvider));
+        boolean mappingOnlyProvider = selectedProvider == Provider.SOFA_SCORE;
+        if (season == null || (!routeAllowsCoreIngestion && !mappingOnlyProvider)) {
             log.debug("Rejecting provider without team route: provider={}, season={}",
                     selectedProvider, season == null ? null : season.getYear());
             return;
@@ -54,11 +57,8 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
 
         Map<String, List<Team>> teamsByCanonicalName = new HashMap<>();
         Map<String, List<Team>> teamsByMatchKey = new HashMap<>();
-        if (selectedProvider == Provider.FOOTBALL_DATA || selectedProvider == Provider.UNDER_STATS
-                || selectedProvider == Provider.FOOTBALL_DATA_UK) {
-            teamRepository.findAll().forEach(team ->
-                    teamIdentityResolver.addTeam(teamsByCanonicalName, teamsByMatchKey, team));
-        }
+        teamRepository.findAll().forEach(team ->
+                teamIdentityResolver.addTeam(teamsByCanonicalName, teamsByMatchKey, team));
 
         Set<Team> teamsToSave = new LinkedHashSet<>();
         Map<Team, String> pendingIdentityByTeam = new java.util.LinkedHashMap<>();
@@ -70,12 +70,21 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
                 continue;
             }
 
-            Team team = teamsByExternalId.get(source.externalId());
-            if (team == null && (selectedProvider == Provider.FOOTBALL_DATA
-                    || selectedProvider == Provider.UNDER_STATS
-                    || selectedProvider == Provider.FOOTBALL_DATA_UK)) {
+            String canonicalName = teamIdentityResolver.canonicalName(source.name());
+            if (canonicalName == null || canonicalName.isBlank()) {
+                log.warn("Skipping team with invalid canonical name from {} (external ID={})",
+                        selectedProvider, standardizedSource.externalId());
+                continue;
+            }
+            ProviderTeam standardizedSource = new ProviderTeam(
+                    standardizedSource.externalId(), canonicalName,
+                    teamIdentityResolver.canonicalName(standardizedSource.shortName()),
+                    standardizedSource.logoUrl(), standardizedSource.foundedYear(), standardizedSource.stadiumName(), standardizedSource.stadiumCapacity());
+
+            Team team = teamsByExternalId.get(standardizedSource.externalId());
+            if (team == null) {
                 List<Team> candidates = teamIdentityResolver.findCandidates(
-                        source.name(), teamsByCanonicalName, teamsByMatchKey);
+                        standardizedSource.name(), teamsByCanonicalName, teamsByMatchKey);
                 if (candidates.size() == 1) {
                     Team candidate = candidates.get(0);
                     TeamExternalId existing = candidate.getId() == null
@@ -85,13 +94,13 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
                     } else {
                         log.warn("Skipping provider team '{}' ({}): matched MMO team '{}' (id={}) "
                                         + "already has a {} external ID {}",
-                                source.name(), source.externalId(), candidate.getName(), candidate.getId(),
+                                standardizedSource.name(), standardizedSource.externalId(), candidate.getName(), candidate.getId(),
                                 selectedProvider, existing.getExternalId());
                         continue;
                     }
                 } else if (candidates.size() > 1) {
                     log.warn("Skipping ambiguous provider team '{}' ({}): matched MMO teams {}",
-                            source.name(), source.externalId(),
+                            standardizedSource.name(), standardizedSource.externalId(),
                             candidates.stream().map(candidate -> candidate.getId() + ":" + candidate.getName()).toList());
                     continue;
                 }
@@ -101,7 +110,7 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
                     && selectedProvider != Provider.FOOTBALL_DATA_UK) {
                 log.debug("Skipping unmapped team '{}' from {} (external ID {}). "
                                 + "Register its provider ID against the canonical MMO team before syncing.",
-                        source.name(), selectedProvider, source.externalId());
+                        standardizedSource.name(), selectedProvider, standardizedSource.externalId());
                 continue;
             }
 
@@ -115,7 +124,7 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
             if (team == null) {
                 if (!canWriteCore) {
                     log.debug("Skipping team '{}' from {} because primary identity exists or provider is not owner",
-                            source.name(), selectedProvider);
+                            standardizedSource.name(), selectedProvider);
                     continue;
                 }
                 team = new Team();
@@ -123,14 +132,14 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
 
             TeamExternalId existingMapping = team.getId() == null ? null : mappingByTeamId.get(team.getId());
             String pendingExternalId = pendingIdentityByTeam.get(team);
-            if (existingMapping != null && !source.externalId().equals(existingMapping.getExternalId())) {
+            if (existingMapping != null && !standardizedSource.externalId().equals(existingMapping.getExternalId())) {
                 log.warn("Skipping team '{}' from {} because canonical team {} is already mapped to provider ID {}",
-                        source.name(), selectedProvider, team.getId(), existingMapping.getExternalId());
+                        standardizedSource.name(), selectedProvider, team.getId(), existingMapping.getExternalId());
                 continue;
             }
-            if (pendingExternalId != null && !pendingExternalId.equals(source.externalId())) {
+            if (pendingExternalId != null && !pendingExternalId.equals(standardizedSource.externalId())) {
                 log.warn("Skipping duplicate canonical team mapping in provider batch: team={}, existingExternalId={}, incomingExternalId={}",
-                        team.getName(), pendingExternalId, source.externalId());
+                        team.getName(), pendingExternalId, standardizedSource.externalId());
                 continue;
             }
 
@@ -138,27 +147,27 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
                     || selectedProvider == Provider.UNDER_STATS
                     || selectedProvider == Provider.FOOTBALL_DATA_UK)) {
                 if (team.getName() == null || team.getName().isBlank()) {
-                    team.setName(teamIdentityResolver.canonicalName(source.name()));
+                    team.setName(teamIdentityResolver.canonicalName(standardizedSource.name()));
                 }
                 if (team.getShortName() == null || team.getShortName().isBlank()) {
-                    team.setShortName(source.shortName());
+                    team.setShortName(standardizedSource.shortName());
                 }
                 if (team.getSlug() == null || team.getSlug().isBlank()) {
                     team.setSlug(slug(team.getName()) + "-" + selectedProvider.name().toLowerCase()
-                            + "-" + source.externalId());
+                            + "-" + standardizedSource.externalId());
                 }
-                if (source.logoUrl() != null && !source.logoUrl().isBlank()) team.setLogoUrl(source.logoUrl());
-                if (source.foundedYear() != null) team.setFoundedYear(source.foundedYear());
+                if (standardizedSource.logoUrl() != null && !standardizedSource.logoUrl().isBlank()) team.setLogoUrl(standardizedSource.logoUrl());
+                if (standardizedSource.foundedYear() != null) team.setFoundedYear(standardizedSource.foundedYear());
                 team.setIsActive(true);
-                if (source.stadiumName() != null) team.setStadiumName(source.stadiumName());
-                if (source.stadiumCapacity() != null) team.setStadiumCapacity(source.stadiumCapacity());
+                if (standardizedSource.stadiumName() != null) team.setStadiumName(standardizedSource.stadiumName());
+                if (standardizedSource.stadiumCapacity() != null) team.setStadiumCapacity(standardizedSource.stadiumCapacity());
                 teamsToSave.add(team);
             }
 
             if (existingMapping == null && pendingExternalId == null) {
-                pendingIdentityByTeam.put(team, source.externalId());
+                pendingIdentityByTeam.put(team, standardizedSource.externalId());
             }
-            teamsByExternalId.put(source.externalId(), team);
+            teamsByExternalId.put(standardizedSource.externalId(), team);
             if (team.getId() != null && pendingIdentityByTeam.containsKey(team)) {
                 mappingByTeamId.put(team.getId(), TeamExternalId.builder()
                         .team(team).provider(selectedProvider)
