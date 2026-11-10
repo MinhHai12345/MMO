@@ -7,7 +7,8 @@ import com.mmo.module.fb.content.repository.ContentWorkflowRunRepository;
 import com.mmo.module.fb.content.service.ContentDraftService.DraftFormat;
 import com.mmo.module.fb.content.service.ContentLifecycleService;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowCommand;
-import com.mmo.module.fb.ingest.application.port.in.FullDataRebuildUseCase;
+import com.mmo.module.fb.ingest.application.model.ProviderOverrides;
+import com.mmo.module.fb.ingest.application.port.in.ActiveSeasonDataSyncUseCase;
 import com.mmo.module.fb.workflow.application.port.in.FootballWorkflowUseCase;
 import com.mmo.module.fb.workflow.application.port.in.FootballWorkflowUseCase.WorkflowReport;
 import com.mmo.module.fb.workflow.application.port.in.FootballWorkflowUseCase.WorkflowStep;
@@ -33,7 +34,7 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
     private static final int CONTENT_LIMIT = 20;
     private static final int CONTENT_WINDOW_DAYS = 15;
 
-    private final FullDataRebuildUseCase fullDataRebuildUseCase;
+    private final ActiveSeasonDataSyncUseCase activeSeasonDataSyncUseCase;
     private final AdvancedMetricsProcessingService advancedMetricsProcessingService;
     private final MatchPredictionProcessingService matchPredictionProcessingService;
     private final ContentLifecycleService contentLifecycleService;
@@ -72,8 +73,8 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
 
         if (!executeStage(workflowRunId, executionToken, FootballWorkflowStage.DATA_INGESTION, stop,
                 () -> {
-                    fullDataRebuildUseCase.rebuildAllData();
-                    return "Core data ingestion and enrichment completed.";
+                    activeSeasonDataSyncUseCase.sync(ProviderOverrides.defaults(), null);
+                    return "Active-season Core data synchronization completed.";
                 }, steps)) {
             if (stop.getAsBoolean()) checkpointService.releaseRun(workflowRunId, executionToken);
             return report(stageStatus(stop, steps), utcDate, startedAt, steps, null, 0, 0);
