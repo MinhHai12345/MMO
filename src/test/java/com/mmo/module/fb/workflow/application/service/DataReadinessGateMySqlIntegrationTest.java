@@ -178,7 +178,7 @@ class DataReadinessGateMySqlIntegrationTest {
     @Test
     void shouldReportWhyReadinessIsBlockedWhenThereAreNoActiveSeasons() {
         when(coverageAuditService.runAudit()).thenReturn(auditReport(List.of()));
-        
+
         DataReadinessGateService.ReadinessReport report =
                 readinessGateService.evaluateAt(Instant.parse("2026-11-10T12:00:00Z"));
 
