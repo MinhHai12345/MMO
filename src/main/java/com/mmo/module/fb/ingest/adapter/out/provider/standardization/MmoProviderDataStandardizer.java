@@ -330,7 +330,17 @@ public final class MmoProviderDataStandardizer {
             Map.entry("Qarabağ Ağdam FK", "Qarabag"),
             Map.entry("Royal Antwerp FC", "Royal Antwerp"),
             Map.entry("FC København", "Copenhagen"),
-            Map.entry("AC Sparta Praha", "Sparta Praha")
+            Map.entry("AC Sparta Praha", "Sparta Praha"),
+            Map.entry("Celta", "Celta Vigo"),
+            Map.entry("Getafe CF", "Getafe"),
+            Map.entry("Granada CF", "Granada"),
+            Map.entry("Sevilla FC", "Sevilla"),
+            Map.entry("Valencia CF", "Valencia"),
+            Map.entry("Villarreal CF", "Villarreal"),
+            Map.entry("Santander", "Racing Santander"),
+            Map.entry("FC Schalke 04", "Schalke 04"),
+            Map.entry("Huddersfield Town AFC", "Huddersfield Town"),
+            Map.entry("Rotherham", "Rotherham United")
     );
 
     private static final Map<String, String> TEAM_NAME_ALIASES_BY_KEY = TEAM_NAME_ALIASES.entrySet().stream()
