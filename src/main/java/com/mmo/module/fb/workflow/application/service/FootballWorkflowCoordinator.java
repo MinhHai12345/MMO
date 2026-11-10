@@ -58,7 +58,12 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
         Long workflowRunId = getOrCreateRun("football-workflow-" + utcDate);
 
         if (checkpointService.isRunCompleted(workflowRunId)) {
-            return report("COMPLETED", utcDate, startedAt, steps, null, 0, 0);
+            ContentWorkflowRunEntity completedContentRun = contentWorkflowRunRepository
+                    .findByIdempotencyKey("scheduled-content-" + utcDate).orElse(null);
+            return report("COMPLETED", utcDate, startedAt, steps,
+                    completedContentRun == null ? null : completedContentRun.getId(),
+                    completedContentRun == null ? 0 : completedContentRun.getDraftsGenerated(),
+                    completedContentRun == null ? 0 : completedContentRun.getFailures());
         }
         if (!checkpointService.claimRun(workflowRunId)) {
             return report("ALREADY_RUNNING", utcDate, startedAt, steps, null, 0, 0);
