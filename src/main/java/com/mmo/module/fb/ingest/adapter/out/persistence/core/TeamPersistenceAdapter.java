@@ -36,8 +36,13 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
     @Override
     @Transactional
     public void persistTeamsForSeason(Provider selectedProvider, Season season, List<ProviderTeam> teams) {
-        if (season == null || (!dataSourcePolicy.isPrimary(selectedProvider, Dataset.TEAM, season)
-                && !dataSourcePolicy.route(Dataset.TEAM, season).secondary().contains(selectedProvider))) {
+        boolean routeAllowsCoreIngestion = season != null
+                && (dataSourcePolicy.isPrimary(selectedProvider, Dataset.TEAM, season)
+                || dataSourcePolicy.route(Dataset.TEAM, season).secondary().contains(selectedProvider));
+        // SofaScore team ingestion is used here only to attach provider IDs to existing
+        // canonical teams. It must never create or own canonical team data.
+        boolean mappingOnlyProvider = selectedProvider == Provider.SOFA_SCORE;
+        if (season == null || (!routeAllowsCoreIngestion && !mappingOnlyProvider)) {
             log.debug("Rejecting provider without team route: provider={}, season={}",
                     selectedProvider, season == null ? null : season.getYear());
             return;
@@ -53,10 +58,9 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
                 .findAllByProvider(Provider.FOOTBALL_DATA).stream()
                 .map(mapping -> mapping.getTeam().getId()).collect(java.util.stream.Collectors.toSet());
 
-        Map<String, List<Team>> teamsByNameKey =
-                selectedProvider == Provider.FOOTBALL_DATA || selectedProvider == Provider.UNDER_STATS
-                        || selectedProvider == Provider.FOOTBALL_DATA_UK
-                        ? indexCanonicalTeams(teamRepository.findAll()) : Map.of();
+        // Every accepted provider resolves names against the same canonical MMO catalogue.
+        // Provider-specific routes still decide whether a provider may create/update core data.
+        Map<String, List<Team>> teamsByNameKey = indexCanonicalTeams(teamRepository.findAll());
 
         Set<Team> teamsToSave = new LinkedHashSet<>();
         Map<Team, String> pendingIdentityByTeam = new java.util.LinkedHashMap<>();
@@ -68,11 +72,24 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
                 continue;
             }
 
-            Team team = teamsByExternalId.get(source.externalId());
-            if (team == null && (selectedProvider == Provider.FOOTBALL_DATA
-                    || selectedProvider == Provider.UNDER_STATS
-                    || selectedProvider == Provider.FOOTBALL_DATA_UK)) {
-                List<Team> candidates = findNameMatches(source, teamsByNameKey);
+            String canonicalName = MmoProviderDataStandardizer.standardTeamName(source.name());
+            if (canonicalName == null || canonicalName.isBlank()) {
+                log.warn("Skipping team with invalid canonical name from {} (external ID={})",
+                        selectedProvider, source.externalId());
+                continue;
+            }
+            ProviderTeam standardizedSource = new ProviderTeam(
+                    source.externalId(),
+                    canonicalName,
+                    MmoProviderDataStandardizer.standardTeamName(source.shortName()),
+                    source.logoUrl(),
+                    source.foundedYear(),
+                    source.stadiumName(),
+                    source.stadiumCapacity());
+
+            Team team = teamsByExternalId.get(standardizedSource.externalId());
+            if (team == null) {
+                List<Team> candidates = findNameMatches(standardizedSource, teamsByNameKey);
                 if (candidates.size() == 1) {
                     Team candidate = candidates.get(0);
                     TeamExternalId existing = candidate.getId() == null
