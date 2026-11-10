@@ -15,6 +15,7 @@ import com.mmo.module.fb.ingest.adapter.in.scheduler.FullDataRebuildJob;
 import com.mmo.module.fb.monetization.job.SubscriptionExpiryCheckJob;
 import com.mmo.module.fb.content.job.ContentGenerationJob;
 import com.mmo.module.fb.workflow.job.PublicationWorkerQuartzJob;
+import com.mmo.module.fb.workflow.job.FootballWorkflowOrchestrationQuartzJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -32,7 +33,12 @@ public class FootballQuartzJobInitializer implements DataInitializer {
     public void initialize() {
         log.info("Initializing Football Analytics CronJobs (UTC timezone)...");
 
-        deleteLegacyJob("FootballWorkflowOrchestrationJob");
+        // Keep the end-to-end coordinator registered but manual-only during its first
+        // production rollout. It invokes the full rebuild use case, so enable a recurring
+        // cron only after ingestion duration and provider quotas have been observed.
+        createOrUpdateJob(FootballWorkflowOrchestrationQuartzJob.class,
+                "0 0 0 1 1 ? 2099",
+                "Manual-only durable football workflow; trigger through the CronJob management API");
         createOrUpdateJob(ContentGenerationJob.class,
                 "0 30 11 * * ?", "Generate PRE_MATCH content drafts daily at 11:30 UTC");
 
