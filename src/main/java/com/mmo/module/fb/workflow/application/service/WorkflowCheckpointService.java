@@ -144,19 +144,6 @@ public class WorkflowCheckpointService {
         runRepository.save(run);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void prepareForResume(Long runId) {
-        FootballWorkflowRunEntity run = runRepository.findById(runId)
-                .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
-        if (run.getStatus() == FootballWorkflowStatus.COMPLETED) return;
-        List<FootballWorkflowStageExecutionEntity> executions =
-                stageRepository.findAllByWorkflowRunIdOrderByIdAsc(runId);
-        executions.forEach(FootballWorkflowStageExecutionEntity::resetInterrupted);
-        stageRepository.saveAll(executions);
-        run.prepareForResume();
-        runRepository.save(run);
-    }
-
     private FootballWorkflowRunEntity lockAndValidateOwner(Long runId, String executionToken) {
         FootballWorkflowRunEntity run = runRepository.findByIdForUpdate(runId)
                 .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
