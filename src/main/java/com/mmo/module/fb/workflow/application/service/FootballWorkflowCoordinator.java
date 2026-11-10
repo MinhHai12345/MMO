@@ -3,6 +3,7 @@ package com.mmo.module.fb.workflow.application.service;
 import com.mmo.module.fb.analytics.service.AdvancedMetricsProcessingService;
 import com.mmo.module.fb.analytics.service.MatchPredictionProcessingService;
 import com.mmo.module.fb.content.entity.ContentWorkflowRunEntity;
+import com.mmo.module.fb.content.repository.ContentWorkflowRunRepository;
 import com.mmo.module.fb.content.service.ContentDraftService.DraftFormat;
 import com.mmo.module.fb.content.service.ContentLifecycleService;
 import com.mmo.module.fb.content.service.ContentWorkflowOrchestrator.WorkflowCommand;
@@ -36,6 +37,7 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
     private final AdvancedMetricsProcessingService advancedMetricsProcessingService;
     private final MatchPredictionProcessingService matchPredictionProcessingService;
     private final ContentLifecycleService contentLifecycleService;
+    private final ContentWorkflowRunRepository contentWorkflowRunRepository;
     private final WorkflowCheckpointService checkpointService;
     private final DataReadinessGateService readinessGateService;
 
@@ -67,7 +69,6 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
                     fullDataRebuildUseCase.rebuildAllData();
                     return "Core data ingestion and enrichment completed.";
                 }, steps)) {
-            if (stop.getAsBoolean()) checkpointService.releaseRun(workflowRunId);
             if (stop.getAsBoolean()) checkpointService.releaseRun(workflowRunId);
             return report(stageStatus(stop, steps), utcDate, startedAt, steps, null, 0, 0);
         }
@@ -132,10 +133,13 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
             return report(stageStatus(stop, steps), utcDate, startedAt, steps, null, 0, 0);
         }
 
-        if (contentRunHolder[0] != null) {
-            contentRunId = contentRunHolder[0].getId();
-            draftsGenerated = contentRunHolder[0].getDraftsGenerated();
-            contentFailures = contentRunHolder[0].getFailures();
+        ContentWorkflowRunEntity completedContentRun = contentRunHolder[0] != null
+                ? contentRunHolder[0]
+                : contentWorkflowRunRepository.findByIdempotencyKey("scheduled-content-" + utcDate).orElse(null);
+        if (completedContentRun != null) {
+            contentRunId = completedContentRun.getId();
+            draftsGenerated = completedContentRun.getDraftsGenerated();
+            contentFailures = completedContentRun.getFailures();
         }
         checkpointService.completeRun(workflowRunId);
         return report(contentFailures > 0 ? "COMPLETED_WITH_ERRORS" : "COMPLETED",
@@ -153,7 +157,7 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
 
     private boolean executeStage(Long runId, FootballWorkflowStage stage, BooleanSupplier stop,
                                  Supplier<String> operation, List<WorkflowStep> steps) {
-        if (checkpointService.isStageCompleted(runId, stage)) {
+        if (stage != FootballWorkflowStage.DATA_READINESS && checkpointService.isStageCompleted(runId, stage)) {
             steps.add(new WorkflowStep(stage.name(), "SKIPPED", 0, "Previously completed checkpoint reused."));
             return true;
         }
