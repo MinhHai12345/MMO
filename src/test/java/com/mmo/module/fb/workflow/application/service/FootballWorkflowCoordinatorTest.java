@@ -5,7 +5,8 @@ import com.mmo.module.fb.analytics.service.MatchPredictionProcessingService;
 import com.mmo.module.fb.content.entity.ContentWorkflowRunEntity;
 import com.mmo.module.fb.content.repository.ContentWorkflowRunRepository;
 import com.mmo.module.fb.content.service.ContentLifecycleService;
-import com.mmo.module.fb.ingest.application.port.in.FullDataRebuildUseCase;
+import com.mmo.module.fb.ingest.application.model.ProviderOverrides;
+import com.mmo.module.fb.ingest.application.port.in.ActiveSeasonDataSyncUseCase;
 import com.mmo.module.fb.workflow.domain.enums.FootballWorkflowStage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,7 +34,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class FootballWorkflowCoordinatorTest {
 
-    @Mock private FullDataRebuildUseCase fullDataRebuildUseCase;
+    @Mock private ActiveSeasonDataSyncUseCase activeSeasonDataSyncUseCase;
     @Mock private AdvancedMetricsProcessingService advancedMetricsProcessingService;
     @Mock private MatchPredictionProcessingService matchPredictionProcessingService;
     @Mock private ContentLifecycleService contentLifecycleService;
@@ -76,9 +77,9 @@ class FootballWorkflowCoordinatorTest {
         assertEquals(123L, report.contentRunId());
         assertEquals(5, report.draftsGenerated());
 
-        InOrder order = inOrder(fullDataRebuildUseCase, readinessGateService,
+        InOrder order = inOrder(activeSeasonDataSyncUseCase, readinessGateService,
                 advancedMetricsProcessingService, matchPredictionProcessingService, contentLifecycleService);
-        order.verify(fullDataRebuildUseCase).rebuildAllData();
+        order.verify(activeSeasonDataSyncUseCase).sync(ProviderOverrides.defaults(), null);
         order.verify(readinessGateService).evaluate();
         order.verify(advancedMetricsProcessingService).process(any());
         order.verify(matchPredictionProcessingService).processUpcomingMatches(any());
@@ -89,7 +90,7 @@ class FootballWorkflowCoordinatorTest {
     @Test
     void stopsDownstreamStagesWhenIngestionFails() {
         doThrow(new IllegalStateException("ingestion failed"))
-                .when(fullDataRebuildUseCase).rebuildAllData();
+                .when(activeSeasonDataSyncUseCase).sync(ProviderOverrides.defaults(), null);
 
         var report = coordinator.run(LocalDate.of(2026, 11, 10), () -> false);
 
@@ -109,7 +110,7 @@ class FootballWorkflowCoordinatorTest {
         assertEquals("INTERRUPTED", report.status());
         assertEquals(0, report.steps().size());
         assertNull(report.contentRunId());
-        verify(fullDataRebuildUseCase, never()).rebuildAllData();
+        verify(activeSeasonDataSyncUseCase, never()).sync(any(), any());
         verify(advancedMetricsProcessingService, never()).process(any());
         verify(checkpointService).releaseRun(101L, "test-execution-token");
     }
