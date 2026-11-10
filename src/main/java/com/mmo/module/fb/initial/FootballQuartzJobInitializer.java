@@ -38,7 +38,7 @@ public class FootballQuartzJobInitializer implements DataInitializer {
         // cron only after ingestion duration and provider quotas have been observed.
         createOrUpdateJob(FootballWorkflowOrchestrationQuartzJob.class,
                 "0 0 0 1 1 ? 2099",
-                "Manual-only durable football workflow; trigger through the protected CronJob admin API");
+                "Manual-only durable football workflow; trigger through the CronJob management API");
         createOrUpdateJob(ContentGenerationJob.class,
                 "0 30 11 * * ?", "Generate PRE_MATCH content drafts daily at 11:30 UTC");
 
