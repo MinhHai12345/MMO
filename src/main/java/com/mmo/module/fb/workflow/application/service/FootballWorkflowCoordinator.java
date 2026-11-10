@@ -40,6 +40,7 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
     private final ContentLifecycleService contentLifecycleService;
     private final ContentWorkflowRunRepository contentWorkflowRunRepository;
     private final WorkflowCheckpointService checkpointService;
+    private final WorkflowLeaseHeartbeat leaseHeartbeat;
     private final DataReadinessGateService readinessGateService;
 
     @Override
@@ -173,13 +174,16 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
         long started = System.nanoTime();
         try {
             checkpointService.startStage(runId, stage, executionToken);
-            log.info("Football workflow stage STARTED: {}", stage);
-            String message = operation.get();
-            checkpointService.completeStage(runId, stage, executionToken);
-            steps.add(step(stage, "COMPLETED", started, message));
-            log.info("Football workflow stage COMPLETED: {} durationMs={}", stage,
-                    Math.max(0, (System.nanoTime() - started) / 1_000_000));
-            return true;
+            try (WorkflowLeaseHeartbeat.Heartbeat heartbeat = leaseHeartbeat.start(runId, executionToken)) {
+                log.info("Football workflow stage STARTED: {}", stage);
+                String message = operation.get();
+                heartbeat.assertHealthy();
+                checkpointService.completeStage(runId, stage, executionToken);
+                steps.add(step(stage, "COMPLETED", started, message));
+                log.info("Football workflow stage COMPLETED: {} durationMs={}", stage,
+                        Math.max(0, (System.nanoTime() - started) / 1_000_000));
+                return true;
+            }
         } catch (RuntimeException exception) {
             String reason = describe(exception);
             if (stop.getAsBoolean()) {
@@ -187,7 +191,13 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
                 log.info("Football workflow stage interrupted: {}", stage);
                 return false;
             }
-            checkpointService.failStage(runId, stage, reason, executionToken);
+            try {
+                checkpointService.failStage(runId, stage, reason, executionToken);
+            } catch (RuntimeException checkpointFailure) {
+                exception.addSuppressed(checkpointFailure);
+                log.warn("Workflow stage failure could not be checkpointed because lease ownership was lost: {}",
+                        stage, checkpointFailure);
+            }
             steps.add(step(stage, "FAILED", started, reason));
             log.error("Football workflow stage FAILED: {}", stage, exception);
             return false;
