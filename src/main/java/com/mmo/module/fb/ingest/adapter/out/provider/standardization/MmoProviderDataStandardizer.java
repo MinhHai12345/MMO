@@ -504,7 +504,20 @@ public final class MmoProviderDataStandardizer {
             Map.entry("Al-Ahli Saudi FC", "Al Ahli"),
             Map.entry("Al Ahli", "Al Ahli"),
             Map.entry("Al-Shabab FC", "Al Shabab"),
-            Map.entry("Al Shabab", "Al Shabab")
+            Map.entry("Al Shabab", "Al Shabab"),
+            // Football-Data UK variants present in the supplied team-name inventory.
+            Map.entry("FC Koln", "FC Köln"),
+            Map.entry("Fortuna Dusseldorf", "Fortuna Düsseldorf"),
+            Map.entry("Greuther Furth", "Greuther Fürth"),
+            Map.entry("TSG 1899 Hoffenheim", "Hoffenheim"),
+            Map.entry("Bolton Wanderers FC", "Bolton Wanderers"),
+            Map.entry("Bolton", "Bolton Wanderers"),
+            Map.entry("Lincoln City FC", "Lincoln City"),
+            Map.entry("Lincoln", "Lincoln City"),
+            Map.entry("Millwall FC", "Millwall"),
+            Map.entry("Norwich City FC", "Norwich City"),
+            Map.entry("Portsmouth FC", "Portsmouth"),
+            Map.entry("Nimes", "Nîmes")
     );
 
     private static final Map<String, String> TEAM_NAME_ALIASES_BY_KEY = TEAM_NAME_ALIASES.entrySet().stream()
