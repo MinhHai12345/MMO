@@ -106,10 +106,10 @@ class DataReadinessGateMySqlIntegrationTest {
         assertTrue(report.ready());
         assertTrue(report.issues().isEmpty());
         assertEquals(1, report.seasons().size());
-        assertTrue(report.seasons().getFirst().fresh());
-        assertTrue(report.seasons().getFirst().issues().isEmpty());
+        assertTrue(report.seasons().get(0).fresh());
+        assertTrue(report.seasons().get(0).issues().isEmpty());
         assertEquals(now.minusSeconds(24 * 60 * 60L),
-                report.seasons().getFirst().latestStatisticsSnapshotAt());
+                report.seasons().get(0).latestStatisticsSnapshotAt());
     }
 
     @Test
@@ -121,7 +121,7 @@ class DataReadinessGateMySqlIntegrationTest {
         DataReadinessGateService.ReadinessReport report = readinessGateService.evaluateAt(now);
 
         assertTrue(report.ready());
-        assertTrue(report.seasons().getFirst().fresh());
+        assertTrue(report.seasons().get(0).fresh());
     }
 
     @Test
@@ -133,8 +133,8 @@ class DataReadinessGateMySqlIntegrationTest {
         DataReadinessGateService.ReadinessReport report = readinessGateService.evaluateAt(now);
 
         assertFalse(report.ready());
-        assertFalse(report.seasons().getFirst().fresh());
-        assertTrue(report.seasons().getFirst().issues().contains("STALE_OR_MISSING_STATISTICS_SNAPSHOT"));
+        assertFalse(report.seasons().get(0).fresh());
+        assertTrue(report.seasons().get(0).issues().contains("STALE_OR_MISSING_STATISTICS_SNAPSHOT"));
     }
 
     @Test
@@ -146,8 +146,8 @@ class DataReadinessGateMySqlIntegrationTest {
         DataReadinessGateService.ReadinessReport report = readinessGateService.evaluateAt(now);
 
         assertFalse(report.ready());
-        assertFalse(report.seasons().getFirst().fresh());
-        assertTrue(report.seasons().getFirst().issues().contains("FUTURE_STATISTICS_SNAPSHOT"));
+        assertFalse(report.seasons().get(0).fresh());
+        assertTrue(report.seasons().get(0).issues().contains("FUTURE_STATISTICS_SNAPSHOT"));
     }
 
     @Test
@@ -158,7 +158,7 @@ class DataReadinessGateMySqlIntegrationTest {
                 readinessGateService.evaluateAt(Instant.parse("2026-11-10T12:00:00Z"));
 
         assertFalse(report.ready());
-        assertTrue(report.seasons().getFirst().issues().contains("STALE_OR_MISSING_STATISTICS_SNAPSHOT"));
+        assertTrue(report.seasons().get(0).issues().contains("STALE_OR_MISSING_STATISTICS_SNAPSHOT"));
     }
 
     @Test
@@ -170,9 +170,9 @@ class DataReadinessGateMySqlIntegrationTest {
         DataReadinessGateService.ReadinessReport report = readinessGateService.evaluateAt(now);
 
         assertFalse(report.ready());
-        assertTrue(report.seasons().getFirst().issues().contains("INSUFFICIENT_SCORE_COVERAGE"));
-        assertTrue(report.seasons().getFirst().issues().contains("INSUFFICIENT_XG_COVERAGE"));
-        assertTrue(report.seasons().getFirst().issues().contains("INSUFFICIENT_TEAM_STATISTICS_COVERAGE"));
+        assertTrue(report.seasons().get(0).issues().contains("INSUFFICIENT_SCORE_COVERAGE"));
+        assertTrue(report.seasons().get(0).issues().contains("INSUFFICIENT_XG_COVERAGE"));
+        assertTrue(report.seasons().get(0).issues().contains("INSUFFICIENT_TEAM_STATISTICS_COVERAGE"));
     }
 
     @Test
@@ -197,7 +197,7 @@ class DataReadinessGateMySqlIntegrationTest {
         DataReadinessGateService.ReadinessReport report = readinessGateService.evaluateAt(now);
 
         assertTrue(report.ready());
-        assertEquals(now.minusSeconds(30), report.seasons().getFirst().latestStatisticsSnapshotAt());
+        assertEquals(now.minusSeconds(30), report.seasons().get(0).latestStatisticsSnapshotAt());
         assertEquals(2, snapshotRepository.findAllByMatchId(match.getId()).size());
     }
 
