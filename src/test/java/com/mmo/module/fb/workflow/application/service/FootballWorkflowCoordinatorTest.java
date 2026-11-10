@@ -18,7 +18,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -26,6 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -50,9 +50,8 @@ class FootballWorkflowCoordinatorTest {
         when(checkpointService.isRunCompleted(101L)).thenReturn(false);
         when(checkpointService.claimRun(101L)).thenReturn("test-execution-token");
         when(checkpointService.isStageCompleted(eq(101L), any(FootballWorkflowStage.class))).thenReturn(false);
-        when(readinessGateService.evaluate()).thenReturn(
+        lenient().when(readinessGateService.evaluate()).thenReturn(
                 new DataReadinessGateService.ReadinessReport(true, Instant.now(), List.of()));
-        when(contentWorkflowRunRepository.findByIdempotencyKey(any())).thenReturn(Optional.empty());
     }
 
     @Test
@@ -66,7 +65,6 @@ class FootballWorkflowCoordinatorTest {
                         5, 5, 0, 0, false, Instant.now(), Instant.now()));
         ContentWorkflowRunEntity contentRun = org.mockito.Mockito.mock(ContentWorkflowRunEntity.class);
         when(contentRun.getId()).thenReturn(123L);
-        when(contentRun.getStatus()).thenReturn("COMPLETED");
         when(contentRun.getDraftsGenerated()).thenReturn(5);
         when(contentRun.getFailures()).thenReturn(0);
         when(contentLifecycleService.generate(any(), eq("scheduled-content-" + date))).thenReturn(contentRun);
