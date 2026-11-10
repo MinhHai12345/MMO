@@ -34,6 +34,7 @@ public interface FootballDataUkImportPersistencePort {
     Optional<TeamExternalId> findTeamMappingByTeamId(Long teamId, Provider provider);
     List<Team> findTeamsByName(String canonicalName);
     List<Team> findTeamsByNames(Collection<String> canonicalNames);
+    List<Team> findAllTeams();
     List<TeamExternalId> findTeamMappings(Provider provider);
     Team saveTeam(Team team);
     void registerTeamExternalId(Team team, Provider provider, String externalId);
