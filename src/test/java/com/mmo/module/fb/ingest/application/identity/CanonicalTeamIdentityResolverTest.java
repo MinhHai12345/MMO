@@ -73,18 +73,18 @@ class CanonicalTeamIdentityResolverTest {
         );
         teams.forEach(team -> resolver.addTeam(canonical, normalized, team));
 
-        Map<String, Long> expectedIds = Map.of(
-                "Bolton", 10L,
-                "Preston", 11L,
-                "Lincoln", 12L,
-                "Middlesbrough FC", 13L,
-                "Portsmouth FC", 14L,
-                "QPR", 15L,
-                "Blackburn", 16L,
-                "Sheffield United FC", 17L,
-                "Southampton FC", 18L,
-                "Millwall FC", 19L,
-                "West Ham United FC", 20L
+        Map<String, Long> expectedIds = Map.ofEntries(
+                Map.entry("Bolton", 10L),
+                Map.entry("Preston", 11L),
+                Map.entry("Lincoln", 12L),
+                Map.entry("Middlesbrough FC", 13L),
+                Map.entry("Portsmouth FC", 14L),
+                Map.entry("QPR", 15L),
+                Map.entry("Blackburn", 16L),
+                Map.entry("Sheffield United FC", 17L),
+                Map.entry("Southampton FC", 18L),
+                Map.entry("Millwall FC", 19L),
+                Map.entry("West Ham United FC", 20L)
         );
         expectedIds.forEach((providerName, expectedId) ->
                 assertEquals(expectedId, resolver.resolve(providerName, canonical, normalized).getId(),
