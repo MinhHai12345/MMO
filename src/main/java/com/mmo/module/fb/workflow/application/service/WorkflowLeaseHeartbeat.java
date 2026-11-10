@@ -35,14 +35,14 @@ public class WorkflowLeaseHeartbeat {
             thread.setDaemon(true);
             return thread;
         };
-        this.scheduler = Executors.newSingleThreadScheduledExecutor(threadFactory);
+        this.scheduler = Executors.newScheduledThreadPool(2, threadFactory);
     }
 
     public Heartbeat start(Long runId, String executionToken) {
         if (runId == null || executionToken == null || executionToken.isBlank()) {
             throw new IllegalArgumentException("Workflow run and execution token are required for heartbeat.");
         }
-        if (heartbeatInterval == null || heartbeatInterval.isZero() || heartbeatInterval.isNegative()) {
+        if (heartbeatInterval == null || heartbeatInterval.isNegative() || heartbeatInterval.toMillis() < 1) {
             throw new IllegalStateException("Workflow lease heartbeat interval must be positive.");
         }
 
@@ -78,7 +78,7 @@ public class WorkflowLeaseHeartbeat {
 
         public void assertHealthy() {
             RuntimeException heartbeatFailure = failure.get();
-            if ( (heartbeatFailure) != null) {
+            if (heartbeatFailure != null) {
                 throw new IllegalStateException(
                         "Workflow execution lease heartbeat was lost; refusing to persist stage completion.",
                         heartbeatFailure);
