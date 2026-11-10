@@ -33,10 +33,20 @@ public interface DataCoverageAuditService {
                           long finishedMissingScores, long finishedWithXg, long standingsRows,
                           long totalStandingRows, long homeStandingRows, long awayStandingRows,
                           long teamsInStandings, Long expectedMatches, long matchCountDifference,
-                          long repeatedHomeAwayPairGroups, String fixtureIntegrityStatus, List<String> issues) {
+                          long repeatedHomeAwayPairGroups, String fixtureIntegrityStatus,
+                          List<ResourceCoverage> resourceCoverage,
+                          List<PersistedResourceCoverage> persistedResources, List<String> issues) {
         public SeasonCoverage {
+            resourceCoverage = resourceCoverage == null ? List.of() : List.copyOf(resourceCoverage);
+            persistedResources = persistedResources == null ? List.of() : List.copyOf(persistedResources);
             issues = issues == null ? List.of() : List.copyOf(issues);
         }
     }
+    record ResourceCoverage(String provider, String resource, long eligibleMatches,
+                            long stateTrackedMatches, long missingStateMatches,
+                            long succeeded, long empty, long skipped, long failed,
+                            long pending, long inProgress, double stateCoverageRatio) {}
+    record PersistedResourceCoverage(String resource, long matchesWithData, long dataRows,
+                                     double matchCoverageRatio) {}
     record AuditFinding(String severity, String code, String message, long affectedCount, String context) {}
 }

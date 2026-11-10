@@ -3,6 +3,7 @@ package com.mmo.module.fb.analytics.service.impl;
 import com.mmo.AppProperties;
 import com.mmo.module.fb.analytics.service.DataCoverageAuditService;
 import com.mmo.module.fb.domain.match.enums.MatchStatus;
+import com.mmo.module.fb.domain.match.enums.MatchEnrichmentStatus;
 import com.mmo.module.fb.ingest.enums.Provider;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
@@ -91,6 +92,10 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
             long totalRows = byType.getOrDefault("TOTAL", 0L);
             long homeRows = byType.getOrDefault("HOME", 0L);
             long awayRows = byType.getOrDefault("AWAY", 0L);
+
+            // Execution state and persisted data are audited independently.
+            List<ResourceCoverage> resourceCoverage = loadResourceCoverage(id, total, seasonScored);
+            List<PersistedResourceCoverage> persistedResources = loadPersistedResourceCoverage(id, seasonScored);
             List<String> issues = new ArrayList<>();
             if (total == 0) {
                 issues.add("NO_FIXTURES");
@@ -167,7 +172,8 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
             }
             seasonCoverage.add(new SeasonCoverage(id, league, year, current, total, seasonFinished, seasonScored,
                     seasonFinished - seasonScored, seasonXg, seasonStandingRows, totalRows, homeRows, awayRows,
-                    teamsInStandings, expectedMatches, matchCountDifference, repeatedPairs, integrityStatus, issues));
+                    teamsInStandings, expectedMatches, matchCountDifference, repeatedPairs, integrityStatus,
+                    resourceCoverage, persistedResources, issues));
         }
 
         addFinding(findings, leaguesWithoutSeasons, "WARNING", "LEAGUES_WITHOUT_SEASONS", "Leagues have no stored seasons.", "Review configured competitions and league ingestion.");
@@ -186,6 +192,106 @@ public class DataCoverageAuditServiceImpl implements DataCoverageAuditService {
                 standingCounts.getOrDefault("AWAY", 0L), duplicateGroups.size(), duplicateExcess);
         return new DataCoverageAuditReport(Instant.now(), status, totals,
                 new ProviderCoverage(lp.name(), tp.name(), fp.name(), sp.name(), mapping), seasonCoverage, findings);
+    }
+
+    private List<ResourceCoverage> loadResourceCoverage(Long seasonId, long totalMatches,
+                                                          long finishedScoredMatches) {
+        Map<String, EnumMap<MatchEnrichmentStatus, Long>> grouped = new LinkedHashMap<>();
+        List<Object[]> rows = entityManager.createQuery("""
+                select state.provider, state.resource, state.status, count(state)
+                from MatchEnrichmentState state
+                where state.match.season.id = :seasonId
+                group by state.provider, state.resource, state.status
+                order by state.provider, state.resource
+                """, Object[].class).setParameter("seasonId", seasonId).getResultList();
+
+        for (Object[] row : rows) {
+            String key = row[0].toString() + "|" + row[1].toString();
+            grouped.computeIfAbsent(key, ignored -> new EnumMap<>(MatchEnrichmentStatus.class))
+                    .put((MatchEnrichmentStatus) row[2], number(row[3]));
+        }
+
+        List<ResourceCoverage> result = new ArrayList<>();
+        for (Map.Entry<String, EnumMap<MatchEnrichmentStatus, Long>> entry : grouped.entrySet()) {
+            String[] identity = entry.getKey().split("\\|", 2);
+            String provider = identity[0];
+            String resource = identity[1];
+            EnumMap<MatchEnrichmentStatus, Long> counts = entry.getValue();
+            long tracked = counts.values().stream().mapToLong(Long::longValue).sum();
+            long eligible = "ODDS".equals(resource) ? totalMatches : finishedScoredMatches;
+            long missing = Math.max(0L, eligible - tracked);
+            result.add(new ResourceCoverage(provider, resource, eligible, tracked, missing,
+                    counts.getOrDefault(MatchEnrichmentStatus.SUCCEEDED, 0L),
+                    counts.getOrDefault(MatchEnrichmentStatus.EMPTY, 0L),
+                    counts.getOrDefault(MatchEnrichmentStatus.SKIPPED, 0L),
+                    counts.getOrDefault(MatchEnrichmentStatus.FAILED, 0L),
+                    counts.getOrDefault(MatchEnrichmentStatus.PENDING, 0L),
+                    counts.getOrDefault(MatchEnrichmentStatus.IN_PROGRESS, 0L),
+                    ratio(tracked, eligible)));
+        }
+        return result;
+    }
+
+    private List<PersistedResourceCoverage> loadPersistedResourceCoverage(Long seasonId,
+                                                                           long finishedScoredMatches) {
+        List<PersistedResourceCoverage> result = new ArrayList<>();
+        long teamStatsRows = count("""
+                select count(stats) from MatchAdvancedStats stats
+                where stats.match.season.id = :seasonId
+                """, seasonId);
+        long teamStatsMatches = count("""
+                select count(distinct stats.match.id) from MatchAdvancedStats stats
+                where stats.match.season.id = :seasonId
+                """, seasonId);
+        result.add(new PersistedResourceCoverage("TEAM_STATISTICS", teamStatsMatches, teamStatsRows,
+                ratio(teamStatsMatches, finishedScoredMatches)));
+
+        long playerStatsRows = count("""
+                select count(stats) from PlayerMatchStats stats
+                where stats.match.season.id = :seasonId
+                """, seasonId);
+        long playerStatsMatches = count("""
+                select count(distinct stats.match.id) from PlayerMatchStats stats
+                where stats.match.season.id = :seasonId
+                """, seasonId);
+        result.add(new PersistedResourceCoverage("PLAYER_STATISTICS", playerStatsMatches, playerStatsRows,
+                ratio(playerStatsMatches, finishedScoredMatches)));
+
+        long oddsRows = count("""
+                select count(quote) from MatchOddsQuote quote
+                where quote.match.season.id = :seasonId
+                """, seasonId);
+        long oddsMatches = count("""
+                select count(distinct quote.match.id) from MatchOddsQuote quote
+                where quote.match.season.id = :seasonId
+                """, seasonId);
+        result.add(new PersistedResourceCoverage("ODDS_QUOTES", oddsMatches, oddsRows,
+                ratio(oddsMatches, countMatches(seasonId))));
+
+        long legacyOddsRows = count("""
+                select count(odds) from MatchOdds odds
+                where odds.match.season.id = :seasonId
+                """, seasonId);
+        long legacyOddsMatches = count("""
+                select count(distinct odds.match.id) from MatchOdds odds
+                where odds.match.season.id = :seasonId
+                """, seasonId);
+        result.add(new PersistedResourceCoverage("ODDS_LEGACY", legacyOddsMatches, legacyOddsRows,
+                ratio(legacyOddsMatches, countMatches(seasonId))));
+        return result;
+    }
+
+    private long count(String jpql, Long seasonId) {
+        return entityManager.createQuery(jpql, Long.class)
+                .setParameter("seasonId", seasonId).getSingleResult();
+    }
+
+    private long countMatches(Long seasonId) {
+        return count("select count(m) from Match m where m.season.id = :seasonId", seasonId);
+    }
+
+    private double ratio(long numerator, long denominator) {
+        return denominator == 0 ? 0.0 : (double) numerator / denominator;
     }
 
     private long countDistinctSeasonTeams(Long seasonId) {
