@@ -147,8 +147,8 @@ class FootballWorkflowCoordinatorMySqlIntegrationTest {
         assertEquals(FootballWorkflowStageStatus.FAILED,
                 stageRepository.findByWorkflowRunIdAndStage(run.getId(), FootballWorkflowStage.DATA_READINESS)
                         .orElseThrow().getStatus());
-        assertFalse(stageRepository.existsByWorkflowRunIdAndStage(run.getId(),
-                FootballWorkflowStage.ADVANCED_METRICS));
+        assertTrue(stageRepository.findByWorkflowRunIdAndStage(run.getId(),
+                FootballWorkflowStage.ADVANCED_METRICS).isEmpty());
     }
 
     @Test
