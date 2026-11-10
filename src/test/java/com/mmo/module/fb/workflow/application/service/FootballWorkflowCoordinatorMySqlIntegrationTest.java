@@ -43,7 +43,7 @@ import static org.mockito.Mockito.*;
         "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect"
 })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({FootballWorkflowCoordinator.class, WorkflowCheckpointService.class})
+@Import({FootballWorkflowCoordinator.class, WorkflowCheckpointService.class, WorkflowLeaseHeartbeat.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @EnabledIfEnvironmentVariable(named = "MMO_MYSQL_TEST_URL", matches = "^jdbc:mysql:.*$")
 class FootballWorkflowCoordinatorMySqlIntegrationTest {
