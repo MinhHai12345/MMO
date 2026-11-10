@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
 @EntityScan(basePackageClasses = {FootballWorkflowRunEntity.class, FootballWorkflowStageExecutionEntity.class})
@@ -80,6 +81,10 @@ class WorkflowCheckpointServiceIntegrationTest {
         String secondToken = checkpointService.claimRun(runId);
 
         assertThat(secondToken).isNotBlank().isNotEqualTo(firstToken);
+        assertThatThrownBy(() -> checkpointService.startStage(
+                runId, FootballWorkflowStage.DATA_INGESTION, firstToken))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("lease is no longer owned");
         checkpointService.releaseRun(runId, secondToken);
     }
 }
