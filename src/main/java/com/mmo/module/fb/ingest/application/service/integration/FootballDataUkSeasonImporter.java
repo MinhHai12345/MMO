@@ -64,6 +64,12 @@ import java.util.Set;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 
 /**
  * End-to-end Football-Data.co.uk importer:
@@ -685,6 +691,11 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         int ambiguousFixtureRows = 0;
         int diagnosticSamples = 0;
 
+        long enrichmentStartedAt = System.nanoTime();
+        // Team IDs, canonical names and provider mappings are loaded once per season.
+        // Fixture mappings and candidate matches are then fetched once for the whole CSV.
+        TeamCache teamCache = loadTeamCache(rows);
+        List<PreparedEnrichmentRow> prepared = new ArrayList<>(rows.size());
         for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
             Map<String, String> row = rows.get(rowIndex);
             String homeName = row == null ? "" : valueAny(row, "HOMETEAM", "HOME TEAM");
@@ -698,8 +709,8 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                 continue;
             }
 
-            Team home = findExistingTeam(leagueMapping.getIdentify(), homeName);
-            Team away = findExistingTeam(leagueMapping.getIdentify(), awayName);
+            Team home = findExistingTeamCached(leagueMapping.getIdentify(), homeName, teamCache);
+            Team away = findExistingTeamCached(leagueMapping.getIdentify(), awayName, teamCache);
             if (home == null || away == null || home.getId().equals(away.getId())) {
                 teamNotFoundRows++;
                 diagnosticSamples = logEnrichmentMismatch(season, rowIndex + 1, row,
@@ -713,41 +724,91 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                     .atZone(SOURCE_ZONE).toInstant();
             String externalId = fixtureExternalId(
                     leagueMapping.getIdentify(), season.getYear(), home.getId(), away.getId(), date);
-            Match match;
-            try {
-                match = persistencePort.findMatchMappingByProvider(MATCH_PROVIDER, externalId)
-                        .map(MatchExternalId::getMatch)
-                        .orElseGet(() -> findFixtureCandidate(season, home, away, kickoff));
-            } catch (AmbiguousFixtureCandidateException ambiguous) {
-                ambiguousFixtureRows++;
-                diagnosticSamples = logEnrichmentMismatch(season, rowIndex + 1, row,
-                        ambiguous.getMessage(), diagnosticSamples);
-                continue;
-            }
+            prepared.add(new PreparedEnrichmentRow(rowIndex + 1, row, home, away, kickoff, externalId));
+        }
 
+        Set<String> externalIds = prepared.stream().map(PreparedEnrichmentRow::externalId)
+                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+        Map<String, Match> mappedMatches = persistencePort
+                .findMatchMappingsByProviderAndExternalIds(MATCH_PROVIDER, externalIds).stream()
+                .collect(java.util.stream.Collectors.toMap(MatchExternalId::getExternalId,
+                        mapping -> mapping.getMatch(), (left, right) -> left));
+        Set<Long> teamIds = prepared.stream()
+                .flatMap(item -> java.util.stream.Stream.of(item.home().getId(), item.away().getId()))
+                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+        Instant seasonStart = season.getStartDate() == null
+                ? prepared.stream().map(PreparedEnrichmentRow::kickoff).min(Instant::compareTo)
+                        .orElse(Instant.EPOCH).minusSeconds(36 * 3600L)
+                : season.getStartDate().atStartOfDay(SOURCE_ZONE).toInstant();
+        Instant seasonEnd = season.getEndDate() == null
+                ? prepared.stream().map(PreparedEnrichmentRow::kickoff).max(Instant::compareTo)
+                        .orElse(Instant.EPOCH).plusSeconds(36 * 3600L)
+                : season.getEndDate().plusDays(1).atStartOfDay(SOURCE_ZONE).toInstant();
+        List<Match> candidates = persistencePort.findBatchFixtureCandidates(
+                season.getId(), teamIds, seasonStart, seasonEnd);
+        log.info("Football-Data UK enrichment prefetch completed: season={}, csvRows={}, preparedRows={}, "
+                        + "mappedFixtures={}, candidateFixtures={}",
+                season.getYear(), rows.size(), prepared.size(), mappedMatches.size(), candidates.size());
+
+        for (PreparedEnrichmentRow item : prepared) {
+            Match match = mappedMatches.get(item.externalId());
+            if (match == null) {
+                List<Match> sameDirection = candidates.stream()
+                        .filter(candidate -> candidate.getHomeTeam().getId().equals(item.home().getId())
+                                && candidate.getAwayTeam().getId().equals(item.away().getId()))
+                        .toList();
+                try {
+                    match = closestFixtureCandidate(sameDirection, item.kickoff()).orElse(null);
+                } catch (AmbiguousFixtureCandidateException ambiguous) {
+                    ambiguousFixtureRows++;
+                    diagnosticSamples = logEnrichmentMismatch(season, item.rowNumber(), item.row(),
+                            ambiguous.getMessage(), diagnosticSamples);
+                    continue;
+                }
+            }
             if (match == null) {
                 fixtureNotFoundRows++;
-                diagnosticSamples = logEnrichmentMismatch(season, rowIndex + 1, row,
+                diagnosticSamples = logEnrichmentMismatch(season, item.rowNumber(), item.row(),
                         "canonical fixture not found within kickoff matching window", diagnosticSamples);
                 continue;
             }
 
-            // Persistence and mapping failures deliberately propagate. They must fail the
-            // stage with their real cause instead of being counted as unmatched CSV rows.
-            BigDecimal homeXg = decimalMetric(value(row, "HXG"));
-            BigDecimal awayXg = decimalMetric(value(row, "AXG"));
+            BigDecimal homeXg = decimalMetric(value(item.row(), "HXG"));
+            BigDecimal awayXg = decimalMetric(value(item.row(), "AXG"));
             matchXgPersistenceService.upsert(PROVIDER, match, season.getYear(), homeXg, awayXg);
             if (homeXg != null || awayXg != null) importedXg++;
             if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_STATISTICS, season.getYear())) {
-                importedStats += statisticsMapper.persist(match, season.getYear(), row);
+                importedStats += statisticsMapper.persist(match, season.getYear(), item.row());
             }
             if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.HISTORICAL_ODDS, season.getYear())) {
-                importedOdds += oddsMapper.persist(match, season.getYear(), row);
+                importedOdds += oddsMapper.persist(match, season.getYear(), item.row());
             }
         }
+        long durationMs = Math.max(1, (System.nanoTime() - enrichmentStartedAt) / 1_000_000);
+        log.info("Football-Data UK enrichment completed: season={}, csvRows={}, matchedRows={}, stats={}, "
+                        + "xg={}, odds={}, unmatched={}, durationMs={}, rowsPerSecond={}",
+                season.getYear(), rows.size(), prepared.size() - fixtureNotFoundRows - ambiguousFixtureRows,
+                importedStats, importedXg, importedOdds,
+                invalidRows + teamNotFoundRows + fixtureNotFoundRows + ambiguousFixtureRows,
+                durationMs, Math.round(rows.size() * 1000.0 / durationMs));
         return new EnrichmentResult(rows.size(), importedStats, importedXg, importedOdds,
                 invalidRows, teamNotFoundRows, fixtureNotFoundRows, ambiguousFixtureRows);
     }
+
+    private Team findExistingTeamCached(String leagueCode, String providerName, TeamCache cache) {
+        Team mapped = cache.byExternalId.get(normalize(leagueCode) + ":" + normalize(providerName));
+        if (mapped != null) return mapped;
+        String canonicalName = dataStandardizer.teamName(providerName);
+        if (!StringUtils.hasText(canonicalName)) return null;
+        mapped = cache.byExternalId.get("TEAM:" + normalize(canonicalName));
+        if (mapped != null) return mapped;
+        List<Team> exact = cache.byCanonicalName.getOrDefault(
+                canonicalName.toLowerCase(Locale.ROOT), List.of());
+        return exact.size() == 1 ? exact.get(0) : null;
+    }
+
+    private record PreparedEnrichmentRow(int rowNumber, Map<String, String> row,
+                                         Team home, Team away, Instant kickoff, String externalId) {}
 
     private int logEnrichmentMismatch(
             Season season, int rowNumber, Map<String, String> row, String reason, int sampleCount) {
@@ -759,27 +820,6 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                 row == null ? "" : valueAny(row, "HOMETEAM", "HOME TEAM"),
                 row == null ? "" : valueAny(row, "AWAYTEAM", "AWAY TEAM"));
         return sampleCount + 1;
-    }
-
-    private Team findExistingTeam(String leagueCode, String providerName) {
-        String legacyExternalId = normalize(leagueCode) + ":" + normalize(providerName);
-        Optional<TeamExternalId> legacy =
-                persistencePort.findTeamMapping(PROVIDER, legacyExternalId);
-        if (legacy.isPresent()) return legacy.get().getTeam();
-
-        String canonicalName = dataStandardizer.teamName(providerName);
-        if (!StringUtils.hasText(canonicalName)) return null;
-        Optional<TeamExternalId> canonical = persistencePort.findTeamMapping(
-                PROVIDER, "TEAM:" + normalize(canonicalName));
-        if (canonical.isPresent()) return canonical.get().getTeam();
-
-        List<Team> exact = persistencePort.findTeamsByName(canonicalName);
-        return exact.size() == 1 ? exact.get(0) : null;
-    }
-
-    private Match findFixtureCandidate(Season season, Team home, Team away, Instant kickoff) {
-        List<Match> candidates = findSeasonFixtureCandidates(season, home, away, kickoff);
-        return closestFixtureCandidate(candidates, kickoff).orElse(null);
     }
 
     private record EnrichmentResult(
@@ -860,21 +900,26 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         Set<Long> resolvedTeamIds = new HashSet<>();
         int importedFixtures = Math.toIntExact(Math.min(Integer.MAX_VALUE, persistedRows));
         int unmatched = Math.toIntExact(Math.min(Integer.MAX_VALUE, failedRows));
+        long teamPrefetchStartedAt = System.nanoTime();
+        TeamCache teamCache = loadTeamCache(rows);
+        log.info("Football-Data UK core prefetch completed: season={}, csvRows={}, teamPrefetchMs={}",
+                seasonYear, rows.size(), (System.nanoTime() - teamPrefetchStartedAt) / 1_000_000);
 
         for (int batchStart = startOffset; batchStart < rows.size(); batchStart += 100) {
             final int batchStartOffset = batchStart;
             int batchEnd = Math.min(rows.size(), batchStartOffset + 100);
             final int persistedBeforeBatch = importedFixtures;
             final int unmatchedBeforeBatch = unmatched;
-
+            final List<Map<String, String>> batchRows = rows.subList(batchStartOffset, batchEnd);
+            final TeamCache currentTeamCache = teamCache;
+            long batchStartedAt = System.nanoTime();
             BatchCounters batch = batchTransaction.execute(() -> {
                 BatchCounters current = new BatchCounters();
-                for (int rowIndex = batchStartOffset; rowIndex < batchEnd; rowIndex++) {
-                    Map<String, String> row = rows.get(rowIndex);
-                    if (row == null) {
-                        current.unmatched++;
-                        continue;
-                    }
+                TeamCache batchTeamCache = currentTeamCache.copy();
+                List<PreparedCoreRow> prepared = new ArrayList<>(batchRows.size());
+
+                for (Map<String, String> row : batchRows) {
+                    if (row == null) { current.unmatched++; continue; }
                     try {
                         String homeName = valueAny(row, "HOMETEAM", "HOME TEAM");
                         String awayName = valueAny(row, "AWAYTEAM", "AWAY TEAM");
@@ -883,30 +928,86 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                             current.unmatched++;
                             continue;
                         }
-
-                        Team home = resolveTeam(leagueMapping.getIdentify(), homeName, season);
-                        Team away = resolveTeam(leagueMapping.getIdentify(), awayName, season);
+                        Team home = resolveTeamCached(leagueMapping.getIdentify(), homeName, season, batchTeamCache);
+                        Team away = resolveTeamCached(leagueMapping.getIdentify(), awayName, season, batchTeamCache);
                         current.resolvedTeamIds.add(home.getId());
                         current.resolvedTeamIds.add(away.getId());
-                        if (home.getId().equals(away.getId())) {
-                            current.unmatched++;
-                            continue;
-                        }
-
+                        if (home.getId().equals(away.getId())) { current.unmatched++; continue; }
                         LocalTime time = parseTime(value(row, "TIME"));
                         Instant kickoff = date.atTime(time == null ? LocalTime.NOON : time)
                                 .atZone(SOURCE_ZONE).toInstant();
-                        String fixtureExternalId = fixtureExternalId(
+                        String externalId = fixtureExternalId(
                                 leagueMapping.getIdentify(), season.getYear(), home.getId(), away.getId(), date);
+                        prepared.add(new PreparedCoreRow(row, home, away, kickoff, externalId));
+                    } catch (LazyInitializationException | DataAccessException | TransactionException infrastructure) {
+                        throw infrastructure;
+                    } catch (RuntimeException invalidRow) {
+                        current.unmatched++;
+                        log.warn("Skip invalid Football-Data.co.uk row: season={}, home={}, away={}, reason={}",
+                                season.getYear(), value(row, "HOMETEAM"), value(row, "AWAYTEAM"),
+                                invalidRow.getMessage());
+                    }
+                }
 
-                        Optional<MatchExternalId> existingExternalId =
-                                persistencePort.findMatchMappingByProvider(MATCH_PROVIDER, fixtureExternalId);
-                        Match match = existingExternalId.map(MatchExternalId::getMatch)
-                                .orElseGet(() -> resolveOrCreateFixture(season, home, away, kickoff));
+                Set<String> externalIds = prepared.stream().map(PreparedCoreRow::externalId)
+                        .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+                Map<String, MatchExternalId> mappingByExternalId =
+                        persistencePort.findMatchMappingsByProviderAndExternalIds(MATCH_PROVIDER, externalIds)
+                                .stream().collect(java.util.stream.Collectors.toMap(
+                                        MatchExternalId::getExternalId, mapping -> mapping, (left, right) -> left));
+
+                Set<Long> teamIds = prepared.stream()
+                        .flatMap(item -> java.util.stream.Stream.of(item.home().getId(), item.away().getId()))
+                        .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+                Instant seasonStart = season.getStartDate() == null
+                        ? prepared.stream().map(PreparedCoreRow::kickoff).min(Instant::compareTo)
+                                .orElse(Instant.EPOCH).minusSeconds(36 * 3600L)
+                        : season.getStartDate().atStartOfDay(SOURCE_ZONE).toInstant();
+                Instant seasonEnd = season.getEndDate() == null
+                        ? prepared.stream().map(PreparedCoreRow::kickoff).max(Instant::compareTo)
+                                .orElse(Instant.EPOCH).plusSeconds(36 * 3600L)
+                        : season.getEndDate().plusDays(1).atStartOfDay(SOURCE_ZONE).toInstant();
+                List<Match> candidates = persistencePort.findBatchFixtureCandidates(
+                        season.getId(), teamIds, seasonStart, seasonEnd);
+                Set<Long> relevantMatchIds = new HashSet<>(candidates.stream()
+                        .map(Match::getId).filter(java.util.Objects::nonNull).toList());
+                mappingByExternalId.values().forEach(mapping -> relevantMatchIds.add(mapping.getMatch().getId()));
+                List<Long> relevantIds = relevantMatchIds.stream().filter(java.util.Objects::nonNull).toList();
+                Map<Long, MatchExternalId> ukMappingByMatchId = persistencePort
+                        .findMatchMappingsByMatchIds(relevantIds, MATCH_PROVIDER).stream()
+                        .collect(java.util.stream.Collectors.toMap(mapping -> mapping.getMatch().getId(),
+                                mapping -> mapping, (left, right) -> left));
+                Set<Long> footballDataMatchIds = persistencePort
+                        .findMatchMappingsByMatchIds(relevantIds,
+                                MatchProvider.fromName(Provider.FOOTBALL_DATA.name())).stream()
+                        .map(mapping -> mapping.getMatch().getId())
+                        .collect(java.util.stream.Collectors.toSet());
+
+                Map<String, Match> matchByExternalId = new HashMap<>();
+                mappingByExternalId.forEach((id, mapping) -> matchByExternalId.put(id, mapping.getMatch()));
+                Map<String, Match> matchesToSaveByIdentity = new LinkedHashMap<>();
+                Set<Match> newlyCreated = Collections.newSetFromMap(new IdentityHashMap<>());
+                Map<Match, String> matchesNeedingMapping = new IdentityHashMap<>();
+                List<MatchExternalId> mappingsToSave = new ArrayList<>();
+
+                for (PreparedCoreRow item : prepared) {
+                    try {
+                        Match match = matchByExternalId.get(item.externalId());
+                        if (match == null) {
+                            List<Match> sameDirection = candidates.stream()
+                                    .filter(candidate -> candidate.getHomeTeam().getId().equals(item.home().getId())
+                                            && candidate.getAwayTeam().getId().equals(item.away().getId()))
+                                    .toList();
+                            match = closestFixtureCandidate(sameDirection, item.kickoff())
+                                    .orElseGet(() -> Match.builder().season(season)
+                                            .homeTeam(item.home()).awayTeam(item.away())
+                                            .matchTime(item.kickoff()).status(MatchStatus.SCHEDULED).build());
+                        }
+
                         boolean footballDataOwnsCore = match.getId() != null
-                                && persistencePort.findMatchMappingByMatchId(
-                                        match.getId(), MatchProvider.fromName(Provider.FOOTBALL_DATA.name())).isPresent();
-                        boolean ukOwnsFixtureCore = dataSourcePolicy.isPrimary(PROVIDER, Dataset.FIXTURE, season.getYear());
+                                && footballDataMatchIds.contains(match.getId());
+                        boolean ukOwnsFixtureCore = dataSourcePolicy.isPrimary(
+                                PROVIDER, Dataset.FIXTURE, season.getYear());
                         boolean mayUseUkFallback = dataSourcePolicy.mayFallbackForCore(
                                 PROVIDER, Dataset.FIXTURE, season.getYear(), footballDataOwnsCore);
                         boolean preservePrimaryCore = !ukOwnsFixtureCore && !mayUseUkFallback;
@@ -915,42 +1016,44 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                             continue;
                         }
                         if (!preservePrimaryCore || match.getMatchTime() == null) {
-                            match.setMatchTime(kickoff);
+                            match.setMatchTime(item.kickoff());
                         }
-                        updateFixtureResult(match, row, preservePrimaryCore);
-                        Optional<MatchExternalId> mapping = match.getId() == null ? Optional.empty()
-                                : persistencePort.findMatchMappingByMatchId(
-                                        match.getId(), MatchProvider.fromName(PROVIDER.name()));
-                        if (mapping.isPresent()) {
-                            MatchExternalId externalId = mapping.get();
-                            if (!fixtureExternalId.equals(externalId.getExternalId())) {
-                                externalId.setExternalId(fixtureExternalId);
-                                persistencePort.saveMatchMapping(externalId);
-                            }
-                        } else if (match.getId() != null) {
-                            persistencePort.registerMatchExternalId(match, PROVIDER, fixtureExternalId);
-                        }
-                        if (match.getId() == null) {
-                            match = persistencePort.saveMatch(match);
-                            persistencePort.registerMatchExternalId(match, PROVIDER, fixtureExternalId);
-                            current.createdFixtures++;
-                        } else {
-                            persistencePort.saveMatch(match);
+                        updateFixtureResult(match, item.row(), preservePrimaryCore);
+                        String identity = match.getId() == null
+                                ? "new:" + System.identityHashCode(match) : "id:" + match.getId();
+                        matchesToSaveByIdentity.put(identity, match);
+                        matchByExternalId.put(item.externalId(), match);
+                        if (match.getId() == null) newlyCreated.add(match);
+                        MatchExternalId existingMapping = match.getId() == null
+                                ? null : ukMappingByMatchId.get(match.getId());
+                        if (existingMapping == null) {
+                            matchesNeedingMapping.putIfAbsent(match, item.externalId());
+                        } else if (!item.externalId().equals(existingMapping.getExternalId())
+                                && !mappingsToSave.contains(existingMapping)) {
+                            existingMapping.setExternalId(item.externalId());
+                            mappingsToSave.add(existingMapping);
                         }
                         current.importedFixtures++;
-                    } catch (LazyInitializationException infrastructureException) {
-                        // A detached JPA proxy is a programming/transaction-boundary failure,
-                        // never a malformed source row. Roll back the whole batch and fail fast.
-                        throw infrastructureException;
-                    } catch (DataAccessException | TransactionException databaseException) {
-                        throw databaseException;
+                    } catch (LazyInitializationException | DataAccessException | TransactionException infrastructure) {
+                        throw infrastructure;
                     } catch (RuntimeException invalidRow) {
                         current.unmatched++;
                         log.warn("Skip invalid Football-Data.co.uk row: season={}, home={}, away={}, reason={}",
-                                season.getYear(), value(row, "HOMETEAM"), value(row, "AWAYTEAM"),
+                                season.getYear(), value(item.row(), "HOMETEAM"), value(item.row(), "AWAYTEAM"),
                                 invalidRow.getMessage());
                     }
                 }
+
+                persistencePort.saveMatches(matchesToSaveByIdentity.values());
+                current.createdFixtures = newlyCreated.size();
+                for (Map.Entry<Match, String> entry : matchesNeedingMapping.entrySet()) {
+                    if (entry.getKey().getId() != null) {
+                        mappingsToSave.add(MatchExternalId.builder().match(entry.getKey())
+                                .provider(MATCH_PROVIDER).externalId(entry.getValue()).build());
+                    }
+                }
+                if (!mappingsToSave.isEmpty()) persistencePort.saveMatchMappings(mappingsToSave);
+                current.teamCache = batchTeamCache;
 
                 long processedAfterBatch = batchEnd;
                 long persistedAfterBatch = (long) persistedBeforeBatch + current.importedFixtures;
@@ -961,6 +1064,13 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                 return current;
             });
 
+            teamCache = batch.teamCache;
+            long batchDurationMs = Math.max(1, (System.nanoTime() - batchStartedAt) / 1_000_000);
+            log.info("Football-Data UK core batch completed: season={}, rows={}-{}, importedFixtures={}, "
+                            + "createdFixtures={}, unmatched={}, durationMs={}, rowsPerSecond={}",
+                    seasonYear, batchStartOffset + 1, batchEnd, batch.importedFixtures,
+                    batch.createdFixtures, batch.unmatched, batchDurationMs,
+                    Math.round((batchEnd - batchStartOffset) * 1000.0 / batchDurationMs));
             createdFixtures += batch.createdFixtures;
             importedFixtures += batch.importedFixtures;
             unmatched += batch.unmatched;
@@ -1124,32 +1234,43 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         return "UK_CORE_" + league.getId() + "_" + startYear;
     }
 
-    private Team resolveTeam(String leagueCode, String providerName, Season season) {
+    private TeamCache loadTeamCache(List<Map<String, String>> rows) {
+        TeamCache cache = new TeamCache();
+        persistencePort.findTeamMappings(PROVIDER).forEach(cache::addMapping);
+        persistencePort.findTeamMappings(Provider.FOOTBALL_DATA).forEach(cache::addMapping);
+
+        Set<String> canonicalNames = new HashSet<>();
+        for (Map<String, String> row : rows) {
+            if (row == null) continue;
+            String home = dataStandardizer.teamName(valueAny(row, "HOMETEAM", "HOME TEAM"));
+            String away = dataStandardizer.teamName(valueAny(row, "AWAYTEAM", "AWAY TEAM"));
+            if (StringUtils.hasText(home)) canonicalNames.add(home);
+            if (StringUtils.hasText(away)) canonicalNames.add(away);
+        }
+        persistencePort.findTeamsByNames(canonicalNames).forEach(cache::addTeam);
+        return cache;
+    }
+
+    private Team resolveTeamCached(String leagueCode, String providerName, Season season, TeamCache cache) {
         String legacyExternalId = normalize(leagueCode) + ":" + normalize(providerName);
-        Optional<TeamExternalId> legacyMapping =
-                persistencePort.findTeamMapping(PROVIDER, legacyExternalId);
-        if (legacyMapping.isPresent()) return legacyMapping.get().getTeam();
+        Team mapped = cache.byExternalId.get(legacyExternalId);
+        if (mapped != null) return mapped;
 
         String canonicalName = dataStandardizer.teamName(providerName);
         if (!StringUtils.hasText(canonicalName)) {
             throw new IllegalArgumentException("Football-Data UK team name is blank");
         }
-
         String canonicalExternalId = "TEAM:" + normalize(canonicalName);
-        Optional<TeamExternalId> canonicalMapping =
-                persistencePort.findTeamMapping(PROVIDER, canonicalExternalId);
-        if (canonicalMapping.isPresent()) return canonicalMapping.get().getTeam();
+        mapped = cache.byExternalId.get(canonicalExternalId);
+        if (mapped != null) return mapped;
 
-        List<Team> exact = persistencePort.findTeamsByName(canonicalName);
+        List<Team> exact = cache.byCanonicalName.getOrDefault(canonicalName.toLowerCase(Locale.ROOT), List.of());
         if (exact.size() > 1) {
             throw new IllegalStateException("Ambiguous canonical team name from Football-Data UK: "
                     + canonicalName + " (matches=" + exact.size() + ")");
         }
-
         Team team = exact.isEmpty() ? null : exact.get(0);
-        boolean footballDataOwnsTeam = team != null
-                && persistencePort.findTeamMappingByTeamId(
-                        team.getId(), Provider.FOOTBALL_DATA).isPresent();
+        boolean footballDataOwnsTeam = team != null && cache.footballDataOwnedTeamIds.contains(team.getId());
         boolean ukOwnsTeam = dataSourcePolicy.isPrimary(PROVIDER, Dataset.TEAM, season.getYear());
         boolean mayUseUkFallback = dataSourcePolicy.mayFallbackForCore(
                 PROVIDER, Dataset.TEAM, season.getYear(), footballDataOwnsTeam);
@@ -1164,50 +1285,145 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                     .slug(slug(canonicalName))
                     .isActive(true)
                     .build());
+            cache.addTeam(team);
         }
 
-        Optional<TeamExternalId> existingForTeam =
-                persistencePort.findTeamMappingByTeamId(team.getId(), PROVIDER);
-        if (existingForTeam.isEmpty()) {
+        if (!cache.ukMappedTeamIds.contains(team.getId())) {
             persistencePort.registerTeamExternalId(team, PROVIDER, canonicalExternalId);
-        } else {
-            // Existing legacy mappings remain valid; do not reassign another provider ID.
-            log.debug("Team already has a Football-Data UK mapping: teamId={}, externalId={}",
-                    team.getId(), existingForTeam.get().getExternalId());
+            cache.ukMappedTeamIds.add(team.getId());
+            cache.byExternalId.put(canonicalExternalId, team);
         }
         return team;
     }
 
-    private Match resolveOrCreateFixture(Season season, Team home, Team away, Instant kickoff) {
-        List<Match> candidates = findSeasonFixtureCandidates(season, home, away, kickoff);
-        return closestFixtureCandidate(candidates, kickoff)
-                .orElseGet(() -> Match.builder().season(season).homeTeam(home).awayTeam(away)
-                        .matchTime(kickoff).status(MatchStatus.SCHEDULED).build());
+    private record PreparedCoreRow(Map<String, String> row, Team home, Team away,
+                                   Instant kickoff, String externalId) {}
+
+    private static final class TeamCache {
+        private final Map<String, Team> byExternalId = new HashMap<>();
+        private final Map<String, List<Team>> byCanonicalName = new HashMap<>();
+        private final Set<Long> ukMappedTeamIds = new HashSet<>();
+        private final Set<Long> footballDataOwnedTeamIds = new HashSet<>();
+
+        private TeamCache copy() {
+            TeamCache copy = new TeamCache();
+            copy.byExternalId.putAll(byExternalId);
+            byCanonicalName.forEach((name, teams) -> copy.byCanonicalName.put(name, new ArrayList<>(teams)));
+            copy.ukMappedTeamIds.addAll(ukMappedTeamIds);
+            copy.footballDataOwnedTeamIds.addAll(footballDataOwnedTeamIds);
+            return copy;
+        }
+
+        private void addMapping(TeamExternalId mapping) {
+            if (mapping == null || mapping.getTeam() == null || mapping.getTeam().getId() == null) return;
+            if (mapping.getProvider() == PROVIDER) {
+                byExternalId.put(mapping.getExternalId(), mapping.getTeam());
+                ukMappedTeamIds.add(mapping.getTeam().getId());
+            } else if (mapping.getProvider() == Provider.FOOTBALL_DATA) {
+                footballDataOwnedTeamIds.add(mapping.getTeam().getId());
+            }
+        }
+
+        private void addTeam(Team team) {
+            if (team == null || team.getName() == null) return;
+            List<Team> teams = byCanonicalName.computeIfAbsent(
+                    team.getName().toLowerCase(Locale.ROOT), ignored -> new ArrayList<>());
+            if (teams.stream().noneMatch(existing -> existing.getId().equals(team.getId()))) teams.add(team);
+        }
     }
 
-    /**
-     * Loads same-direction fixtures in the season. A team pair can legitimately meet
-     * more than once in a season (league and cup/play-off fixtures), so season-wide
-     * uniqueness is not a valid fixture identity.
-     */
-    private List<Match> findSeasonFixtureCandidates(
-            Season season, Team home, Team away, Instant kickoff) {
-        Instant seasonStart = season.getStartDate() == null
-                ? kickoff.minusSeconds(18 * 3600L)
-                : season.getStartDate().atStartOfDay(SOURCE_ZONE).toInstant();
-        Instant seasonEnd = season.getEndDate() == null
-                ? kickoff.plusSeconds(18 * 3600L)
-                : season.getEndDate().plusDays(1).atStartOfDay(SOURCE_ZONE).toInstant();
-        return persistencePort.findFixtureCandidates(
-                season.getId(), home.getId(), away.getId(), seasonStart, seasonEnd);
+    private TeamCache loadTeamCache(List<Map<String, String>> rows) {
+        TeamCache cache = new TeamCache();
+        persistencePort.findTeamMappings(PROVIDER).forEach(cache::addMapping);
+        persistencePort.findTeamMappings(Provider.FOOTBALL_DATA).forEach(cache::addMapping);
+        Set<String> canonicalNames = new HashSet<>();
+        for (Map<String, String> row : rows) {
+            if (row == null) continue;
+            String home = dataStandardizer.teamName(valueAny(row, "HOMETEAM", "HOME TEAM"));
+            String away = dataStandardizer.teamName(valueAny(row, "AWAYTEAM", "AWAY TEAM"));
+            if (StringUtils.hasText(home)) canonicalNames.add(home);
+            if (StringUtils.hasText(away)) canonicalNames.add(away);
+        }
+        persistencePort.findTeamsByNames(canonicalNames).forEach(cache::addTeam);
+        return cache;
     }
 
-    /**
-     * Match provider rows by kickoff rather than by team pair alone. The 36-hour
-     * tolerance accommodates source timezone/clock differences and missing CSV times
-     * (which are represented as noon). Equally close candidates remain an error; never
-     * select an arbitrary canonical fixture.
-     */
+    private Team resolveTeamCached(String leagueCode, String providerName, Season season, TeamCache cache) {
+        String legacyExternalId = normalize(leagueCode) + ":" + normalize(providerName);
+        Team mapped = cache.byExternalId.get(legacyExternalId);
+        if (mapped != null) return mapped;
+        String canonicalName = dataStandardizer.teamName(providerName);
+        if (!StringUtils.hasText(canonicalName)) {
+            throw new IllegalArgumentException("Football-Data UK team name is blank");
+        }
+        String canonicalExternalId = "TEAM:" + normalize(canonicalName);
+        mapped = cache.byExternalId.get(canonicalExternalId);
+        if (mapped != null) return mapped;
+        List<Team> exact = cache.byCanonicalName.getOrDefault(canonicalName.toLowerCase(Locale.ROOT), List.of());
+        if (exact.size() > 1) {
+            throw new IllegalStateException("Ambiguous canonical team name from Football-Data UK: "
+                    + canonicalName + " (matches=" + exact.size() + ")");
+        }
+        Team team = exact.isEmpty() ? null : exact.get(0);
+        boolean footballDataOwnsTeam = team != null && cache.footballDataOwnedTeamIds.contains(team.getId());
+        boolean ukOwnsTeam = dataSourcePolicy.isPrimary(PROVIDER, Dataset.TEAM, season.getYear());
+        boolean mayUseUkFallback = dataSourcePolicy.mayFallbackForCore(
+                PROVIDER, Dataset.TEAM, season.getYear(), footballDataOwnsTeam);
+        if (team == null) {
+            if (!ukOwnsTeam && !mayUseUkFallback) {
+                throw new IllegalStateException("Football-Data UK is not allowed to create team "
+                        + canonicalName + " for season " + season.getYear());
+            }
+            team = persistencePort.saveTeam(Team.builder()
+                    .name(canonicalName)
+                    .shortName(canonicalName.length() > 80 ? canonicalName.substring(0, 80) : canonicalName)
+                    .slug(slug(canonicalName)).isActive(true).build());
+            cache.addTeam(team);
+        }
+        if (!cache.ukMappedTeamIds.contains(team.getId())) {
+            persistencePort.registerTeamExternalId(team, PROVIDER, canonicalExternalId);
+            cache.ukMappedTeamIds.add(team.getId());
+            cache.byExternalId.put(canonicalExternalId, team);
+        }
+        return team;
+    }
+
+    private record PreparedCoreRow(Map<String, String> row, Team home, Team away,
+                                   Instant kickoff, String externalId) {}
+
+    private static final class TeamCache {
+        private final Map<String, Team> byExternalId = new HashMap<>();
+        private final Map<String, List<Team>> byCanonicalName = new HashMap<>();
+        private final Set<Long> ukMappedTeamIds = new HashSet<>();
+        private final Set<Long> footballDataOwnedTeamIds = new HashSet<>();
+
+        private TeamCache copy() {
+            TeamCache copy = new TeamCache();
+            copy.byExternalId.putAll(byExternalId);
+            byCanonicalName.forEach((name, teams) -> copy.byCanonicalName.put(name, new ArrayList<>(teams)));
+            copy.ukMappedTeamIds.addAll(ukMappedTeamIds);
+            copy.footballDataOwnedTeamIds.addAll(footballDataOwnedTeamIds);
+            return copy;
+        }
+
+        private void addMapping(TeamExternalId mapping) {
+            if (mapping == null || mapping.getTeam() == null || mapping.getTeam().getId() == null) return;
+            if (mapping.getProvider() == PROVIDER) {
+                byExternalId.put(mapping.getExternalId(), mapping.getTeam());
+                ukMappedTeamIds.add(mapping.getTeam().getId());
+            } else if (mapping.getProvider() == Provider.FOOTBALL_DATA) {
+                footballDataOwnedTeamIds.add(mapping.getTeam().getId());
+            }
+        }
+
+        private void addTeam(Team team) {
+            if (team == null || team.getName() == null) return;
+            List<Team> teams = byCanonicalName.computeIfAbsent(
+                    team.getName().toLowerCase(Locale.ROOT), ignored -> new ArrayList<>());
+            if (teams.stream().noneMatch(existing -> existing.getId().equals(team.getId()))) teams.add(team);
+        }
+    }
+
     static Optional<Match> closestFixtureCandidate(List<Match> candidates, Instant kickoff) {
         if (candidates == null || candidates.isEmpty() || kickoff == null) {
             return Optional.empty();
@@ -1396,6 +1612,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         private int createdFixtures;
         private int importedFixtures;
         private int unmatched;
+        private TeamCache teamCache;
         private final Set<Long> resolvedTeamIds = new HashSet<>();
     }
 
