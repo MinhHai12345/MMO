@@ -15,10 +15,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class WorkflowCheckpointService {
+
+    private static final Duration EXECUTION_LEASE = Duration.ofHours(6);
 
     private final FootballWorkflowRunRepository runRepository;
     private final FootballWorkflowStageExecutionRepository stageRepository;
@@ -34,31 +37,38 @@ public class WorkflowCheckpointService {
                         FootballWorkflowRunEntity.create(idempotencyKey)).getId());
     }
 
-
+    /**
+     * Claims a run for one coordinator. A new token fences off workers whose lease expired.
+     * Returns null when the run is complete or another coordinator still owns a valid lease.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public boolean claimRun(Long runId) {
+    public String claimRun(Long runId) {
         FootballWorkflowRunEntity run = runRepository.findByIdForUpdate(runId)
                 .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
-        if (run.getStatus() == FootballWorkflowStatus.COMPLETED) return false;
+        if (run.getStatus() == FootballWorkflowStatus.COMPLETED) return null;
+
         Instant now = Instant.now();
         if (run.getStatus() == FootballWorkflowStatus.RUNNING
-                && run.getLeaseUntil() != null && run.getLeaseUntil().isAfter(now)) return false;
+                && run.getLeaseUntil() != null && run.getLeaseUntil().isAfter(now)) return null;
+
         List<FootballWorkflowStageExecutionEntity> executions =
                 stageRepository.findAllByWorkflowRunIdOrderByIdAsc(runId);
         executions.forEach(FootballWorkflowStageExecutionEntity::resetInterrupted);
         stageRepository.saveAll(executions);
+
+        String token = UUID.randomUUID().toString();
         run.setStatus(FootballWorkflowStatus.RUNNING);
         run.setFailureReason(null);
         run.setCompletedAt(null);
-        run.setLeaseUntil(now.plus(Duration.ofHours(6)));
+        run.setLeaseUntil(now.plus(EXECUTION_LEASE));
+        run.setExecutionToken(token);
         runRepository.save(run);
-        return true;
+        return token;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void releaseRun(Long runId) {
-        FootballWorkflowRunEntity run = runRepository.findByIdForUpdate(runId)
-                .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
+    public void releaseRun(Long runId, String executionToken) {
+        FootballWorkflowRunEntity run = lockAndValidateOwner(runId, executionToken);
         if (run.getStatus() != FootballWorkflowStatus.COMPLETED) {
             List<FootballWorkflowStageExecutionEntity> executions =
                     stageRepository.findAllByWorkflowRunIdOrderByIdAsc(runId);
@@ -84,9 +94,8 @@ public class WorkflowCheckpointService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void startStage(Long runId, FootballWorkflowStage stage) {
-        FootballWorkflowRunEntity run = runRepository.findById(runId)
-                .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
+    public void startStage(Long runId, FootballWorkflowStage stage, String executionToken) {
+        FootballWorkflowRunEntity run = lockAndValidateOwner(runId, executionToken);
         FootballWorkflowStageExecutionEntity execution = stageRepository
                 .findForUpdate(runId, stage)
                 .orElseGet(() -> {
@@ -100,15 +109,14 @@ public class WorkflowCheckpointService {
         }
         execution.start();
         run.start(stage);
-        run.setLeaseUntil(Instant.now().plus(Duration.ofHours(6)));
+        run.setLeaseUntil(Instant.now().plus(EXECUTION_LEASE));
         stageRepository.save(execution);
         runRepository.save(run);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void completeStage(Long runId, FootballWorkflowStage stage) {
-        FootballWorkflowRunEntity run = runRepository.findById(runId)
-                .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
+    public void completeStage(Long runId, FootballWorkflowStage stage, String executionToken) {
+        FootballWorkflowRunEntity run = lockAndValidateOwner(runId, executionToken);
         FootballWorkflowStageExecutionEntity execution = stageRepository.findForUpdate(runId, stage)
                 .orElseThrow(() -> new IllegalStateException("Stage checkpoint does not exist: " + stage));
         execution.complete();
@@ -119,9 +127,8 @@ public class WorkflowCheckpointService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void failStage(Long runId, FootballWorkflowStage stage, String reason) {
-        FootballWorkflowRunEntity run = runRepository.findById(runId)
-                .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
+    public void failStage(Long runId, FootballWorkflowStage stage, String reason, String executionToken) {
+        FootballWorkflowRunEntity run = lockAndValidateOwner(runId, executionToken);
         stageRepository.findForUpdate(runId, stage).ifPresent(execution -> {
             execution.fail(reason);
             stageRepository.save(execution);
@@ -131,9 +138,8 @@ public class WorkflowCheckpointService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void completeRun(Long runId) {
-        FootballWorkflowRunEntity run = runRepository.findByIdForUpdate(runId)
-                .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
+    public void completeRun(Long runId, String executionToken) {
+        FootballWorkflowRunEntity run = lockAndValidateOwner(runId, executionToken);
         run.complete();
         runRepository.save(run);
     }
@@ -142,14 +148,21 @@ public class WorkflowCheckpointService {
     public void prepareForResume(Long runId) {
         FootballWorkflowRunEntity run = runRepository.findById(runId)
                 .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
-        if (run.getStatus() == FootballWorkflowStatus.COMPLETED) {
-            return;
-        }
+        if (run.getStatus() == FootballWorkflowStatus.COMPLETED) return;
         List<FootballWorkflowStageExecutionEntity> executions =
                 stageRepository.findAllByWorkflowRunIdOrderByIdAsc(runId);
         executions.forEach(FootballWorkflowStageExecutionEntity::resetInterrupted);
         stageRepository.saveAll(executions);
         run.prepareForResume();
         runRepository.save(run);
+    }
+
+    private FootballWorkflowRunEntity lockAndValidateOwner(Long runId, String executionToken) {
+        FootballWorkflowRunEntity run = runRepository.findByIdForUpdate(runId)
+                .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
+        if (executionToken == null || !executionToken.equals(run.getExecutionToken())) {
+            throw new IllegalStateException("Workflow execution lease is no longer owned by this coordinator.");
+        }
+        return run;
     }
 }
