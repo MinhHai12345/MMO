@@ -91,7 +91,7 @@ class TeamPersistenceAdapterTest {
         assertSame(canonicalTeam, mapping.getTeam());
         assertEquals("sofa-456", mapping.getExternalId());
         assertEquals(Provider.SOFA_SCORE, mapping.getProvider());
-        verify(teamRepository, never()).saveAll(anyList());
+        verify(teamRepository, never()).saveAll(any(Iterable.class));
         assertEquals("Bolton Wanderers", canonicalTeam.getName());
     }
 
@@ -107,8 +107,8 @@ class TeamPersistenceAdapterTest {
                 List.of(new ProviderTeam("sofa-unknown", "Unknown FC", "Unknown",
                         null, null, null, null)));
 
-        verify(teamRepository, never()).saveAll(anyList());
-        verify(teamExternalIdRepository, never()).saveAll(anyList());
+        verify(teamRepository, never()).saveAll(any(Iterable.class));
+        verify(teamExternalIdRepository, never()).saveAll(any(Iterable.class));
     }
 
     private static Season season() {
