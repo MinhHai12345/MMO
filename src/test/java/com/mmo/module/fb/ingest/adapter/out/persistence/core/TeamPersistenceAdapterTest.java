@@ -53,8 +53,10 @@ class TeamPersistenceAdapterTest {
                 season(),
                 List.of(new ProviderTeam("fd-123", "Bolton", "Bolton", null, null, null, null)));
 
+        @SuppressWarnings("unchecked")
         ArgumentCaptor<Iterable<TeamExternalId>> mappings =
-                ArgumentCaptor.forClass(Iterable.class);
+                (ArgumentCaptor<Iterable<TeamExternalId>>) (ArgumentCaptor<?>)
+                        ArgumentCaptor.forClass(Iterable.class);
         verify(teamExternalIdRepository).saveAll(mappings.capture());
         TeamExternalId mapping = StreamSupport.stream(mappings.getValue().spliterator(), false)
                 .findFirst().orElseThrow();
