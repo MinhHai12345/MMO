@@ -99,7 +99,7 @@ class SourceAwareMergeAdapterTest {
                 .provider(MatchProvider.FOOTBALL_DATA)
                 .sourceUpdatedAt(Instant.parse("2026-01-02T00:00:00Z")).build();
         when(repository.findAllByMatchIdInAndFieldKeyIn(anyList(), anyList())).thenReturn(List.of(current));
-        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), mockMatchRepository(), repository);
+        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), mockMatchRepository(), seasonRepository, repository);
         AtomicInteger applied = new AtomicInteger();
 
         assertFalse(service.merge(match2024(), Provider.FOOTBALL_DATA, Dataset.FIXTURE,
@@ -112,7 +112,7 @@ class SourceAwareMergeAdapterTest {
     void prefetchesAndPersistsProvenanceOnceForMultipleFields() {
         MatchFieldProvenanceRepository repository = mock(MatchFieldProvenanceRepository.class);
         when(repository.findAllByMatchIdInAndFieldKeyIn(anyList(), anyList())).thenReturn(List.of());
-        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), mockMatchRepository(), repository);
+        SourceAwareMergeAdapter service = new SourceAwareMergeAdapter(new DataSourcePolicy(), mockMatchRepository(), seasonRepository, repository);
         Match match = match2024();
         AtomicInteger applied = new AtomicInteger();
         List<FieldMergeCommand> commands = List.of(
