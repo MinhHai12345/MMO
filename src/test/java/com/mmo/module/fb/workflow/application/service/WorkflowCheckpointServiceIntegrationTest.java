@@ -30,31 +30,50 @@ class WorkflowCheckpointServiceIntegrationTest {
     void persistsStageCompletionIndependentlyAndReusesIdempotencyKey() {
         Long runId = checkpointService.getOrCreateRun("integration-workflow-2026-11-10");
         Long sameRunId = checkpointService.getOrCreateRun("integration-workflow-2026-11-10");
+        String token = checkpointService.claimRun(runId);
 
         assertThat(sameRunId).isEqualTo(runId);
-        checkpointService.startStage(runId, FootballWorkflowStage.DATA_INGESTION);
-        checkpointService.completeStage(runId, FootballWorkflowStage.DATA_INGESTION);
+        assertThat(token).isNotBlank();
+        checkpointService.startStage(runId, FootballWorkflowStage.DATA_INGESTION, token);
+        checkpointService.completeStage(runId, FootballWorkflowStage.DATA_INGESTION, token);
 
         assertThat(checkpointService.isStageCompleted(runId, FootballWorkflowStage.DATA_INGESTION)).isTrue();
         assertThat(stageRepository.findByWorkflowRunIdAndStage(runId, FootballWorkflowStage.DATA_INGESTION))
                 .get().extracting("status").isEqualTo(FootballWorkflowStageStatus.COMPLETED);
         assertThat(runRepository.findById(runId).orElseThrow().getStatus())
                 .isEqualTo(FootballWorkflowStatus.RUNNING);
+        checkpointService.completeRun(runId, token);
     }
 
     @Test
     void resumeResetsOnlyInterruptedStagesAndPreservesCompletedStages() {
         Long runId = checkpointService.getOrCreateRun("resume-workflow-2026-11-10");
-        checkpointService.startStage(runId, FootballWorkflowStage.DATA_INGESTION);
-        checkpointService.completeStage(runId, FootballWorkflowStage.DATA_INGESTION);
-        checkpointService.startStage(runId, FootballWorkflowStage.DATA_READINESS);
+        String token = checkpointService.claimRun(runId);
+        checkpointService.startStage(runId, FootballWorkflowStage.DATA_INGESTION, token);
+        checkpointService.completeStage(runId, FootballWorkflowStage.DATA_INGESTION, token);
+        checkpointService.startStage(runId, FootballWorkflowStage.DATA_READINESS, token);
 
-        checkpointService.prepareForResume(runId);
+        checkpointService.releaseRun(runId, token);
 
         assertThat(checkpointService.isStageCompleted(runId, FootballWorkflowStage.DATA_INGESTION)).isTrue();
         assertThat(stageRepository.findByWorkflowRunIdAndStage(runId, FootballWorkflowStage.DATA_READINESS))
                 .get().extracting("status").isEqualTo(FootballWorkflowStageStatus.PENDING);
         assertThat(runRepository.findById(runId).orElseThrow().getStatus())
                 .isEqualTo(FootballWorkflowStatus.PENDING);
+    }
+
+    @Test
+    void activeLeaseBlocksAnotherCoordinatorAndTokenChangesAfterRelease() {
+        Long runId = checkpointService.getOrCreateRun("lease-workflow-2026-11-10");
+        String firstToken = checkpointService.claimRun(runId);
+
+        assertThat(firstToken).isNotBlank();
+        assertThat(checkpointService.claimRun(runId)).isNull();
+
+        checkpointService.releaseRun(runId, firstToken);
+        String secondToken = checkpointService.claimRun(runId);
+
+        assertThat(secondToken).isNotBlank().isNotEqualTo(firstToken);
+        checkpointService.releaseRun(runId, secondToken);
     }
 }
