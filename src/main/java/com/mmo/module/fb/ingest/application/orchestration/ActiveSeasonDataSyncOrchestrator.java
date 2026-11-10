@@ -44,7 +44,8 @@ public class ActiveSeasonDataSyncOrchestrator implements ActiveSeasonDataSyncUse
         boolean executed = distributedLock.executeScoped("workflow/active-season",
                 () -> syncLocked(overrides, oddsProviderOverride));
         if (!executed) {
-            log.warn("Core sync skipped because another ingestion workflow is running");
+            throw new IllegalStateException(
+                    "Active-season synchronization was not started because another ingestion workflow owns the lock");
         }
     }
 
