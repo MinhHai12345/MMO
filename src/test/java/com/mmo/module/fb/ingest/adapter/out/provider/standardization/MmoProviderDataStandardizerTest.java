@@ -41,6 +41,7 @@ class MmoProviderDataStandardizerTest {
         assertSame("Rangers", "Rangers FC", "Rangers");
         assertSame("Red Bull Salzburg", "FC Red Bull Salzburg", "Red Bull Salzburg");
         assertSame("Panathinaikos", "Panathinaikos FC", "Panathinaikos");
+        assertSame("Red Star Belgrade", "FK Crvena Zvezda", "Crvena Zvezda");
         assertSame("Inter Miami", "Inter Miami CF", "Inter Miami");
         assertSame("Los Angeles FC", "LAFC", "Los Angeles FC");
         assertSame("Flamengo", "Clube de Regatas do Flamengo", "Flamengo");
