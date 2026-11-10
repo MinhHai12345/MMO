@@ -715,9 +715,22 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
             Team away = findExistingTeamCached(leagueMapping.getIdentify(), awayName, teamCache);
             if (home == null || away == null || home.getId().equals(away.getId())) {
                 teamNotFoundRows++;
-                diagnosticSamples = logEnrichmentMismatch(season, rowIndex + 1, row,
-                        home == null || away == null ? "team mapping not found" : "home and away resolve to the same team",
-                        diagnosticSamples);
+                String mismatchReason;
+                if (home != null && away != null) {
+                    mismatchReason = "home and away resolve to the same team";
+                } else {
+                    List<Team> homeCandidates = teamIdentityResolver.findCandidates(
+                            homeName, teamCache.byCanonicalName, teamCache.byMatchKey);
+                    List<Team> awayCandidates = teamIdentityResolver.findCandidates(
+                            awayName, teamCache.byCanonicalName, teamCache.byMatchKey);
+                    mismatchReason = "team identity unresolved: canonicalHome="
+                            + teamIdentityResolver.canonicalName(homeName) + ", homeCandidates="
+                            + homeCandidates.size() + ", canonicalAway="
+                            + teamIdentityResolver.canonicalName(awayName) + ", awayCandidates="
+                            + awayCandidates.size();
+                }
+                diagnosticSamples = logEnrichmentMismatch(
+                        season, rowIndex + 1, row, mismatchReason, diagnosticSamples);
                 continue;
             }
 
