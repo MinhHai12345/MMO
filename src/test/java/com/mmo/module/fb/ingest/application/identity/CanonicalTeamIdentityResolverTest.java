@@ -55,13 +55,50 @@ class CanonicalTeamIdentityResolverTest {
     }
 
     @Test
+    void resolvesFootballDataUkAliasesToExistingCanonicalTeams() {
+        Map<String, List<Team>> canonical = new java.util.HashMap<>();
+        Map<String, List<Team>> normalized = new java.util.HashMap<>();
+        List<Team> teams = List.of(
+                team(10L, "Bolton Wanderers"),
+                team(11L, "Preston North End"),
+                team(12L, "Lincoln City"),
+                team(13L, "Middlesbrough"),
+                team(14L, "Portsmouth"),
+                team(15L, "Queens Park Rangers"),
+                team(16L, "Blackburn Rovers"),
+                team(17L, "Sheffield United"),
+                team(18L, "Southampton"),
+                team(19L, "Millwall"),
+                team(20L, "West Ham")
+        );
+        teams.forEach(team -> resolver.addTeam(canonical, normalized, team));
+
+        Map<String, Long> expectedIds = Map.of(
+                "Bolton", 10L,
+                "Preston", 11L,
+                "Lincoln", 12L,
+                "Middlesbrough FC", 13L,
+                "Portsmouth FC", 14L,
+                "QPR", 15L,
+                "Blackburn", 16L,
+                "Sheffield United FC", 17L,
+                "Southampton FC", 18L,
+                "Millwall FC", 19L,
+                "West Ham United FC", 20L
+        );
+        expectedIds.forEach((providerName, expectedId) ->
+                assertEquals(expectedId, resolver.resolve(providerName, canonical, normalized).getId(),
+                        providerName));
+    }
+
+    @Test
     void doesNotResolveUnrelatedNamesByFuzzySimilarity() {
         Map<String, List<Team>> canonical = new java.util.HashMap<>();
         Map<String, List<Team>> normalized = new java.util.HashMap<>();
         resolver.addTeam(canonical, normalized, team(5L, "Ajaccio"));
         resolver.addTeam(canonical, normalized, team(6L, "Ajaccio GFCO"));
 
-        assertNull(resolver.resolve("AC Ajaccio", canonical, normalized));
+        assertNull(resolver.resolve("Ajaccio City", canonical, normalized));
     }
 
     private static Team team(Long id, String name) {
