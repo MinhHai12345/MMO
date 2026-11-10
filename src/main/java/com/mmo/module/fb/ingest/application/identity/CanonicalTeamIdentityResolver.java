@@ -7,8 +7,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -27,15 +25,6 @@ public class CanonicalTeamIdentityResolver {
 
     public String canonicalName(String providerName) {
         return standardizer.teamName(providerName);
-    }
-
-    public Map<String, List<Team>> index(Collection<Team> teams) {
-        Map<String, List<Team>> byCanonicalName = new HashMap<>();
-        Map<String, List<Team>> byMatchKey = new HashMap<>();
-        if (teams != null) {
-            teams.forEach(team -> addTeam(byCanonicalName, byMatchKey, team));
-        }
-        return new TeamIdentityIndex(byCanonicalName, byMatchKey).asCombinedIndex();
     }
 
     /**
@@ -98,17 +87,4 @@ public class CanonicalTeamIdentityResolver {
         }
     }
 
-    /**
-     * Convenience wrapper for building indexes in adapters that need a single value.
-     * The combined map stores canonical entries under their lower-case names and
-     * normalized entries under a prefixed key to prevent key-space collisions.
-     */
-    private record TeamIdentityIndex(Map<String, List<Team>> canonical,
-                                     Map<String, List<Team>> normalized) {
-        private Map<String, List<Team>> asCombinedIndex() {
-            Map<String, List<Team>> combined = new HashMap<>(canonical);
-            normalized.forEach((key, value) -> combined.put("#" + key, value));
-            return combined;
-        }
-    }
 }
