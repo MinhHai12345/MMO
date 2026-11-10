@@ -34,8 +34,8 @@ public class FootballQuartzJobInitializer implements DataInitializer {
         log.info("Initializing Football Analytics CronJobs (UTC timezone)...");
 
         // Keep the end-to-end coordinator registered but manual-only during its first
-        // production rollout. It invokes the full rebuild use case, so enable a recurring
-        // cron only after ingestion duration and provider quotas have been observed.
+        // production rollout. The workflow uses incremental active-season synchronization;
+        // enable a recurring cron only after end-to-end runtime and recovery are validated.
         createOrUpdateJob(FootballWorkflowOrchestrationQuartzJob.class,
                 "0 0 0 1 1 ? 2099",
                 "Manual-only durable football workflow; trigger through the CronJob management API");
