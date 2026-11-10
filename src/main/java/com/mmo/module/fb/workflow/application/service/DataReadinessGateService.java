@@ -31,8 +31,12 @@ public class DataReadinessGateService {
 
     @Transactional(readOnly = true)
     public ReadinessReport evaluate() {
+        return evaluateAt(Instant.now());
+    }
+
+    ReadinessReport evaluateAt(Instant now) {
+        validateConfiguration();
         DataCoverageAuditService.DataCoverageAuditReport audit = coverageAuditService.runAudit();
-        Instant now = Instant.now();
         List<SeasonReadiness> results = new ArrayList<>();
         for (DataCoverageAuditService.SeasonCoverage season : audit.seasons()) {
             List<String> issues = new ArrayList<>(season.issues());
@@ -52,30 +56,60 @@ public class DataReadinessGateService {
 
             Instant latestSnapshot = snapshotRepository.findLatestFetchedAtBySeasonId(season.seasonId());
             boolean fresh = latestSnapshot != null;
-            if (season.current()) {
-                fresh = fresh && !latestSnapshot.isBefore(now.minus(Duration.ofHours(maximumSnapshotAgeHours)));
-                if (!fresh) issues.add("STALE_OR_MISSING_STATISTICS_SNAPSHOT");
-            } else if (!fresh) {
-                issues.add("MISSING_STATISTICS_SNAPSHOT");
+            if (latestSnapshot == null) {
+                issues.add(season.current()
+                        ? "STALE_OR_MISSING_STATISTICS_SNAPSHOT"
+                        : "MISSING_STATISTICS_SNAPSHOT");
+                fresh = false;
+            } else if (latestSnapshot.isAfter(now)) {
+                issues.add("FUTURE_STATISTICS_SNAPSHOT");
+                fresh = false;
+            } else if (season.current()
+                    && latestSnapshot.isBefore(now.minus(Duration.ofHours(maximumSnapshotAgeHours)))) {
+                issues.add("STALE_OR_MISSING_STATISTICS_SNAPSHOT");
+                fresh = false;
             }
 
             results.add(new SeasonReadiness(season.seasonId(), season.league(), season.season(),
                     season.matches(), season.finishedMatches(), season.finishedWithScores(),
                     season.finishedWithXg(), teamStatsCoverage, latestSnapshot, fresh, issues));
         }
-        boolean ready = !results.isEmpty() && results.stream().allMatch(item -> item.issues().isEmpty());
-        log.info("Workflow data readiness evaluated: seasons={} ready={} generatedAt={}",
-                results.size(), ready, now);
-        return new ReadinessReport(ready, now, results);
+        List<String> reportIssues = results.isEmpty() ? List.of("NO_ACTIVE_SEASONS") : List.of();
+        boolean ready = reportIssues.isEmpty()
+                && results.stream().allMatch(item -> item.issues().isEmpty());
+        log.info("Workflow data readiness evaluated: seasons={} ready={} generatedAt={} issues={}",
+                results.size(), ready, now, reportIssues);
+        return new ReadinessReport(ready, now, results, reportIssues);
+    }
+
+    private void validateConfiguration() {
+        validateCoverageThreshold("minimum-score-coverage", minimumScoreCoverage);
+        validateCoverageThreshold("minimum-xg-coverage", minimumXgCoverage);
+        validateCoverageThreshold("minimum-team-statistics-coverage", minimumTeamStatisticsCoverage);
+        if (maximumSnapshotAgeHours <= 0) {
+            throw new IllegalStateException("Workflow readiness maximum-snapshot-age-hours must be greater than zero.");
+        }
+    }
+
+    private void validateCoverageThreshold(String name, double value) {
+        if (!Double.isFinite(value) || value < 0.0 || value > 1.0) {
+            throw new IllegalStateException("Workflow readiness " + name + " must be between 0.0 and 1.0.");
+        }
     }
 
     private double ratio(long numerator, long denominator) {
         return denominator == 0 ? 0.0 : (double) numerator / denominator;
     }
 
-    public record ReadinessReport(boolean ready, Instant evaluatedAt, List<SeasonReadiness> seasons) {
+    public record ReadinessReport(boolean ready, Instant evaluatedAt, List<SeasonReadiness> seasons,
+                                  List<String> issues) {
+        public ReadinessReport(boolean ready, Instant evaluatedAt, List<SeasonReadiness> seasons) {
+            this(ready, evaluatedAt, seasons, List.of());
+        }
+
         public ReadinessReport {
             seasons = seasons == null ? List.of() : List.copyOf(seasons);
+            issues = issues == null ? List.of() : List.copyOf(issues);
         }
     }
 
