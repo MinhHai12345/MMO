@@ -17,16 +17,15 @@ The initializer registers the job in the `FBJobGroup` registry using the cron ex
 `0 0 0 1 1 ? 2099`. This keeps the Quartz job definition available for operator-triggered
 execution without enabling a recurring schedule.
 
-This is intentional: the current coordinator's `DATA_INGESTION` stage invokes the full
-data rebuild use case. Automatically scheduling that pipeline before measuring provider
-load, database impact and total runtime could duplicate the existing ingestion schedules
-and create avoidable load.
+This is intentional: the coordinator's `DATA_INGESTION` stage invokes the incremental
+`ActiveSeasonDataSyncUseCase`, not the historical full-rebuild pipeline. Historical
+backfill remains owned by `CoreDataBackfillJob`, while match enrichment remains owned by
+`MatchEnrichmentJob`; the workflow does not duplicate those schedules.
 
 Operators can trigger the registered CronJob through the existing CronJob management
-surface after verifying the deployment's access controls. Do not enable a recurring
-workflow cron until the ingestion stage has been changed to invoke an incremental,
-idempotent synchronization use case or the operational cost of the full rebuild has
-been explicitly accepted.
+surface after verifying the deployment's access controls. Keep the workflow manual-only
+until an end-to-end MySQL/Quartz test validates stage recovery, provider-lock contention,
+and the complete data-readiness-to-content path.
 
 ## Interrupt and recovery behavior
 
@@ -42,6 +41,6 @@ been explicitly accepted.
 
 ## Suggested next production gate
 
-Before switching the job to a recurring cron, implement an incremental ingestion stage
-for the coordinator and add an end-to-end test that executes against MySQL with real
-Quartz persistence and verifies interruption, lease expiry and resume.
+Before switching the job to a recurring cron, add an end-to-end test against MySQL and
+real Quartz persistence. Verify interruption, lease expiry, resume, and that a skipped
+active-season synchronization cannot be checkpointed as successful.
