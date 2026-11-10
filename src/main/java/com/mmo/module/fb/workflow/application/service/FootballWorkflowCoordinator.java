@@ -14,6 +14,7 @@ import com.mmo.module.fb.workflow.domain.enums.FootballWorkflowStage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -52,7 +53,7 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
         Long contentRunId = null;
         int draftsGenerated = 0;
         int contentFailures = 0;
-        Long workflowRunId = checkpointService.getOrCreateRun("football-workflow-" + utcDate);
+        Long workflowRunId = getOrCreateRun("football-workflow-" + utcDate);
 
         if (checkpointService.isRunCompleted(workflowRunId)) {
             return report("COMPLETED", utcDate, startedAt, steps, null, 0, 0);
@@ -139,6 +140,15 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
         checkpointService.completeRun(workflowRunId);
         return report(contentFailures > 0 ? "COMPLETED_WITH_ERRORS" : "COMPLETED",
                 utcDate, startedAt, steps, contentRunId, draftsGenerated, contentFailures);
+    }
+
+    private Long getOrCreateRun(String idempotencyKey) {
+        try {
+            return checkpointService.getOrCreateRun(idempotencyKey);
+        } catch (DataIntegrityViolationException concurrentCreation) {
+            // Another scheduler node may have inserted the unique key between lookup and insert.
+            return checkpointService.getOrCreateRun(idempotencyKey);
+        }
     }
 
     private boolean executeStage(Long runId, FootballWorkflowStage stage, BooleanSupplier stop,
