@@ -784,6 +784,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         // of repeating locks, provenance, stats, bookmaker and quote reads per fixture.
         for (int batchStart = 0; batchStart < matchedRows.size(); batchStart += 100) {
             int batchEnd = Math.min(matchedRows.size(), batchStart + 100);
+            long persistenceChunkStartedAt = System.nanoTime();
             List<MatchedEnrichmentRow> chunk = matchedRows.subList(batchStart, batchEnd);
             List<MatchXgPersistencePort.XgInput> xgInputs = new ArrayList<>(chunk.size());
             List<FootballDataUkMatchStatisticsPersistencePort.StatisticsInput> statsInputs =
@@ -812,10 +813,12 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
             if (!statsInputs.isEmpty()) importedStats += statisticsMapper.persistAll(statsInputs);
             if (!oddsInputs.isEmpty()) importedOdds += oddsMapper.persistAll(oddsInputs);
 
+            long persistenceChunkMs = Math.max(1, (System.nanoTime() - persistenceChunkStartedAt) / 1_000_000);
             log.info("Football-Data UK enrichment persistence chunk: season={}, fixtures={}-{}, "
-                            + "xgRows={}, statsRows={}, oddsRows={}",
+                            + "xgRows={}, statsRows={}, oddsRows={}, durationMs={}, fixturesPerSecond={}",
                     season.getYear(), batchStart + 1, batchEnd,
-                    xgInputs.size(), statsInputs.size(), oddsInputs.size());
+                    xgInputs.size(), statsInputs.size(), oddsInputs.size(), persistenceChunkMs,
+                    Math.round(chunk.size() * 1000.0 / persistenceChunkMs));
         }
         long durationMs = Math.max(1, (System.nanoTime() - enrichmentStartedAt) / 1_000_000);
         log.info("Football-Data UK enrichment completed: season={}, csvRows={}, matchedRows={}, stats={}, "
