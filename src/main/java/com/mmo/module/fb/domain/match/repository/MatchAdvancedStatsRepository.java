@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 
 public interface MatchAdvancedStatsRepository extends JpaRepository<MatchAdvancedStats, Long> {
@@ -13,6 +14,9 @@ public interface MatchAdvancedStatsRepository extends JpaRepository<MatchAdvance
     Optional<MatchAdvancedStats> findByMatchIdAndTeamId(Long matchId, Long teamId);
 
     long countByMatchId(Long matchId);
+
+    @EntityGraph(attributePaths = {"match", "team"})
+    List<MatchAdvancedStats> findAllByMatchIdIn(Collection<Long> matchIds);
 
     @EntityGraph(attributePaths = {"team"})
     List<MatchAdvancedStats> findAllByMatchId(Long matchId);

@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 
 public interface MatchOddsQuoteRepository extends JpaRepository<MatchOddsQuote, Long> {
@@ -16,6 +17,9 @@ public interface MatchOddsQuoteRepository extends JpaRepository<MatchOddsQuote, 
     Optional<MatchOddsQuote> findByMatchIdAndBookmakerIdAndProviderAndMarketTypeAndMarketPeriodAndLineAndOutcome(
             Long matchId, Long bookmakerId, MatchProvider provider, MatchOddsMarketType marketType,
             MatchOddsPeriod marketPeriod, BigDecimal line, String outcome);
+
+    @EntityGraph(attributePaths = {"bookmaker"})
+    List<MatchOddsQuote> findAllByMatchIdInAndProvider(Collection<Long> matchIds, MatchProvider provider);
 
     @EntityGraph(attributePaths = {"bookmaker"})
     List<MatchOddsQuote> findAllByMatchId(Long matchId);

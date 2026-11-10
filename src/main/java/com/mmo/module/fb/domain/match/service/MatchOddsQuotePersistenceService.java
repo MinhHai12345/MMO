@@ -78,55 +78,75 @@ public class MatchOddsQuotePersistenceService {
     }
 
 
-    /**
-     * Bulk quote merge for one match/provider snapshot. Existing quote identities are
-     * loaded once and both quote and immutable price-history rows are flushed with saveAll.
-     */
+    /** Bulk quote merge for one match/provider snapshot. */
     @Transactional
     public void upsertAll(Match match, MatchProvider provider,
                           Map<Bookmaker, List<QuoteInput>> valuesByBookmaker) {
-        if (match == null || match.getId() == null || provider == null
-                || valuesByBookmaker == null || valuesByBookmaker.isEmpty()) return;
+        upsertAll(List.of(new QuoteBatchInput(match, provider, valuesByBookmaker)));
+    }
 
+    /**
+     * Bulk quote merge across a fixture chunk. Existing quote identities are prefetched
+     * once per provider, then quote and price-history rows are saved in two batches.
+     */
+    @Transactional
+    public void upsertAll(List<QuoteBatchInput> batches) {
+        if (batches == null || batches.isEmpty()) return;
+        Map<MatchProvider, List<QuoteBatchInput>> byProvider = new LinkedHashMap<>();
+        for (QuoteBatchInput batch : batches) {
+            if (batch == null || batch.match() == null || batch.match().getId() == null
+                    || batch.provider() == null || batch.valuesByBookmaker() == null
+                    || batch.valuesByBookmaker().isEmpty()) continue;
+            byProvider.computeIfAbsent(batch.provider(), ignored -> new ArrayList<>()).add(batch);
+        }
+        byProvider.forEach(this::upsertProviderBatch);
+    }
+
+    private void upsertProviderBatch(MatchProvider provider, List<QuoteBatchInput> batches) {
+        List<Long> matchIds = batches.stream().map(batch -> batch.match().getId()).distinct().toList();
         Map<QuoteIdentity, MatchOddsQuote> existing = new LinkedHashMap<>();
-        quoteRepository.findAllByMatchIdAndProvider(match.getId(), provider).forEach(quote ->
-                existing.put(identity(quote.getBookmaker().getId(), quote.getMarketType(),
-                        quote.getMarketPeriod(), quote.getLine(), quote.getOutcome()), quote));
+        quoteRepository.findAllByMatchIdInAndProvider(matchIds, provider).forEach(quote ->
+                existing.put(identity(quote.getMatch().getId(), quote.getBookmaker().getId(),
+                        quote.getMarketType(), quote.getMarketPeriod(), quote.getLine(), quote.getOutcome()), quote));
 
         Map<QuoteIdentity, MatchOddsQuote> pending = new LinkedHashMap<>();
         java.util.Set<QuoteIdentity> changed = new java.util.HashSet<>();
         Instant now = Instant.now();
-        for (Map.Entry<Bookmaker, List<QuoteInput>> entry : valuesByBookmaker.entrySet()) {
-            Bookmaker bookmaker = entry.getKey();
-            if (bookmaker == null || bookmaker.getId() == null || entry.getValue() == null) continue;
-            for (QuoteInput value : entry.getValue()) {
-                if (value == null || !StringUtils.hasText(value.market())
-                        || !StringUtils.hasText(value.outcome()) || value.odd() == null
-                        || value.odd().signum() <= 0) continue;
-                MatchOddsMarketType type = marketType(value.market());
-                MatchOddsPeriod period = marketPeriod(value.market());
-                String outcome = normalizeOutcome(value.outcome());
-                BigDecimal line = normalizeLine(value.line(), value.outcome());
-                QuoteIdentity key = identity(bookmaker.getId(), type, period, line, outcome);
-                MatchOddsQuote quote = pending.get(key);
-                if (quote == null) quote = existing.get(key);
-                if (quote == null) {
-                    quote = MatchOddsQuote.builder().match(match).bookmaker(bookmaker)
-                            .provider(provider).marketType(type).marketPeriod(period)
-                            .line(line).outcome(outcome).build();
+        for (QuoteBatchInput batch : batches) {
+            Match match = batch.match();
+            for (Map.Entry<Bookmaker, List<QuoteInput>> entry : batch.valuesByBookmaker().entrySet()) {
+                Bookmaker bookmaker = entry.getKey();
+                if (bookmaker == null || bookmaker.getId() == null || entry.getValue() == null) continue;
+                for (QuoteInput value : entry.getValue()) {
+                    if (value == null || !StringUtils.hasText(value.market())
+                            || !StringUtils.hasText(value.outcome()) || value.odd() == null
+                            || value.odd().signum() <= 0) continue;
+                    MatchOddsMarketType type = marketType(value.market());
+                    MatchOddsPeriod period = marketPeriod(value.market());
+                    String outcome = normalizeOutcome(value.outcome());
+                    BigDecimal line = normalizeLine(value.line(), value.outcome());
+                    QuoteIdentity key = identity(match.getId(), bookmaker.getId(), type, period, line, outcome);
+                    MatchOddsQuote quote = pending.get(key);
+                    if (quote == null) quote = existing.get(key);
+                    if (quote == null) {
+                        quote = MatchOddsQuote.builder().match(match).bookmaker(bookmaker)
+                                .provider(provider).marketType(type).marketPeriod(period)
+                                .line(line).outcome(outcome).build();
+                    }
+                    BigDecimal previous = quote.getOdd();
+                    if (previous == null || previous.compareTo(value.odd()) != 0) changed.add(key);
+                    quote.setOdd(value.odd());
+                    quote.setFetchedAt(now);
+                    pending.put(key, quote);
                 }
-                BigDecimal previous = quote.getOdd();
-                if (previous == null || previous.compareTo(value.odd()) != 0) changed.add(key);
-                quote.setOdd(value.odd());
-                quote.setFetchedAt(now);
-                pending.put(key, quote);
             }
         }
         if (pending.isEmpty()) return;
         List<MatchOddsQuote> saved = quoteRepository.saveAll(pending.values());
         Map<QuoteIdentity, MatchOddsQuote> savedByKey = new LinkedHashMap<>();
-        saved.forEach(quote -> savedByKey.put(identity(quote.getBookmaker().getId(),
-                quote.getMarketType(), quote.getMarketPeriod(), quote.getLine(), quote.getOutcome()), quote));
+        saved.forEach(quote -> savedByKey.put(identity(quote.getMatch().getId(),
+                quote.getBookmaker().getId(), quote.getMarketType(), quote.getMarketPeriod(),
+                quote.getLine(), quote.getOutcome()), quote));
 
         List<OddsHistory> histories = new ArrayList<>();
         for (QuoteIdentity key : changed) {
@@ -139,9 +159,12 @@ public class MatchOddsQuotePersistenceService {
         if (!histories.isEmpty()) historyRepository.saveAll(histories);
     }
 
-    private static QuoteIdentity identity(Long bookmakerId, MatchOddsMarketType type,
+    public record QuoteBatchInput(Match match, MatchProvider provider,
+                                  Map<Bookmaker, List<QuoteInput>> valuesByBookmaker) {}
+
+    private static QuoteIdentity identity(Long matchId, Long bookmakerId, MatchOddsMarketType type,
                                           MatchOddsPeriod period, BigDecimal line, String outcome) {
-        return new QuoteIdentity(bookmakerId, type, period,
+        return new QuoteIdentity(matchId, bookmakerId, type, period,
                 line == null ? BigDecimal.ZERO.setScale(3) : line.setScale(3, java.math.RoundingMode.HALF_UP),
                 outcome);
     }
@@ -152,7 +175,7 @@ public class MatchOddsQuotePersistenceService {
         }
     }
 
-    private record QuoteIdentity(Long bookmakerId, MatchOddsMarketType type,
+    private record QuoteIdentity(Long matchId, Long bookmakerId, MatchOddsMarketType type,
                                  MatchOddsPeriod period, BigDecimal line, String outcome) {}
 
     private static MatchOddsMarketType marketType(String market) {

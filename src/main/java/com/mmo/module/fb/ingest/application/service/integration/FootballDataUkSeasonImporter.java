@@ -753,6 +753,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                         + "mappedFixtures={}, candidateFixtures={}",
                 season.getYear(), rows.size(), prepared.size(), mappedMatches.size(), candidates.size());
 
+        List<MatchedEnrichmentRow> matchedRows = new ArrayList<>(prepared.size());
         for (PreparedEnrichmentRow item : prepared) {
             Match match = mappedMatches.get(item.externalId());
             if (match == null) {
@@ -773,22 +774,56 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                         "canonical fixture not found within kickoff matching window", diagnosticSamples);
                 continue;
             }
+            matchedRows.add(new MatchedEnrichmentRow(match, item.row(),
+                    decimalMetric(value(item.row(), "HXG")),
+                    decimalMetric(value(item.row(), "AXG"))));
+        }
 
-            BigDecimal homeXg = decimalMetric(value(item.row(), "HXG"));
-            BigDecimal awayXg = decimalMetric(value(item.row(), "AXG"));
-            matchXgPersistenceService.upsert(PROVIDER, match, season.getYear(), homeXg, awayXg);
-            if (homeXg != null || awayXg != null) importedXg++;
-            if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_STATISTICS, season.getYear())) {
-                importedStats += statisticsMapper.persist(match, season.getYear(), item.row());
+        // The adapters process bounded fixture chunks. Each dataset now performs one
+        // source-aware merge/prefetch and one bulk persistence pass per chunk, instead
+        // of repeating locks, provenance, stats, bookmaker and quote reads per fixture.
+        for (int batchStart = 0; batchStart < matchedRows.size(); batchStart += 100) {
+            int batchEnd = Math.min(matchedRows.size(), batchStart + 100);
+            long persistenceChunkStartedAt = System.nanoTime();
+            List<MatchedEnrichmentRow> chunk = matchedRows.subList(batchStart, batchEnd);
+            List<MatchXgPersistencePort.XgInput> xgInputs = new ArrayList<>(chunk.size());
+            List<FootballDataUkMatchStatisticsPersistencePort.StatisticsInput> statsInputs =
+                    new ArrayList<>(chunk.size());
+            List<FootballDataUkOddsPersistencePort.OddsInput> oddsInputs = new ArrayList<>(chunk.size());
+
+            for (MatchedEnrichmentRow item : chunk) {
+                if (item.homeXg() != null || item.awayXg() != null) {
+                    xgInputs.add(new MatchXgPersistencePort.XgInput(
+                            item.match(), season.getYear(), item.homeXg(), item.awayXg()));
+                }
+                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.MATCH_STATISTICS, season.getYear())) {
+                    statsInputs.add(new FootballDataUkMatchStatisticsPersistencePort.StatisticsInput(
+                            item.match(), season.getYear(), item.row()));
+                }
+                if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.HISTORICAL_ODDS, season.getYear())) {
+                    oddsInputs.add(new FootballDataUkOddsPersistencePort.OddsInput(
+                            item.match(), season.getYear(), item.row()));
+                }
             }
-            if (dataSourcePolicy.isPrimary(PROVIDER, Dataset.HISTORICAL_ODDS, season.getYear())) {
-                importedOdds += oddsMapper.persist(match, season.getYear(), item.row());
+
+            if (!xgInputs.isEmpty()) {
+                matchXgPersistenceService.upsertAll(PROVIDER, xgInputs);
+                importedXg += xgInputs.size();
             }
+            if (!statsInputs.isEmpty()) importedStats += statisticsMapper.persistAll(statsInputs);
+            if (!oddsInputs.isEmpty()) importedOdds += oddsMapper.persistAll(oddsInputs);
+
+            long persistenceChunkMs = Math.max(1, (System.nanoTime() - persistenceChunkStartedAt) / 1_000_000);
+            log.info("Football-Data UK enrichment persistence chunk: season={}, fixtures={}-{}, "
+                            + "xgRows={}, statsRows={}, oddsRows={}, durationMs={}, fixturesPerSecond={}",
+                    season.getYear(), batchStart + 1, batchEnd,
+                    xgInputs.size(), statsInputs.size(), oddsInputs.size(), persistenceChunkMs,
+                    Math.round(chunk.size() * 1000.0 / persistenceChunkMs));
         }
         long durationMs = Math.max(1, (System.nanoTime() - enrichmentStartedAt) / 1_000_000);
         log.info("Football-Data UK enrichment completed: season={}, csvRows={}, matchedRows={}, stats={}, "
                         + "xg={}, odds={}, unmatched={}, durationMs={}, rowsPerSecond={}",
-                season.getYear(), rows.size(), prepared.size() - fixtureNotFoundRows - ambiguousFixtureRows,
+                season.getYear(), rows.size(), matchedRows.size(),
                 importedStats, importedXg, importedOdds,
                 invalidRows + teamNotFoundRows + fixtureNotFoundRows + ambiguousFixtureRows,
                 durationMs, Math.round(rows.size() * 1000.0 / durationMs));
@@ -807,6 +842,9 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                 canonicalName.toLowerCase(Locale.ROOT), List.of());
         return exact.size() == 1 ? exact.get(0) : null;
     }
+
+    private record MatchedEnrichmentRow(Match match, Map<String, String> row,
+                                        BigDecimal homeXg, BigDecimal awayXg) {}
 
     private record PreparedEnrichmentRow(int rowNumber, Map<String, String> row,
                                          Team home, Team away, Instant kickoff, String externalId) {}
