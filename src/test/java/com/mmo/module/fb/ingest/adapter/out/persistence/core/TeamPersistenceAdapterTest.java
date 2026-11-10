@@ -8,6 +8,8 @@ import com.mmo.module.fb.domain.team.repository.TeamRepository;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderTeam;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
+import com.mmo.module.fb.ingest.application.identity.CanonicalTeamIdentityResolver;
+import com.mmo.module.fb.ingest.adapter.out.provider.standardization.MmoDataStandardizationAdapter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,7 +41,8 @@ class TeamPersistenceAdapterTest {
     @BeforeEach
     void setUp() {
         adapter = new TeamPersistenceAdapter(
-                teamRepository, teamExternalIdRepository, new DataSourcePolicy());
+                teamRepository, teamExternalIdRepository, new DataSourcePolicy(),
+                new CanonicalTeamIdentityResolver(new MmoDataStandardizationAdapter()));
     }
 
     @Test
