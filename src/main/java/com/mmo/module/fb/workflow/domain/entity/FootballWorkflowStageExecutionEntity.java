@@ -69,6 +69,7 @@ public class FootballWorkflowStageExecutionEntity extends AbstractEntity {
 
     public void resetInterrupted() {
         if (status == FootballWorkflowStageStatus.RUNNING) {
+            retryCount++;
             status = FootballWorkflowStageStatus.PENDING;
             failureReason = "Previous execution ended before stage completion.";
             completedAt = null;
