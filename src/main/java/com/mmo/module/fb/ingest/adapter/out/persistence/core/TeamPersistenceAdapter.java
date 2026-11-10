@@ -3,7 +3,7 @@ package com.mmo.module.fb.ingest.adapter.out.persistence.core;
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.policy.DataSourcePolicy;
 import com.mmo.module.fb.ingest.policy.Dataset;
-import com.mmo.module.fb.ingest.adapter.out.provider.standardization.MmoProviderDataStandardizer;
+import com.mmo.module.fb.ingest.application.identity.CanonicalTeamIdentityResolver;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderTeam;
 import com.mmo.module.fb.ingest.application.port.out.TeamPersistencePort;
 import com.mmo.module.fb.domain.league.entity.Season;
@@ -16,9 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,6 +30,7 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
     private final TeamRepository teamRepository;
     private final TeamExternalIdRepository teamExternalIdRepository;
     private final DataSourcePolicy dataSourcePolicy;
+    private final CanonicalTeamIdentityResolver teamIdentityResolver;
 
     @Override
     @Transactional
@@ -39,8 +38,6 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
         boolean routeAllowsCoreIngestion = season != null
                 && (dataSourcePolicy.isPrimary(selectedProvider, Dataset.TEAM, season)
                 || dataSourcePolicy.route(Dataset.TEAM, season).secondary().contains(selectedProvider));
-        // SofaScore team ingestion is used here only to attach provider IDs to existing
-        // canonical teams. It must never create or own canonical team data.
         boolean mappingOnlyProvider = selectedProvider == Provider.SOFA_SCORE;
         if (season == null || (!routeAllowsCoreIngestion && !mappingOnlyProvider)) {
             log.debug("Rejecting provider without team route: provider={}, season={}",
@@ -58,9 +55,10 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
                 .findAllByProvider(Provider.FOOTBALL_DATA).stream()
                 .map(mapping -> mapping.getTeam().getId()).collect(java.util.stream.Collectors.toSet());
 
-        // Every accepted provider resolves names against the same canonical MMO catalogue.
-        // Provider-specific routes still decide whether a provider may create/update core data.
-        Map<String, List<Team>> teamsByNameKey = indexCanonicalTeams(teamRepository.findAll());
+        Map<String, List<Team>> teamsByCanonicalName = new HashMap<>();
+        Map<String, List<Team>> teamsByMatchKey = new HashMap<>();
+        teamRepository.findAll().forEach(team ->
+                teamIdentityResolver.addTeam(teamsByCanonicalName, teamsByMatchKey, team));
 
         Set<Team> teamsToSave = new LinkedHashSet<>();
         Map<Team, String> pendingIdentityByTeam = new java.util.LinkedHashMap<>();
@@ -72,24 +70,21 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
                 continue;
             }
 
-            String canonicalName = MmoProviderDataStandardizer.standardTeamName(source.name());
+            String canonicalName = teamIdentityResolver.canonicalName(source.name());
             if (canonicalName == null || canonicalName.isBlank()) {
                 log.warn("Skipping team with invalid canonical name from {} (external ID={})",
-                        selectedProvider, source.externalId());
+                        selectedProvider, standardizedSource.externalId());
                 continue;
             }
             ProviderTeam standardizedSource = new ProviderTeam(
-                    source.externalId(),
-                    canonicalName,
-                    MmoProviderDataStandardizer.standardTeamName(source.shortName()),
-                    source.logoUrl(),
-                    source.foundedYear(),
-                    source.stadiumName(),
-                    source.stadiumCapacity());
+                    standardizedSource.externalId(), canonicalName,
+                    teamIdentityResolver.canonicalName(standardizedSource.shortName()),
+                    standardizedSource.logoUrl(), standardizedSource.foundedYear(), standardizedSource.stadiumName(), standardizedSource.stadiumCapacity());
 
             Team team = teamsByExternalId.get(standardizedSource.externalId());
             if (team == null) {
-                List<Team> candidates = findNameMatches(standardizedSource, teamsByNameKey);
+                List<Team> candidates = teamIdentityResolver.findCandidates(
+                        standardizedSource.name(), teamsByCanonicalName, teamsByMatchKey);
                 if (candidates.size() == 1) {
                     Team candidate = candidates.get(0);
                     TeamExternalId existing = candidate.getId() == null
@@ -151,12 +146,14 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
             if (canWriteCore && (selectedProvider == Provider.FOOTBALL_DATA
                     || selectedProvider == Provider.UNDER_STATS
                     || selectedProvider == Provider.FOOTBALL_DATA_UK)) {
-                if (team.getName() == null || team.getName().isBlank()) team.setName(standardizedSource.name());
+                if (team.getName() == null || team.getName().isBlank()) {
+                    team.setName(teamIdentityResolver.canonicalName(standardizedSource.name()));
+                }
                 if (team.getShortName() == null || team.getShortName().isBlank()) {
                     team.setShortName(standardizedSource.shortName());
                 }
                 if (team.getSlug() == null || team.getSlug().isBlank()) {
-                    team.setSlug(slug(standardizedSource.name()) + "-" + selectedProvider.name().toLowerCase()
+                    team.setSlug(slug(team.getName()) + "-" + selectedProvider.name().toLowerCase()
                             + "-" + standardizedSource.externalId());
                 }
                 if (standardizedSource.logoUrl() != null && !standardizedSource.logoUrl().isBlank()) team.setLogoUrl(standardizedSource.logoUrl());
@@ -190,41 +187,6 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
 
         log.info("Team persistence via {} completed. {} records saved/updated in {} team rows and {} identity rows.",
                 selectedProvider, synced, teamsToSave.size(), newMappings.size());
-    }
-
-    private static Map<String, List<Team>> indexCanonicalTeams(List<Team> teams) {
-        Map<String, List<Team>> index = new HashMap<>();
-        for (Team team : teams) addTeamToNameIndex(index, team);
-        return index;
-    }
-
-    private static void addTeamToNameIndex(Map<String, List<Team>> index, Team team) {
-        if (team == null || team.getId() == null) return;
-        // Only the canonical full name is safe for identity matching.
-        // Short names are presentation/provider hints and can collide across clubs
-        // (for example, one provider's short name may equal another club's full name).
-        addNameKey(index, team.getName(), team);
-    }
-
-    private static void addNameKey(Map<String, List<Team>> index, String name, Team team) {
-        String key = MmoProviderDataStandardizer.teamNameMatchKey(name);
-        if (key == null || key.isBlank()) return;
-        List<Team> matches = index.computeIfAbsent(key, ignored -> new ArrayList<>());
-        if (matches.stream().noneMatch(existing -> existing.getId().equals(team.getId()))) {
-            matches.add(team);
-        }
-    }
-
-    private static List<Team> findNameMatches(ProviderTeam source, Map<String, List<Team>> index) {
-        Set<Long> matchedIds = new HashSet<>();
-        List<Team> matches = new ArrayList<>();
-        String key = MmoProviderDataStandardizer.teamNameMatchKey(source.name());
-        if (key == null || key.isBlank()) return matches;
-
-        for (Team candidate : index.getOrDefault(key, List.of())) {
-            if (matchedIds.add(candidate.getId())) matches.add(candidate);
-        }
-        return matches;
     }
 
     private static String slug(String value) {
