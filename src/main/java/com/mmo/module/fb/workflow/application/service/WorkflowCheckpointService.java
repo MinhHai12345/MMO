@@ -100,6 +100,7 @@ public class WorkflowCheckpointService {
         }
         execution.start();
         run.start(stage);
+        run.setLeaseUntil(Instant.now().plus(Duration.ofHours(6)));
         stageRepository.save(execution);
         runRepository.save(run);
     }
