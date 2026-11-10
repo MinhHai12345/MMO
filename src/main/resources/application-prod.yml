@@ -1,0 +1,16 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  quartz:
+    jdbc:
+      initialize-schema: never
+    wait-for-jobs-to-complete-on-shutdown: true
+    overwrite-existing-jobs: false
+
+app:
+  initial-data:
+    auto-import: true
+  sync:
+    bootstrap-on-start: false
+

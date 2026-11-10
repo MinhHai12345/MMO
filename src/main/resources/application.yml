@@ -2,7 +2,7 @@ spring:
   config:
     import: optional:file:.env[.properties]
   profiles:
-    active: dev
+    default: dev
   application:
     name: mmo
 
@@ -19,7 +19,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${JPA_DDL_AUTO:validate}
     show-sql: false
     open-in-view: false
     properties:
@@ -34,12 +34,20 @@ spring:
   quartz:
     job-store-type: jdbc
     jdbc:
-      initialize-schema: always
+      initialize-schema: never
+    wait-for-jobs-to-complete-on-shutdown: true
+    overwrite-existing-jobs: false
     properties:
       org:
         quartz:
+          scheduler:
+            instanceName: MMOQuartzScheduler
+            instanceId: AUTO
           jobStore:
             driverDelegateClass: org.quartz.impl.jdbcjobstore.StdJDBCDelegate
+            isClustered: ${QUARTZ_CLUSTERED:true}
+            clusterCheckinInterval: ${QUARTZ_CLUSTER_CHECKIN_INTERVAL:15000}
+            misfireThreshold: ${QUARTZ_MISFIRE_THRESHOLD:60000}
 
   servlet:
     multipart:
@@ -57,7 +65,7 @@ app:
       api-key: ${CONTENT_PUBLISHING_API_KEY}
 
   initial-data:
-    auto-import: ${APP_INITIAL_DATA_AUTO_IMPORT}
+    auto-import: ${APP_INITIAL_DATA_AUTO_IMPORT:true}
 
   # Credentials and destination identifiers for outbound social publishing.
   social:
@@ -144,7 +152,7 @@ app:
         uri: ${FOOTBALL_DATA_UK_URI:https://www.football-data.co.uk}
 
   sync:
-    bootstrap-on-start: ${APP_SYNC_BOOTSTRAP_ON_START:true}
+    bootstrap-on-start: ${APP_SYNC_BOOTSTRAP_ON_START:false}
     max-event-pages: ${SOFA_SCORE_MAX_EVENT_PAGES:20}
     max-rounds: ${SOFA_SCORE_MAX_ROUNDS:50}
 
