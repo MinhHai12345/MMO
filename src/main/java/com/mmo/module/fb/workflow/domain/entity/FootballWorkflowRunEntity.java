@@ -51,6 +51,9 @@ public class FootballWorkflowRunEntity extends AbstractEntity {
     @Column(name = "lease_until")
     private Instant leaseUntil;
 
+    @Column(name = "execution_token", length = 36)
+    private String executionToken;
+
     @Version
     private Long version;
 
@@ -74,6 +77,7 @@ public class FootballWorkflowRunEntity extends AbstractEntity {
         completedAt = Instant.now();
         failureReason = null;
         leaseUntil = null;
+        executionToken = null;
     }
 
     public void fail(String reason) {
@@ -82,6 +86,7 @@ public class FootballWorkflowRunEntity extends AbstractEntity {
         retryCount++;
         completedAt = Instant.now();
         leaseUntil = null;
+        executionToken = null;
     }
 
     public void prepareForResume() {
@@ -89,5 +94,6 @@ public class FootballWorkflowRunEntity extends AbstractEntity {
         failureReason = null;
         completedAt = null;
         leaseUntil = null;
+        executionToken = null;
     }
 }
