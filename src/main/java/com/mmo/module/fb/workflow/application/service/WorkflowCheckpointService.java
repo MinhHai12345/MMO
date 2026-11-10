@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -30,6 +32,41 @@ public class WorkflowCheckpointService {
                 .map(FootballWorkflowRunEntity::getId)
                 .orElseGet(() -> runRepository.saveAndFlush(
                         FootballWorkflowRunEntity.create(idempotencyKey)).getId());
+    }
+
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean claimRun(Long runId) {
+        FootballWorkflowRunEntity run = runRepository.findByIdForUpdate(runId)
+                .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
+        if (run.getStatus() == FootballWorkflowStatus.COMPLETED) return false;
+        Instant now = Instant.now();
+        if (run.getStatus() == FootballWorkflowStatus.RUNNING
+                && run.getLeaseUntil() != null && run.getLeaseUntil().isAfter(now)) return false;
+        List<FootballWorkflowStageExecutionEntity> executions =
+                stageRepository.findAllByWorkflowRunIdOrderByIdAsc(runId);
+        executions.forEach(FootballWorkflowStageExecutionEntity::resetInterrupted);
+        stageRepository.saveAll(executions);
+        run.setStatus(FootballWorkflowStatus.RUNNING);
+        run.setFailureReason(null);
+        run.setCompletedAt(null);
+        run.setLeaseUntil(now.plus(Duration.ofHours(6)));
+        runRepository.save(run);
+        return true;
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void releaseRun(Long runId) {
+        FootballWorkflowRunEntity run = runRepository.findByIdForUpdate(runId)
+                .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
+        if (run.getStatus() != FootballWorkflowStatus.COMPLETED) {
+            List<FootballWorkflowStageExecutionEntity> executions =
+                    stageRepository.findAllByWorkflowRunIdOrderByIdAsc(runId);
+            executions.forEach(FootballWorkflowStageExecutionEntity::resetInterrupted);
+            stageRepository.saveAll(executions);
+            run.prepareForResume();
+            runRepository.save(run);
+        }
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -94,7 +131,7 @@ public class WorkflowCheckpointService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void completeRun(Long runId) {
-        FootballWorkflowRunEntity run = runRepository.findById(runId)
+        FootballWorkflowRunEntity run = runRepository.findByIdForUpdate(runId)
                 .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
         run.complete();
         runRepository.save(run);
