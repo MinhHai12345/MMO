@@ -66,6 +66,19 @@ public class WorkflowCheckpointService {
         return token;
     }
 
+    /**
+     * Extends the active execution lease. An expired lease cannot be revived by its previous owner,
+     * even when no replacement coordinator has claimed it yet.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Instant renewLease(Long runId, String executionToken) {
+        FootballWorkflowRunEntity run = lockAndValidateOwner(runId, executionToken);
+        Instant renewedUntil = Instant.now().plus(EXECUTION_LEASE);
+        run.setLeaseUntil(renewedUntil);
+        runRepository.save(run);
+        return renewedUntil;
+    }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void releaseRun(Long runId, String executionToken) {
         FootballWorkflowRunEntity run = lockAndValidateOwner(runId, executionToken);
@@ -147,7 +160,9 @@ public class WorkflowCheckpointService {
     private FootballWorkflowRunEntity lockAndValidateOwner(Long runId, String executionToken) {
         FootballWorkflowRunEntity run = runRepository.findByIdForUpdate(runId)
                 .orElseThrow(() -> new IllegalArgumentException("Workflow run not found: " + runId));
-        if (executionToken == null || !executionToken.equals(run.getExecutionToken())) {
+        if (executionToken == null || !executionToken.equals(run.getExecutionToken())
+                || run.getStatus() != FootballWorkflowStatus.RUNNING
+                || run.getLeaseUntil() == null || !run.getLeaseUntil().isAfter(Instant.now())) {
             throw new IllegalStateException("Workflow execution lease is no longer owned by this coordinator.");
         }
         return run;
