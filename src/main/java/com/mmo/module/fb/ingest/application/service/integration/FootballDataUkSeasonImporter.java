@@ -1357,7 +1357,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
     private record PreparedCoreRow(Map<String, String> row, Team home, Team away,
                                    Instant kickoff, String externalId) {}
 
-    private static final class TeamCache {
+    private final class TeamCache {
         private final Map<String, Team> byExternalId = new HashMap<>();
         private final Map<String, List<Team>> byCanonicalName = new HashMap<>();
         private final Map<String, List<Team>> byMatchKey = new HashMap<>();
