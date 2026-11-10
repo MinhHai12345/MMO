@@ -10,7 +10,7 @@ spring:
 
 app:
   initial-data:
-    auto-import: false
+    auto-import: true
   sync:
     bootstrap-on-start: false
 
