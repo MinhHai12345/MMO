@@ -14,7 +14,7 @@ The daily workflow is coordinated in this order:
 - `fb_workflow_stage_executions` stores one checkpoint per run and stage.
 - Each stage start/completion/failure is committed in its own `REQUIRES_NEW` transaction.
 - Completed stages are skipped on resume; failed and interrupted stages are retried.
-- A six-hour execution lease and pessimistic run-row lock prevent two scheduler nodes from processing the same workflow simultaneously. An expired lease allows a later invocation to recover a run left active by process termination.
+- A six-hour execution lease and pessimistic run-row lock prevent two scheduler nodes from processing the same workflow simultaneously. A per-claim execution token fences off a stale worker after another coordinator takes over an expired lease. An expired lease allows a later invocation to recover a run left active by process termination.
 - The UTC workflow date is used as the idempotency key, so retries of the same daily workflow reuse the same durable run.
 
 The ingestion and analytics implementations remain the owners of their own persistence and processing semantics. A workflow checkpoint records stage completion; it does not create a distributed transaction with those downstream services.
