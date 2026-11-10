@@ -746,6 +746,9 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                 : season.getEndDate().plusDays(1).atStartOfDay(SOURCE_ZONE).toInstant();
         List<Match> candidates = persistencePort.findBatchFixtureCandidates(
                 season.getId(), teamIds, seasonStart, seasonEnd);
+        Map<TeamPair, List<Match>> candidatesByPair = candidates.stream()
+                .collect(java.util.stream.Collectors.groupingBy(candidate ->
+                        new TeamPair(candidate.getHomeTeam().getId(), candidate.getAwayTeam().getId())));
         log.info("Football-Data UK enrichment prefetch completed: season={}, csvRows={}, preparedRows={}, "
                         + "mappedFixtures={}, candidateFixtures={}",
                 season.getYear(), rows.size(), prepared.size(), mappedMatches.size(), candidates.size());
@@ -753,10 +756,8 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         for (PreparedEnrichmentRow item : prepared) {
             Match match = mappedMatches.get(item.externalId());
             if (match == null) {
-                List<Match> sameDirection = candidates.stream()
-                        .filter(candidate -> candidate.getHomeTeam().getId().equals(item.home().getId())
-                                && candidate.getAwayTeam().getId().equals(item.away().getId()))
-                        .toList();
+                List<Match> sameDirection = candidatesByPair.getOrDefault(
+                        new TeamPair(item.home().getId(), item.away().getId()), List.of());
                 try {
                     match = closestFixtureCandidate(sameDirection, item.kickoff()).orElse(null);
                 } catch (AmbiguousFixtureCandidateException ambiguous) {
@@ -969,6 +970,9 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                         : season.getEndDate().plusDays(1).atStartOfDay(SOURCE_ZONE).toInstant();
                 List<Match> candidates = persistencePort.findBatchFixtureCandidates(
                         season.getId(), teamIds, seasonStart, seasonEnd);
+                Map<TeamPair, List<Match>> candidatesByPair = candidates.stream()
+                        .collect(java.util.stream.Collectors.groupingBy(candidate ->
+                                new TeamPair(candidate.getHomeTeam().getId(), candidate.getAwayTeam().getId())));
                 Set<Long> relevantMatchIds = new HashSet<>(candidates.stream()
                         .map(Match::getId).filter(java.util.Objects::nonNull).toList());
                 mappingByExternalId.values().forEach(mapping -> relevantMatchIds.add(mapping.getMatch().getId()));
@@ -994,10 +998,8 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                     try {
                         Match match = matchByExternalId.get(item.externalId());
                         if (match == null) {
-                            List<Match> sameDirection = candidates.stream()
-                                    .filter(candidate -> candidate.getHomeTeam().getId().equals(item.home().getId())
-                                            && candidate.getAwayTeam().getId().equals(item.away().getId()))
-                                    .toList();
+                            List<Match> sameDirection = candidatesByPair.getOrDefault(
+                                    new TeamPair(item.home().getId(), item.away().getId()), List.of());
                             match = closestFixtureCandidate(sameDirection, item.kickoff())
                                     .orElseGet(() -> Match.builder().season(season)
                                             .homeTeam(item.home()).awayTeam(item.away())
@@ -1295,6 +1297,8 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         }
         return team;
     }
+
+    private record TeamPair(Long homeTeamId, Long awayTeamId) {}
 
     private record PreparedCoreRow(Map<String, String> row, Team home, Team away,
                                    Instant kickoff, String externalId) {}
