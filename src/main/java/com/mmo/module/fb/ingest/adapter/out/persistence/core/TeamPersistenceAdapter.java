@@ -183,8 +183,10 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
 
     private static void addTeamToNameIndex(Map<String, List<Team>> index, Team team) {
         if (team == null || team.getId() == null) return;
+        // Only the canonical full name is safe for identity matching.
+        // Short names are presentation/provider hints and can collide across clubs
+        // (for example, one provider's short name may equal another club's full name).
         addNameKey(index, team.getName(), team);
-        addNameKey(index, team.getShortName(), team);
     }
 
     private static void addNameKey(Map<String, List<Team>> index, String name, Team team) {
@@ -199,14 +201,11 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
     private static List<Team> findNameMatches(ProviderTeam source, Map<String, List<Team>> index) {
         Set<Long> matchedIds = new HashSet<>();
         List<Team> matches = new ArrayList<>();
-        for (String sourceName : List.of(
-                source.name(),
-                source.shortName() == null ? "" : source.shortName())) {
-            String key = MmoProviderDataStandardizer.teamNameMatchKey(sourceName);
-            if (key == null || key.isBlank()) continue;
-            for (Team candidate : index.getOrDefault(key, List.of())) {
-                if (matchedIds.add(candidate.getId())) matches.add(candidate);
-            }
+        String key = MmoProviderDataStandardizer.teamNameMatchKey(source.name());
+        if (key == null || key.isBlank()) return matches;
+
+        for (Team candidate : index.getOrDefault(key, List.of())) {
+            if (matchedIds.add(candidate.getId())) matches.add(candidate);
         }
         return matches;
     }
