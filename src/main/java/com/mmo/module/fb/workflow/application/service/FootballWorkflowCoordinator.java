@@ -183,7 +183,6 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
             String reason = describe(exception);
             if (stop.getAsBoolean()) {
                 steps.add(step(stage, "INTERRUPTED", started, reason));
-                checkpointService.releaseRun(runId);
                 log.info("Football workflow stage interrupted: {}", stage);
                 return false;
             }
