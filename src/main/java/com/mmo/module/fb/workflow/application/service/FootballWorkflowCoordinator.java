@@ -65,20 +65,21 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
                     completedContentRun == null ? 0 : completedContentRun.getDraftsGenerated(),
                     completedContentRun == null ? 0 : completedContentRun.getFailures());
         }
-        if (!checkpointService.claimRun(workflowRunId)) {
+        String executionToken = checkpointService.claimRun(workflowRunId);
+        if (executionToken == null) {
             return report("ALREADY_RUNNING", utcDate, startedAt, steps, null, 0, 0);
         }
 
-        if (!executeStage(workflowRunId, FootballWorkflowStage.DATA_INGESTION, stop,
+        if (!executeStage(workflowRunId, executionToken, FootballWorkflowStage.DATA_INGESTION, stop,
                 () -> {
                     fullDataRebuildUseCase.rebuildAllData();
                     return "Core data ingestion and enrichment completed.";
                 }, steps)) {
-            if (stop.getAsBoolean()) checkpointService.releaseRun(workflowRunId);
+            if (stop.getAsBoolean()) checkpointService.releaseRun(workflowRunId, executionToken);
             return report(stageStatus(stop, steps), utcDate, startedAt, steps, null, 0, 0);
         }
 
-        if (!executeStage(workflowRunId, FootballWorkflowStage.DATA_READINESS, stop,
+        if (!executeStage(workflowRunId, executionToken, FootballWorkflowStage.DATA_READINESS, stop,
                 () -> {
                     DataReadinessGateService.ReadinessReport readiness = readinessGateService.evaluate();
                     if (!readiness.ready()) {
@@ -91,11 +92,11 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
                     }
                     return "Validated " + readiness.seasons().size() + " league-season datasets.";
                 }, steps)) {
-            if (stop.getAsBoolean()) checkpointService.releaseRun(workflowRunId);
+            if (stop.getAsBoolean()) checkpointService.releaseRun(workflowRunId, executionToken);
             return report(stageStatus(stop, steps), utcDate, startedAt, steps, null, 0, 0);
         }
 
-        if (!executeStage(workflowRunId, FootballWorkflowStage.ADVANCED_METRICS, stop,
+        if (!executeStage(workflowRunId, executionToken, FootballWorkflowStage.ADVANCED_METRICS, stop,
                 () -> {
                     var metrics = advancedMetricsProcessingService.process(stop);
                     if (!"COMPLETED".equals(metrics.status())) {
@@ -104,11 +105,11 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
                     return "teamFormsUpdated=" + metrics.teamFormsUpdated()
                             + ", h2hRecordsUpdated=" + metrics.h2hRecordsUpdated();
                 }, steps)) {
-            if (stop.getAsBoolean()) checkpointService.releaseRun(workflowRunId);
+            if (stop.getAsBoolean()) checkpointService.releaseRun(workflowRunId, executionToken);
             return report(stageStatus(stop, steps), utcDate, startedAt, steps, null, 0, 0);
         }
 
-        if (!executeStage(workflowRunId, FootballWorkflowStage.PREDICTIONS, stop,
+        if (!executeStage(workflowRunId, executionToken, FootballWorkflowStage.PREDICTIONS, stop,
                 () -> {
                     var predictions = matchPredictionProcessingService.processUpcomingMatches(stop);
                     if (predictions.stopped() || predictions.failed() > 0) {
@@ -119,12 +120,12 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
                     return "candidates=" + predictions.candidates() + ", processed="
                             + predictions.processed() + ", skipped=" + predictions.skipped();
                 }, steps)) {
-            if (stop.getAsBoolean()) checkpointService.releaseRun(workflowRunId);
+            if (stop.getAsBoolean()) checkpointService.releaseRun(workflowRunId, executionToken);
             return report(stageStatus(stop, steps), utcDate, startedAt, steps, null, 0, 0);
         }
 
         final ContentWorkflowRunEntity[] contentRunHolder = new ContentWorkflowRunEntity[1];
-        if (!executeStage(workflowRunId, FootballWorkflowStage.PRE_MATCH_CONTENT, stop,
+        if (!executeStage(workflowRunId, executionToken, FootballWorkflowStage.PRE_MATCH_CONTENT, stop,
                 () -> {
                     Instant from = utcDate.atStartOfDay().toInstant(ZoneOffset.UTC);
                     Instant to = utcDate.plusDays(CONTENT_WINDOW_DAYS).atStartOfDay().toInstant(ZoneOffset.UTC);
@@ -134,7 +135,7 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
                     return "runId=" + contentRun.getId() + ", draftsGenerated=" + contentRun.getDraftsGenerated()
                             + ", failures=" + contentRun.getFailures();
                 }, steps)) {
-            if (stop.getAsBoolean()) checkpointService.releaseRun(workflowRunId);
+            if (stop.getAsBoolean()) checkpointService.releaseRun(workflowRunId, executionToken);
             return report(stageStatus(stop, steps), utcDate, startedAt, steps, null, 0, 0);
         }
 
@@ -146,7 +147,7 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
             draftsGenerated = completedContentRun.getDraftsGenerated();
             contentFailures = completedContentRun.getFailures();
         }
-        checkpointService.completeRun(workflowRunId);
+        checkpointService.completeRun(workflowRunId, executionToken);
         return report(contentFailures > 0 ? "COMPLETED_WITH_ERRORS" : "COMPLETED",
                 utcDate, startedAt, steps, contentRunId, draftsGenerated, contentFailures);
     }
@@ -160,7 +161,7 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
         }
     }
 
-    private boolean executeStage(Long runId, FootballWorkflowStage stage, BooleanSupplier stop,
+    private boolean executeStage(Long runId, String executionToken, FootballWorkflowStage stage, BooleanSupplier stop,
                                  Supplier<String> operation, List<WorkflowStep> steps) {
         if (stage != FootballWorkflowStage.DATA_READINESS && checkpointService.isStageCompleted(runId, stage)) {
             steps.add(new WorkflowStep(stage.name(), "SKIPPED", 0, "Previously completed checkpoint reused."));
@@ -170,10 +171,10 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
 
         long started = System.nanoTime();
         try {
-            checkpointService.startStage(runId, stage);
+            checkpointService.startStage(runId, stage, executionToken);
             log.info("Football workflow stage STARTED: {}", stage);
             String message = operation.get();
-            checkpointService.completeStage(runId, stage);
+            checkpointService.completeStage(runId, stage, executionToken);
             steps.add(step(stage, "COMPLETED", started, message));
             log.info("Football workflow stage COMPLETED: {} durationMs={}", stage,
                     Math.max(0, (System.nanoTime() - started) / 1_000_000));
@@ -186,7 +187,7 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
                 log.info("Football workflow stage interrupted: {}", stage);
                 return false;
             }
-            checkpointService.failStage(runId, stage, reason);
+            checkpointService.failStage(runId, stage, reason, executionToken);
             steps.add(step(stage, "FAILED", started, reason));
             log.error("Football workflow stage FAILED: {}", stage, exception);
             return false;
