@@ -81,6 +81,7 @@ public class FootballDataUkImportJpaAdapter implements FootballDataUkImportPersi
                 : teamRepository.findAllByNormalizedNameIn(names.stream().filter(java.util.Objects::nonNull)
                         .map(name -> name.toLowerCase(Locale.ROOT)).toList());
     }
+    @Override public List<Team> findAllTeams() { return teamRepository.findAll(); }
     @Override public List<TeamExternalId> findTeamMappings(Provider provider) {
         return teamExternalIdRepository.findAllByProvider(provider);
     }

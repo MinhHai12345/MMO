@@ -16,4 +16,9 @@ public class MmoDataStandardizationAdapter implements MmoDataStandardizationPort
     public String teamName(String providerName) {
         return MmoProviderDataStandardizer.standardTeamName(providerName);
     }
+
+    @Override
+    public String teamNameMatchKey(String providerName) {
+        return MmoProviderDataStandardizer.teamNameMatchKey(providerName);
+    }
 }

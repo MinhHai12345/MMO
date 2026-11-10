@@ -31,6 +31,26 @@ class MmoProviderDataStandardizerTest {
     }
 
     @Test
+    void resolvesProviderAliasesToTheSameConservativeIdentityKey() {
+        assertEquals(
+                MmoProviderDataStandardizer.teamNameMatchKey("Bolton Wanderers"),
+                MmoProviderDataStandardizer.teamNameMatchKey("Bolton Wanderers FC")
+        );
+        assertEquals(
+                MmoProviderDataStandardizer.teamNameMatchKey("Lincoln City"),
+                MmoProviderDataStandardizer.teamNameMatchKey("Lincoln City FC")
+        );
+        assertEquals(
+                MmoProviderDataStandardizer.teamNameMatchKey("FC Köln"),
+                MmoProviderDataStandardizer.teamNameMatchKey("FC Koln")
+        );
+        org.junit.jupiter.api.Assertions.assertNotEquals(
+                MmoProviderDataStandardizer.teamNameMatchKey("Ajaccio"),
+                MmoProviderDataStandardizer.teamNameMatchKey("Ajaccio GFCO")
+        );
+    }
+
+    @Test
     void preservesNationalTeamsAndDistinctAjaccioClubs() {
         assertEquals("Algeria", MmoProviderDataStandardizer.standardTeamName("Algeria"));
         assertEquals("Cape Verde Islands", MmoProviderDataStandardizer.standardTeamName("Cape Verde Islands"));

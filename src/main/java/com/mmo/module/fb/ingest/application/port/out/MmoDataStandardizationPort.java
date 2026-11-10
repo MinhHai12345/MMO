@@ -4,4 +4,5 @@ package com.mmo.module.fb.ingest.application.port.out;
 public interface MmoDataStandardizationPort {
     String leagueName(String providerName);
     String teamName(String providerName);
+    String teamNameMatchKey(String providerName);
 }
