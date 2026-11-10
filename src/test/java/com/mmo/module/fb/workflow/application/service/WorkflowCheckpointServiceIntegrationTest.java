@@ -19,7 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
+@DataJpaTest(properties = {"spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect"})
 @EntityScan(basePackageClasses = {FootballWorkflowRunEntity.class, FootballWorkflowStageExecutionEntity.class})
 @EnableJpaRepositories(basePackages = "com.mmo.module.fb.workflow.infrastructure.persistence.repository")
 @Import(WorkflowCheckpointService.class)
