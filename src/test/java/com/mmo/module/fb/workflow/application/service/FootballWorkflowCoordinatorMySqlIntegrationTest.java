@@ -32,7 +32,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -51,9 +50,6 @@ class FootballWorkflowCoordinatorMySqlIntegrationTest {
 
     @Autowired
     private FootballWorkflowCoordinator coordinator;
-
-    @Autowired
-    private WorkflowCheckpointService checkpointService;
 
     @Autowired
     private FootballWorkflowRunRepository runRepository;
@@ -175,7 +171,8 @@ class FootballWorkflowCoordinatorMySqlIntegrationTest {
 
         assertEquals("COMPLETED", resumedAttempt.status());
         verify(activeSeasonDataSyncUseCase, times(1)).sync(any(ProviderOverrides.class), isNull());
-        verify(readinessGateService, times(1)).evaluate();
+        // Readiness is deliberately re-evaluated on resume to validate current data freshness.
+        verify(readinessGateService, times(2)).evaluate();
         verify(advancedMetricsProcessingService, times(2)).process(any(BooleanSupplier.class));
         verify(matchPredictionProcessingService, times(1))
                 .processUpcomingMatches(any(BooleanSupplier.class));
