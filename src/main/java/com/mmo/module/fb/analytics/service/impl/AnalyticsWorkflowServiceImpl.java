@@ -3,6 +3,7 @@ package com.mmo.module.fb.analytics.service.impl;
 import com.mmo.module.fb.analytics.service.AnalyticsDataReadinessService;
 import com.mmo.module.fb.analytics.service.AnalyticsWorkflowService;
 import com.mmo.module.fb.analytics.service.DataCoverageAuditService;
+import com.mmo.module.fb.analytics.service.DataQualityValidationService;
 import com.mmo.module.fb.analytics.service.TeamFormBackTestService;
 import com.mmo.module.fb.analytics.service.WalkForwardBackTestService;
 import com.mmo.module.fb.analytics.service.AnalyticsWorkflowService.AnalyticsWorkflowReport;
@@ -21,8 +22,8 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class AnalyticsWorkflowServiceImpl implements AnalyticsWorkflowService {
-
     private final DataCoverageAuditService coverageAuditService;
+    private final DataQualityValidationService dataQualityValidationService;
     private final AnalyticsDataReadinessService readinessService;
     private final TeamFormBackTestService teamFormBackTestService;
     private final WalkForwardBackTestService walkForwardBackTestService;
@@ -38,7 +39,12 @@ public class AnalyticsWorkflowServiceImpl implements AnalyticsWorkflowService {
         DataCoverageAuditReport coverage = coverageAuditService.runAudit();
         steps.add(new WorkflowStep("DATA_COVERAGE_AUDIT",
                 "CRITICAL".equals(coverage.status()) ? "FAILED" : "COMPLETED",
-                "Audit persisted fixture, score, duplicate and provider-mapping coverage."));
+                "Audits persisted fixture, score, duplicate and provider-mapping coverage."));
+
+        var dataQuality = dataQualityValidationService.validate();
+        steps.add(new WorkflowStep("DATA_QUALITY_VALIDATION",
+                "CRITICAL".equals(dataQuality.status()) ? "FAILED" : "COMPLETED",
+                "Validates score consistency, statistics, standings and odds without modifying stored data."));
 
         var readiness = readinessService.getReadiness();
         steps.add(new WorkflowStep("DATA_READINESS", "COMPLETED",
@@ -46,15 +52,16 @@ public class AnalyticsWorkflowServiceImpl implements AnalyticsWorkflowService {
 
         var totals = coverage.totals();
         boolean blocked = "CRITICAL".equals(coverage.status())
+                || "CRITICAL".equals(dataQuality.status())
                 || totals.finishedMissingScores() > 0
                 || totals.duplicateFixtureGroups() > 0;
         if (blocked) {
             steps.add(new WorkflowStep("TEAM_FORM_BACKTEST", "SKIPPED",
-                    "Resolve critical coverage findings before evaluating the model."));
+                    "Resolve critical coverage or data-quality findings before evaluating the model."));
             steps.add(new WorkflowStep("PREDICTION_WALK_FORWARD_BACKTEST", "SKIPPED",
-                    "Resolve critical coverage findings before evaluating persisted predictions."));
+                    "Resolve critical coverage or data-quality findings before evaluating persisted predictions."));
             return new AnalyticsWorkflowReport(Instant.now(), fromInclusive, toExclusive,
-                    "BLOCKED_DATA_QUALITY", steps, coverage, readiness, null, null);
+                    "BLOCKED_DATA_QUALITY", steps, coverage, dataQuality, readiness, null, null);
         }
 
         TeamFormBackTestReport teamForm = teamFormBackTestService.run(fromInclusive, toExclusive);
@@ -65,12 +72,11 @@ public class AnalyticsWorkflowServiceImpl implements AnalyticsWorkflowService {
         steps.add(new WorkflowStep("PREDICTION_WALK_FORWARD_BACKTEST", stepStatus(predictionWalkForward.status()),
                 "Evaluates persisted pre-kickoff predictions with historical outcomes matured using a conservative lag."));
 
-        boolean limited = "WARNING".equals(coverage.status())
-                || !"OK".equals(teamForm.status())
-                || !"OK".equals(predictionWalkForward.status());
+        boolean limited = "WARNING".equals(coverage.status()) || "WARNING".equals(dataQuality.status())
+                || !"OK".equals(teamForm.status()) || !"OK".equals(predictionWalkForward.status());
         return new AnalyticsWorkflowReport(Instant.now(), fromInclusive, toExclusive,
                 limited ? "COMPLETED_WITH_LIMITATIONS" : "COMPLETED",
-                steps, coverage, readiness, teamForm, predictionWalkForward);
+                steps, coverage, dataQuality, readiness, teamForm, predictionWalkForward);
     }
 
     private String stepStatus(String status) {
