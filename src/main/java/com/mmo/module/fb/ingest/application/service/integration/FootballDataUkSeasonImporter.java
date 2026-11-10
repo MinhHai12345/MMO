@@ -840,7 +840,11 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         if (mapped != null) return mapped;
         List<Team> exact = cache.byCanonicalName.getOrDefault(
                 canonicalName.toLowerCase(Locale.ROOT), List.of());
-        return exact.size() == 1 ? exact.get(0) : null;
+        if (exact.size() == 1) return exact.get(0);
+        if (exact.size() > 1) return null;
+        List<Team> normalized = cache.byMatchKey.getOrDefault(
+                dataStandardizer.teamNameMatchKey(canonicalName), List.of());
+        return normalized.size() == 1 ? normalized.get(0) : null;
     }
 
     private record MatchedEnrichmentRow(Match match, Map<String, String> row,
@@ -1278,6 +1282,9 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
         TeamCache cache = new TeamCache();
         persistencePort.findTeamMappings(PROVIDER).forEach(cache::addMapping);
         persistencePort.findTeamMappings(Provider.FOOTBALL_DATA).forEach(cache::addMapping);
+        // Load the canonical identity catalogue as existing core names may predate
+        // the current provider aliases and therefore miss exact-name prefetch.
+        persistencePort.findAllTeams().forEach(cache::addTeam);
 
         Set<String> canonicalNames = new HashSet<>();
         for (Map<String, String> row : rows) {
@@ -1310,6 +1317,15 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                     + canonicalName + " (matches=" + exact.size() + ")");
         }
         Team team = exact.isEmpty() ? null : exact.get(0);
+        if (team == null) {
+            List<Team> normalized = cache.byMatchKey.getOrDefault(
+                    dataStandardizer.teamNameMatchKey(canonicalName), List.of());
+            if (normalized.size() > 1) {
+                throw new IllegalStateException("Ambiguous normalized team identity from Football-Data UK: "
+                        + canonicalName + " (matches=" + normalized.size() + ")");
+            }
+            if (normalized.size() == 1) team = normalized.get(0);
+        }
         boolean footballDataOwnsTeam = team != null && cache.footballDataOwnedTeamIds.contains(team.getId());
         boolean ukOwnsTeam = dataSourcePolicy.isPrimary(PROVIDER, Dataset.TEAM, season.getYear());
         boolean mayUseUkFallback = dataSourcePolicy.mayFallbackForCore(
@@ -1344,6 +1360,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
     private static final class TeamCache {
         private final Map<String, Team> byExternalId = new HashMap<>();
         private final Map<String, List<Team>> byCanonicalName = new HashMap<>();
+        private final Map<String, List<Team>> byMatchKey = new HashMap<>();
         private final Set<Long> ukMappedTeamIds = new HashSet<>();
         private final Set<Long> footballDataOwnedTeamIds = new HashSet<>();
 
@@ -1351,6 +1368,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
             TeamCache copy = new TeamCache();
             copy.byExternalId.putAll(byExternalId);
             byCanonicalName.forEach((name, teams) -> copy.byCanonicalName.put(name, new ArrayList<>(teams)));
+            byMatchKey.forEach((key, teams) -> copy.byMatchKey.put(key, new ArrayList<>(teams)));
             copy.ukMappedTeamIds.addAll(ukMappedTeamIds);
             copy.footballDataOwnedTeamIds.addAll(footballDataOwnedTeamIds);
             return copy;
@@ -1371,6 +1389,13 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
             List<Team> teams = byCanonicalName.computeIfAbsent(
                     team.getName().toLowerCase(Locale.ROOT), ignored -> new ArrayList<>());
             if (teams.stream().noneMatch(existing -> existing.getId().equals(team.getId()))) teams.add(team);
+            String matchKey = dataStandardizer.teamNameMatchKey(team.getName());
+            if (StringUtils.hasText(matchKey)) {
+                List<Team> matches = byMatchKey.computeIfAbsent(matchKey, ignored -> new ArrayList<>());
+                if (matches.stream().noneMatch(existing -> existing.getId().equals(team.getId()))) {
+                    matches.add(team);
+                }
+            }
         }
     }
 
