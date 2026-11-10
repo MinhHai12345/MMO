@@ -65,7 +65,7 @@ app:
       api-key: ${CONTENT_PUBLISHING_API_KEY}
 
   initial-data:
-    auto-import: ${APP_INITIAL_DATA_AUTO_IMPORT:false}
+    auto-import: ${APP_INITIAL_DATA_AUTO_IMPORT:true}
 
   # Credentials and destination identifiers for outbound social publishing.
   social:
