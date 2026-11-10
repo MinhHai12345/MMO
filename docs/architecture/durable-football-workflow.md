@@ -2,7 +2,7 @@
 
 The daily workflow is coordinated in this order:
 
-1. `DATA_INGESTION` — invoke the existing full rebuild use case.
+1. `DATA_INGESTION` — invoke incremental active-season synchronization through `ActiveSeasonDataSyncUseCase`. Historical backfill and match enrichment remain separate scheduled responsibilities.
 2. `DATA_READINESS` — audit every league-season before downstream analytics.
 3. `ADVANCED_METRICS` — invoke the existing advanced-metrics processor.
 4. `PREDICTIONS` — invoke the existing upcoming-match prediction processor.
