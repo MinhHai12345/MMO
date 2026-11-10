@@ -20,7 +20,7 @@ import java.util.stream.StreamSupport;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -62,7 +62,7 @@ class TeamPersistenceAdapterTest {
         assertSame(canonicalTeam, mapping.getTeam());
         assertEquals("fd-123", mapping.getExternalId());
         assertEquals(Provider.FOOTBALL_DATA, mapping.getProvider());
-        verify(teamRepository).saveAll(anyList());
+        verify(teamRepository).saveAll(any(Iterable.class));
     }
 
     @Test
