@@ -25,6 +25,8 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Collection;
+import java.util.Locale;
 import java.util.Optional;
 
 /** JPA implementation of the Football-Data.co.uk import persistence boundary. */
@@ -74,6 +76,14 @@ public class FootballDataUkImportJpaAdapter implements FootballDataUkImportPersi
     @Override public List<Team> findTeamsByName(String name) {
         return teamRepository.findAllByNameIgnoreCase(name);
     }
+    @Override public List<Team> findTeamsByNames(Collection<String> names) {
+        return names == null || names.isEmpty() ? List.of()
+                : teamRepository.findAllByNormalizedNameIn(names.stream().filter(java.util.Objects::nonNull)
+                        .map(name -> name.toLowerCase(Locale.ROOT)).toList());
+    }
+    @Override public List<TeamExternalId> findTeamMappings(Provider provider) {
+        return teamExternalIdRepository.findAllByProvider(provider);
+    }
     @Override public Team saveTeam(Team team) { return teamRepository.save(team); }
     @Override public void registerTeamExternalId(Team team, Provider provider, String id) {
         externalIdMappingService.registerTeam(team, provider, id);
@@ -82,11 +92,32 @@ public class FootballDataUkImportJpaAdapter implements FootballDataUkImportPersi
     @Override public Optional<MatchExternalId> findMatchMappingByProvider(MatchProvider provider, String id) {
         return matchExternalIdRepository.findByProviderAndExternalId(provider, id);
     }
+    @Override public List<MatchExternalId> findMatchMappingsByProviderAndExternalIds(
+            MatchProvider provider, Collection<String> ids) {
+        return ids == null || ids.isEmpty() ? List.of()
+                : matchExternalIdRepository.findAllByProviderAndExternalIdIn(provider, List.copyOf(ids));
+    }
+    @Override public List<MatchExternalId> findMatchMappingsByMatchIds(
+            Collection<Long> ids, MatchProvider provider) {
+        return ids == null || ids.isEmpty() ? List.of()
+                : matchExternalIdRepository.findAllByMatchIdInAndProvider(List.copyOf(ids), provider);
+    }
     @Override public Optional<MatchExternalId> findMatchMappingByMatchId(Long id, MatchProvider provider) {
         return matchExternalIdRepository.findByMatchIdAndProvider(id, provider);
     }
     @Override public MatchExternalId saveMatchMapping(MatchExternalId mapping) {
         return matchExternalIdRepository.save(mapping);
+    }
+    @Override public List<Match> findBatchFixtureCandidates(Long seasonId, Collection<Long> teamIds,
+                                                               Instant fromInclusive, Instant toExclusive) {
+        return teamIds == null || teamIds.isEmpty() ? List.of()
+                : matchRepository.findBatchFixtureCandidates(seasonId, List.copyOf(teamIds), fromInclusive, toExclusive);
+    }
+    @Override public List<Match> saveMatches(Collection<Match> matches) {
+        return matches == null || matches.isEmpty() ? List.of() : matchRepository.saveAll(matches);
+    }
+    @Override public List<MatchExternalId> saveMatchMappings(Collection<MatchExternalId> mappings) {
+        return mappings == null || mappings.isEmpty() ? List.of() : matchExternalIdRepository.saveAll(mappings);
     }
     @Override public List<Match> findFixtureCandidates(Long seasonId, Long homeId, Long awayId,
                                                        Instant fromInclusive, Instant toExclusive) {
