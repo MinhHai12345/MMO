@@ -336,7 +336,7 @@ public final class MmoProviderDataStandardizer {
             Map.entry("Santander", "Racing Santander"),
             Map.entry("FC Schalke 04", "Schalke 04"),
             Map.entry("Huddersfield Town AFC", "Huddersfield Town"),
-            Map.entry("Rotherham", "Rotherham United")
+            Map.entry("Rotherham", "Rotherham United"),
             // Additional current first-division clubs and provider naming variants (2025/26).
             Map.entry("PSV Eindhoven", "PSV"),
             Map.entry("PSV", "PSV"),
@@ -503,7 +503,7 @@ public final class MmoProviderDataStandardizer {
             Map.entry("Al-Ahli Saudi FC", "Al Ahli"),
             Map.entry("Al Ahli", "Al Ahli"),
             Map.entry("Al-Shabab FC", "Al Shabab"),
-            Map.entry("Al Shabab", "Al Shabab"),
+            Map.entry("Al Shabab", "Al Shabab")
     );
 
     private static final Map<String, String> TEAM_NAME_ALIASES_BY_KEY = TEAM_NAME_ALIASES.entrySet().stream()
