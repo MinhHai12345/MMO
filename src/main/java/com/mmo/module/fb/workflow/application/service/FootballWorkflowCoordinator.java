@@ -169,8 +169,8 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
         if (stop.getAsBoolean()) return false;
 
         long started = System.nanoTime();
-        checkpointService.startStage(runId, stage);
         try {
+            checkpointService.startStage(runId, stage);
             log.info("Football workflow stage STARTED: {}", stage);
             String message = operation.get();
             checkpointService.completeStage(runId, stage);
