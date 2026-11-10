@@ -57,13 +57,16 @@ public class FootballWorkflowCoordinator implements FootballWorkflowUseCase {
         if (checkpointService.isRunCompleted(workflowRunId)) {
             return report("COMPLETED", utcDate, startedAt, steps, null, 0, 0);
         }
-        checkpointService.prepareForResume(workflowRunId);
+        if (!checkpointService.claimRun(workflowRunId)) {
+            return report("ALREADY_RUNNING", utcDate, startedAt, steps, null, 0, 0);
+        }
 
         if (!executeStage(workflowRunId, FootballWorkflowStage.DATA_INGESTION, stop,
                 () -> {
                     fullDataRebuildUseCase.rebuildAllData();
                     return "Core data ingestion and enrichment completed.";
                 }, steps)) {
+            if (stop.getAsBoolean()) checkpointService.releaseRun(workflowRunId);
             return report(stageStatus(stop, steps), utcDate, startedAt, steps, null, 0, 0);
         }
 
