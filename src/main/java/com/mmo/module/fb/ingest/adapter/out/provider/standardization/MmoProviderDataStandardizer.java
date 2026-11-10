@@ -572,6 +572,15 @@ public final class MmoProviderDataStandardizer {
         String ascii = Normalizer.normalize(normalized, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "")
                 .toLowerCase(Locale.ROOT)
+                // Characters such as ø and ł do not decompose under Unicode NFD.
+                .replace("ø", "o")
+                .replace("ł", "l")
+                .replace("đ", "d")
+                .replace("ð", "d")
+                .replace("þ", "th")
+                .replace("æ", "ae")
+                .replace("œ", "oe")
+                .replace("ß", "ss")
                 .replaceAll("[^a-z0-9]+", " ")
                 .trim();
         if (ascii.isEmpty()) return null;
