@@ -1,5 +1,7 @@
 package com.mmo.module.fb.workflow.application.service;
 
+import com.mmo.module.fb.workflow.domain.entity.FootballWorkflowRunEntity;
+import com.mmo.module.fb.workflow.domain.entity.FootballWorkflowStageExecutionEntity;
 import com.mmo.module.fb.workflow.domain.enums.FootballWorkflowStage;
 import com.mmo.module.fb.workflow.domain.enums.FootballWorkflowStageStatus;
 import com.mmo.module.fb.workflow.domain.enums.FootballWorkflowStatus;
@@ -9,12 +11,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DataJpaTest
+@DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
+@EntityScan(basePackageClasses = {FootballWorkflowRunEntity.class, FootballWorkflowStageExecutionEntity.class})
+@EnableJpaRepositories(basePackages = "com.mmo.module.fb.workflow.infrastructure.persistence.repository")
 @Import(WorkflowCheckpointService.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class WorkflowCheckpointServiceIntegrationTest {
