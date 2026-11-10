@@ -154,6 +154,68 @@ class WorkflowCheckpointServiceMySqlIntegrationTest {
     }
 
     @Test
+    void shouldRenewAnActiveLeaseAndRejectHeartbeatAfterExpiry() {
+        Long runId = checkpointService.getOrCreateRun(uniqueKey());
+        String token = checkpointService.claimRun(runId);
+        Instant originalLease = runRepository.findById(runId).orElseThrow().getLeaseUntil();
+
+        Instant renewedLease = checkpointService.renewLease(runId, token);
+
+        assertTrue(renewedLease.isAfter(originalLease));
+        assertEquals(renewedLease, runRepository.findById(runId).orElseThrow().getLeaseUntil());
+
+        expireLease(runId);
+        assertThrows(IllegalStateException.class, () -> checkpointService.renewLease(runId, token));
+    }
+
+    @Test
+    void shouldRecoverInterruptedStageAfterCoordinatorProcessCrash() {
+        Long runId = checkpointService.getOrCreateRun(uniqueKey());
+        String crashedCoordinatorToken = checkpointService.claimRun(runId);
+
+        checkpointService.startStage(runId, FootballWorkflowStage.DATA_INGESTION, crashedCoordinatorToken);
+        checkpointService.completeStage(runId, FootballWorkflowStage.DATA_INGESTION, crashedCoordinatorToken);
+        checkpointService.startStage(runId, FootballWorkflowStage.DATA_READINESS, crashedCoordinatorToken);
+
+        // Simulate an abrupt process stop: no releaseRun call is made by the crashed coordinator.
+        FootballWorkflowRunEntity abandonedRun = runRepository.findById(runId).orElseThrow();
+        assertEquals(FootballWorkflowStatus.RUNNING, abandonedRun.getStatus());
+        expireLease(runId);
+
+        String recoveryCoordinatorToken = checkpointService.claimRun(runId);
+
+        assertNotNull(recoveryCoordinatorToken);
+        assertNotEquals(crashedCoordinatorToken, recoveryCoordinatorToken);
+        assertTrue(checkpointService.isStageCompleted(runId, FootballWorkflowStage.DATA_INGESTION));
+        assertFalse(checkpointService.isStageCompleted(runId, FootballWorkflowStage.DATA_READINESS));
+
+        FootballWorkflowStageExecutionEntity interruptedStage = stageRepository
+                .findByWorkflowRunIdAndStage(runId, FootballWorkflowStage.DATA_READINESS)
+                .orElseThrow();
+        assertEquals(FootballWorkflowStageStatus.PENDING, interruptedStage.getStatus());
+        assertNotNull(interruptedStage.getFailureReason());
+
+        assertThrows(IllegalStateException.class,
+                () -> checkpointService.completeStage(
+                        runId, FootballWorkflowStage.DATA_READINESS, crashedCoordinatorToken));
+
+        checkpointService.startStage(runId, FootballWorkflowStage.DATA_READINESS, recoveryCoordinatorToken);
+        checkpointService.completeStage(runId, FootballWorkflowStage.DATA_READINESS, recoveryCoordinatorToken);
+        assertTrue(checkpointService.isStageCompleted(runId, FootballWorkflowStage.DATA_READINESS));
+    }
+
+    @Test
+    void shouldRejectCheckpointWritesWhenLeaseExpiredBeforeAnotherCoordinatorClaimsIt() {
+        Long runId = checkpointService.getOrCreateRun(uniqueKey());
+        String token = checkpointService.claimRun(runId);
+        checkpointService.startStage(runId, FootballWorkflowStage.DATA_INGESTION, token);
+        expireLease(runId);
+
+        assertThrows(IllegalStateException.class,
+                () -> checkpointService.completeStage(runId, FootballWorkflowStage.DATA_INGESTION, token));
+    }
+
+    @Test
     void shouldResumeAfterLeaseExpiryAndFenceThePreviousExecutionToken() {
         Long runId = checkpointService.getOrCreateRun(uniqueKey());
         String previousToken = checkpointService.claimRun(runId);
