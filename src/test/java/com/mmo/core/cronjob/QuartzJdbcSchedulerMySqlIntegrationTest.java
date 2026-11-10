@@ -17,6 +17,7 @@ import org.quartz.Scheduler;
 import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.scheduling.quartz.SchedulerFactoryBean;
@@ -44,9 +45,12 @@ class QuartzJdbcSchedulerMySqlIntegrationTest {
                 requiredEnvironmentValue("MMO_MYSQL_TEST_PASSWORD"));
         ((DriverManagerDataSource) dataSource).setDriverClassName("com.mysql.cj.jdbc.Driver");
 
-        ResourceDatabasePopulator schema = new ResourceDatabasePopulator(
-                new ClassPathResource("org/quartz/impl/jdbcjobstore/tables_mysql_innodb.sql"));
-        schema.execute(dataSource);
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        if (jdbcTemplate.queryForList("SHOW TABLES LIKE 'QRTZ_JOB_DETAILS'").isEmpty()) {
+            ResourceDatabasePopulator schema = new ResourceDatabasePopulator(
+                    new ClassPathResource("org/quartz/impl/jdbcjobstore/tables_mysql_innodb.sql"));
+            schema.execute(dataSource);
+        }
     }
 
     @AfterEach
@@ -100,6 +104,8 @@ class QuartzJdbcSchedulerMySqlIntegrationTest {
         assertNotNull(restoredTrigger.getNextFireTime());
         assertTrue(restoredTrigger.getNextFireTime().after(Date.from(Instant.now())),
                 "Manual-only trigger must remain scheduled in the future");
+
+        restartedScheduler.deleteJob(jobKey);
     }
 
     private Scheduler startScheduler() throws Exception {
