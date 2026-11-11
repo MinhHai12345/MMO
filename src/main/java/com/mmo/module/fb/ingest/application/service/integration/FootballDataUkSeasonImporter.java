@@ -1030,16 +1030,17 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                         persistencePort.findMatchMappingsByProviderAndExternalIds(MATCH_PROVIDER, externalIds)
                                 .stream().collect(java.util.stream.Collectors.toMap(
                                         MatchExternalId::getExternalId, mapping -> mapping, (left, right) -> left));
-                Instant seasonStart = season.getStartDate() == null
-                        ? prepared.stream().map(PreparedCoreRow::kickoff).min(Instant::compareTo)
-                                .orElse(Instant.EPOCH).minusSeconds(36 * 3600L)
-                        : season.getStartDate().atStartOfDay(SOURCE_ZONE).toInstant();
-                Instant seasonEnd = season.getEndDate() == null
-                        ? prepared.stream().map(PreparedCoreRow::kickoff).max(Instant::compareTo)
-                                .orElse(Instant.EPOCH).plusSeconds(36 * 3600L)
-                        : season.getEndDate().plusDays(1).atStartOfDay(SOURCE_ZONE).toInstant();
-                List<Match> candidates = persistencePort.lockBatchFixtureCandidates(
-                        season.getId(), teamIds, seasonStart, seasonEnd);
+                // Candidate discovery must cover the actual source kickoffs, not the
+                // Season metadata range. Season dates can be stale or narrower than the
+                // provider's fixture dates; using them here silently hides an existing
+                // canonical Match and causes a second Match to be created.
+                FixtureCandidateWindow candidateWindow = fixtureCandidateWindow(
+                        prepared.stream().map(PreparedCoreRow::kickoff).toList());
+                List<Match> candidates = candidateWindow == null || teamIds.isEmpty()
+                        ? List.of()
+                        : persistencePort.lockBatchFixtureCandidates(
+                                season.getId(), teamIds,
+                                candidateWindow.fromInclusive(), candidateWindow.toInclusive());
                 Map<TeamPair, List<Match>> candidatesByPair = candidates.stream()
                         .collect(java.util.stream.Collectors.groupingBy(candidate ->
                                 new TeamPair(candidate.getHomeTeam().getId(), candidate.getAwayTeam().getId())));
@@ -1419,6 +1420,27 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
             teamIdentityResolver.addTeam(byCanonicalName, byMatchKey, team);
         }
     }
+
+    static FixtureCandidateWindow fixtureCandidateWindow(Collection<Instant> kickoffs) {
+        if (kickoffs == null) {
+            return null;
+        }
+        Instant minKickoff = kickoffs.stream()
+                .filter(java.util.Objects::nonNull)
+                .min(Instant::compareTo)
+                .orElse(null);
+        Instant maxKickoff = kickoffs.stream()
+                .filter(java.util.Objects::nonNull)
+                .max(Instant::compareTo)
+                .orElse(null);
+        if (minKickoff == null || maxKickoff == null) {
+            return null;
+        }
+        Duration tolerance = Duration.ofHours(36);
+        return new FixtureCandidateWindow(minKickoff.minus(tolerance), maxKickoff.plus(tolerance));
+    }
+
+    record FixtureCandidateWindow(Instant fromInclusive, Instant toInclusive) {}
 
     static Optional<Match> closestFixtureCandidate(List<Match> candidates, Instant kickoff) {
         if (candidates == null || candidates.isEmpty() || kickoff == null) {
