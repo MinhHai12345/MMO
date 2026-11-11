@@ -114,6 +114,17 @@ public class FootballDataUkImportJpaAdapter implements FootballDataUkImportPersi
         return teamIds == null || teamIds.isEmpty() ? List.of()
                 : matchRepository.findBatchFixtureCandidates(seasonId, List.copyOf(teamIds), fromInclusive, toExclusive);
     }
+    @Override public void lockFixtureTeams(Collection<Long> teamIds) {
+        if (teamIds != null && !teamIds.isEmpty()) {
+            teamRepository.lockAllByIds(List.copyOf(teamIds));
+        }
+    }
+    @Override public List<Match> lockBatchFixtureCandidates(Long seasonId, Collection<Long> teamIds,
+                                                             Instant fromInclusive, Instant toExclusive) {
+        return teamIds == null || teamIds.isEmpty() ? List.of()
+                : matchRepository.lockBatchFixtureCandidates(
+                        seasonId, List.copyOf(teamIds), fromInclusive, toExclusive);
+    }
     @Override public List<Match> saveMatches(Collection<Match> matches) {
         return matches == null || matches.isEmpty() ? List.of() : matchRepository.saveAll(matches);
     }

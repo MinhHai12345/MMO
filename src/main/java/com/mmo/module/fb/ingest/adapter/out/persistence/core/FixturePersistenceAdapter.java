@@ -99,7 +99,7 @@ public class FixturePersistenceAdapter implements FixturePersistencePort {
                 .filter(Objects::nonNull).max(Instant::compareTo).orElse(null);
         List<Match> candidates = new ArrayList<>();
         if (minKickoff != null && !teamIds.isEmpty()) {
-            candidates = matchRepository.findBatchFixtureCandidates(seasonId, new ArrayList<>(teamIds),
+            candidates = matchRepository.lockBatchFixtureCandidates(seasonId, new ArrayList<>(teamIds),
                     minKickoff.minus(MATCH_TIME_TOLERANCE), maxKickoff.plus(MATCH_TIME_TOLERANCE));
         }
 

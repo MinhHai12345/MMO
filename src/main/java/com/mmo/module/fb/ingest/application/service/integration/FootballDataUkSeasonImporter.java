@@ -1016,14 +1016,20 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
 
                 Set<String> externalIds = prepared.stream().map(PreparedCoreRow::externalId)
                         .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+                Set<Long> teamIds = prepared.stream()
+                        .flatMap(item -> java.util.stream.Stream.of(item.home().getId(), item.away().getId()))
+                        .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+
+                // Serialize cross-provider fixture creation on canonical teams. The following
+                // candidate query is a locking/current read, so it sees a fixture committed
+                // by a competing provider even when this transaction already has an older
+                // REPEATABLE_READ snapshot.
+                persistencePort.lockFixtureTeams(teamIds);
+
                 Map<String, MatchExternalId> mappingByExternalId =
                         persistencePort.findMatchMappingsByProviderAndExternalIds(MATCH_PROVIDER, externalIds)
                                 .stream().collect(java.util.stream.Collectors.toMap(
                                         MatchExternalId::getExternalId, mapping -> mapping, (left, right) -> left));
-
-                Set<Long> teamIds = prepared.stream()
-                        .flatMap(item -> java.util.stream.Stream.of(item.home().getId(), item.away().getId()))
-                        .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
                 Instant seasonStart = season.getStartDate() == null
                         ? prepared.stream().map(PreparedCoreRow::kickoff).min(Instant::compareTo)
                                 .orElse(Instant.EPOCH).minusSeconds(36 * 3600L)
@@ -1032,7 +1038,7 @@ public class FootballDataUkSeasonImporter implements SeasonBatchIngestionPort {
                         ? prepared.stream().map(PreparedCoreRow::kickoff).max(Instant::compareTo)
                                 .orElse(Instant.EPOCH).plusSeconds(36 * 3600L)
                         : season.getEndDate().plusDays(1).atStartOfDay(SOURCE_ZONE).toInstant();
-                List<Match> candidates = persistencePort.findBatchFixtureCandidates(
+                List<Match> candidates = persistencePort.lockBatchFixtureCandidates(
                         season.getId(), teamIds, seasonStart, seasonEnd);
                 Map<TeamPair, List<Match>> candidatesByPair = candidates.stream()
                         .collect(java.util.stream.Collectors.groupingBy(candidate ->

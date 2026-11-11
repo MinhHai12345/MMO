@@ -46,6 +46,9 @@ public interface FootballDataUkImportPersistencePort {
     MatchExternalId saveMatchMapping(MatchExternalId mapping);
     List<Match> findBatchFixtureCandidates(Long seasonId, Collection<Long> teamIds,
                                            Instant fromInclusive, Instant toExclusive);
+    void lockFixtureTeams(Collection<Long> teamIds);
+    List<Match> lockBatchFixtureCandidates(Long seasonId, Collection<Long> teamIds,
+                                           Instant fromInclusive, Instant toExclusive);
     List<Match> saveMatches(Collection<Match> matches);
     List<MatchExternalId> saveMatchMappings(Collection<MatchExternalId> mappings);
     List<Match> findFixtureCandidates(Long seasonId, Long homeTeamId, Long awayTeamId,
