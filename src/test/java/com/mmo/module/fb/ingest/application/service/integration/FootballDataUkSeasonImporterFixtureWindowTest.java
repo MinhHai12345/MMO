@@ -39,6 +39,6 @@ class FootballDataUkSeasonImporterFixtureWindowTest {
     void candidateWindowIsAbsentWhenBatchHasNoValidKickoffs() {
         assertNull(FootballDataUkSeasonImporter.fixtureCandidateWindow(List.of()));
         assertNull(FootballDataUkSeasonImporter.fixtureCandidateWindow(
-                java.util.Arrays.asList(null, null)));
+                java.util.Arrays.<Instant>asList(null, null)));
     }
 }
