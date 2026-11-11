@@ -36,11 +36,11 @@ public class FootballQuartzJobInitializer implements DataInitializer {
         // Keep the end-to-end coordinator registered but manual-only during its first
         // production rollout. The workflow uses incremental active-season synchronization;
         // enable a recurring cron only after end-to-end runtime and recovery are validated.
-        createOrUpdateJob(FootballWorkflowOrchestrationQuartzJob.class,
-                "0 0 0 1 1 ? 2099",
-                "Manual-only durable football workflow; trigger through the CronJob management API");
-        createOrUpdateJob(ContentGenerationJob.class,
-                "0 30 11 * * ?", "Generate PRE_MATCH content drafts daily at 11:30 UTC");
+//        createOrUpdateJob(FootballWorkflowOrchestrationQuartzJob.class,
+//                "0 0 0 1 1 ? 2099",
+//                "Manual-only durable football workflow; trigger through the CronJob management API");
+//        createOrUpdateJob(ContentGenerationJob.class,
+//                "0 30 11 * * ?", "Generate PRE_MATCH content drafts daily at 11:30 UTC");
 
         // Bootstrap performs/retries the one-time historical backfill. After all provider
         // checkpoints are complete it becomes a cheap no-op; recurring Core updates belong
@@ -59,33 +59,18 @@ public class FootballQuartzJobInitializer implements DataInitializer {
 
         // Analytics and evaluation jobs own their own schedules. The content job never
         // triggers already-scheduled jobs, avoiding duplicate executions.
-        createOrUpdateJob(MatchProcessPredictionJob.class,
-                "0 0 0/3 * * ?", "Recalculate eligible upcoming-match predictions every 3 hours");
-        createOrUpdateJob(AdvancedMetricsJob.class,
-                "0 0 0/6 * * ?", "Recalculate team form and head-to-head metrics every 6 hours");
-        createOrUpdateJob(PredictionEvaluationJob.class,
-                "0 0/30 * * * ?", "Evaluate predictions against newly completed match results every 30 minutes");
-        createOrUpdateJob(WalkForwardBackTestJob.class,
-                "0 15 6 ? * SUN", "Run the 180-day walk-forward evaluation weekly on Sunday at 06:15 UTC");
-        createOrUpdateJob(SubscriptionExpiryCheckJob.class,
-                "0 0 0 * * ?", "Expire subscriptions and identify renewals daily at 00:00 UTC");
-        createOrUpdateJob(PublicationWorkerQuartzJob.class,
-                "0 * * * * ?", "Poll approved, due Telegram publications once per minute; opt-in required");
-
-        // Remove obsolete persisted schedules as well as their source classes. Leaving
-        // paused registry rows creates a false operational inventory and permits accidental resume.
-        deleteLegacyJob("LeagueSyncJob");
-        deleteLegacyJob("TeamSyncJob");
-        deleteLegacyJob("MatchFixtureSyncJob");
-        deleteLegacyJob("MatchResultSyncJob");
-        deleteLegacyJob("MatchStatisticsSyncJob");
-        deleteLegacyJob("FootballDataUkCoreSyncJob");
-        deleteLegacyJob("UnderStatHistoricalStatsJob");
-        deleteLegacyJob("UnderStatCatalogSyncJob");
-        deleteLegacyJob("MatchStatusTrackerJob");
-        deleteLegacyJob("CrawlerHealthCheckJob");
-        deleteLegacyJob("DataCleanupJob");
-        deleteLegacyJob("MatchLineupOddsUpdateJob");
+//        createOrUpdateJob(MatchProcessPredictionJob.class,
+//                "0 0 0/3 * * ?", "Recalculate eligible upcoming-match predictions every 3 hours");
+//        createOrUpdateJob(AdvancedMetricsJob.class,
+//                "0 0 0/6 * * ?", "Recalculate team form and head-to-head metrics every 6 hours");
+//        createOrUpdateJob(PredictionEvaluationJob.class,
+//                "0 0/30 * * * ?", "Evaluate predictions against newly completed match results every 30 minutes");
+//        createOrUpdateJob(WalkForwardBackTestJob.class,
+//                "0 15 6 ? * SUN", "Run the 180-day walk-forward evaluation weekly on Sunday at 06:15 UTC");
+//        createOrUpdateJob(SubscriptionExpiryCheckJob.class,
+//                "0 0 0 * * ?", "Expire subscriptions and identify renewals daily at 00:00 UTC");
+//        createOrUpdateJob(PublicationWorkerQuartzJob.class,
+//                "0 * * * * ?", "Poll approved, due Telegram publications once per minute; opt-in required");
 
         log.info("Football CronJob initialization completed.");
     }
