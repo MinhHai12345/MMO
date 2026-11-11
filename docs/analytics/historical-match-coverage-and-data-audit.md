@@ -510,3 +510,8 @@ Use these as an initial audit policy; tune thresholds by competition and resourc
 - Workflow gate: `workflow/application/service/DataReadinessGateService.java`.
 
 This document is a baseline and diagnostic script. It does not claim that the DEV database has passed the audit; run it against the target database to obtain actual MMO counts.
+
+
+## P0.7 match identity reconciliation
+
+For the extended read-only audit covering exact duplicates, near-kickoff candidates, reversed home/away candidates, provider identity constraints and dependent-row inventory, see [P0.7 — Canonical Match Identity Audit](p0.7-match-identity-reconciliation.md). This is a diagnostic procedure only; it does not repair stored data.
