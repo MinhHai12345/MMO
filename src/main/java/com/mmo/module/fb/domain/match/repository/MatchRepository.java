@@ -448,4 +448,23 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
                                            @Param("teamIds") List<Long> teamIds,
                                            @Param("startTime") Instant startTime,
                                            @Param("endTime") Instant endTime);
+
+    /**
+     * Current-read candidate lookup for fixture identity reconciliation.
+     * PESSIMISTIC_WRITE avoids stale REPEATABLE_READ snapshots after a competing
+     * ingestion transaction has committed a canonical fixture.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"season", "homeTeam", "awayTeam"})
+    @Query("""
+            SELECT m FROM Match m
+            WHERE m.season.id = :seasonId
+              AND (m.homeTeam.id IN :teamIds OR m.awayTeam.id IN :teamIds)
+              AND m.matchTime BETWEEN :startTime AND :endTime
+            ORDER BY m.id ASC
+            """)
+    List<Match> lockBatchFixtureCandidates(@Param("seasonId") Long seasonId,
+                                           @Param("teamIds") List<Long> teamIds,
+                                           @Param("startTime") Instant startTime,
+                                           @Param("endTime") Instant endTime);
 }
