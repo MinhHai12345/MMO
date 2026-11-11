@@ -36,7 +36,7 @@ These are competition fixture totals, not a promise that every provider exposes 
 | 2025/26 | 380 | 552 | 557 | 306 | 380 | 306 | 380 | 189 |
 | **12-season total** | **4,560** | **6,624** | **6,684** | **3,672** | **4,560** | **4,237** | **4,560** | **1,622** |
 
-**Club competition total:** 30,095 fixtures when Championship play-offs are included; 30,035 when only its 552 regular-season fixtures are counted.
+**Club competition total:** 29,895 fixtures when Championship play-offs are included; 30,035 when only its 552 regular-season fixtures are counted.
 
 ### 2.2 FIFA World Cup editions
 
@@ -48,7 +48,7 @@ These are competition fixture totals, not a promise that every provider exposes 
 | 2026 | 104 |
 | **Total** | **296** |
 
-**Grand total across the competitions above:** **30,391** (club competition total including Championship play-offs + World Cup editions). Excluding Championship play-offs: **30,331**.
+**Grand total across the competitions above:** **30,191** (club competition total including Championship play-offs + World Cup editions). Excluding Championship play-offs: **30,131**.
 
 > Important: these totals are an explicit benchmark scope. Do not compare them with a database-wide count that also includes domestic cups, continental competitions other than UCL, UCL qualifying rounds, youth/women's competitions, friendlies, reserve teams or duplicated provider records.
 
