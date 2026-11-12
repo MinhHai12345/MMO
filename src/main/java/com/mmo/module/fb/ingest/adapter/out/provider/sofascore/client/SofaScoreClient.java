@@ -4,6 +4,7 @@ import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResp
 
 import com.microsoft.playwright.Page;
 import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaDailyMatchWrapper;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreLineupsResponseDTO;
 
 import java.util.List;
 import java.util.Map;
@@ -67,5 +68,8 @@ public interface SofaScoreClient {
      * Fetch Match Daily by tournament id
      */
     SofaDailyMatchWrapper fetchMatchesDaily(Long sofaTournamentId, Page page);
+
+    /** Fetch match lineups through the shared page-response collector. */
+    SofaScoreLineupsResponseDTO fetchLineups(Long sofaMatchId, Page page);
 
 }
