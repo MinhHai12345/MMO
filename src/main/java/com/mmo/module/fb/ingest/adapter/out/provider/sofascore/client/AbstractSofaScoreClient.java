@@ -7,7 +7,6 @@ import com.microsoft.playwright.Response;
 import com.microsoft.playwright.options.WaitUntilState;
 import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client.DynamicFetchResult;
 import lombok.extern.slf4j.Slf4j;
-import org.thymeleaf.util.MapUtils;
 
 import java.util.List;
 import java.util.Locale;
@@ -26,30 +25,20 @@ public abstract class AbstractSofaScoreClient {
 
     protected final ObjectMapper objectMapper = new ObjectMapper();
 
-    protected DynamicFetchResult safeFetch(
-            String loadPageUrl,
-            Map<String, Class<?>> endpointClassMap,
-            Page page,
-            Consumer<Page> triggerAction) {
-        if (MapUtils.isEmpty(endpointClassMap)) {
-            return new DynamicFetchResult();
-        }
-        List<SofaScoreEndpointSpec> endpointSpecs = endpointClassMap.entrySet().stream()
-                .map(entry -> SofaScoreEndpointSpec.required(entry.getKey(), entry.getValue()))
-                .toList();
-        return safeFetch(loadPageUrl, endpointSpecs, page, triggerAction);
-    }
-
     /**
      * Captures multiple independent API responses emitted by one page navigation.
      * Required endpoints gate completion; optional endpoints are collected opportunistically
      * during navigation/trigger actions and a short grace period.
      */
     protected DynamicFetchResult safeFetch(
-            String loadPageUrl,
-            List<SofaScoreEndpointSpec> endpointSpecs,
+            SofaScorePageSpec pageSpec,
             Page page,
             Consumer<Page> triggerAction) {
+        if (pageSpec == null) {
+            throw new IllegalArgumentException("SofaScore page specification is required");
+        }
+        String loadPageUrl = pageSpec.loadPageUrl();
+        List<SofaScoreEndpointSpec> endpointSpecs = pageSpec.endpointSpecs();
         if (endpointSpecs == null || endpointSpecs.isEmpty()) {
             throw new IllegalArgumentException("At least one SofaScore endpoint must be configured");
         }
