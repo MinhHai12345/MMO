@@ -12,8 +12,8 @@ class SofaScoreSeasonMatcherTest {
 
     @Test
     void resolvesSeasonUsingCanonicalStartYear() {
-        SeasonDTO oldSeason = new SeasonDTO(1L, "2024/2025", "2024/2025");
-        SeasonDTO targetSeason = new SeasonDTO(2L, "2026/2027", "2026/2027");
+        SeasonDTO oldSeason = new SeasonDTO(1L, "2024/2025", "2024/2025", false);
+        SeasonDTO targetSeason = new SeasonDTO(2L, "2026/2027", "2026/2027", true);
 
         assertEquals(2L, SofaScoreSeasonMatcher.findMatchingSeason(
                 List.of(oldSeason, targetSeason), "26/27").orElseThrow().id());
