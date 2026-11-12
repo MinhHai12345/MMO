@@ -20,7 +20,6 @@ import java.time.ZoneOffset;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 @Slf4j
 @Component
@@ -44,10 +43,9 @@ public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implemen
             if (seasons == null || seasons.isEmpty())
                 throw new IllegalStateException("SofaScore returned no seasons for tournament " + query.leagueId());
 
-            SeasonDTO season = seasons.stream().filter(Objects::nonNull)
-                    .filter(item -> SofaScoreSeasonMatcher.matches(query.season(), item)).findFirst()
+            SeasonDTO season = SofaScoreSeasonMatcher.findMatchingSeason(seasons, query.season())
                     .orElseThrow(() -> new IllegalStateException("SofaScore season '" + query.season()
-                                                                 + "' was not found for tournament " + query.leagueId()));
+                            + "' was not found for tournament " + query.leagueId()));
 
             int maxPages = appProperties.getSync().getMaxEventPages() > 0
                     ? appProperties.getSync().getMaxEventPages() : 20;
