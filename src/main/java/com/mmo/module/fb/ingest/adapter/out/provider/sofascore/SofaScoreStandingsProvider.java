@@ -13,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
@@ -37,10 +36,7 @@ public class SofaScoreStandingsProvider extends AbstractSofaScoreProvider implem
             if (seasons == null || seasons.isEmpty()) {
                 throw new IllegalStateException("SofaScore returned no seasons for tournament " + query.leagueId());
             }
-            SeasonDTO season = seasons.stream()
-                    .filter(Objects::nonNull)
-                    .filter(item -> SofaScoreSeasonMatcher.matches(query.season(), item))
-                    .findFirst()
+            SeasonDTO season = SofaScoreSeasonMatcher.findMatchingSeason(seasons, query.season())
                     .orElseThrow(() -> new IllegalStateException("SofaScore season '" + query.season()
                             + "' was not found for tournament " + query.leagueId()));
 
