@@ -221,7 +221,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
     public SofaScoreLineupsResponseDTO fetchLineups(Long matchId, Page page) {
         requirePositiveId(matchId, "matchId");
         SofaScorePageSpec pageSpec = SofaScorePageSpecs.lineups(webUrl(), matchId);
-        DynamicFetchResult result = safeFetch(pageSpec, page, null);
+        DynamicFetchResult result = safeFetch(pageSpec, page, this::activateLineupsView);
         return result.get(SofaScorePageSpecs.lineupsEndpoint(matchId), SofaScoreLineupsResponseDTO.class);
     }
 
@@ -235,6 +235,20 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
         AppProperties.ProviderConfig config = sofaScoreConfig();
         return SofaScorePageSpecs.footballCatalogueWithOdds(
                 webUrl(), config.getOption("tournament-region"), DateTimeUtils.today());
+    }
+
+    private void activateLineupsView(Page page) {
+        try {
+            Locator lineupsTab = page.getByText("Lineups", new Page.GetByTextOptions().setExact(true)).first();
+            lineupsTab.waitFor(new Locator.WaitForOptions()
+                    .setState(com.microsoft.playwright.options.WaitForSelectorState.ATTACHED)
+                    .setTimeout(10_000));
+            lineupsTab.click();
+        } catch (TimeoutError exception) {
+            log.debug("SofaScore lineups tab was not available on the loaded page.");
+        } catch (Exception exception) {
+            log.warn("Could not activate SofaScore lineups view: {}", exception.getMessage());
+        }
     }
 
     private void activateOddsView(Page page) {
