@@ -18,7 +18,7 @@ public record SofaScoreEndpointSpec(
             throw new IllegalArgumentException("SofaScore endpoint must not be blank");
         }
         Objects.requireNonNull(responseType, "SofaScore response type is required");
-        endpoint = normalizePath(endpoint);
+        endpoint = endpoint.trim();
     }
 
     public static SofaScoreEndpointSpec required(String endpoint, Class<?> responseType) {
@@ -35,7 +35,7 @@ public record SofaScoreEndpointSpec(
         }
         try {
             String responsePath = normalizePath(URI.create(responseUrl).getRawPath());
-            return responsePath.endsWith(endpoint);
+            return responsePath.endsWith(normalizePath(endpoint));
         } catch (IllegalArgumentException exception) {
             return false;
         }
