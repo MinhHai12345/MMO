@@ -21,7 +21,7 @@ public final class SofaScorePageSpecs {
     private static final String MATCH_PAGE = "%s/football/match/%d";
     private static final String TEAM_HISTORY_PAGE = "%s/football/team/%s/%s";
 
-    private static final String TOURNAMENTS_ENDPOINT = "config/default-unique-tournaments/%s/football";
+    private static final String TOURNAMENTS_ENDPOINT = "/api/v1/config/top-unique-tournaments/%s/football";
     private static final String SEASONS_ENDPOINT = "unique-tournament/%d/seasons";
     private static final String STANDINGS_ENDPOINT = "unique-tournament/%d/season/%d/standings/total";
     private static final String ROUND_EVENTS_ENDPOINT = "unique-tournament/%d/season/%d/events/round/%d";
