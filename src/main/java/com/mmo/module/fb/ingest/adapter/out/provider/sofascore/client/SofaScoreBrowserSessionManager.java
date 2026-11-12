@@ -82,15 +82,15 @@ public class SofaScoreBrowserSessionManager {
             if (page != null && !page.isClosed()) {
                 page.close();
             }
+        } catch (PlaywrightException exception) {
+            log.warn("[SOFA_SCORE] Could not close browser page cleanly: {}", exception.getMessage());
+        } finally {
             if (page != null) {
                 activePages.updateAndGet(active -> Math.max(0, active - 1));
             }
             if (pageUses.get() >= MAX_PAGE_USES && context != null && activePages.get() == 0) {
                 closeSession();
             }
-        } catch (PlaywrightException exception) {
-            log.warn("[SOFA_SCORE] Could not close browser page cleanly: {}", exception.getMessage());
-        } finally {
             if (leaseLock.isHeldByCurrentThread()) {
                 leaseLock.unlock();
             }
