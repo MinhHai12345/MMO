@@ -155,7 +155,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
 
     @Override
     public Map<Long, MatchOddDetailDTO> fetchDailyMatchOdds(Page page) {
-        SofaScorePageSpec pageSpec = footballCataloguePage();
+        SofaScorePageSpec pageSpec = footballCatalogueWithOddsPage();
         DynamicFetchResult result = safeFetch(pageSpec, page, this::activateOddsView);
         String oddsEndpoint = SofaScorePageSpecs.dailyOddsEndpoint(DateTimeUtils.today());
         OddsResponseDTO response = result.get(oddsEndpoint, OddsResponseDTO.class);
@@ -221,12 +221,19 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
     public SofaScoreLineupsResponseDTO fetchLineups(Long matchId, Page page) {
         requirePositiveId(matchId, "matchId");
         SofaScorePageSpec pageSpec = SofaScorePageSpecs.lineups(webUrl(), matchId);
-        return fetchRequired(pageSpec, page, SofaScoreLineupsResponseDTO.class);
+        DynamicFetchResult result = safeFetch(pageSpec, page, null);
+        return result.get(SofaScorePageSpecs.lineupsEndpoint(matchId), SofaScoreLineupsResponseDTO.class);
     }
 
     private SofaScorePageSpec footballCataloguePage() {
         AppProperties.ProviderConfig config = sofaScoreConfig();
         return SofaScorePageSpecs.footballCatalogue(
+                webUrl(), config.getOption("tournament-region"), DateTimeUtils.today());
+    }
+
+    private SofaScorePageSpec footballCatalogueWithOddsPage() {
+        AppProperties.ProviderConfig config = sofaScoreConfig();
+        return SofaScorePageSpecs.footballCatalogueWithOdds(
                 webUrl(), config.getOption("tournament-region"), DateTimeUtils.today());
     }
 
