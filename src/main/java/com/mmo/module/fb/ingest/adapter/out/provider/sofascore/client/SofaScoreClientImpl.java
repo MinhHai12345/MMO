@@ -192,8 +192,11 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
     public List<PeriodStatisticsDTO> fetchMatchStatistics(Long sofaMatchId, Page page) {
         String loadPageUrl = String.format(FETCH_MATCH_STATISTICS_PAGE, webUrl(), sofaMatchId);
         String endpoint = String.format(FETCH_MATCH_STATISTICS_URI, sofaMatchId);
+        String matchEndpoint = String.format(FETCH_MATCH_BY_ID_URI, sofaMatchId);
         StatisticsResponseDTO matchData = fetchFromWebPage(SofaScorePageSpec.of(loadPageUrl,
-                SofaScoreEndpointSpec.required(endpoint, StatisticsResponseDTO.class)), endpoint, page, StatisticsResponseDTO.class);
+                SofaScoreEndpointSpec.required(endpoint, StatisticsResponseDTO.class),
+                SofaScoreEndpointSpec.optional(matchEndpoint, MatchResponseDTO.class)),
+                endpoint, page, StatisticsResponseDTO.class);
         if (matchData == null) {
             throw new SofaScoreFetchException("SofaScore statistics request failed for event " + sofaMatchId);
         }
@@ -270,7 +273,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
         String endpoint = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI,
                 sofaTournamentId, DateTimeUtils.today());
         MatchesResponseDTO matchData = fetchFromWebPage(SofaScorePageSpec.of(loadPageUrl,
-                SofaScoreEndpointSpec.required(endpoint, MatchesResponseDTO.class)), endpoint, page, MatchResponseDTO.class);
+                SofaScoreEndpointSpec.required(endpoint, MatchesResponseDTO.class)), endpoint, page, MatchesResponseDTO.class);
         if (matchData == null) {
             throw new SofaScoreFetchException("SofaScore daily-match endpoint returned no data for tournament "
                     + sofaTournamentId);
@@ -303,8 +306,11 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
     public EventDTO fetchMatchById(Long sofaMatchId, Page page) {
         String loadPageUrl = String.format(FETCH_MATCH_BY_ID_PAGE, webUrl(), sofaMatchId);
         String endpoint = String.format(FETCH_MATCH_BY_ID_URI, sofaMatchId);
+        String statisticsEndpoint = String.format(FETCH_MATCH_STATISTICS_URI, sofaMatchId);
         MatchResponseDTO matchData = fetchFromWebPage(SofaScorePageSpec.of(loadPageUrl,
-                SofaScoreEndpointSpec.required(endpoint, MatchResponseDTO.class)), endpoint, page);
+                SofaScoreEndpointSpec.required(endpoint, MatchResponseDTO.class),
+                SofaScoreEndpointSpec.optional(statisticsEndpoint, StatisticsResponseDTO.class)),
+                endpoint, page, MatchResponseDTO.class);
         if (matchData == null || matchData.event() == null) {
             throw new SofaScoreFetchException("SofaScore match endpoint returned no event for match "
                     + sofaMatchId);
