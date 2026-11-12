@@ -67,9 +67,6 @@ public class SofaScoreTeamProvider extends AbstractSofaScoreProvider implements 
         if (seasons == null) {
             throw new IllegalStateException("SofaScore season request failed for tournament " + tournamentId);
         }
-        return seasons.stream()
-                .filter(Objects::nonNull)
-                .filter(season -> SofaScoreSeasonMatcher.matches(year, season))
-                .findFirst().orElse(null);
+        return SofaScoreSeasonMatcher.findMatchingSeason(seasons, year).orElse(null);
     }
 }
