@@ -21,7 +21,7 @@ class SofaScoreSeasonMatcherTest {
 
     @Test
     void returnsFirstNonNullSeasonWhenNoSeasonWasRequested() {
-        SeasonDTO expected = new SeasonDTO(2L, "2026/2027", "2026/2027");
+        SeasonDTO expected = new SeasonDTO(2L, "2026/2027", "2026/2027", true);
 
         assertEquals(expected, SofaScoreSeasonMatcher.findMatchingSeason(
                 java.util.Arrays.asList(null, expected), null).orElseThrow());
@@ -30,6 +30,6 @@ class SofaScoreSeasonMatcherTest {
     @Test
     void returnsEmptyWhenRequestedSeasonDoesNotExist() {
         assertTrue(SofaScoreSeasonMatcher.findMatchingSeason(
-                List.of(new SeasonDTO(1L, "2024/2025", "2024/2025")), "2026/2027").isEmpty());
+                List.of(new SeasonDTO(1L, "2024/2025", "2024/2025", false)), "2026/2027").isEmpty());
     }
 }
