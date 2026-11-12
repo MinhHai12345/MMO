@@ -32,6 +32,7 @@ public class SofaScoreBrowserSessionManager {
     private final AppProperties properties;
     private final ReentrantLock leaseLock = new ReentrantLock(true);
     private final AtomicInteger pageUses = new AtomicInteger();
+    private final AtomicInteger activePages = new AtomicInteger();
 
     private Playwright playwright;
     private BrowserContext context;
@@ -45,13 +46,14 @@ public class SofaScoreBrowserSessionManager {
         boolean leaseTransferred = false;
         try {
             ensureSession();
-            if (pageUses.get() >= MAX_PAGE_USES && context.pages().isEmpty()) {
+            if (pageUses.get() >= MAX_PAGE_USES && activePages.get() == 0) {
                 closeSession();
                 ensureSession();
             }
 
             Page page = context.newPage();
             pageUses.incrementAndGet();
+            activePages.incrementAndGet();
             page.onRequestFailed(request -> {
                 String failure = request.failure() == null ? "unknown" : request.failure();
                 log.warn("[SOFA_SCORE] Browser request failed: method={}, url={}, failure={}",
@@ -80,7 +82,10 @@ public class SofaScoreBrowserSessionManager {
             if (page != null && !page.isClosed()) {
                 page.close();
             }
-            if (pageUses.get() >= MAX_PAGE_USES && context != null && context.pages().isEmpty()) {
+            if (page != null) {
+                activePages.updateAndGet(active -> Math.max(0, active - 1));
+            }
+            if (pageUses.get() >= MAX_PAGE_USES && context != null && activePages.get() == 0) {
                 closeSession();
             }
         } catch (PlaywrightException exception) {
@@ -170,6 +175,7 @@ public class SofaScoreBrowserSessionManager {
             }
         }
         pageUses.set(0);
+        activePages.set(0);
     }
 
     @PreDestroy
