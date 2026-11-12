@@ -2,6 +2,9 @@ package com.mmo.module.fb.ingest.adapter.out.provider.sofascore;
 
 import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.SeasonDTO;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -10,6 +13,12 @@ public final class SofaScoreSeasonMatcher {
     private static final Pattern YEAR = Pattern.compile("(?<!\\d)(20\\d{2}|\\d{2})(?!\\d)");
 
     private SofaScoreSeasonMatcher() { }
+
+    public static Optional<SeasonDTO> findMatchingSeason(List<SeasonDTO> seasons, String requestedSeason) {
+        if (seasons == null || seasons.isEmpty()) return Optional.empty();
+        return seasons.stream().filter(Objects::nonNull)
+                .filter(season -> matches(requestedSeason, season)).findFirst();
+    }
 
     public static boolean matches(String requestedSeason, SeasonDTO season) {
         if (season == null || requestedSeason == null || requestedSeason.isBlank()) return true;
