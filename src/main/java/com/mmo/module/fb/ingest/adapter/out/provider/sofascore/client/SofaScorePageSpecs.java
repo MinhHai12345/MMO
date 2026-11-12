@@ -42,7 +42,14 @@ public final class SofaScorePageSpecs {
         return SofaScorePageSpec.of(
                 page(webUrl, FOOTBALL_PAGE),
                 SofaScoreEndpointSpec.required(
-                        String.format(TOURNAMENTS_ENDPOINT, normalizedRegion), TournamentsResponseDTO.class),
+                        String.format(TOURNAMENTS_ENDPOINT, normalizedRegion), TournamentsResponseDTO.class));
+    }
+
+    public static SofaScorePageSpec footballCatalogueWithOdds(String webUrl, String region, String date) {
+        SofaScorePageSpec catalogue = footballCatalogue(webUrl, region, date);
+        return SofaScorePageSpec.of(
+                catalogue.loadPageUrl(),
+                catalogue.endpointSpecs().get(0),
                 SofaScoreEndpointSpec.optional(dailyOddsEndpoint(date), OddsResponseDTO.class));
     }
 
@@ -84,7 +91,9 @@ public final class SofaScorePageSpecs {
                 SofaScoreEndpointSpec.required(
                         String.format(MATCH_STATISTICS_ENDPOINT, matchId), StatisticsResponseDTO.class),
                 SofaScoreEndpointSpec.optional(
-                        String.format(MATCH_ENDPOINT, matchId), MatchResponseDTO.class));
+                        String.format(MATCH_ENDPOINT, matchId), MatchResponseDTO.class),
+                SofaScoreEndpointSpec.optional(
+                        lineupsEndpoint(matchId), SofaScoreLineupsResponseDTO.class));
     }
 
     public static SofaScorePageSpec matchDetails(String webUrl, long matchId) {
@@ -93,7 +102,9 @@ public final class SofaScorePageSpecs {
                 SofaScoreEndpointSpec.required(
                         String.format(MATCH_ENDPOINT, matchId), MatchResponseDTO.class),
                 SofaScoreEndpointSpec.optional(
-                        String.format(MATCH_STATISTICS_ENDPOINT, matchId), StatisticsResponseDTO.class));
+                        String.format(MATCH_STATISTICS_ENDPOINT, matchId), StatisticsResponseDTO.class),
+                SofaScoreEndpointSpec.optional(
+                        lineupsEndpoint(matchId), SofaScoreLineupsResponseDTO.class));
     }
 
     public static SofaScorePageSpec dailyTournamentEvents(String webUrl, long tournamentId, String date) {
@@ -123,11 +134,19 @@ public final class SofaScorePageSpecs {
         return SofaScorePageSpec.of(
                 page(webUrl, MATCH_PAGE, matchId),
                 SofaScoreEndpointSpec.required(
-                        String.format(LINEUPS_ENDPOINT, matchId), SofaScoreLineupsResponseDTO.class));
+                        String.format(MATCH_ENDPOINT, matchId), MatchResponseDTO.class),
+                SofaScoreEndpointSpec.optional(
+                        lineupsEndpoint(matchId), SofaScoreLineupsResponseDTO.class),
+                SofaScoreEndpointSpec.optional(
+                        String.format(MATCH_STATISTICS_ENDPOINT, matchId), StatisticsResponseDTO.class));
     }
 
     public static String dailyOddsEndpoint(String date) {
         return String.format(DAILY_ODDS_ENDPOINT, date);
+    }
+
+    public static String lineupsEndpoint(long matchId) {
+        return String.format(LINEUPS_ENDPOINT, matchId);
     }
 
     private static String page(String webUrl, String template, Object... arguments) {
