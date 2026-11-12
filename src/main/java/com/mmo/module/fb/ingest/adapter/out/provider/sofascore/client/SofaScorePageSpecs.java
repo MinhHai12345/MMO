@@ -36,7 +36,7 @@ public final class SofaScorePageSpecs {
     private SofaScorePageSpecs() {
     }
 
-    public static SofaScorePageSpec footballCatalogue(String webUrl, String region, String date) {
+    public static SofaScorePageSpec footballCatalogue(String webUrl, String region) {
         String normalizedRegion = region == null || !region.matches("[A-Za-z]{2}")
                 ? "EN" : region.toUpperCase(java.util.Locale.ROOT);
         return SofaScorePageSpec.of(
@@ -46,7 +46,7 @@ public final class SofaScorePageSpecs {
     }
 
     public static SofaScorePageSpec footballCatalogueWithOdds(String webUrl, String region, String date) {
-        SofaScorePageSpec catalogue = footballCatalogue(webUrl, region, date);
+        SofaScorePageSpec catalogue = footballCatalogue(webUrl, region);
         return SofaScorePageSpec.of(
                 catalogue.loadPageUrl(),
                 catalogue.endpointSpecs().get(0),
