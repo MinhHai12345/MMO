@@ -73,7 +73,9 @@ public abstract class AbstractSofaScoreClient {
             CompletableFuture<?>[] futuresArray = futuresMap.values().toArray(new CompletableFuture[0]);
             CompletableFuture.allOf(futuresArray).get(20, TimeUnit.SECONDS);
         } catch (TimeoutException exception) {
-            log.warn("Timed out waiting for all intercepted SofaScore endpoints; parsing available responses");
+            throw new SofaScoreFetchException(
+                    "Timed out waiting for required SofaScore API endpoints: " + missingEndpoints(futuresMap),
+                    exception);
         } catch (SofaScoreFetchException exception) {
             throw exception;
         } catch (Exception exception) {
@@ -94,10 +96,22 @@ public abstract class AbstractSofaScoreClient {
                     throw new SofaScoreFetchException("Could not parse SofaScore endpoint " + endpoint, exception);
                 }
             } else {
-                log.warn("SofaScore endpoint was not captured: {}", endpoint);
+                throw new SofaScoreFetchException(
+                        "Required SofaScore API endpoint was not captured: " + endpoint);
             }
         });
         return fetchResult;
+    }
+
+    private String missingEndpoints(Map<String, CompletableFuture<String>> futuresMap) {
+        return futuresMap.entrySet().stream()
+                .filter(entry -> !entry.getValue().isDone()
+                        || entry.getValue().isCompletedExceptionally()
+                        || entry.getValue().isCancelled())
+                .map(Map.Entry::getKey)
+                .sorted()
+                .toList()
+                .toString();
     }
 
     private void failIfCaptchaPage(Page page, String requestedUrl) {
