@@ -36,3 +36,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Local browser state and provider response artifacts must never be committed.
+/sofascore_bot_profile/
+/output_data/
