@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
+import java.util.function.Predicate;
 
 /**
  * Executes bounded, read-only checks against SofaScore outbound provider ports.
@@ -45,10 +46,11 @@ public class SofaScoreDiagnosticService implements SofaScoreDiagnosticUseCase {
         validate(request);
 
         List<SofaScoreDiagnosticResult.StageResult> stages = new ArrayList<>();
-        LeagueIngestionPort leagueProvider = findProvider(leagueProviders);
-        TeamIngestionPort teamProvider = findProvider(teamProviders);
-        FixtureIngestionPort fixtureProvider = findProvider(fixtureProviders);
-        PlayerLineupsIngestionPort lineupsProvider = findProvider(lineupsProviders);
+        LeagueIngestionPort leagueProvider = findProvider(leagueProviders, port -> port.getProvider() == TARGET_PROVIDER);
+        TeamIngestionPort teamProvider = findProvider(teamProviders, port -> port.getProvider() == TARGET_PROVIDER);
+        FixtureIngestionPort fixtureProvider = findProvider(fixtureProviders, port -> port.getProvider() == TARGET_PROVIDER);
+        PlayerLineupsIngestionPort lineupsProvider = findProvider(
+                lineupsProviders, port -> port.getProvider() == TARGET_PROVIDER);
 
         Outcome<List<ProviderLeague>> leagueOutcome = execute(
                 "TOURNAMENT_AND_SEASONS",
@@ -70,7 +72,7 @@ public class SofaScoreDiagnosticService implements SofaScoreDiagnosticUseCase {
                 .findFirst()
                 .orElse(null);
         if (league == null) {
-            fail(stages, "TOURNAMENT_AND_SEASONS",
+            replaceStage(stages, "TOURNAMENT_AND_SEASONS",
                     "SofaScore did not return the requested tournament ID");
             skip(stages, "TEAMS", "Requested tournament was not found");
             skip(stages, "FIXTURES", "Requested tournament was not found");
@@ -84,7 +86,7 @@ public class SofaScoreDiagnosticService implements SofaScoreDiagnosticUseCase {
                 .findFirst()
                 .orElse(null);
         if (season == null) {
-            fail(stages, "TOURNAMENT_AND_SEASONS",
+            replaceStage(stages, "TOURNAMENT_AND_SEASONS",
                     "Tournament was returned but requested season was not found: " + request.season());
             skip(stages, "TEAMS", "Requested season was not found");
             skip(stages, "FIXTURES", "Requested season was not found");
@@ -151,7 +153,6 @@ public class SofaScoreDiagnosticService implements SofaScoreDiagnosticUseCase {
             Supplier<T> operation,
             ToIntFunction<T> itemCounter,
             List<SofaScoreDiagnosticResult.StageResult> stages) {
-        Instant started = Instant.now();
         long startedNanos = System.nanoTime();
         try {
             T value = operation.get();
@@ -178,8 +179,15 @@ public class SofaScoreDiagnosticService implements SofaScoreDiagnosticUseCase {
         stages.add(new SofaScoreDiagnosticResult.StageResult(name, "SKIPPED", 0, null, reason));
     }
 
-    private void fail(List<SofaScoreDiagnosticResult.StageResult> stages, String name, String reason) {
-        stages.add(new SofaScoreDiagnosticResult.StageResult(name, "FAILED", 0, 0, reason));
+    private void replaceStage(List<SofaScoreDiagnosticResult.StageResult> stages, String name, String reason) {
+        for (int index = stages.size() - 1; index >= 0; index--) {
+            SofaScoreDiagnosticResult.StageResult current = stages.get(index);
+            if (current.name().equals(name)) {
+                stages.set(index, new SofaScoreDiagnosticResult.StageResult(
+                        name, "FAILED", current.durationMs(), current.itemCount(), reason));
+                return;
+            }
+        }
     }
 
     private String safeMessage(RuntimeException exception) {
@@ -199,15 +207,9 @@ public class SofaScoreDiagnosticService implements SofaScoreDiagnosticUseCase {
         );
     }
 
-    private <T> T findProvider(List<T> providers) {
+    private <T> T findProvider(List<T> providers, Predicate<T> providerMatcher) {
         return providers.stream()
-                .filter(provider -> switch (provider) {
-                    case LeagueIngestionPort port -> port.getProvider() == TARGET_PROVIDER;
-                    case TeamIngestionPort port -> port.getProvider() == TARGET_PROVIDER;
-                    case FixtureIngestionPort port -> port.getProvider() == TARGET_PROVIDER;
-                    case PlayerLineupsIngestionPort port -> port.getProvider() == TARGET_PROVIDER;
-                    default -> false;
-                })
+                .filter(providerMatcher)
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("SofaScore provider is not configured"));
     }
