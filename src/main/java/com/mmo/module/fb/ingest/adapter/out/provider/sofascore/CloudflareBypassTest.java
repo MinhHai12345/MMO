@@ -16,7 +16,15 @@ public class CloudflareBypassTest {
     public static void main(String[] args) {
         // 1. Dùng một thư mục profile hoàn toàn độc lập với Chrome cá nhân đang mở
         // Đường dẫn tuyệt đối giúp tránh Chrome hiểu nhầm là mở vào session cũ
-        Path userDataDir = Paths.get(System.getProperty("user.dir"), "sofascore_bot_profile");
+        String configuredProfile = System.getenv("SOFA_SCORE_PROFILE_DIR");
+        Path userDataDir = configuredProfile == null || configuredProfile.isBlank()
+                ? Paths.get(System.getProperty("user.home"), ".mmo", "sofascore", "chrome-profile")
+                : Paths.get(configuredProfile).toAbsolutePath().normalize();
+        try {
+            Files.createDirectories(userDataDir);
+        } catch (Exception exception) {
+            throw new IllegalStateException("Could not create the SofaScore browser profile directory", exception);
+        }
         System.out.println("Đang khởi chạy Chrome thật với profile riêng tại: " + userDataDir);
 
         try (Playwright playwright = Playwright.create()) {
