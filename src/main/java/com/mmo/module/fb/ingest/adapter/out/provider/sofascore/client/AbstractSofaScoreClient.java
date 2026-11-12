@@ -7,8 +7,8 @@ import com.microsoft.playwright.Response;
 import com.microsoft.playwright.options.WaitUntilState;
 import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client.DynamicFetchResult;
 import lombok.extern.slf4j.Slf4j;
-import org.thymeleaf.util.MapUtils;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -25,32 +25,55 @@ public abstract class AbstractSofaScoreClient {
 
     protected final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * Captures multiple independent API responses emitted by one page navigation.
+     * Required endpoints gate completion; optional endpoints are collected opportunistically
+     * during navigation/trigger actions and a short grace period.
+     */
     protected DynamicFetchResult safeFetch(
-            String loadPageUrl,
-            Map<String, Class<?>> endpointClassMap,
+            SofaScorePageSpec pageSpec,
             Page page,
             Consumer<Page> triggerAction) {
-        DynamicFetchResult fetchResult = new DynamicFetchResult();
-        if (MapUtils.isEmpty(endpointClassMap)) {
-            return fetchResult;
+        if (pageSpec == null) {
+            throw new IllegalArgumentException("SofaScore page specification is required");
+        }
+        String loadPageUrl = pageSpec.loadPageUrl();
+        List<SofaScoreEndpointSpec> endpointSpecs = pageSpec.endpointSpecs();
+        if (endpointSpecs == null || endpointSpecs.isEmpty()) {
+            throw new IllegalArgumentException("At least one SofaScore endpoint must be configured");
         }
 
         Map<String, CompletableFuture<String>> futuresMap = new ConcurrentHashMap<>();
-        endpointClassMap.keySet().forEach(endpoint -> futuresMap.put(endpoint, new CompletableFuture<>()));
+        for (SofaScoreEndpointSpec spec : endpointSpecs) {
+            if (futuresMap.putIfAbsent(spec.endpoint(), new CompletableFuture<>()) != null) {
+                throw new IllegalArgumentException("Duplicate SofaScore endpoint matcher: " + spec.endpoint());
+            }
+        }
+        List<CompletableFuture<String>> requiredFutures = endpointSpecs.stream()
+                .filter(SofaScoreEndpointSpec::required)
+                .map(spec -> futuresMap.get(spec.endpoint()))
+                .toList();
+        if (requiredFutures.isEmpty()) {
+            throw new IllegalArgumentException("At least one SofaScore endpoint must be required");
+        }
 
         Consumer<Response> responseHandler = response -> {
-            try {
-                if (response.ok()) {
-                    String currentUrl = response.url();
-                    for (String endpoint : endpointClassMap.keySet()) {
-                        CompletableFuture<String> future = futuresMap.get(endpoint);
-                        if (currentUrl.contains(endpoint) && !future.isDone()) {
+            String responseUrl = response.url();
+            for (SofaScoreEndpointSpec spec : endpointSpecs) {
+                CompletableFuture<String> future = futuresMap.get(spec.endpoint());
+                if (!future.isDone() && responseUrl.contains(spec.endpoint())) {
+                    try {
+                        if (response.ok()) {
                             future.complete(response.text());
+                        } else if (spec.required()) {
+                            future.completeExceptionally(new SofaScoreFetchException(
+                                    "SofaScore endpoint returned HTTP " + response.status()
+                                            + ": " + responseUrl));
                         }
+                    } catch (Exception exception) {
+                        future.completeExceptionally(exception);
                     }
                 }
-            } catch (Exception exception) {
-                log.debug("Could not read intercepted SofaScore response: {}", exception.getMessage());
             }
         };
 
@@ -58,24 +81,29 @@ public abstract class AbstractSofaScoreClient {
         try {
             navigateWithRetry(loadPageUrl, page);
             failIfCaptchaPage(page, loadPageUrl);
-            page.waitForTimeout(7000);
             if (triggerAction != null) {
-                page.waitForTimeout(8000);
                 try {
                     triggerAction.accept(page);
-                    page.waitForTimeout(10000);
                 } catch (Exception exception) {
-                    log.warn("SofaScore trigger action failed: {}", exception.getMessage());
+                    log.warn("SofaScore trigger action failed for page {}: {}", loadPageUrl,
+                            exception.getMessage());
                 }
             }
-            // Cloudflare may redirect after the initial navigation check.
             failIfCaptchaPage(page, loadPageUrl);
-            CompletableFuture<?>[] futuresArray = futuresMap.values().toArray(new CompletableFuture[0]);
-            CompletableFuture.allOf(futuresArray).get(20, TimeUnit.SECONDS);
+
+            CompletableFuture.allOf(requiredFutures.toArray(new CompletableFuture[0]))
+                    .get(20, TimeUnit.SECONDS);
+
+            boolean hasPendingOptional = endpointSpecs.stream()
+                    .filter(spec -> !spec.required())
+                    .anyMatch(spec -> !futuresMap.get(spec.endpoint()).isDone());
+            if (hasPendingOptional) {
+                page.waitForTimeout(2000);
+            }
         } catch (TimeoutException exception) {
             throw new SofaScoreFetchException(
-                    "Timed out waiting for required SofaScore API endpoints: " + missingEndpoints(futuresMap),
-                    exception);
+                    "Timed out waiting for required SofaScore API endpoints: " + missingRequiredEndpoints(
+                            endpointSpecs, futuresMap), exception);
         } catch (SofaScoreFetchException exception) {
             throw exception;
         } catch (Exception exception) {
@@ -85,30 +113,51 @@ public abstract class AbstractSofaScoreClient {
             page.offResponse(responseHandler);
         }
 
-        futuresMap.forEach((endpoint, future) -> {
-            if (future.isDone() && !future.isCompletedExceptionally()) {
-                try {
-                    String json = future.getNow(null);
-                    if (json != null && !json.isEmpty()) {
-                        fetchResult.put(endpoint, objectMapper.readValue(json, endpointClassMap.get(endpoint)));
-                    }
-                } catch (Exception exception) {
-                    throw new SofaScoreFetchException("Could not parse SofaScore endpoint " + endpoint, exception);
+        DynamicFetchResult fetchResult = new DynamicFetchResult();
+        for (SofaScoreEndpointSpec spec : endpointSpecs) {
+            CompletableFuture<String> future = futuresMap.get(spec.endpoint());
+            if (!future.isDone()) {
+                if (spec.required()) {
+                    throw new SofaScoreFetchException(
+                            "Required SofaScore API endpoint was not captured: " + spec.endpoint());
                 }
-            } else {
-                throw new SofaScoreFetchException(
-                        "Required SofaScore API endpoint was not captured: " + endpoint);
+                log.debug("Optional SofaScore API endpoint was not emitted by page {}: {}",
+                        loadPageUrl, spec.endpoint());
+                continue;
             }
-        });
+            try {
+                String json = future.join();
+                if (json != null && !json.isBlank()) {
+                    fetchResult.put(spec.endpoint(),
+                            objectMapper.readValue(json, spec.responseType()));
+                } else if (spec.required()) {
+                    throw new SofaScoreFetchException(
+                            "Required SofaScore API endpoint returned an empty body: " + spec.endpoint());
+                }
+            } catch (SofaScoreFetchException exception) {
+                throw exception;
+            } catch (Exception exception) {
+                if (spec.required()) {
+                    throw new SofaScoreFetchException(
+                            "Could not parse required SofaScore endpoint " + spec.endpoint(), exception);
+                }
+                log.warn("Could not parse optional SofaScore endpoint {}: {}",
+                        spec.endpoint(), exception.getMessage());
+            }
+        }
         return fetchResult;
     }
 
-    private String missingEndpoints(Map<String, CompletableFuture<String>> futuresMap) {
-        return futuresMap.entrySet().stream()
-                .filter(entry -> !entry.getValue().isDone()
-                        || entry.getValue().isCompletedExceptionally()
-                        || entry.getValue().isCancelled())
-                .map(Map.Entry::getKey)
+    private String missingRequiredEndpoints(
+            List<SofaScoreEndpointSpec> endpointSpecs,
+            Map<String, CompletableFuture<String>> futuresMap) {
+        return endpointSpecs.stream()
+                .filter(SofaScoreEndpointSpec::required)
+                .filter(spec -> {
+                    CompletableFuture<String> future = futuresMap.get(spec.endpoint());
+                    return !future.isDone() || future.isCompletedExceptionally() || future.isCancelled();
+                })
+                .map(SofaScoreEndpointSpec::endpoint)
                 .sorted()
                 .toList()
                 .toString();
