@@ -42,6 +42,9 @@ public record SofaScoreEndpointSpec(
     }
 
     private static String normalizePath(String value) {
+        if (value == null || value.isBlank()) {
+            return "/";
+        }
         String path = value.trim();
         int queryIndex = path.indexOf('?');
         if (queryIndex >= 0) {
