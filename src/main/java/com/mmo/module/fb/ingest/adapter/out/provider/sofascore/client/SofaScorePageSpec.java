@@ -20,9 +20,6 @@ public record SofaScorePageSpec(
         if (endpointSpecs.isEmpty()) {
             throw new IllegalArgumentException("At least one SofaScore endpoint must be configured for a page");
         }
-        if (endpointSpecs.stream().anyMatch(Objects::isNull)) {
-            throw new IllegalArgumentException("SofaScore endpoint specs must not contain null values");
-        }
         long requiredCount = endpointSpecs.stream().filter(SofaScoreEndpointSpec::required).count();
         if (requiredCount == 0) {
             throw new IllegalArgumentException("At least one required SofaScore endpoint must be configured");
