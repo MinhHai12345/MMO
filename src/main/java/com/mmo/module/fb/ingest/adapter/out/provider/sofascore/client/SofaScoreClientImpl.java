@@ -228,7 +228,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
     private SofaScorePageSpec footballCataloguePage() {
         AppProperties.ProviderConfig config = sofaScoreConfig();
         return SofaScorePageSpecs.footballCatalogue(
-                webUrl(), config.getOption("tournament-region"), DateTimeUtils.today());
+                webUrl(), config.getOption("tournament-region"));
     }
 
     private SofaScorePageSpec footballCatalogueWithOddsPage() {
