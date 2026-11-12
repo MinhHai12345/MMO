@@ -28,6 +28,24 @@ class SofaScorePageSpecsTest {
     }
 
     @Test
+    void footballCatalogueDoesNotWaitForOddsWhenOnlyLeaguesAreRequested() {
+        SofaScorePageSpec spec = SofaScorePageSpecs.footballCatalogue(
+                "https://www.sofascore.com", "vn", "2026-11-12");
+
+        assertEquals(1, spec.endpointSpecs().size());
+        assertEquals("config/default-unique-tournaments/VN/football",
+                spec.singleRequiredEndpoint().endpoint());
+    }
+
+    @Test
+    void lineupsPageTreatsLineupsAsOptionalButRequiresTheMatchResponse() {
+        SofaScorePageSpec spec = SofaScorePageSpecs.lineups("https://www.sofascore", 123L);
+
+        assertEquals("event/123", spec.singleRequiredEndpoint().endpoint());
+        assertFalse(spec.endpoint(SofaScorePageSpecs.lineupsEndpoint(123L)).required());
+    }
+
+    @Test
     void pageSpecRequiresAtLeastOneRequiredEndpoint() {
         assertThrows(IllegalArgumentException.class, () -> SofaScorePageSpec.of(
                 "https://www.sofascore.com/football",
