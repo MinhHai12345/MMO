@@ -21,7 +21,7 @@ class AbstractSofaScoreClientTest {
     @Test
     void capturesMultipleApiUrlsFromOnePageNavigation() {
         Page page = mock(Page.class);
-        AbstractSofaScoreClient client = new TestSofaScoreClient();
+        TestSofaScoreClient client = new TestSofaScoreClient();
         String pageUrl = "https://www.sofascore.com/football";
 
         when(page.url()).thenReturn(pageUrl);
@@ -45,6 +45,16 @@ class AbstractSofaScoreClientTest {
                 result.get("config/default-unique-tournaments/EN/football", Map.class));
         assertEquals(Map.of("odds", Map.of()),
                 result.get("/api/v1/sport/football/odds/1/2026-11-12", Map.class));
+    }
+
+    @Test
+    void endpointMatcherDoesNotConfuseMatchWithMatchStatistics() {
+        SofaScoreEndpointSpec match = SofaScoreEndpointSpec.optional("/api/v1/event/123", Map.class);
+        SofaScoreEndpointSpec statistics = SofaScoreEndpointSpec.required("/api/v1/event/123/statistics", Map.class);
+
+        assertTrue(statistics.matchesUrl("https://www.sofascore.com/api/v1/event/123/statistics"));
+        assertFalse(match.matchesUrl("https://www.sofascore.com/api/v1/event/123/statistics"));
+        assertTrue(match.matchesUrl("https://www.sofascore.com/api/v1/event/123"));
     }
 
     @Test
