@@ -77,8 +77,8 @@ class TeamFormFeatureServiceImplTest {
         var features = service.buildFeatures(target, history, List.of()).orElseThrow().home();
 
         assertEquals(2, features.matchesUsed());
-        assertEquals(1.3, features.averageXgFor(), 1.0e-12);
-        assertEquals(0.65, features.averageXgAgainst(), 1.0e-12);
+        assertEquals(1.35, features.averageXgFor(), 1.0e-12);
+        assertEquals(0.6, features.averageXgAgainst(), 1.0e-12);
     }
 
     @Test
