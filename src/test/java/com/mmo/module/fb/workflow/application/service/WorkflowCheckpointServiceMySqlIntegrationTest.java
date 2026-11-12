@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -162,7 +163,11 @@ class WorkflowCheckpointServiceMySqlIntegrationTest {
         Instant renewedLease = checkpointService.renewLease(runId, token);
 
         assertTrue(renewedLease.isAfter(originalLease));
-        assertEquals(renewedLease, runRepository.findById(runId).orElseThrow().getLeaseUntil());
+        Instant persistedLease = runRepository.findById(runId).orElseThrow().getLeaseUntil();
+        // MySQL DATETIME(6) stores microsecond precision; normalize the in-memory
+        // nanosecond value before comparing it with the persisted timestamp.
+        assertEquals(renewedLease.truncatedTo(ChronoUnit.MICROS), persistedLease,
+                "Persisted lease should match the renewed lease at MySQL precision");
 
         expireLease(runId);
         assertThrows(IllegalStateException.class, () -> checkpointService.renewLease(runId, token));
