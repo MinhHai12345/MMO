@@ -51,7 +51,7 @@ public record SofaScorePageSpec(
 
     public SofaScoreEndpointSpec endpoint(String matcher) {
         return endpointSpecs.stream()
-                .filter(spec -> spec.endpoint().equals(normalize(matcher)))
+                .filter(spec -> normalize(spec.endpoint()).equals(normalize(matcher)))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Endpoint is not part of this page spec: " + matcher));
     }
