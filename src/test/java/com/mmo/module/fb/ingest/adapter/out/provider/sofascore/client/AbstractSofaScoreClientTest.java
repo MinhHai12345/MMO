@@ -80,7 +80,7 @@ class AbstractSofaScoreClientTest {
 
     private static final class TestSofaScoreClient extends AbstractSofaScoreClient {
         private DynamicFetchResult collect(String pageUrl, List<SofaScoreEndpointSpec> specs, Page page) {
-            return safeFetch(pageUrl, specs, page, null);
+            return safeFetch(new SofaScorePageSpec(pageUrl, specs), page, null);
         }
 
         @Override
