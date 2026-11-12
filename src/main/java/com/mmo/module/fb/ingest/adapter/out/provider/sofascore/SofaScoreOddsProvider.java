@@ -32,10 +32,11 @@ public class SofaScoreOddsProvider extends AbstractSofaScoreProvider implements 
         if (query == null || query.fixtureExternalId() == null) return List.of();
         final long eventId;
         try {
-            eventId = Long.parseLong(query.fixtureExternalId());
+            eventId = Long.parseLong(query.fixtureExternalId().trim());
         } catch (NumberFormatException ex) {
             return List.of();
         }
+        if (eventId <= 0) return List.of();
 
         return withPage(page -> {
             Map<Long, MatchOddDetailDTO> allOdds =

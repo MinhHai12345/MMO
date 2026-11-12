@@ -31,11 +31,12 @@ public class SofaScoreMatchStatisticsProvider extends AbstractSofaScoreProvider
         if (!StringUtils.hasText(externalMatchId)) return Optional.empty();
         final Long matchId;
         try {
-            matchId = Long.valueOf(externalMatchId);
+            matchId = Long.valueOf(externalMatchId.trim());
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException("Invalid SofaScore match ID: " + externalMatchId, exception);
         }
+        if (matchId <= 0) throw new IllegalArgumentException("SofaScore match ID must be positive");
         return withPage(page -> mapper.toProviderStatistics(
-                externalMatchId, sofaScoreClient.fetchMatchStatistics(matchId, page)));
+                externalMatchId.trim(), sofaScoreClient.fetchMatchStatistics(matchId, page)));
     }
 }

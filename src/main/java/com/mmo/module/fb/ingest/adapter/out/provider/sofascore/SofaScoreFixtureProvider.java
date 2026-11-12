@@ -37,17 +37,16 @@ public class SofaScoreFixtureProvider extends AbstractSofaScoreProvider implemen
 
     @Override
     public List<ProviderFixture> fetchFixtures(FixtureQuery query) {
-        if (query == null || query.leagueId() == null) return List.of();
+        if (query == null || query.leagueId() == null || query.leagueId() <= 0) return List.of();
         return withPage(page -> {
             List<SeasonDTO> seasons =
                     sofaScoreClient.fetchSeasonByTournamentId(query.leagueId(), page);
             if (seasons == null || seasons.isEmpty())
                 throw new IllegalStateException("SofaScore returned no seasons for tournament " + query.leagueId());
 
-            SeasonDTO season = seasons.stream().filter(Objects::nonNull)
-                    .filter(item -> SofaScoreSeasonMatcher.matches(query.season(), item)).findFirst()
+            SeasonDTO season = SofaScoreSeasonMatcher.findMatchingSeason(seasons, query.season())
                     .orElseThrow(() -> new IllegalStateException("SofaScore season '" + query.season()
-                                                                 + "' was not found for tournament " + query.leagueId()));
+                            + "' was not found for tournament " + query.leagueId()));
 
             int maxPages = appProperties.getSync().getMaxEventPages() > 0
                     ? appProperties.getSync().getMaxEventPages() : 20;

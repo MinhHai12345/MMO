@@ -5,7 +5,6 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.PlaywrightException;
 import com.microsoft.playwright.Response;
 import com.microsoft.playwright.options.WaitUntilState;
-import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client.DynamicFetchResult;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
@@ -61,7 +60,7 @@ public abstract class AbstractSofaScoreClient {
             String responseUrl = response.url();
             for (SofaScoreEndpointSpec spec : endpointSpecs) {
                 CompletableFuture<String> future = futuresMap.get(spec.endpoint());
-                if (!future.isDone() && responseUrl.contains(spec.endpoint())) {
+                if (!future.isDone() && spec.matchesUrl(responseUrl)) {
                     try {
                         if (response.ok()) {
                             future.complete(response.text());
