@@ -12,7 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 
-public class CloudflareBypassTest {
+public class SofaScoreBrowserSessionDiagnostic {
     public static void main(String[] args) {
         // 1. Dùng một thư mục profile hoàn toàn độc lập với Chrome cá nhân đang mở
         // Đường dẫn tuyệt đối giúp tránh Chrome hiểu nhầm là mở vào session cũ
@@ -25,7 +25,7 @@ public class CloudflareBypassTest {
         } catch (Exception exception) {
             throw new IllegalStateException("Could not create the SofaScore browser profile directory", exception);
         }
-        System.out.println("Đang khởi chạy Chrome thật với profile riêng tại: " + userDataDir);
+        System.out.println("Starting the isolated SofaScore browser session with profile: " + userDataDir);
 
         try (Playwright playwright = Playwright.create()) {
 
@@ -93,7 +93,7 @@ public class CloudflareBypassTest {
 
             // Đóng context (toàn bộ Cookie đã vượt Cloudflare sẽ được lưu vào thư mục sofascore_bot_profile)
             context.close();
-            System.out.println("Đã đóng trình duyệt và lưu phiên làm việc thành công!");
+            System.out.println("SofaScore browser session closed.");
 
         } catch (Exception e) {
             System.err.println("Lỗi hệ thống: " + e.getMessage());

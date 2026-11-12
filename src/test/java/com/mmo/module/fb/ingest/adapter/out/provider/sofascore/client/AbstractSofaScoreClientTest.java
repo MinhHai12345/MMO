@@ -21,7 +21,7 @@ class AbstractSofaScoreClientTest {
     @Test
     void capturesMultipleApiUrlsFromOnePageNavigation() {
         Page page = mock(Page.class);
-        AbstractSofaScoreClient client = new TestSofaScoreClient();
+        TestSofaScoreClient client = new TestSofaScoreClient();
         String pageUrl = "https://www.sofascore.com/football";
 
         when(page.url()).thenReturn(pageUrl);
@@ -48,9 +48,42 @@ class AbstractSofaScoreClientTest {
     }
 
     @Test
+    void endpointMatcherDoesNotConfuseMatchWithMatchStatistics() {
+        SofaScoreEndpointSpec match = SofaScoreEndpointSpec.optional("/api/v1/event/123", Map.class);
+        SofaScoreEndpointSpec statistics = SofaScoreEndpointSpec.required("/api/v1/event/123/statistics", Map.class);
+
+        assertTrue(statistics.matchesUrl("https://www.sofascore.com/api/v1/event/123/statistics"));
+        assertFalse(match.matchesUrl("https://www.sofascore.com/api/v1/event/123/statistics"));
+        assertTrue(match.matchesUrl("https://www.sofascore.com/api/v1/event/123"));
+    }
+
+    @Test
+    void statisticsResponseDoesNotPopulateMatchEventEndpoint() {
+        Page page = mock(Page.class);
+        TestSofaScoreClient client = new TestSofaScoreClient();
+        String pageUrl = "https://www.sofascore.com/football/match/123";
+
+        when(page.url()).thenReturn(pageUrl);
+        doAnswer(invocation -> {
+            @SuppressWarnings("unchecked")
+            Consumer<Response> listener = invocation.getArgument(0);
+            listener.accept(response("https://www.sofascore.com/api/v1/event/123/statistics", "{\"statistics\":[]}"));
+                    "{\\"statistics\\":[]}"));
+            return null;
+        }).when(page).onResponse(any());
+
+        DynamicFetchResult result = client.collect(pageUrl, List.of(
+                SofaScoreEndpointSpec.required("event/123/statistics", Map.class),
+                SofaScoreEndpointSpec.optional("event/123", Map.class)), page);
+
+        assertTrue(result.hasData("event/123/statistics"));
+        assertFalse(result.hasData("event/123"));
+    }
+
+    @Test
     void missingOptionalEndpointDoesNotFailPageCollection() {
         Page page = mock(Page.class);
-        AbstractSofaScoreClient client = new TestSofaScoreClient();
+        TestSofaScoreClient client = new TestSofaScoreClient();
         String pageUrl = "https://www.sofascore.com/football";
 
         when(page.url()).thenReturn(pageUrl);
