@@ -68,7 +68,6 @@ class AbstractSofaScoreClientTest {
             @SuppressWarnings("unchecked")
             Consumer<Response> listener = invocation.getArgument(0);
             listener.accept(response("https://www.sofascore.com/api/v1/event/123/statistics", "{\"statistics\":[]}"));
-                    "{\\"statistics\\":[]}"));
             return null;
         }).when(page).onResponse(any());
 
