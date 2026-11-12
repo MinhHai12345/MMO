@@ -60,7 +60,7 @@ class AbstractSofaScoreClientTest {
     @Test
     void missingOptionalEndpointDoesNotFailPageCollection() {
         Page page = mock(Page.class);
-        AbstractSofaScoreClient client = new TestSofaScoreClient();
+        TestSofaScoreClient client = new TestSofaScoreClient();
         String pageUrl = "https://www.sofascore.com/football";
 
         when(page.url()).thenReturn(pageUrl);
