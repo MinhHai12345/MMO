@@ -66,7 +66,7 @@ public class SofaScoreDiagnosticService implements SofaScoreDiagnosticUseCase {
             return result(stages);
         }
 
-        ProviderLeague league = leagueOutcome.value().stream()
+        ProviderLeague league = (leagueOutcome.value() == null ? List.<ProviderLeague>of() : leagueOutcome.value()).stream()
                 .filter(Objects::nonNull)
                 .filter(item -> String.valueOf(request.tournamentId()).equals(item.externalId()))
                 .findFirst()
@@ -94,7 +94,7 @@ public class SofaScoreDiagnosticService implements SofaScoreDiagnosticUseCase {
             return result(stages);
         }
 
-        Outcome<List<com.mmo.module.fb.ingest.application.model.provider.ProviderTeam>> teams = execute(
+        execute(
                 "TEAMS",
                 () -> teamProvider.fetchTeams(new TeamQuery(
                         request.tournamentId(), season.year(), league.identify())),
