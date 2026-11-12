@@ -27,7 +27,7 @@ public record SofaScorePageSpec(
         if (requiredCount == 0) {
             throw new IllegalArgumentException("At least one required SofaScore endpoint must be configured");
         }
-        long distinctCount = endpointSpecs.stream().map(SofaScoreEndpointSpec::endpoint).distinct().count();
+        long distinctCount = endpointSpecs.stream().map(spec -> normalize(spec.endpoint())).distinct().count();
         if (distinctCount != endpointSpecs.size()) {
             throw new IllegalArgumentException("SofaScore endpoint matchers must be unique within a page");
         }
