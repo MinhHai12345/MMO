@@ -210,8 +210,8 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
     }
 
     /**
-     * Loads the configured SofaScore web page, captures its network responses, and parses
-     * only the response whose URL contains the expected API endpoint fragment.
+     * Loads one SofaScore web page and captures the matching response from its network activity.
+     * A page may emit several independent API URLs; use safeFetch endpoint specs when combining them.
      */
     private <T> T fetchFromWebPage(String loadPageUrl, String endpoint, Page page, Class<T> responseType) {
         DynamicFetchResult result = safeFetch(
@@ -298,9 +298,11 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
         String loadPageUrl = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_PAGE, webUrl(), sofaTournamentId);
         String matchEndpoint = String.format(FETCH_MATCH_UPCOMING_BY_TEAM_AND_DATE_URI, sofaTournamentId, DateTimeUtils.today());
         String oddsEndpoint = String.format(FETCH_DAILY_ALL_MATCH_ODDS_URI, DateTimeUtils.today());
-        Map<String, Class<?>> configMap = Map.of(matchEndpoint, MatchesResponseDTO.class, oddsEndpoint, OddsResponseDTO.class);
+        List<SofaScoreEndpointSpec> endpointSpecs = List.of(
+                SofaScoreEndpointSpec.required(matchEndpoint, MatchesResponseDTO.class),
+                SofaScoreEndpointSpec.optional(oddsEndpoint, OddsResponseDTO.class));
 
-        DynamicFetchResult result = safeFetch(loadPageUrl, configMap, page, (p) -> {
+        DynamicFetchResult result = safeFetch(loadPageUrl, endpointSpecs, page, (p) -> {
             try {
                 log.info("⏳ Đang chờ bộ khung giao diện chứa nút Odds đính vào DOM...");
 
@@ -331,14 +333,18 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
         List<EventDTO> events = new ArrayList<>();
         Map<Long, MatchOddDetailDTO> oddsMap = new HashMap<>();
 
-        if (result.hasData(matchEndpoint)) {
-            MatchesResponseDTO matchData = result.get(matchEndpoint, MatchesResponseDTO.class);
-            if (matchData != null) events = matchData.events();
+        MatchesResponseDTO matchData = result.get(matchEndpoint, MatchesResponseDTO.class);
+        if (matchData == null) {
+            throw new SofaScoreFetchException("Required SofaScore daily-match endpoint was not captured: "
+                    + matchEndpoint);
         }
+        events = matchData.events() != null ? matchData.events() : new ArrayList<>();
 
+        // The odds endpoint is emitted only when the page exposes the corresponding data request.
+        // Its absence must not invalidate the required daily fixture response.
         if (result.hasData(oddsEndpoint)) {
             OddsResponseDTO oddsData = result.get(oddsEndpoint, OddsResponseDTO.class);
-            if (oddsData != null) oddsMap = oddsData.odds();
+            if (oddsData != null && oddsData.odds() != null) oddsMap = oddsData.odds();
         }
         return new SofaDailyMatchWrapper(events, oddsMap);
     }
