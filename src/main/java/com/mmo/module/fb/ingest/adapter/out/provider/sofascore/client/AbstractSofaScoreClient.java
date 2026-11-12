@@ -54,13 +54,11 @@ public abstract class AbstractSofaScoreClient {
             throw new IllegalArgumentException("At least one SofaScore endpoint must be configured");
         }
 
-        Map<String, SofaScoreEndpointSpec> specsByEndpoint = new ConcurrentHashMap<>();
         Map<String, CompletableFuture<String>> futuresMap = new ConcurrentHashMap<>();
         for (SofaScoreEndpointSpec spec : endpointSpecs) {
-            if (specsByEndpoint.putIfAbsent(spec.endpoint(), spec) != null) {
+            if (futuresMap.putIfAbsent(spec.endpoint(), new CompletableFuture<>()) != null) {
                 throw new IllegalArgumentException("Duplicate SofaScore endpoint matcher: " + spec.endpoint());
             }
-            futuresMap.put(spec.endpoint(), new CompletableFuture<>());
         }
         List<CompletableFuture<String>> requiredFutures = endpointSpecs.stream()
                 .filter(SofaScoreEndpointSpec::required)
@@ -94,11 +92,9 @@ public abstract class AbstractSofaScoreClient {
         try {
             navigateWithRetry(loadPageUrl, page);
             failIfCaptchaPage(page, loadPageUrl);
-            page.waitForTimeout(7000);
             if (triggerAction != null) {
                 try {
                     triggerAction.accept(page);
-                    page.waitForTimeout(10000);
                 } catch (Exception exception) {
                     log.warn("SofaScore trigger action failed for page {}: {}", loadPageUrl,
                             exception.getMessage());
@@ -173,17 +169,6 @@ public abstract class AbstractSofaScoreClient {
                     return !future.isDone() || future.isCompletedExceptionally() || future.isCancelled();
                 })
                 .map(SofaScoreEndpointSpec::endpoint)
-                .sorted()
-                .toList()
-                .toString();
-    }
-
-    private String missingEndpoints(Map<String, CompletableFuture<String>> futuresMap) {
-        return futuresMap.entrySet().stream()
-                .filter(entry -> !entry.getValue().isDone()
-                        || entry.getValue().isCompletedExceptionally()
-                        || entry.getValue().isCancelled())
-                .map(Map.Entry::getKey)
                 .sorted()
                 .toList()
                 .toString();
