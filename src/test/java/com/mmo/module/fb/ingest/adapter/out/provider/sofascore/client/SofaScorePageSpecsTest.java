@@ -30,7 +30,7 @@ class SofaScorePageSpecsTest {
     @Test
     void footballCatalogueDoesNotWaitForOddsWhenOnlyLeaguesAreRequested() {
         SofaScorePageSpec spec = SofaScorePageSpecs.footballCatalogue(
-                "https://www.sofascore.com", "vn", "2026-11-12");
+                "https://www.sofascore.com", "vn");
 
         assertEquals(1, spec.endpointSpecs().size());
         assertEquals("config/default-unique-tournaments/VN/football",
