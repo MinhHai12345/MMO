@@ -2,7 +2,6 @@ package com.mmo.module.fb.ingest.adapter.out.provider.sofascore;
 
 import com.mmo.module.fb.ingest.enums.Provider;
 import com.mmo.module.fb.ingest.application.model.provider.ProviderLineups;
-import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client.SofaScoreLineupsClient;
 import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.mapper.SofaScoreLineupsMapper;
 import com.mmo.module.fb.ingest.application.port.out.provider.PlayerLineupsIngestionPort;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +14,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class SofaScoreLineupsProvider implements PlayerLineupsIngestionPort {
 
-    private final SofaScoreLineupsClient client;
+    private final SofaScoreClient client;
     private final SofaScoreLineupsMapper mapper;
 
     @Override
@@ -33,7 +32,7 @@ public class SofaScoreLineupsProvider implements PlayerLineupsIngestionPort {
             throw new IllegalArgumentException("Invalid SofaScore match ID: " + externalMatchId, exception);
         }
         if (matchId <= 0) throw new IllegalArgumentException("SofaScore match ID must be positive");
-        var response = client.fetchLineups(matchId);
+        var response = withPage(page -> client.fetchLineups(matchId, page));
         if (response == null) return Optional.empty();
         ProviderLineups result = mapper.toModel(response);
         return result.isEmpty() ? Optional.empty() : Optional.of(result);
