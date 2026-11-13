@@ -14,7 +14,6 @@ import org.springframework.stereotype.Component;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
@@ -55,21 +54,18 @@ public class SofaScoreBrowserSessionManager {
             Page page = context.newPage();
             pageUses.incrementAndGet();
             activePages.incrementAndGet();
+            page.onRequest(request -> log.info(
+                    "[SOFA_SCORE][NETWORK][REQUEST] method={}, resourceType={}, url={}",
+                    request.method(), request.resourceType(), request.url()));
+            page.onResponse(response -> {
+                var request = response.request();
+                log.info("[SOFA_SCORE][NETWORK][RESPONSE] status={}, method={}, resourceType={}, url={}",
+                        response.status(), request.method(), request.resourceType(), response.url());
+            });
             page.onRequestFailed(request -> {
                 String failure = request.failure() == null ? "unknown" : request.failure();
-                if (isNonEssentialBrowserRequest(request.url())) {
-                    log.debug("[SOFA_SCORE] Non-essential browser request failed: url={}, failure={}",
-                            request.url(), failure);
-                } else {
-                    log.warn("[SOFA_SCORE] Browser request failed: method={}, url={}, failure={}",
-                            request.method(), request.url(), failure);
-                }
-            });
-            page.onResponse(response -> {
-                if (response.status() >= 400) {
-                    log.warn("[SOFA_SCORE] Browser response error: status={}, url={}",
-                            response.status(), response.url());
-                }
+                log.warn("[SOFA_SCORE][NETWORK][FAILED] method={}, resourceType={}, url={}, failure={}",
+                        request.method(), request.resourceType(), request.url(), failure);
             });
             leaseTransferred = true;
             return page;
@@ -103,15 +99,6 @@ public class SofaScoreBrowserSessionManager {
         }
     }
 
-    private boolean isNonEssentialBrowserRequest(String requestUrl) {
-        if (requestUrl == null) return false;
-        String normalized = requestUrl.toLowerCase(java.util.Locale.ROOT);
-        return normalized.contains("googlesyndication.com")
-                || normalized.contains("google-analytics.com")
-                || normalized.contains("doubleclick.net")
-                || normalized.contains("/pagead/");
-    }
-
     private void ensureSession() {
         if (context != null && playwright != null) {
             return;
@@ -120,17 +107,22 @@ public class SofaScoreBrowserSessionManager {
         AppProperties.ProviderConfig config = sofaScoreConfig();
         String configuredProfile = config.getOption("profile-dir");
         Path profilePath = configuredProfile == null || configuredProfile.isBlank()
-                ? Paths.get(System.getProperty("user.dir"), "sofascore_bot_profile2")
+                ? Paths.get(System.getProperty("user.dir"), "sofascore_bot_profile1")
                 : Paths.get(configuredProfile).toAbsolutePath().normalize();
 
         try {
             Files.createDirectories(profilePath);
             playwright = Playwright.create();
+            String configuredChannel = config.getOption("browser-channel");
+            String browserChannel = configuredChannel == null || configuredChannel.isBlank()
+                    ? "chrome" : configuredChannel.trim();
+            String configuredHeadless = config.getOption("headless");
+            boolean headless = configuredHeadless != null && Boolean.parseBoolean(configuredHeadless);
+
             BrowserType.LaunchPersistentContextOptions options =
                     new BrowserType.LaunchPersistentContextOptions()
-                            .setChannel("chrome")
-                            .setHeadless(false)
-                            .setIgnoreDefaultArgs(Arrays.asList("--enable-automation"))
+                            .setHeadless(headless)
+                            .setIgnoreDefaultArgs(List.of("--enable-automation"))
                             .setArgs(List.of(
                                     "--disable-blink-features=AutomationControlled",
                                     "--no-first-run",
@@ -138,12 +130,15 @@ public class SofaScoreBrowserSessionManager {
                                     "--start-maximized"
                             ))
                             .setViewportSize(null);
+            if (!"chromium".equalsIgnoreCase(browserChannel)) {
+                options.setChannel(browserChannel);
+            }
 
             context = playwright.chromium().launchPersistentContext(profilePath, options);
             context.addInitScript(
                     "Object.defineProperty(navigator, 'webdriver', { get: () => undefined });");
-            log.info("[SOFA_SCORE] Persistent Chrome session started: channel=chrome, headless=false, profile={}",
-                    profilePath);
+            log.info("[SOFA_SCORE] Persistent browser session started: channel={}, headless={}, profile={}",
+                    browserChannel, headless, profilePath);
         } catch (Exception exception) {
             closeSession();
             throw new SofaScoreFetchException("Could not initialize the persistent SofaScore browser session",
