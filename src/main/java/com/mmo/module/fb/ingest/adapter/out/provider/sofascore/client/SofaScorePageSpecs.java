@@ -36,6 +36,21 @@ public final class SofaScorePageSpecs {
     private SofaScorePageSpecs() {
     }
 
+    public static SofaScorePageSpec footballLeagueCatalogue(String webUrl, String region) {
+        String normalizedRegion = region == null || !region.matches("[A-Za-z]{2}")
+                ? "EN" : region.toUpperCase(java.util.Locale.ROOT);
+        return SofaScorePageSpec.of(
+                page(webUrl, FOOTBALL_PAGE),
+                SofaScoreEndpointSpec.required(
+                        String.format(TOURNAMENTS_ENDPOINT, normalizedRegion), TournamentsResponseDTO.class),
+                SofaScoreEndpointSpec.pattern(
+                        "^/api/v1/unique-tournament/(\\d+)/seasons$", SeasonsResponseDTO.class));
+    }
+
+    public static String seasonsApiEndpoint(String webUrl, long tournamentId) {
+        return "/api/v1/" + seasons(webUrl, tournamentId).singleRequiredEndpoint().endpoint();
+    }
+
     public static SofaScorePageSpec footballCatalogue(String webUrl, String region) {
         String normalizedRegion = region == null || !region.matches("[A-Za-z]{2}")
                 ? "EN" : region.toUpperCase(java.util.Locale.ROOT);

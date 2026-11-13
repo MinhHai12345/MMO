@@ -17,6 +17,13 @@ public interface SofaScoreClient {
     List<SofaScoreResponseDTO.UniqueTournamentDTO> fetchLeagues(Page page);
 
     /**
+     * Fetch the football-page tournament catalogue and all season responses,
+     * correlating each season payload with the tournament ID from the catalogue.
+     */
+    com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreLeagueCatalogueResult
+    fetchLeaguesWithSeasons(Page page, List<Long> selectedTournamentIds);
+
+    /**
      * Fetch season by tournament id
      */
     List<SofaScoreResponseDTO.SeasonDTO> fetchSeasonByTournamentId(Long sofaTournamentId, Page page);
