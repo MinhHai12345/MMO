@@ -34,9 +34,9 @@ public class LeaguePersistenceAdapter implements LeaguePersistencePort {
 
     /**
      * Provider IDs identify mapping rows; provider-specific identify values are retained
-     * separately for constructing that provider's fetch requests. UnderStat is the one
-     * catalogue exception: its complete league catalogue is matched only by a unique exact
-     * normalized league name when no provider mapping exists.
+     * separately for constructing that provider's fetch requests. UnderStat and SofaScore
+     * catalogue entries may be attached to an existing canonical league only through a
+     * unique name match; SofaScore additionally requires a matching country.
      */
     @Override
     @Transactional
