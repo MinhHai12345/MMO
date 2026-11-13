@@ -37,7 +37,7 @@ public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implement
             long startedAt = System.nanoTime();
             log.info("[SOFA_SCORE][LEAGUE] Fetching league catalogue and seasons from one football page");
 
-            SofaScoreLeagueCatalogueResult catalogue = sofaScoreClient.fetchLeaguesWithSeasons(page);
+            SofaScoreLeagueCatalogueResult catalogue = sofaScoreClient.fetchLeaguesWithSeasons(page, externalLeagueIds);
             if (catalogue == null || catalogue.tournaments().isEmpty()) {
                 log.warn("[SOFA_SCORE][LEAGUE] Tournament catalogue returned no entries");
                 return List.of();
