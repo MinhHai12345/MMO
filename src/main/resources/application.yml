@@ -135,7 +135,7 @@ app:
       SOFA_SCORE:
         enabled: ${SOFA_SCORE_ENABLED:false}
         uri: ${SOFA_SCORE_URI:}
-        web-url: ${SOFA_SCORE_WEB_URL:}
+        web-url: ${SOFA_SCORE_WEB_URL:https://www.sofascore.com}
         options:
           tournament-region: ${SOFA_SCORE_TOURNAMENT_REGION:VN}
           headless: ${SOFA_SCORE_HEADLESS:false}
