@@ -66,11 +66,18 @@ public abstract class AbstractSofaScoreClient {
                 if (!future.isDone() && spec.matchesUrl(responseUrl)) {
                     try {
                         if (response.ok()) {
-                            future.complete(response.text());
+                            String body = response.text();
+                            boolean captured = future.complete(body);
+                            if (captured) {
+                                log.info("[SOFA_SCORE][FETCH][CAPTURED] endpoint={}, status={}, bodyLength={}",
+                                        spec.endpoint(), response.status(), body == null ? 0 : body.length());
+                            }
                         } else if (spec.required()) {
                             future.completeExceptionally(new SofaScoreFetchException(
                                     "SofaScore endpoint returned HTTP " + response.status()
                                             + ": " + responseUrl));
+                            log.error("[SOFA_SCORE][FETCH][HTTP_ERROR] endpoint={}, status={}, url={}",
+                                    spec.endpoint(), response.status(), responseUrl);
                         }
                     } catch (Exception exception) {
                         future.completeExceptionally(exception);
