@@ -137,7 +137,7 @@ app:
         uri: ${SOFA_SCORE_URI:}
         web-url: ${SOFA_SCORE_WEB_URL:}
         options:
-          tournament-region: ${SOFA_SCORE_TOURNAMENT_REGION:EN}
+          tournament-region: ${SOFA_SCORE_TOURNAMENT_REGION:VN}
           headless: ${SOFA_SCORE_HEADLESS:true}
           manual-captcha-intervention: ${SOFA_SCORE_MANUAL_CAPTCHA_INTERVENTION:false}
           captcha-wait-timeout-seconds: ${SOFA_SCORE_CAPTCHA_WAIT_TIMEOUT_SECONDS:180}
