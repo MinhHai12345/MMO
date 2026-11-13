@@ -18,9 +18,9 @@ import java.util.function.Consumer;
 
 @Slf4j
 public abstract class AbstractSofaScoreClient {
-    private static final int NAVIGATION_MAX_ATTEMPTS = 5;
-    private static final long NAVIGATION_TIMEOUT_MS = 15_000;
-    private static final long[] RETRY_DELAYS_MS = {5_000, 10_000, 20_000, 30_000};
+    private static final int NAVIGATION_MAX_ATTEMPTS = 3;
+    private static final long NAVIGATION_TIMEOUT_MS = 12_000;
+    private static final long[] RETRY_DELAYS_MS = {2_000, 4_000};
 
     protected final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -91,7 +91,7 @@ public abstract class AbstractSofaScoreClient {
             failIfCaptchaPage(page, loadPageUrl);
 
             CompletableFuture.allOf(requiredFutures.toArray(new CompletableFuture[0]))
-                    .get(20, TimeUnit.SECONDS);
+                    .get(15, TimeUnit.SECONDS);
 
             boolean hasPendingOptional = endpointSpecs.stream()
                     .filter(spec -> !spec.required())
@@ -101,7 +101,7 @@ public abstract class AbstractSofaScoreClient {
             }
         } catch (TimeoutException exception) {
             throw new SofaScoreFetchException(
-                    "Timed out waiting for required SofaScore API endpoints: " + missingRequiredEndpoints(
+                    "Timed out after 15 seconds waiting for required SofaScore API endpoints: " + missingRequiredEndpoints(
                             endpointSpecs, futuresMap), exception);
         } catch (SofaScoreFetchException exception) {
             throw exception;

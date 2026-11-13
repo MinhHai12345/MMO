@@ -57,8 +57,13 @@ public class SofaScoreBrowserSessionManager {
             activePages.incrementAndGet();
             page.onRequestFailed(request -> {
                 String failure = request.failure() == null ? "unknown" : request.failure();
-                log.warn("[SOFA_SCORE] Browser request failed: method={}, url={}, failure={}",
-                        request.method(), request.url(), failure);
+                if (isNonEssentialBrowserRequest(request.url())) {
+                    log.debug("[SOFA_SCORE] Non-essential browser request failed: url={}, failure={}",
+                            request.url(), failure);
+                } else {
+                    log.warn("[SOFA_SCORE] Browser request failed: method={}, url={}, failure={}",
+                            request.method(), request.url(), failure);
+                }
             });
             page.onResponse(response -> {
                 if (response.status() >= 400) {
@@ -96,6 +101,15 @@ public class SofaScoreBrowserSessionManager {
                 leaseLock.unlock();
             }
         }
+    }
+
+    private boolean isNonEssentialBrowserRequest(String requestUrl) {
+        if (requestUrl == null) return false;
+        String normalized = requestUrl.toLowerCase(java.util.Locale.ROOT);
+        return normalized.contains("googlesyndication.com")
+                || normalized.contains("google-analytics.com")
+                || normalized.contains("doubleclick.net")
+                || normalized.contains("/pagead/");
     }
 
     private void ensureSession() {
