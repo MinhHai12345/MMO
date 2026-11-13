@@ -12,6 +12,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
@@ -63,11 +64,19 @@ public abstract class AbstractSofaScoreClient {
                 if (!future.isDone() && spec.matchesUrl(responseUrl)) {
                     try {
                         if (response.ok()) {
-                            future.complete(response.text());
+                            String body = response.text();
+                            boolean captured = future.complete(body);
+                            if (captured) {
+                                log.info("[SOFA_SCORE][FETCH][CAPTURED] endpoint={}, status={}, bodyLength={}",
+                                        spec.endpoint(), response.status(), body == null ? 0 : body.length());
+                            }
                         } else if (spec.required()) {
-                            future.completeExceptionally(new SofaScoreFetchException(
-                                    "SofaScore endpoint returned HTTP " + response.status()
-                                            + ": " + responseUrl));
+                            SofaScoreFetchException failure = new SofaScoreFetchException(
+                                    "SofaScore required endpoint returned HTTP " + response.status()
+                                            + ": " + responseUrl);
+                            future.completeExceptionally(failure);
+                            log.error("[SOFA_SCORE][FETCH][HTTP_ERROR] endpoint={}, status={}, url={}",
+                                    spec.endpoint(), response.status(), responseUrl);
                         }
                     } catch (Exception exception) {
                         future.completeExceptionally(exception);
@@ -103,6 +112,13 @@ public abstract class AbstractSofaScoreClient {
             throw new SofaScoreFetchException(
                     "Timed out after 15 seconds waiting for required SofaScore API endpoints: " + missingRequiredEndpoints(
                             endpointSpecs, futuresMap), exception);
+        } catch (ExecutionException exception) {
+            Throwable cause = exception.getCause();
+            if (cause instanceof SofaScoreFetchException fetchException) {
+                throw fetchException;
+            }
+            throw new SofaScoreFetchException(
+                    "Required SofaScore API endpoint failed for page " + loadPageUrl, cause == null ? exception : cause);
         } catch (SofaScoreFetchException exception) {
             throw exception;
         } catch (Exception exception) {
