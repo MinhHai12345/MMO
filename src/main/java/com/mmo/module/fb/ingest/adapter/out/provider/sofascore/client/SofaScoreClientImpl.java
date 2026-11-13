@@ -152,6 +152,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
             log.info("[SOFA_SCORE][LEAGUE] Opening football page once: url={}, catalogueEndpoint={}",
                     pageSpec.loadPageUrl(), pageSpec.catalogueEndpoint());
             navigateWithRetry(pageSpec.loadPageUrl(), page);
+            failIfCaptchaPage(page, pageSpec.loadPageUrl());
 
             long catalogueDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
             while (catalogueJson.get() == null
