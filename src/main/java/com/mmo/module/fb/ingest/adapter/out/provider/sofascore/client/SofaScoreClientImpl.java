@@ -154,7 +154,9 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
             navigateWithRetry(pageSpec.loadPageUrl(), page);
 
             long catalogueDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
-            while (catalogueJson.get() == null && System.nanoTime() < catalogueDeadline) {
+            while (catalogueJson.get() == null
+                    && (catalogueStatus.get() == null || catalogueStatus.get() < 400)
+                    && System.nanoTime() < catalogueDeadline) {
                 page.waitForTimeout(100);
             }
             if (catalogueJson.get() == null) {
@@ -193,15 +195,24 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
                         missingTournamentIds);
                 Object evaluated = page.evaluate("""
                         ids => Promise.all(ids.map(async id => {
-                            const response = await fetch(
-                                '/api/v1/unique-tournament/' + id + '/seasons',
-                                { credentials: 'same-origin' }
-                            );
-                            return {
-                                id: id,
-                                status: response.status,
-                                body: await response.text()
-                            };
+                            try {
+                                const response = await fetch(
+                                    '/api/v1/unique-tournament/' + id + '/seasons',
+                                    { credentials: 'same-origin' }
+                                );
+                                return {
+                                    id: id,
+                                    status: response.status,
+                                    body: await response.text()
+                                };
+                            } catch (error) {
+                                return {
+                                    id: id,
+                                    status: 0,
+                                    body: '',
+                                    error: String(error)
+                                };
+                            }
                         }))
                         """, missingTournamentIds);
 
