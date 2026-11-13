@@ -55,21 +55,24 @@ public class SofaScoreBrowserSessionManager {
             Page page = context.newPage();
             pageUses.incrementAndGet();
             activePages.incrementAndGet();
+            // Log every request initiated by this page, including document, fetch/XHR,
+            // scripts, stylesheets, images, fonts and third-party resources.
+            page.onRequest(request -> log.info(
+                    "[SOFA_SCORE][NETWORK][REQUEST] method={}, resourceType={}, url={}",
+                    request.method(), request.resourceType(), request.url()));
+
+            // Log every response, not only failed responses. This makes it possible to
+            // correlate each requested endpoint with its HTTP status.
+            page.onResponse(response -> {
+                var request = response.request();
+                log.info("[SOFA_SCORE][NETWORK][RESPONSE] status={}, method={}, resourceType={}, url={}",
+                        response.status(), request.method(), request.resourceType(), response.url());
+            });
+
             page.onRequestFailed(request -> {
                 String failure = request.failure() == null ? "unknown" : request.failure();
-                if (isNonEssentialBrowserRequest(request.url())) {
-                    log.debug("[SOFA_SCORE] Non-essential browser request failed: url={}, failure={}",
-                            request.url(), failure);
-                } else {
-                    log.warn("[SOFA_SCORE] Browser request failed: method={}, url={}, failure={}",
-                            request.method(), request.url(), failure);
-                }
-            });
-            page.onResponse(response -> {
-                if (response.status() >= 400) {
-                    log.warn("[SOFA_SCORE] Browser response error: status={}, url={}",
-                            response.status(), response.url());
-                }
+                log.warn("[SOFA_SCORE][NETWORK][FAILED] method={}, resourceType={}, url={}, failure={}",
+                        request.method(), request.resourceType(), request.url(), failure);
             });
             leaseTransferred = true;
             return page;
