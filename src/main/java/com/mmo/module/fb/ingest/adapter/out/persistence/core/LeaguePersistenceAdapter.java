@@ -34,17 +34,13 @@ public class LeaguePersistenceAdapter implements LeaguePersistencePort {
 
     /**
      * Provider IDs identify mapping rows; provider-specific identify values are retained
-     * separately for constructing that provider's fetch requests. UnderStat is the one
-     * catalogue exception: its complete league catalogue is matched only by a unique exact
-     * normalized league name when no provider mapping exists.
+     * separately for constructing that provider's fetch requests. UnderStat and SofaScore
+     * catalogue entries may be attached to an existing canonical league only through a
+     * unique name match; SofaScore additionally requires a matching country.
      */
     @Override
     @Transactional
     public void persistLeagues(Provider selectedProvider, List<ProviderLeague> sources) {
-        if (selectedProvider != dataSourcePolicy.route(Dataset.LEAGUE, -1).primary()) {
-            log.debug("Skipping league catalogue persistence from non-owner provider {}", selectedProvider);
-            return;
-        }
         int synced = 0;
         for (ProviderLeague source : sources) {
             if (source == null || source.externalId() == null || source.externalId().isBlank()
@@ -58,14 +54,24 @@ public class LeaguePersistenceAdapter implements LeaguePersistencePort {
                     .map(LeagueExternalId::getLeague)
                     .orElse(null);
 
-            if (league == null && selectedProvider == Provider.UNDER_STATS) {
-                // UnderStat is a catalogue source: its /getStatData endpoint is the source
-                // of league identity, so exact unique-name matching is allowed here.
+            if (league == null && (selectedProvider == Provider.UNDER_STATS
+                    || selectedProvider == Provider.SOFA_SCORE)) {
+                // Catalogue providers may attach their external identity to an existing
+                // canonical league only when the normalized name/country match is unique.
                 List<League> named = leagueRepository.findAllByNameIgnoreCase(source.name());
+                if (selectedProvider == Provider.SOFA_SCORE && StringUtils.hasText(source.country())) {
+                    named = named.stream()
+                            .filter(candidate -> sameCountry(candidate.getCountry(), source.country()))
+                            .toList();
+                }
                 league = named.size() == 1 ? named.get(0) : null;
                 if (league != null && leagueExternalIdRepository
                         .findByLeagueIdAndProvider(league.getId(), selectedProvider).isPresent()) {
                     league = null;
+                }
+                if (league == null && selectedProvider == Provider.SOFA_SCORE) {
+                    log.warn("Skipping SofaScore league '{}' (country={}) because no unique canonical league matched",
+                            source.name(), source.country());
                 }
             }
             if (league == null && selectedProvider != Provider.FOOTBALL_DATA
@@ -119,18 +125,12 @@ public class LeaguePersistenceAdapter implements LeaguePersistencePort {
                     continue;
                 }
 
-                Season season = seasonRepository.findByLeague_IdAndYear(league.getId(), sourceSeason.year())
-                        .orElse(null);
+                Season season = findCanonicalSeason(league, sourceSeason.year());
+                boolean ownsSeasonMetadata =
+                        dataSourcePolicy.isPrimary(selectedProvider, Dataset.SEASON, sourceSeason.year());
 
-                if (!dataSourcePolicy.isPrimary(selectedProvider, Dataset.SEASON, sourceSeason.year())) {
-                    log.debug("Skipping non-owner season metadata: provider={}, league={}, season={}",
-                            selectedProvider, league.getId(), sourceSeason.year());
-                    continue;
-                }
-
-                if (season == null && selectedProvider != Provider.FOOTBALL_DATA
-                        && selectedProvider != Provider.UNDER_STATS) {
-                    log.debug("Skipping provider season {} from {} for canonical league {} because no core season exists",
+                if (season == null && !ownsSeasonMetadata) {
+                    log.debug("Skipping provider season {} from {} for canonical league {} because no canonical season exists",
                             sourceSeason.year(), selectedProvider, league.getId());
                     continue;
                 }
@@ -145,21 +145,53 @@ public class LeaguePersistenceAdapter implements LeaguePersistencePort {
                     season.setCurrent(sourceSeason.current());
                 }
 
-                // Football-Data owns authoritative season dates and refreshes current status
-                // for existing canonical rows. UnderStat may bootstrap a missing season as a
-                // placeholder, but never overwrites metadata on an existing core season.
-                if (selectedProvider == Provider.FOOTBALL_DATA) {
+                // Dataset ownership controls canonical metadata writes, not provider identity
+                // registration. Secondary providers still need their season IDs mapped to the
+                // existing canonical season so downstream provider requests can resolve them.
+                if (ownsSeasonMetadata && !newSeason) {
                     season.setCurrent(sourceSeason.current());
                     if (sourceSeason.startDate() != null) season.setStartDate(sourceSeason.startDate());
                     if (sourceSeason.endDate() != null) season.setEndDate(sourceSeason.endDate());
                 }
 
-                season = seasonRepository.save(season);
+                if (newSeason || ownsSeasonMetadata) {
+                    season = seasonRepository.save(season);
+                }
                 externalIdMappingService.registerSeason(season, selectedProvider, sourceSeason.externalId());
             }
             synced++;
         }
         log.info("League ingestion completed. {} leagues processed.", synced);
+    }
+
+    private Season findCanonicalSeason(League league, String providerYear) {
+        Season exactMatch = seasonRepository.findByLeague_IdAndYear(league.getId(), providerYear)
+                .orElse(null);
+        if (exactMatch != null || !StringUtils.hasText(providerYear)) {
+            return exactMatch;
+        }
+
+        int providerStartYear = DataSourcePolicy.parseSeasonStartYear(providerYear);
+        if (providerStartYear < 0) {
+            return null;
+        }
+
+        List<Season> matchingSeasons = seasonRepository.findByLeague_Id(league.getId()).stream()
+                .filter(season -> DataSourcePolicy.parseSeasonStartYear(season.getYear()) == providerStartYear)
+                .toList();
+        if (matchingSeasons.size() == 1) {
+            return matchingSeasons.get(0);
+        }
+        if (matchingSeasons.size() > 1) {
+            log.warn("Ambiguous canonical season mapping: leagueId={}, providerYear={}, matches={}",
+                    league.getId(), providerYear, matchingSeasons.size());
+        }
+        return null;
+    }
+
+    private static boolean sameCountry(String left, String right) {
+        return StringUtils.hasText(left) && StringUtils.hasText(right)
+                && left.trim().equalsIgnoreCase(right.trim());
     }
 
     private static String slug(String value) {
