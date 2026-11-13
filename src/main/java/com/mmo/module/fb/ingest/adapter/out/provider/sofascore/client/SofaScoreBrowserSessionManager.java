@@ -14,7 +14,6 @@ import org.springframework.stereotype.Component;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
@@ -104,15 +103,6 @@ public class SofaScoreBrowserSessionManager {
                 leaseLock.unlock();
             }
         }
-    }
-
-    private boolean isNonEssentialBrowserRequest(String requestUrl) {
-        if (requestUrl == null) return false;
-        String normalized = requestUrl.toLowerCase(java.util.Locale.ROOT);
-        return normalized.contains("googlesyndication.com")
-                || normalized.contains("google-analytics.com")
-                || normalized.contains("doubleclick.net")
-                || normalized.contains("/pagead/");
     }
 
     private void ensureSession() {
