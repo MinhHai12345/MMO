@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
@@ -125,16 +126,14 @@ public class SofaScoreBrowserSessionManager {
                     new BrowserType.LaunchPersistentContextOptions()
                             .setChannel(channel)
                             .setHeadless(headless)
+                            .setIgnoreDefaultArgs(Arrays.asList("--enable-automation"))
                             .setArgs(List.of(
-                                    "--no-sandbox",
-                                    "--disable-dev-shm-usage",
-                                    "--disable-gpu",
+                                    "--disable-blink-features=AutomationControlled",
                                     "--no-first-run",
-                                    "--no-default-browser-check"
+                                    "--no-default-browser-check",
+                                    "--start-maximized"
                             ))
-                            .setViewportSize(1920, 1080)
-                            .setLocale("en-US")
-                            .setTimezoneId("Asia/Ho_Chi_Minh");
+                            .setViewportSize(null);
 
             context = playwright.chromium().launchPersistentContext(profilePath, options);
             log.info("[SOFA_SCORE] Persistent Chrome session started: channel={}, headless={}, profile={}",

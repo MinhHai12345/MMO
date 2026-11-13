@@ -45,7 +45,7 @@ public class CloudflareBypassTest {
             // 3. Lắng nghe và bắt gói tin API JSON từ SofaScore
             page.onResponse(response -> {
                 String url = response.url();
-                if (url.contains("/api/v1/config/top-unique-tournaments/JP/football")) {
+                if (url.contains("/api/v1/config/top-unique-tournaments/VN/football")) {
                     System.out.println("\n[+] BẮT THÀNH CÔNG API: " + url);
                     try {
                         String jsonContent = response.text();
