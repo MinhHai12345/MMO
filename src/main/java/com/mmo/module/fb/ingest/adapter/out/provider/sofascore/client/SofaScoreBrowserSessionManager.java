@@ -106,26 +106,16 @@ public class SofaScoreBrowserSessionManager {
         AppProperties.ProviderConfig config = sofaScoreConfig();
         String configuredProfile = config.getOption("profile-dir");
         Path profilePath = configuredProfile == null || configuredProfile.isBlank()
-                ? Paths.get(System.getProperty("user.dir"), "sofascore_bot_profile2")
+                ? Paths.get(System.getProperty("user.dir"), "sofascore_bot_profile1")
                 : Paths.get(configuredProfile).toAbsolutePath().normalize();
 
         try {
             Files.createDirectories(profilePath);
-            boolean manualIntervention = Boolean.parseBoolean(
-                    config.getOption("manual-captcha-intervention"));
-            String headlessValue = config.getOption("headless");
-            boolean headless = !manualIntervention
-                    && (headlessValue == null || headlessValue.isBlank() || Boolean.parseBoolean(headlessValue));
-            String channel = config.getOption("browser-channel");
-            if (channel == null || channel.isBlank()) {
-                channel = "chrome";
-            }
-
             playwright = Playwright.create();
             BrowserType.LaunchPersistentContextOptions options =
                     new BrowserType.LaunchPersistentContextOptions()
-                            .setChannel(channel)
-                            .setHeadless(headless)
+                            .setChannel("chrome")
+                            .setHeadless(false)
                             .setIgnoreDefaultArgs(Arrays.asList("--enable-automation"))
                             .setArgs(List.of(
                                     "--disable-blink-features=AutomationControlled",
@@ -136,8 +126,10 @@ public class SofaScoreBrowserSessionManager {
                             .setViewportSize(null);
 
             context = playwright.chromium().launchPersistentContext(profilePath, options);
-            log.info("[SOFA_SCORE] Persistent Chrome session started: channel={}, headless={}, profile={}",
-                    channel, headless, profilePath);
+            context.addInitScript(
+                    "Object.defineProperty(navigator, 'webdriver', { get: () => undefined });");
+            log.info("[SOFA_SCORE] Persistent Chrome session started: channel=chrome, headless=false, profile={}",
+                    profilePath);
         } catch (Exception exception) {
             closeSession();
             throw new SofaScoreFetchException("Could not initialize the persistent SofaScore browser session",
