@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -18,9 +19,11 @@ import java.util.function.Consumer;
 
 @Slf4j
 public abstract class AbstractSofaScoreClient {
-    private static final int NAVIGATION_MAX_ATTEMPTS = 3;
-    private static final long NAVIGATION_TIMEOUT_MS = 12_000;
-    private static final long[] RETRY_DELAYS_MS = {2_000, 4_000};
+    private static final int NAVIGATION_MAX_ATTEMPTS = 5;
+    private static final long NAVIGATION_TIMEOUT_MS = 15_000;
+    private static final long[] RETRY_DELAYS_MS = {5_000, 10_000, 20_000, 30_000};
+    private static final long REQUIRED_ENDPOINT_TIMEOUT_SECONDS = 20;
+    private static final long EVENT_PUMP_INTERVAL_MS = 100;
 
     protected final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -63,11 +66,18 @@ public abstract class AbstractSofaScoreClient {
                 if (!future.isDone() && spec.matchesUrl(responseUrl)) {
                     try {
                         if (response.ok()) {
-                            future.complete(response.text());
+                            String body = response.text();
+                            boolean captured = future.complete(body);
+                            if (captured) {
+                                log.info("[SOFA_SCORE][FETCH][CAPTURED] endpoint={}, status={}, bodyLength={}",
+                                        spec.endpoint(), response.status(), body == null ? 0 : body.length());
+                            }
                         } else if (spec.required()) {
                             future.completeExceptionally(new SofaScoreFetchException(
                                     "SofaScore endpoint returned HTTP " + response.status()
                                             + ": " + responseUrl));
+                            log.error("[SOFA_SCORE][FETCH][HTTP_ERROR] endpoint={}, status={}, url={}",
+                                    spec.endpoint(), response.status(), responseUrl);
                         }
                     } catch (Exception exception) {
                         future.completeExceptionally(exception);
@@ -90,8 +100,21 @@ public abstract class AbstractSofaScoreClient {
             }
             failIfCaptchaPage(page, loadPageUrl);
 
-            CompletableFuture.allOf(requiredFutures.toArray(new CompletableFuture[0]))
-                    .get(15, TimeUnit.SECONDS);
+            CompletableFuture<Void> requiredCompletion =
+                    CompletableFuture.allOf(requiredFutures.toArray(new CompletableFuture[0]));
+            long deadline = System.nanoTime()
+                    + TimeUnit.SECONDS.toNanos(REQUIRED_ENDPOINT_TIMEOUT_SECONDS);
+
+            // Playwright's synchronous API dispatches browser events while Playwright calls
+            // are being processed. Do not block on CompletableFuture.get(): that can prevent
+            // page.onResponse callbacks for XHR/fetch requests from being dispatched.
+            while (!requiredCompletion.isDone() && System.nanoTime() < deadline) {
+                page.waitForTimeout(EVENT_PUMP_INTERVAL_MS);
+            }
+            if (!requiredCompletion.isDone()) {
+                throw new TimeoutException("Required SofaScore endpoints were not captured before deadline");
+            }
+            requiredCompletion.join();
 
             boolean hasPendingOptional = endpointSpecs.stream()
                     .filter(spec -> !spec.required())
@@ -101,8 +124,17 @@ public abstract class AbstractSofaScoreClient {
             }
         } catch (TimeoutException exception) {
             throw new SofaScoreFetchException(
-                    "Timed out after 15 seconds waiting for required SofaScore API endpoints: " + missingRequiredEndpoints(
-                            endpointSpecs, futuresMap), exception);
+                    "Timed out after " + REQUIRED_ENDPOINT_TIMEOUT_SECONDS
+                            + " seconds waiting for required SofaScore API endpoints: "
+                            + missingRequiredEndpoints(endpointSpecs, futuresMap), exception);
+        } catch (CompletionException exception) {
+            Throwable cause = exception.getCause();
+            if (cause instanceof SofaScoreFetchException fetchException) {
+                throw fetchException;
+            }
+            throw new SofaScoreFetchException(
+                    "Required SofaScore API endpoint failed for page " + loadPageUrl,
+                    cause == null ? exception : cause);
         } catch (SofaScoreFetchException exception) {
             throw exception;
         } catch (Exception exception) {
