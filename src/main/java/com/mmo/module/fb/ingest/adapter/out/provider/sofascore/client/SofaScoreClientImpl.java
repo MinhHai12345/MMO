@@ -33,7 +33,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.regex.Pattern;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -118,7 +117,7 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
     }
 
     @Override
-    public SofaScoreLeagueCatalogueResult fetchLeaguesWithSeasons(Page page) {
+    public SofaScoreLeagueCatalogueResult fetchLeaguesWithSeasons(Page page, List<Long> selectedTournamentIds) {
         AppProperties.ProviderConfig config = sofaScoreConfig();
         SofaScoreLeaguePageSpec pageSpec = SofaScorePageSpecs.footballLeagueCatalogue(
                 webUrl(), config.getOption("tournament-region"));
@@ -176,6 +175,8 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
             List<Long> tournamentIds = tournaments.stream()
                     .map(UniqueTournamentDTO::id)
                     .distinct()
+                    .filter(id -> selectedTournamentIds == null || selectedTournamentIds.isEmpty()
+                            || selectedTournamentIds.contains(id))
                     .toList();
             log.info("[SOFA_SCORE][LEAGUE] Catalogue captured: tournaments={}, ids={}",
                     tournaments.size(), tournamentIds);
