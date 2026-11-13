@@ -1,8 +1,8 @@
 package com.mmo.module.fb.ingest.adapter.out.provider.sofascore;
 
 import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client.AbstractSofaScoreProvider;
-import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.SeasonDTO;
 import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreLeagueCatalogueResult;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.SeasonDTO;
 import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.UniqueTournamentDTO;
 
 import com.mmo.module.fb.ingest.enums.Provider;
@@ -16,7 +16,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
