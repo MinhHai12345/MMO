@@ -128,18 +128,13 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("SofaScore season endpoint pattern is not configured"));
 
-        Map<Long, String> seasonJsonByTournamentId = new ConcurrentHashMap<>();
-        Map<Long, Integer> seasonStatusByTournamentId = new ConcurrentHashMap<>();
-        AtomicReference<String> catalogueJson = new AtomicReference<>();
-        AtomicReference<Integer> catalogueStatus = new AtomicReference<>();
+        Map<Long, Response> seasonResponsesByTournamentId = new ConcurrentHashMap<>();
+        AtomicReference<Response> catalogueResponse = new AtomicReference<>();
 
         Consumer<Response> responseListener = response -> {
             String responseUrl = response.url();
             if (catalogueSpec.matchesUrl(responseUrl)) {
-                catalogueStatus.set(response.status());
-                if (response.ok()) {
-                    catalogueJson.compareAndSet(null, response.text());
-                }
+                catalogueResponse.compareAndSet(null, response);
                 return;
             }
 
@@ -147,10 +142,8 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
             if (tournamentId == null) {
                 return;
             }
-            seasonStatusByTournamentId.put(tournamentId, response.status());
-            if (response.ok()) {
-                seasonJsonByTournamentId.putIfAbsent(tournamentId, response.text());
-            }
+            seasonResponsesByTournamentId.compute(tournamentId, (id, existing) ->
+                    existing == null || (!existing.ok() && response.ok()) ? response : existing);
         };
 
         page.onResponse(responseListener);
@@ -161,19 +154,19 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
             failIfCaptchaPage(page, pageSpec.loadPageUrl());
 
             long catalogueDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
-            while (catalogueJson.get() == null
-                    && (catalogueStatus.get() == null || catalogueStatus.get() < 400)
-                    && System.nanoTime() < catalogueDeadline) {
+            while (catalogueResponse.get() == null && System.nanoTime() < catalogueDeadline) {
                 page.waitForTimeout(100);
             }
-            if (catalogueJson.get() == null) {
+            Response capturedCatalogueResponse = catalogueResponse.get();
+            if (capturedCatalogueResponse == null || !capturedCatalogueResponse.ok()) {
                 throw new SofaScoreFetchException(
-                        "SofaScore tournament catalogue was not captured. status=" + catalogueStatus.get()
+                        "SofaScore tournament catalogue was not captured successfully. status="
+                                + (capturedCatalogueResponse == null ? null : capturedCatalogueResponse.status())
                                 + ", endpoint=" + catalogueSpec.endpoint());
             }
 
             TournamentsResponseDTO catalogue = objectMapper.readValue(
-                    catalogueJson.get(), TournamentsResponseDTO.class);
+                    capturedCatalogueResponse.text(), TournamentsResponseDTO.class);
             List<UniqueTournamentDTO> tournaments = catalogue.uniqueTournaments() == null
                     ? List.of()
                     : catalogue.uniqueTournaments().stream()
@@ -190,75 +183,31 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
             log.info("[SOFA_SCORE][LEAGUE] Catalogue captured: tournaments={}, selected={}",
                     tournaments.size(), tournamentIds.size());
 
-            // Let the football page's own season requests finish before fetching missing IDs.
-            page.waitForTimeout(1500);
-            List<Long> missingTournamentIds = tournamentIds.stream()
-                    .filter(id -> !seasonJsonByTournamentId.containsKey(id))
-                    .toList();
-
-            if (!missingTournamentIds.isEmpty()) {
-                List<Map<String, Object>> requests = missingTournamentIds.stream()
-                        .map(id -> Map.<String, Object>of(
-                                "id", id,
-                                "url", SofaScorePageSpecs.seasonsApiEndpoint(webUrl(), id)))
-                        .toList();
-                log.info("[SOFA_SCORE][LEAGUE] Fetching missing season payloads in the same page context: count={}",
-                        requests.size());
-                Object evaluated = page.evaluate("""
-                        requests => Promise.all(requests.map(async request => {
-                            try {
-                                const response = await fetch(request.url, { credentials: 'same-origin' });
-                                return {
-                                    id: request.id,
-                                    status: response.status,
-                                    body: await response.text()
-                                };
-                            } catch (error) {
-                                return { id: request.id, status: 0, body: '', error: String(error) };
-                            }
-                        }))
-                        """, requests);
-
-                if (!(evaluated instanceof List<?> responses)) {
-                    throw new SofaScoreFetchException(
-                            "SofaScore season fetch did not return a response list for tournament IDs "
-                                    + missingTournamentIds);
-                }
-                for (Object item : responses) {
-                    if (!(item instanceof Map<?, ?> response)) {
-                        continue;
-                    }
-                    Object idValue = response.get("id");
-                    Object statusValue = response.get("status");
-                    Object bodyValue = response.get("body");
-                    if (!(idValue instanceof Number idNumber) || !(statusValue instanceof Number statusNumber)) {
-                        continue;
-                    }
-                    long tournamentId = idNumber.longValue();
-                    int status = statusNumber.intValue();
-                    seasonStatusByTournamentId.put(tournamentId, status);
-                    if (status >= 200 && status < 300 && bodyValue instanceof String body && !body.isBlank()) {
-                        seasonJsonByTournamentId.putIfAbsent(tournamentId, body);
-                    }
-                }
+            // Wait for the football page's own season requests; do not issue duplicate fetches.
+            long seasonsDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+            while (!seasonResponsesByTournamentId.keySet().containsAll(tournamentIds)
+                    && System.nanoTime() < seasonsDeadline) {
+                page.waitForTimeout(100);
             }
 
             Map<Long, List<SeasonDTO>> seasonsByTournamentId = new LinkedHashMap<>();
             List<Long> failedTournamentIds = new ArrayList<>();
             for (Long tournamentId : tournamentIds) {
-                String body = seasonJsonByTournamentId.get(tournamentId);
-                if (body == null) {
+                Response seasonResponsePayload = seasonResponsesByTournamentId.get(tournamentId);
+                if (seasonResponsePayload == null || !seasonResponsePayload.ok()) {
                     failedTournamentIds.add(tournamentId);
-                    log.error("[SOFA_SCORE][LEAGUE] Season response missing: tournamentId={}, status={}",
-                            tournamentId, seasonStatusByTournamentId.get(tournamentId));
+                    log.error("[SOFA_SCORE][LEAGUE] Season response missing or unsuccessful: tournamentId={}, status={}",
+                            tournamentId,
+                            seasonResponsePayload == null ? null : seasonResponsePayload.status());
                     continue;
                 }
-                SeasonsResponseDTO seasonResponse = objectMapper.readValue(body, SeasonsResponseDTO.class);
+                SeasonsResponseDTO seasonResponse = objectMapper.readValue(
+                        seasonResponsePayload.text(), SeasonsResponseDTO.class);
                 seasonsByTournamentId.put(tournamentId,
                         seasonResponse.seasons() == null ? List.of() : seasonResponse.seasons());
                 log.info("[SOFA_SCORE][LEAGUE] Seasons captured: tournamentId={}, seasons={}, status={}",
                         tournamentId, seasonsByTournamentId.get(tournamentId).size(),
-                        seasonStatusByTournamentId.get(tournamentId));
+                        seasonResponsePayload.status());
             }
 
             if (!failedTournamentIds.isEmpty()) {
