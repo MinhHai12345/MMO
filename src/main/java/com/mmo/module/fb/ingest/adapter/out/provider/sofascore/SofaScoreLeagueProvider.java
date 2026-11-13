@@ -66,7 +66,7 @@ public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implement
                     }
 
                     ProviderLeague league = mapper.toProviderLeague(tournament, seasons);
-                    if (league != null) {
+                    if (league != null && league.seasons() != null && !league.seasons().isEmpty()) {
                         result.add(league);
                     }
                     log.info("[SOFA_SCORE][LEAGUE] Tournament completed: tournamentId={}, seasons={}, durationMs={}",
