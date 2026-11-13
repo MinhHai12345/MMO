@@ -31,7 +31,7 @@ class SofaScoreLeagueLookupServiceTest {
     void fetchLeagueRequestsOnlyTheSelectedTournament() {
         ProviderLeague expected = new ProviderLeague(
                 "17", "17", "Premier League", "England", null,
-                List.of(new ProviderSeason("2026/2027", "2026/2027", null)));
+                List.of(new ProviderSeason("2026/2027", true, null, null)));
         when(sofaScoreProvider.fetchLeagues(List.of(17L))).thenReturn(List.of(expected));
 
         List<ProviderLeague> result = service.fetchLeague(17L);
