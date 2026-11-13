@@ -237,7 +237,7 @@ public abstract class AbstractSofaScoreClient {
         return false;
     }
 
-    private void navigateWithRetry(String loadPageUrl, Page page) {
+    protected final void navigateWithRetry(String loadPageUrl, Page page) {
         PlaywrightException lastFailure = null;
         for (int attempt = 1; attempt <= NAVIGATION_MAX_ATTEMPTS; attempt++) {
             try {
