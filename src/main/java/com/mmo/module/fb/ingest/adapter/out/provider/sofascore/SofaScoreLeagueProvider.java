@@ -2,6 +2,7 @@ package com.mmo.module.fb.ingest.adapter.out.provider.sofascore;
 
 import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client.AbstractSofaScoreProvider;
 import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.SeasonDTO;
+import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreLeagueCatalogueResult;
 import com.mmo.module.fb.ingest.adapter.out.provider.sofascore.dto.SofaScoreResponseDTO.UniqueTournamentDTO;
 
 import com.mmo.module.fb.ingest.enums.Provider;
@@ -34,54 +35,38 @@ public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implement
     public List<ProviderLeague> fetchLeagues(List<Long> externalLeagueIds) {
         return withPage(page -> {
             long startedAt = System.nanoTime();
-            log.info("[SOFA_SCORE][LEAGUE] Loading tournament catalogue");
-            List<UniqueTournamentDTO> tournaments = sofaScoreClient.fetchLeagues(page);
-            if (tournaments == null || tournaments.isEmpty()) {
+            log.info("[SOFA_SCORE][LEAGUE] Fetching league catalogue and seasons from one football page");
+
+            SofaScoreLeagueCatalogueResult catalogue = sofaScoreClient.fetchLeaguesWithSeasons(page);
+            if (catalogue == null || catalogue.tournaments().isEmpty()) {
                 log.warn("[SOFA_SCORE][LEAGUE] Tournament catalogue returned no entries");
                 return List.of();
             }
 
-            List<UniqueTournamentDTO> selectedTournaments = tournaments.stream()
-                    .filter(Objects::nonNull)
-                    .filter(tournament -> tournament.id() != null)
-                    .filter(tournament -> externalLeagueIds == null || externalLeagueIds.isEmpty()
-                            || externalLeagueIds.contains(tournament.id()))
-                    .toList();
-
-            log.info("[SOFA_SCORE][LEAGUE] Catalogue loaded: total={}, selected={}",
-                    tournaments.size(), selectedTournaments.size());
-
             List<ProviderLeague> result = new ArrayList<>();
-            for (UniqueTournamentDTO tournament : selectedTournaments) {
-                long tournamentStartedAt = System.nanoTime();
-                log.info("[SOFA_SCORE][LEAGUE] Fetching seasons: tournamentId={}, name={}",
-                        tournament.id(), tournament.name());
-                try {
-                    List<SeasonDTO> seasons =
-                            sofaScoreClient.fetchSeasonByTournamentId(tournament.id(), page);
-                    if (seasons == null || seasons.isEmpty()) {
-                        log.warn("[SOFA_SCORE][LEAGUE] No seasons returned: tournamentId={}, name={}",
-                                tournament.id(), tournament.name());
-                        continue;
-                    }
+            for (UniqueTournamentDTO tournament : catalogue.tournaments()) {
+                if (externalLeagueIds != null && !externalLeagueIds.isEmpty()
+                        && !externalLeagueIds.contains(tournament.id())) {
+                    continue;
+                }
 
-                    ProviderLeague league = mapper.toProviderLeague(tournament, seasons);
-                    if (league != null && league.seasons() != null && !league.seasons().isEmpty()) {
-                        result.add(league);
-                    }
-                    log.info("[SOFA_SCORE][LEAGUE] Tournament completed: tournamentId={}, seasons={}, durationMs={}",
-                            tournament.id(), seasons.size(),
-                            (System.nanoTime() - tournamentStartedAt) / 1_000_000);
-                } catch (RuntimeException exception) {
-                    log.error("[SOFA_SCORE][LEAGUE] Tournament fetch failed: tournamentId={}, name={}, reason={}",
-                            tournament.id(), tournament.name(), exception.getMessage(), exception);
-                    throw exception;
+                List<SeasonDTO> seasons = catalogue.seasonsByTournamentId()
+                        .getOrDefault(tournament.id(), List.of());
+                if (seasons.isEmpty()) {
+                    log.warn("[SOFA_SCORE][LEAGUE] No seasons returned: tournamentId={}, name={}",
+                            tournament.id(), tournament.name());
+                    continue;
+                }
+
+                ProviderLeague league = mapper.toProviderLeague(tournament, seasons);
+                if (league != null && league.seasons() != null && !league.seasons().isEmpty()) {
+                    result.add(league);
                 }
             }
 
-            log.info("[SOFA_SCORE][LEAGUE] Fetch completed: leagues={}, durationMs={}",
-                    result.size(), (System.nanoTime() - startedAt) / 1_000_000);
+            log.info("[SOFA_SCORE][LEAGUE] Fetch completed from one page: catalogueTournaments={}, leagues={}, durationMs={}",
+                    catalogue.tournaments().size(), result.size(),
+                    (System.nanoTime() - startedAt) / 1_000_000);
             return List.copyOf(result);
         });
-    }
-}
+    }}
