@@ -69,4 +69,5 @@ public class SofaScoreLeagueProvider extends AbstractSofaScoreProvider implement
                     (System.nanoTime() - startedAt) / 1_000_000);
             return List.copyOf(result);
         });
-    }}
+    }
+}
