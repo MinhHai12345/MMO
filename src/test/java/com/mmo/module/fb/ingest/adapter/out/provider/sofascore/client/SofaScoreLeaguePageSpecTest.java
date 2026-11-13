@@ -2,46 +2,45 @@ package com.mmo.module.fb.ingest.adapter.out.provider.sofascore.client;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class SofaScoreLeaguePageSpecTest {
 
     @Test
-    void definesFootballPageWithRegionCatalogueAndDynamicSeasonEndpoint() {
-        SofaScoreLeaguePageSpec spec =
-                SofaScorePageSpecs.footballLeagueCatalogue("https://www.sofascore.com/", "VN");
+    void declaresFootballCatalogueAndDynamicSeasonEndpointOnSharedPageSpec() {
+        SofaScorePageSpec spec = SofaScorePageSpecs.footballLeagueCatalogue(
+                "https://www.sofascore.com/", "VN");
 
         assertEquals("https://www.sofascore.com/football", spec.loadPageUrl());
-        assertEquals("/api/v1/config/top-unique-tournaments/VN/football", spec.catalogueEndpoint());
-        assertTrue(spec.isCatalogueUrl(
+        assertEquals(2, spec.endpointSpecs().size());
+        assertTrue(spec.endpointSpecs().get(0).matchesUrl(
                 "https://www.sofascore.com/api/v1/config/top-unique-tournaments/VN/football"));
-        assertEquals(7L, spec.tournamentIdFromSeasonUrl(
-                "https://www.sofascore.com/api/v1/unique-tournament/7/seasons"));
-        assertEquals(17L, spec.tournamentIdFromSeasonUrl(
-                "https://www.sofascore.com/api/v1/unique-tournament/17/seasons?x=1"));
+
+        SofaScoreEndpointSpec seasons = spec.endpointSpecs().get(1);
+        assertTrue(seasons.dynamic());
+        assertEquals(7L, seasons.captureLong(
+                "https://www.sofascore.com/api/v1/unique-tournament/7/seasons", 1));
+        assertEquals(17L, seasons.captureLong(
+                "https://www.sofascore.com/api/v1/unique-tournament/17/seasons?x=1", 1));
     }
 
     @Test
-    void ignoresUnrelatedOrMalformedApiUrls() {
-        SofaScoreLeaguePageSpec spec =
-                SofaScorePageSpecs.footballLeagueCatalogue("https://www.sofascore.com", "VN");
+    void ignoresUnrelatedOrMalformedDynamicEndpointUrls() {
+        SofaScoreEndpointSpec seasons = SofaScorePageSpecs.footballLeagueCatalogue(
+                "https://www.sofascore.com", "VN").endpointSpecs().get(1);
 
-        assertNull(spec.tournamentIdFromSeasonUrl(
+        assertFalse(seasons.matchesUrl(
                 "https://www.sofascore.com/api/v1/unique-tournament/17/standings"));
-        assertNull(spec.tournamentIdFromSeasonUrl(
-                "https://www.sofascore.com/api/v1/unique-tournament/not-a-number/seasons"));
-        assertFalse(spec.isCatalogueUrl(
-                "https://www.sofascore.com/api/v1/config/top-unique-tournaments/EN/football"));
+        assertNull(seasons.captureLong(
+                "https://www.sofascore.com/api/v1/unique-tournament/not-a-number/seasons", 1));
     }
 
     @Test
     void defaultsInvalidRegionToEnglish() {
-        SofaScoreLeaguePageSpec spec =
-                SofaScorePageSpecs.footballLeagueCatalogue("https://www.sofascore.com", "VNM");
+        SofaScorePageSpec spec = SofaScorePageSpecs.footballLeagueCatalogue(
+                "https://www.sofascore.com", "VNM");
 
-        assertEquals("/api/v1/config/top-unique-tournaments/EN/football", spec.catalogueEndpoint());
+        assertTrue(spec.endpointSpecs().get(0).matchesUrl(
+                "https://www.sofascore.com/api/v1/config/top-unique-tournaments/EN/football"));
     }
 }
