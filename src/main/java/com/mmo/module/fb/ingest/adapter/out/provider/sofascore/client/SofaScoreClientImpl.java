@@ -38,7 +38,16 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
     private final AppProperties appProperties;
 
     private String webUrl() {
-        return sofaScoreConfig().getWebUrl().replaceAll("/+$", "");
+        String configuredWebUrl = sofaScoreConfig().getWebUrl();
+        if (configuredWebUrl == null || configuredWebUrl.isBlank()) {
+            throw new IllegalStateException(
+                    "SofaScore web URL is missing. Configure SOFA_SCORE_WEB_URL, for example https://www.sofascore.com");
+        }
+        String normalized = configuredWebUrl.trim().replaceAll("/+$", "");
+        if (!normalized.startsWith("https://") && !normalized.startsWith("http://")) {
+            throw new IllegalStateException("SofaScore web URL must use http:// or https://");
+        }
+        return normalized;
     }
 
     private AppProperties.ProviderConfig sofaScoreConfig() {
