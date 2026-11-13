@@ -194,7 +194,7 @@ public abstract class AbstractSofaScoreClient {
                 .toString();
     }
 
-    private void failIfCaptchaPage(Page page, String requestedUrl) {
+    protected final void failIfCaptchaPage(Page page, String requestedUrl) {
         String finalUrl = page.url();
         if (isCaptchaUrl(finalUrl)) {
             log.warn("SofaScore CAPTCHA detected. currentPageUrl={}", finalUrl);
