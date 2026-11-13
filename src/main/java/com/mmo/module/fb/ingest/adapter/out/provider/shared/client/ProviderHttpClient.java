@@ -1,6 +1,7 @@
 package com.mmo.module.fb.ingest.adapter.out.provider.shared.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mmo.module.fb.ingest.application.exception.ProviderTransportException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
@@ -94,8 +95,8 @@ public class ProviderHttpClient {
         Throwable current = failure;
         while (current != null) {
             if (current instanceof WebClientRequestException
-                    || current instanceof TimeoutException
-                    || current instanceof SocketTimeoutException) {
+                || current instanceof TimeoutException
+                || current instanceof SocketTimeoutException) {
                 return true;
             }
             current = current.getCause();

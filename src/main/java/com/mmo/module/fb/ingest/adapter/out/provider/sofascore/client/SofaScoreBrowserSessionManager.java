@@ -106,7 +106,7 @@ public class SofaScoreBrowserSessionManager {
         AppProperties.ProviderConfig config = sofaScoreConfig();
         String configuredProfile = config.getOption("profile-dir");
         Path profilePath = configuredProfile == null || configuredProfile.isBlank()
-                ? Paths.get(System.getProperty("user.dir"), "sofascore_bot_profile1")
+                ? Paths.get(System.getProperty("user.dir"), "sofascore_bot_profile2")
                 : Paths.get(configuredProfile).toAbsolutePath().normalize();
 
         try {
