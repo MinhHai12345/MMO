@@ -134,7 +134,8 @@ public class SofaScoreClientImpl extends AbstractSofaScoreClient implements Sofa
         Consumer<Response> responseListener = response -> {
             String responseUrl = response.url();
             if (catalogueSpec.matchesUrl(responseUrl)) {
-                catalogueResponse.compareAndSet(null, response);
+                catalogueResponse.updateAndGet(existing ->
+                        existing == null || (!existing.ok() && response.ok()) ? response : existing);
                 return;
             }
 
