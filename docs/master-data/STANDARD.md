@@ -1,0 +1,71 @@
+# MMO canonical league standard
+
+## 1. Canonical identity
+
+MMO owns one canonical `League` row per real-world competition. Provider identities are aliases attached to that row; provider names and provider IDs must never become the canonical key.
+
+| Field | MMO standard | Rule |
+|---|---|---|
+| `code` | Stable lowercase ASCII slug | Unique, immutable, used as `League.slug`; do not derive it again from a provider display name |
+| `name` | MMO display name | Use one spelling across all providers |
+| `country` | English country name | Use a country name, not a provider-specific region label |
+| `externalMappings` | Provider enum -> source external ID | External ID is opaque and string-valued; never convert IDs to numbers |
+| `externalIdentifies` | Provider enum -> source request identifier | Keep separate from external ID; this is the provider's code/slug used in request paths |
+| `seasons` | Canonical season list | Use the four-digit season start year, e.g. `2025`; map each source season ID independently |
+
+Provider enum names are exactly `SOFA_SCORE`, `UNDER_STATS`, `FOOTBALL_DATA`, and `FOOTBALL_DATA_UK`. The global Provider enum also contains `API_FOOTBALL`; it is intentionally absent when no verified mapping is supplied.
+
+## 2. Current curated league set
+
+The JSON template contains the six competitions already supported by MMO's Football-Data UK mapping initializer. This is a deliberate intersection/overlap set, not a claim that these providers cover every football competition.
+
+| Canonical code | Canonical name | SofaScore ID | UnderStat identify | football-data.org ID / code | football-data.co.uk code |
+|---|---|---:|---|---|---|
+| `premier-league` | Premier League | 17 | `EPL` | 2021 / `PL` | `E0` |
+| `championship` | Championship | 18 | Not supported | 2016 / `ELC` | `E1` |
+| `bundesliga` | Bundesliga | 35 | `Bundesliga` | 2002 / `BL1` | `D1` |
+| `serie-a` | Serie A | 23 | `Serie_A` | 2019 / `SA` | `I1` |
+| `la-liga` | LaLiga | 8 | `La_Liga` | 2014 / `PD` | `SP1` |
+| `ligue-1` | Ligue 1 | 34 | `Ligue_1` | 2015 / `FL1` | `F1` |
+
+The Football-Data UK codes and canonical names follow MMO's existing `FootballDataUkSeasonImporter.initialLeagueMappings()`. football-data.org IDs/codes follow its published competition lookup table. SofaScore IDs are unique-tournament IDs, not season IDs. UnderStat identifiers above are its league URL/API slugs, not the numeric `leagueId` field returned by its `getStatData` catalogue.
+
+## 3. UnderStat mapping policy
+
+Do **not** put an assumed UnderStat numeric external ID into `externalMappings`. MMO's `UnderStatLeagueMapper` reads the numeric `leagueId` from the live `getStatData` response and separately assigns the league slug as `identify`. The slug (for example `EPL`) is not a substitute for that numeric external ID.
+
+After canonical leagues have been initialized, run UnderStat league discovery. The provider adapter will resolve the catalogue item against the canonical league and persist the actual numeric ID plus the request identifier. The same discovery-first rule applies to any future provider mapping whose source ID has not been verified.
+
+## 4. Season identity
+
+Canonical season year is the four-digit start year:
+
+- `2025` means the 2025/26 season.
+- `2026` means the 2026/27 season.
+
+Do not use display labels such as `25/26` as the canonical year. Provider season IDs remain provider-specific:
+
+- SofaScore: numeric season ID from the tournament's seasons endpoint.
+- football-data.org: numeric season ID from the competition response; its API mapper only imports seasons from 2023 onward.
+- UnderStat: composite source key `<league identify>:<start year>` in the current adapter.
+- Football-Data UK: the source has no season entity ID; MMO uses the season start year and derives the CSV path code (for example `2526`).
+
+The checked-in JSON intentionally has empty `seasons` arrays. Populate them only after live season discovery; do not synthesize source season IDs from year labels.
+
+## 5. Import and synchronization sequence
+
+1. Apply this curated file through `POST /api/fb/master-data/initialize` in `DRY_RUN` mode, review validation, then explicit `APPLY`.
+2. Run league discovery for SofaScore and UnderStat to attach their live catalogue IDs.
+3. Run Football-Data discovery where the API plan exposes the competition catalogue. Restricted plans must retain their existing local mappings.
+4. Run Football-Data UK `initialLeagueMappings()` / historical season preparation to attach the CSV division codes and create canonical seasons.
+5. Run provider season synchronization and inspect unmatched/ambiguous entries.
+6. Export the persisted state through `GET /api/fb/master-data/export`. That export is the authoritative full snapshot for the actual database; commit it only after reviewing the diff.
+
+The checked-in file is a **curated bootstrap seed**, not a claim to be a live dump of every provider catalogue. MMO's runtime database is the authority for discovered season IDs and any additional competitions.
+
+## 6. Source references
+
+- SofaScore unique tournament IDs and season-vs-tournament identity: https://www.sofascore.com/football/tournament/england/premier-league/17
+- football-data.org competition resource and official competition ID/code lookup: https://docs.football-data.org/general/v4/competition.html and https://docs.football-data.org/general/v4/lookup_tables.html
+- UnderStat league identifiers and API path conventions: https://understat.com/ and https://github.com/probberechts/soccerdata/blob/master/soccerdata/understat.py
+- Football-Data UK league division codes and season CSV format: https://www.football-data.co.uk/notes.txt
