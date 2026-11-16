@@ -47,8 +47,8 @@ class ProviderMasterDataDiscoveryServiceTest {
         assertThat(report.status()).isEqualTo("COMPLETED");
         assertThat(report.providers()).hasSize(1);
         assertThat(report.providers().get(0).leagues()).hasSize(1);
-        assertThat(report.providers().getFirst().seasons()).hasSize(1);
-        assertThat(report.providers().getFirst().teams()).extracting(ProviderTeam::externalId)
+        assertThat(report.providers().get(0).seasons()).hasSize(1);
+        assertThat(report.providers().get(0).teams()).extracting(ProviderTeam::externalId)
                 .containsExactly("42");
         verify(leaguePort).fetchLeagues(List.of(17L));
         verify(teamPort).fetchTeams(new TeamQuery(17L, "2025/2026", null));
