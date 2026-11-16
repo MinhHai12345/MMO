@@ -94,6 +94,9 @@ public class MasterDataInitializationService {
 
     private MasterDataInitializationReport inspect(MasterDataFile data, String mode) {
         List<String> errors = validate(data);
+        if (data == null) {
+            return new MasterDataInitializationReport(mode, 0, 0, 0, 0, 0, 0, 0, errors);
+        }
         int newLeagues = 0, existingLeagues = 0, newSeasons = 0, existingSeasons = 0;
         int newTeams = 0, existingTeams = 0, mappings = 0;
 
@@ -303,8 +306,8 @@ public class MasterDataInitializationService {
     }
 
     private MasterDataFile loadMasterData() {
-        try {
-            return objectMapper.readValue(new ClassPathResource(MASTER_DATA_PATH).getInputStream(), MasterDataFile.class);
+        try (var inputStream = new ClassPathResource(MASTER_DATA_PATH).getInputStream()) {
+            return objectMapper.readValue(inputStream, MasterDataFile.class);
         } catch (IOException ex) {
             throw new IllegalStateException("Cannot read classpath:" + MASTER_DATA_PATH, ex);
         }
