@@ -17,8 +17,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -58,9 +56,9 @@ class LeagueIngestionServiceTest {
             service.syncLeaguesForProvider(provider);
 
             verify(ingestionSupport).requireProviderEnabled(provider, "league");
-            verify(leagueProvider).fetchLeagues(List.of());
             verify(leaguePersistenceService).persistLeagues(provider, List.of(league));
         }
+        verify(leagueProvider, org.mockito.Mockito.times(4)).fetchLeagues(List.of());
     }
 
     @Test
