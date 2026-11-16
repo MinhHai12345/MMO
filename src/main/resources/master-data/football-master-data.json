@@ -133,8 +133,8 @@
           "year": "2025",
           "current": false,
           "active": true,
-          "startDate": null,
-          "endDate": null,
+          "startDate": "2025-08-15",
+          "endDate": "2026-05-24",
           "externalMappings": {
             "SOFA_SCORE": "76986",
             "FOOTBALL_DATA_UK": "E0:2526"
@@ -296,8 +296,8 @@
           "year": "2025",
           "current": false,
           "active": true,
-          "startDate": null,
-          "endDate": null,
+          "startDate": "2025-08-08",
+          "endDate": "2026-05-02",
           "externalMappings": {
             "SOFA_SCORE": "77347",
             "FOOTBALL_DATA_UK": "E1:2526"
@@ -459,8 +459,8 @@
           "year": "2025",
           "current": false,
           "active": true,
-          "startDate": null,
-          "endDate": null,
+          "startDate": "2025-08-22",
+          "endDate": "2026-05-16",
           "externalMappings": {
             "SOFA_SCORE": "77333",
             "FOOTBALL_DATA_UK": "D1:2526"
@@ -622,8 +622,8 @@
           "year": "2025",
           "current": false,
           "active": true,
-          "startDate": null,
-          "endDate": null,
+          "startDate": "2025-08-23",
+          "endDate": "2026-05-24",
           "externalMappings": {
             "SOFA_SCORE": "76457",
             "FOOTBALL_DATA_UK": "I1:2526"
@@ -785,8 +785,8 @@
           "year": "2025",
           "current": false,
           "active": true,
-          "startDate": null,
-          "endDate": null,
+          "startDate": "2025-08-17",
+          "endDate": "2026-05-24",
           "externalMappings": {
             "SOFA_SCORE": "77559",
             "FOOTBALL_DATA_UK": "SP1:2526"
@@ -948,8 +948,8 @@
           "year": "2025",
           "current": false,
           "active": true,
-          "startDate": null,
-          "endDate": null,
+          "startDate": "2025-08-15",
+          "endDate": "2026-05-16",
           "externalMappings": {
             "SOFA_SCORE": "77356",
             "FOOTBALL_DATA_UK": "F1:2526"
