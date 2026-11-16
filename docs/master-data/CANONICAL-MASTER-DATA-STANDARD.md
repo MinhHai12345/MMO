@@ -167,7 +167,8 @@ Example:
       "externalMappings": {
         "SOFA_SCORE": "17",
         "FOOTBALL_DATA": "PL",
-        "API_FOOTBALL": "39"
+        "API_FOOTBALL": "39",
+        "UNDER_STATS": "EPL"
       },
       "externalIdentifies": {
         "UNDER_STATS": "EPL"
