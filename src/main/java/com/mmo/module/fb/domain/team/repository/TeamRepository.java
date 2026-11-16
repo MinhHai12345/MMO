@@ -21,6 +21,7 @@ public interface TeamRepository extends JpaRepository<Team, Long> {
 
     Optional<Team> findByName(String name);
     List<Team> findAllByNameIgnoreCase(String name);
+    List<Team> findAllBySlugIgnoreCase(String slug);
     @Query("select t from Team t where lower(t.name) in :names")
     List<Team> findAllByNormalizedNameIn(@Param("names") Collection<String> lowercaseNames);
 }

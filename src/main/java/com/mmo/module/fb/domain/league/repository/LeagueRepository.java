@@ -14,4 +14,5 @@ public interface LeagueRepository extends JpaRepository<League, Long> {
     @NotNull List<League> findByIsActiveTrue();
     @NotNull List<League> findByIsActiveFalse();
     List<League> findAllByNameIgnoreCase(String name);
+    Optional<League> findBySlugIgnoreCase(String slug);
 }

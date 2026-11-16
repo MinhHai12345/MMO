@@ -1,0 +1,983 @@
+{
+  "leagues": [
+    {
+      "code": "premier-league",
+      "name": "Premier League",
+      "country": "England",
+      "logoUrl": null,
+      "active": true,
+      "popularityScore": 0,
+      "seasons": [
+        {
+          "year": "2014",
+          "current": false,
+          "active": true,
+          "startDate": "2014-08-16",
+          "endDate": "2015-05-24",
+          "externalMappings": {
+            "SOFA_SCORE": "8186",
+            "FOOTBALL_DATA_UK": "E0:1415"
+          }
+        },
+        {
+          "year": "2015",
+          "current": false,
+          "active": true,
+          "startDate": "2015-08-08",
+          "endDate": "2016-05-17",
+          "externalMappings": {
+            "SOFA_SCORE": "10356",
+            "FOOTBALL_DATA_UK": "E0:1516"
+          }
+        },
+        {
+          "year": "2016",
+          "current": false,
+          "active": true,
+          "startDate": "2016-08-13",
+          "endDate": "2017-05-21",
+          "externalMappings": {
+            "SOFA_SCORE": "11733",
+            "FOOTBALL_DATA_UK": "E0:1617"
+          }
+        },
+        {
+          "year": "2017",
+          "current": false,
+          "active": true,
+          "startDate": "2017-08-12",
+          "endDate": "2018-05-13",
+          "externalMappings": {
+            "SOFA_SCORE": "13380",
+            "FOOTBALL_DATA_UK": "E0:1718"
+          }
+        },
+        {
+          "year": "2018",
+          "current": false,
+          "active": true,
+          "startDate": "2018-08-10",
+          "endDate": "2019-05-12",
+          "externalMappings": {
+            "SOFA_SCORE": "17359",
+            "FOOTBALL_DATA_UK": "E0:1819"
+          }
+        },
+        {
+          "year": "2019",
+          "current": false,
+          "active": true,
+          "startDate": "2019-08-09",
+          "endDate": "2020-07-26",
+          "externalMappings": {
+            "SOFA_SCORE": "23776",
+            "FOOTBALL_DATA_UK": "E0:1920"
+          }
+        },
+        {
+          "year": "2020",
+          "current": false,
+          "active": true,
+          "startDate": "2020-09-12",
+          "endDate": "2021-05-23",
+          "externalMappings": {
+            "SOFA_SCORE": "29415",
+            "FOOTBALL_DATA_UK": "E0:2021"
+          }
+        },
+        {
+          "year": "2021",
+          "current": false,
+          "active": true,
+          "startDate": "2021-08-14",
+          "endDate": "2022-05-22",
+          "externalMappings": {
+            "SOFA_SCORE": "37036",
+            "FOOTBALL_DATA_UK": "E0:2122"
+          }
+        },
+        {
+          "year": "2022",
+          "current": false,
+          "active": true,
+          "startDate": "2022-08-05",
+          "endDate": "2023-05-28",
+          "externalMappings": {
+            "SOFA_SCORE": "41886",
+            "FOOTBALL_DATA_UK": "E0:2223"
+          }
+        },
+        {
+          "year": "2023",
+          "current": false,
+          "active": true,
+          "startDate": "2023-08-11",
+          "endDate": "2024-05-19",
+          "externalMappings": {
+            "SOFA_SCORE": "52186",
+            "FOOTBALL_DATA_UK": "E0:2324"
+          }
+        },
+        {
+          "year": "2024",
+          "current": false,
+          "active": true,
+          "startDate": "2024-08-16",
+          "endDate": "2025-05-25",
+          "externalMappings": {
+            "SOFA_SCORE": "61627",
+            "FOOTBALL_DATA_UK": "E0:2425"
+          }
+        },
+        {
+          "year": "2025",
+          "current": false,
+          "active": true,
+          "startDate": "2025-08-15",
+          "endDate": "2026-05-24",
+          "externalMappings": {
+            "SOFA_SCORE": "76986",
+            "FOOTBALL_DATA_UK": "E0:2526"
+          }
+        },
+        {
+          "year": "2026",
+          "current": true,
+          "active": true,
+          "startDate": "2026-08-14",
+          "endDate": "2027-05-23",
+          "externalMappings": {
+            "SOFA_SCORE": "96668",
+            "FOOTBALL_DATA_UK": "E0:2627"
+          }
+        }
+      ],
+      "externalMappings": {
+        "SOFA_SCORE": "17",
+        "FOOTBALL_DATA": "2021",
+        "FOOTBALL_DATA_UK": "E0"
+      },
+      "externalIdentifies": {
+        "SOFA_SCORE": "17",
+        "FOOTBALL_DATA": "PL",
+        "FOOTBALL_DATA_UK": "E0"
+      }
+    },
+    {
+      "code": "championship",
+      "name": "Championship",
+      "country": "England",
+      "logoUrl": null,
+      "active": true,
+      "popularityScore": 0,
+      "seasons": [
+        {
+          "year": "2014",
+          "current": false,
+          "active": true,
+          "startDate": "2014-08-08",
+          "endDate": "2015-05-02",
+          "externalMappings": {
+            "SOFA_SCORE": "8188",
+            "FOOTBALL_DATA_UK": "E1:1415"
+          }
+        },
+        {
+          "year": "2015",
+          "current": false,
+          "active": true,
+          "startDate": "2015-08-07",
+          "endDate": "2016-05-07",
+          "externalMappings": {
+            "SOFA_SCORE": "10358",
+            "FOOTBALL_DATA_UK": "E1:1516"
+          }
+        },
+        {
+          "year": "2016",
+          "current": false,
+          "active": true,
+          "startDate": "2016-08-05",
+          "endDate": "2017-05-07",
+          "externalMappings": {
+            "SOFA_SCORE": "11784",
+            "FOOTBALL_DATA_UK": "E1:1617"
+          }
+        },
+        {
+          "year": "2017",
+          "current": false,
+          "active": true,
+          "startDate": "2017-08-04",
+          "endDate": "2018-05-06",
+          "externalMappings": {
+            "SOFA_SCORE": "13429",
+            "FOOTBALL_DATA_UK": "E1:1718"
+          }
+        },
+        {
+          "year": "2018",
+          "current": false,
+          "active": true,
+          "startDate": "2018-08-03",
+          "endDate": "2019-05-05",
+          "externalMappings": {
+            "SOFA_SCORE": "17473",
+            "FOOTBALL_DATA_UK": "E1:1819"
+          }
+        },
+        {
+          "year": "2019",
+          "current": false,
+          "active": true,
+          "startDate": "2019-08-02",
+          "endDate": "2020-07-22",
+          "externalMappings": {
+            "SOFA_SCORE": "23976",
+            "FOOTBALL_DATA_UK": "E1:1920"
+          }
+        },
+        {
+          "year": "2020",
+          "current": false,
+          "active": true,
+          "startDate": "2020-09-12",
+          "endDate": "2021-05-08",
+          "externalMappings": {
+            "SOFA_SCORE": "29438",
+            "FOOTBALL_DATA_UK": "E1:2021"
+          }
+        },
+        {
+          "year": "2021",
+          "current": false,
+          "active": true,
+          "startDate": "2021-08-07",
+          "endDate": "2022-05-07",
+          "externalMappings": {
+            "SOFA_SCORE": "37154",
+            "FOOTBALL_DATA_UK": "E1:2122"
+          }
+        },
+        {
+          "year": "2022",
+          "current": false,
+          "active": true,
+          "startDate": "2022-07-29",
+          "endDate": "2023-05-08",
+          "externalMappings": {
+            "SOFA_SCORE": "42401",
+            "FOOTBALL_DATA_UK": "E1:2223"
+          }
+        },
+        {
+          "year": "2023",
+          "current": false,
+          "active": true,
+          "startDate": "2023-08-04",
+          "endDate": "2024-05-04",
+          "externalMappings": {
+            "SOFA_SCORE": "52367",
+            "FOOTBALL_DATA_UK": "E1:2324"
+          }
+        },
+        {
+          "year": "2024",
+          "current": false,
+          "active": true,
+          "startDate": "2024-08-09",
+          "endDate": "2025-05-03",
+          "externalMappings": {
+            "SOFA_SCORE": "61961",
+            "FOOTBALL_DATA_UK": "E1:2425"
+          }
+        },
+        {
+          "year": "2025",
+          "current": false,
+          "active": true,
+          "startDate": "2025-08-08",
+          "endDate": "2026-05-02",
+          "externalMappings": {
+            "SOFA_SCORE": "77347",
+            "FOOTBALL_DATA_UK": "E1:2526"
+          }
+        },
+        {
+          "year": "2026",
+          "current": true,
+          "active": true,
+          "startDate": "2026-08-07",
+          "endDate": "2027-05-01",
+          "externalMappings": {
+            "SOFA_SCORE": "97037",
+            "FOOTBALL_DATA_UK": "E1:2627"
+          }
+        }
+      ],
+      "externalMappings": {
+        "SOFA_SCORE": "18",
+        "FOOTBALL_DATA": "2016",
+        "FOOTBALL_DATA_UK": "E1"
+      },
+      "externalIdentifies": {
+        "SOFA_SCORE": "18",
+        "FOOTBALL_DATA": "ELC",
+        "FOOTBALL_DATA_UK": "E1"
+      }
+    },
+    {
+      "code": "bundesliga",
+      "name": "Bundesliga",
+      "country": "Germany",
+      "logoUrl": null,
+      "active": true,
+      "popularityScore": 0,
+      "seasons": [
+        {
+          "year": "2014",
+          "current": false,
+          "active": true,
+          "startDate": "2014-08-22",
+          "endDate": "2015-05-23",
+          "externalMappings": {
+            "SOFA_SCORE": "8238",
+            "FOOTBALL_DATA_UK": "D1:1415"
+          }
+        },
+        {
+          "year": "2015",
+          "current": false,
+          "active": true,
+          "startDate": "2015-08-14",
+          "endDate": "2016-05-14",
+          "externalMappings": {
+            "SOFA_SCORE": "10419",
+            "FOOTBALL_DATA_UK": "D1:1516"
+          }
+        },
+        {
+          "year": "2016",
+          "current": false,
+          "active": true,
+          "startDate": "2016-08-26",
+          "endDate": "2017-05-20",
+          "externalMappings": {
+            "SOFA_SCORE": "11818",
+            "FOOTBALL_DATA_UK": "D1:1617"
+          }
+        },
+        {
+          "year": "2017",
+          "current": false,
+          "active": true,
+          "startDate": "2017-08-18",
+          "endDate": "2018-05-12",
+          "externalMappings": {
+            "SOFA_SCORE": "13477",
+            "FOOTBALL_DATA_UK": "D1:1718"
+          }
+        },
+        {
+          "year": "2018",
+          "current": false,
+          "active": true,
+          "startDate": "2018-08-24",
+          "endDate": "2019-05-18",
+          "externalMappings": {
+            "SOFA_SCORE": "17597",
+            "FOOTBALL_DATA_UK": "D1:1819"
+          }
+        },
+        {
+          "year": "2019",
+          "current": false,
+          "active": true,
+          "startDate": "2019-08-16",
+          "endDate": "2020-06-27",
+          "externalMappings": {
+            "SOFA_SCORE": "23538",
+            "FOOTBALL_DATA_UK": "D1:1920"
+          }
+        },
+        {
+          "year": "2020",
+          "current": false,
+          "active": true,
+          "startDate": "2020-09-18",
+          "endDate": "2021-05-22",
+          "externalMappings": {
+            "SOFA_SCORE": "28210",
+            "FOOTBALL_DATA_UK": "D1:2021"
+          }
+        },
+        {
+          "year": "2021",
+          "current": false,
+          "active": true,
+          "startDate": "2021-08-13",
+          "endDate": "2022-05-14",
+          "externalMappings": {
+            "SOFA_SCORE": "37166",
+            "FOOTBALL_DATA_UK": "D1:2122"
+          }
+        },
+        {
+          "year": "2022",
+          "current": false,
+          "active": true,
+          "startDate": "2022-08-05",
+          "endDate": "2023-05-27",
+          "externalMappings": {
+            "SOFA_SCORE": "42268",
+            "FOOTBALL_DATA_UK": "D1:2223"
+          }
+        },
+        {
+          "year": "2023",
+          "current": false,
+          "active": true,
+          "startDate": "2023-08-18",
+          "endDate": "2024-05-18",
+          "externalMappings": {
+            "SOFA_SCORE": "52608",
+            "FOOTBALL_DATA_UK": "D1:2324"
+          }
+        },
+        {
+          "year": "2024",
+          "current": false,
+          "active": true,
+          "startDate": "2024-08-23",
+          "endDate": "2025-05-17",
+          "externalMappings": {
+            "SOFA_SCORE": "63516",
+            "FOOTBALL_DATA_UK": "D1:2425"
+          }
+        },
+        {
+          "year": "2025",
+          "current": false,
+          "active": true,
+          "startDate": "2025-08-22",
+          "endDate": "2026-05-16",
+          "externalMappings": {
+            "SOFA_SCORE": "77333",
+            "FOOTBALL_DATA_UK": "D1:2526"
+          }
+        },
+        {
+          "year": "2026",
+          "current": true,
+          "active": true,
+          "startDate": "2026-08-28",
+          "endDate": "2027-05-22",
+          "externalMappings": {
+            "SOFA_SCORE": "97464",
+            "FOOTBALL_DATA_UK": "D1:2627"
+          }
+        }
+      ],
+      "externalMappings": {
+        "SOFA_SCORE": "35",
+        "FOOTBALL_DATA": "2002",
+        "FOOTBALL_DATA_UK": "D1"
+      },
+      "externalIdentifies": {
+        "SOFA_SCORE": "35",
+        "FOOTBALL_DATA": "BL1",
+        "FOOTBALL_DATA_UK": "D1"
+      }
+    },
+    {
+      "code": "serie-a",
+      "name": "Serie A",
+      "country": "Italy",
+      "logoUrl": null,
+      "active": true,
+      "popularityScore": 0,
+      "seasons": [
+        {
+          "year": "2014",
+          "current": false,
+          "active": true,
+          "startDate": "2014-08-30",
+          "endDate": "2015-05-31",
+          "externalMappings": {
+            "SOFA_SCORE": "8618",
+            "FOOTBALL_DATA_UK": "I1:1415"
+          }
+        },
+        {
+          "year": "2015",
+          "current": false,
+          "active": true,
+          "startDate": "2015-08-22",
+          "endDate": "2016-05-15",
+          "externalMappings": {
+            "SOFA_SCORE": "10596",
+            "FOOTBALL_DATA_UK": "I1:1516"
+          }
+        },
+        {
+          "year": "2016",
+          "current": false,
+          "active": true,
+          "startDate": "2016-08-20",
+          "endDate": "2017-05-28",
+          "externalMappings": {
+            "SOFA_SCORE": "11966",
+            "FOOTBALL_DATA_UK": "I1:1617"
+          }
+        },
+        {
+          "year": "2017",
+          "current": false,
+          "active": true,
+          "startDate": "2017-08-19",
+          "endDate": "2018-05-20",
+          "externalMappings": {
+            "SOFA_SCORE": "13768",
+            "FOOTBALL_DATA_UK": "I1:1718"
+          }
+        },
+        {
+          "year": "2018",
+          "current": false,
+          "active": true,
+          "startDate": "2018-08-19",
+          "endDate": "2019-05-26",
+          "externalMappings": {
+            "SOFA_SCORE": "17932",
+            "FOOTBALL_DATA_UK": "I1:1819"
+          }
+        },
+        {
+          "year": "2019",
+          "current": false,
+          "active": true,
+          "startDate": "2019-08-24",
+          "endDate": "2020-08-02",
+          "externalMappings": {
+            "SOFA_SCORE": "24644",
+            "FOOTBALL_DATA_UK": "I1:1920"
+          }
+        },
+        {
+          "year": "2020",
+          "current": false,
+          "active": true,
+          "startDate": "2020-09-19",
+          "endDate": "2021-05-23",
+          "externalMappings": {
+            "SOFA_SCORE": "32523",
+            "FOOTBALL_DATA_UK": "I1:2021"
+          }
+        },
+        {
+          "year": "2021",
+          "current": false,
+          "active": true,
+          "startDate": "2021-08-21",
+          "endDate": "2022-05-22",
+          "externalMappings": {
+            "SOFA_SCORE": "37475",
+            "FOOTBALL_DATA_UK": "I1:2122"
+          }
+        },
+        {
+          "year": "2022",
+          "current": false,
+          "active": true,
+          "startDate": "2022-08-13",
+          "endDate": "2023-06-04",
+          "externalMappings": {
+            "SOFA_SCORE": "42415",
+            "FOOTBALL_DATA_UK": "I1:2223"
+          }
+        },
+        {
+          "year": "2023",
+          "current": false,
+          "active": true,
+          "startDate": "2023-08-19",
+          "endDate": "2024-05-26",
+          "externalMappings": {
+            "SOFA_SCORE": "52760",
+            "FOOTBALL_DATA_UK": "I1:2324"
+          }
+        },
+        {
+          "year": "2024",
+          "current": false,
+          "active": true,
+          "startDate": "2024-08-17",
+          "endDate": "2025-05-25",
+          "externalMappings": {
+            "SOFA_SCORE": "63515",
+            "FOOTBALL_DATA_UK": "I1:2425"
+          }
+        },
+        {
+          "year": "2025",
+          "current": false,
+          "active": true,
+          "startDate": "2025-08-23",
+          "endDate": "2026-05-24",
+          "externalMappings": {
+            "SOFA_SCORE": "76457",
+            "FOOTBALL_DATA_UK": "I1:2526"
+          }
+        },
+        {
+          "year": "2026",
+          "current": true,
+          "active": true,
+          "startDate": "2026-08-22",
+          "endDate": "2027-05-30",
+          "externalMappings": {
+            "SOFA_SCORE": "95836",
+            "FOOTBALL_DATA_UK": "I1:2627"
+          }
+        }
+      ],
+      "externalMappings": {
+        "SOFA_SCORE": "23",
+        "FOOTBALL_DATA": "2019",
+        "FOOTBALL_DATA_UK": "I1"
+      },
+      "externalIdentifies": {
+        "SOFA_SCORE": "23",
+        "FOOTBALL_DATA": "SA",
+        "FOOTBALL_DATA_UK": "I1"
+      }
+    },
+    {
+      "code": "la-liga",
+      "name": "LaLiga",
+      "country": "Spain",
+      "logoUrl": null,
+      "active": true,
+      "popularityScore": 0,
+      "seasons": [
+        {
+          "year": "2014",
+          "current": false,
+          "active": true,
+          "startDate": "2014-08-23",
+          "endDate": "2015-05-23",
+          "externalMappings": {
+            "SOFA_SCORE": "8578",
+            "FOOTBALL_DATA_UK": "SP1:1415"
+          }
+        },
+        {
+          "year": "2015",
+          "current": false,
+          "active": true,
+          "startDate": "2015-08-21",
+          "endDate": "2016-05-15",
+          "externalMappings": {
+            "SOFA_SCORE": "10495",
+            "FOOTBALL_DATA_UK": "SP1:1516"
+          }
+        },
+        {
+          "year": "2016",
+          "current": false,
+          "active": true,
+          "startDate": "2016-08-20",
+          "endDate": "2017-05-21",
+          "externalMappings": {
+            "SOFA_SCORE": "11906",
+            "FOOTBALL_DATA_UK": "SP1:1617"
+          }
+        },
+        {
+          "year": "2017",
+          "current": false,
+          "active": true,
+          "startDate": "2017-08-18",
+          "endDate": "2018-05-20",
+          "externalMappings": {
+            "SOFA_SCORE": "13662",
+            "FOOTBALL_DATA_UK": "SP1:1718"
+          }
+        },
+        {
+          "year": "2018",
+          "current": false,
+          "active": true,
+          "startDate": "2018-08-17",
+          "endDate": "2019-05-19",
+          "externalMappings": {
+            "SOFA_SCORE": "18020",
+            "FOOTBALL_DATA_UK": "SP1:1819"
+          }
+        },
+        {
+          "year": "2019",
+          "current": false,
+          "active": true,
+          "startDate": "2019-08-16",
+          "endDate": "2020-07-19",
+          "externalMappings": {
+            "SOFA_SCORE": "24127",
+            "FOOTBALL_DATA_UK": "SP1:1920"
+          }
+        },
+        {
+          "year": "2020",
+          "current": false,
+          "active": true,
+          "startDate": "2020-09-12",
+          "endDate": "2021-05-23",
+          "externalMappings": {
+            "SOFA_SCORE": "32501",
+            "FOOTBALL_DATA_UK": "SP1:2021"
+          }
+        },
+        {
+          "year": "2021",
+          "current": false,
+          "active": true,
+          "startDate": "2021-08-13",
+          "endDate": "2022-05-22",
+          "externalMappings": {
+            "SOFA_SCORE": "37223",
+            "FOOTBALL_DATA_UK": "SP1:2122"
+          }
+        },
+        {
+          "year": "2022",
+          "current": false,
+          "active": true,
+          "startDate": "2022-08-12",
+          "endDate": "2023-06-04",
+          "externalMappings": {
+            "SOFA_SCORE": "42409",
+            "FOOTBALL_DATA_UK": "SP1:2223"
+          }
+        },
+        {
+          "year": "2023",
+          "current": false,
+          "active": true,
+          "startDate": "2023-08-11",
+          "endDate": "2024-05-26",
+          "externalMappings": {
+            "SOFA_SCORE": "52376",
+            "FOOTBALL_DATA_UK": "SP1:2324"
+          }
+        },
+        {
+          "year": "2024",
+          "current": false,
+          "active": true,
+          "startDate": "2024-08-15",
+          "endDate": "2025-05-25",
+          "externalMappings": {
+            "SOFA_SCORE": "61643",
+            "FOOTBALL_DATA_UK": "SP1:2425"
+          }
+        },
+        {
+          "year": "2025",
+          "current": false,
+          "active": true,
+          "startDate": "2025-08-15",
+          "endDate": "2026-05-24",
+          "externalMappings": {
+            "SOFA_SCORE": "77559",
+            "FOOTBALL_DATA_UK": "SP1:2526"
+          }
+        },
+        {
+          "year": "2026",
+          "current": true,
+          "active": true,
+          "startDate": "2026-08-15",
+          "endDate": "2027-05-30",
+          "externalMappings": {
+            "SOFA_SCORE": "97268",
+            "FOOTBALL_DATA_UK": "SP1:2627"
+          }
+        }
+      ],
+      "externalMappings": {
+        "SOFA_SCORE": "8",
+        "FOOTBALL_DATA": "2014",
+        "FOOTBALL_DATA_UK": "SP1"
+      },
+      "externalIdentifies": {
+        "SOFA_SCORE": "8",
+        "FOOTBALL_DATA": "PD",
+        "FOOTBALL_DATA_UK": "SP1"
+      }
+    },
+    {
+      "code": "ligue-1",
+      "name": "Ligue 1",
+      "country": "France",
+      "logoUrl": null,
+      "active": true,
+      "popularityScore": 0,
+      "seasons": [
+        {
+          "year": "2014",
+          "current": false,
+          "active": true,
+          "startDate": "2014-08-08",
+          "endDate": "2015-05-23",
+          "externalMappings": {
+            "SOFA_SCORE": "8122",
+            "FOOTBALL_DATA_UK": "F1:1415"
+          }
+        },
+        {
+          "year": "2015",
+          "current": false,
+          "active": true,
+          "startDate": "2015-08-07",
+          "endDate": "2016-05-14",
+          "externalMappings": {
+            "SOFA_SCORE": "10373",
+            "FOOTBALL_DATA_UK": "F1:1516"
+          }
+        },
+        {
+          "year": "2016",
+          "current": false,
+          "active": true,
+          "startDate": "2016-08-12",
+          "endDate": "2017-05-20",
+          "externalMappings": {
+            "SOFA_SCORE": "11648",
+            "FOOTBALL_DATA_UK": "F1:1617"
+          }
+        },
+        {
+          "year": "2017",
+          "current": false,
+          "active": true,
+          "startDate": "2017-08-04",
+          "endDate": "2018-05-19",
+          "externalMappings": {
+            "SOFA_SCORE": "13384",
+            "FOOTBALL_DATA_UK": "F1:1718"
+          }
+        },
+        {
+          "year": "2018",
+          "current": false,
+          "active": true,
+          "startDate": "2018-08-10",
+          "endDate": "2019-05-24",
+          "externalMappings": {
+            "SOFA_SCORE": "17279",
+            "FOOTBALL_DATA_UK": "F1:1819"
+          }
+        },
+        {
+          "year": "2019",
+          "current": false,
+          "active": true,
+          "startDate": "2019-08-09",
+          "endDate": "2020-03-08",
+          "externalMappings": {
+            "SOFA_SCORE": "23872",
+            "FOOTBALL_DATA_UK": "F1:1920"
+          }
+        },
+        {
+          "year": "2020",
+          "current": false,
+          "active": true,
+          "startDate": "2020-08-21",
+          "endDate": "2021-05-23",
+          "externalMappings": {
+            "SOFA_SCORE": "28222",
+            "FOOTBALL_DATA_UK": "F1:2021"
+          }
+        },
+        {
+          "year": "2021",
+          "current": false,
+          "active": true,
+          "startDate": "2021-08-06",
+          "endDate": "2022-05-21",
+          "externalMappings": {
+            "SOFA_SCORE": "37167",
+            "FOOTBALL_DATA_UK": "F1:2122"
+          }
+        },
+        {
+          "year": "2022",
+          "current": false,
+          "active": true,
+          "startDate": "2022-08-06",
+          "endDate": "2023-06-04",
+          "externalMappings": {
+            "SOFA_SCORE": "42273",
+            "FOOTBALL_DATA_UK": "F1:2223"
+          }
+        },
+        {
+          "year": "2023",
+          "current": false,
+          "active": true,
+          "startDate": "2023-08-11",
+          "endDate": "2024-05-19",
+          "externalMappings": {
+            "SOFA_SCORE": "52571",
+            "FOOTBALL_DATA_UK": "F1:2324"
+          }
+        },
+        {
+          "year": "2024",
+          "current": false,
+          "active": true,
+          "startDate": "2024-08-16",
+          "endDate": "2025-05-17",
+          "externalMappings": {
+            "SOFA_SCORE": "61736",
+            "FOOTBALL_DATA_UK": "F1:2425"
+          }
+        },
+        {
+          "year": "2025",
+          "current": false,
+          "active": true,
+          "startDate": "2025-08-15",
+          "endDate": "2026-05-16",
+          "externalMappings": {
+            "SOFA_SCORE": "77356",
+            "FOOTBALL_DATA_UK": "F1:2526"
+          }
+        },
+        {
+          "year": "2026",
+          "current": true,
+          "active": true,
+          "startDate": "2026-08-14",
+          "endDate": "2027-05-22",
+          "externalMappings": {
+            "SOFA_SCORE": "96127",
+            "FOOTBALL_DATA_UK": "F1:2627"
+          }
+        }
+      ],
+      "externalMappings": {
+        "SOFA_SCORE": "34",
+        "FOOTBALL_DATA": "2015",
+        "FOOTBALL_DATA_UK": "F1"
+      },
+      "externalIdentifies": {
+        "SOFA_SCORE": "34",
+        "FOOTBALL_DATA": "FL1",
+        "FOOTBALL_DATA_UK": "F1"
+      }
+    }
+  ],
+  "teams": []
+}

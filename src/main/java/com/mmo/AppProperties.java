@@ -75,7 +75,7 @@ public class AppProperties {
     @Getter
     @Setter
     public static class InitialData {
-        private boolean autoImport = true;
+        private boolean autoImport = false;
     }
 
     /** Operational controls for the persisted content-publication queue. */
