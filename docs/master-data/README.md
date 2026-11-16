@@ -86,3 +86,16 @@ Apply (explicit confirmation required):
 The API is disabled when `app.ingestion.operations.api-key` is blank.
 Apply is transactional. Existing canonical metadata is not overwritten; existing
 provider mappings are not reassigned. Mapping conflicts abort the transaction.
+
+Read-only reconciliation:
+
+`GET /api/fb/master-data/reconcile`
+
+Header: `X-Ingestion-Admin-Key: <INGESTION_ADMIN_API_KEY>`
+
+The reconciliation compares the curated JSON seed with the persisted database snapshot.
+It reports missing canonical leagues, seasons, teams and provider mappings as errors,
+and reports season date differences as warnings for manual review. Database-only records
+and mappings are retained and are not treated as errors because the checked-in seed is not
+a complete provider catalogue. The endpoint performs no writes and returns HTTP 409 when
+required canonical records or mappings are missing or conflict with the seed.
