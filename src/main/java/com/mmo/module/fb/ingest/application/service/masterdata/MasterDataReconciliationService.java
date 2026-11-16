@@ -38,7 +38,6 @@ public class MasterDataReconciliationService {
 
         Map<String, MasterDataFile.LeagueEntry> persistedLeagues = indexLeagues(persisted);
         Map<String, MasterDataFile.TeamEntry> persistedTeams = indexTeams(persisted);
-        int canonicalSeasonCount = 0;
         int persistedSeasonCount = safe(persisted.leagues()).stream()
                 .mapToInt(league -> safe(league.seasons()).size()).sum();
         int missingLeagues = 0;
@@ -56,7 +55,12 @@ public class MasterDataReconciliationService {
                 discrepancies.add(discrepancy("ERROR", "LEAGUE", expectedLeague.code(),
                         null, null, "existence", expectedLeague.name(), null,
                         "Canonical league is missing from the database."));
-                canonicalSeasonCount += safe(expectedLeague.seasons()).size();
+                for (MasterDataFile.SeasonEntry expectedSeason : safe(expectedLeague.seasons())) {
+                    missingSeasons++;
+                    discrepancies.add(discrepancy("ERROR", "SEASON", expectedLeague.code(),
+                            expectedSeason.year(), null, "existence", expectedSeason.year(), null,
+                            "Canonical season is missing because its league is not persisted."));
+                }
                 continue;
             }
 
@@ -69,7 +73,6 @@ public class MasterDataReconciliationService {
             safe(actualLeague.seasons()).forEach(season ->
                     actualSeasons.put(normalize(season.year()), season));
             for (MasterDataFile.SeasonEntry expectedSeason : safe(expectedLeague.seasons())) {
-                canonicalSeasonCount++;
                 MasterDataFile.SeasonEntry actualSeason = actualSeasons.get(normalize(expectedSeason.year()));
                 if (actualSeason == null) {
                     missingSeasons++;
@@ -116,13 +119,11 @@ public class MasterDataReconciliationService {
             mappingConflicts += mappingCounts[1];
         }
 
-        int canonicalSeasonTotal = safe(canonical.leagues()).stream()
-                .mapToInt(league -> safe(league.seasons()).size()).sum();
         return new MasterDataReconciliationReport(
                 discrepancies.stream().anyMatch(item -> "ERROR".equals(item.severity()))
                         ? "INCONSISTENT" : dateDiscrepancies > 0 ? "REVIEW_REQUIRED" : "CONSISTENT",
                 safe(canonical.leagues()).size(), safe(persisted.leagues()).size(),
-                canonicalSeasonTotal, persistedSeasonCount,
+                safe(canonical.leagues()).stream().mapToInt(league -> safe(league.seasons()).size()).sum(), persistedSeasonCount,
                 safe(canonical.teams()).size(), safe(persisted.teams()).size(),
                 missingLeagues, missingSeasons, missingTeams,
                 missingMappings, mappingConflicts, dateDiscrepancies, List.copyOf(discrepancies));
