@@ -271,7 +271,7 @@ public class FixturePersistenceAdapter implements FixturePersistencePort {
 
     private static boolean ownsCoreFixtures(Provider provider) {
         return provider == Provider.FOOTBALL_DATA || provider == Provider.UNDER_STATS
-                || provider == Provider.FOOTBALL_DATA_UK;
+                || provider == Provider.FOOTBALL_DATA_UK || provider == Provider.SOFA_SCORE;
     }
 
     private void mergeFixtureField(List<FieldMergeCommand> commands, Match match, Provider provider,
