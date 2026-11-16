@@ -38,8 +38,7 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
         boolean routeAllowsCoreIngestion = season != null
                 && (dataSourcePolicy.isPrimary(selectedProvider, Dataset.TEAM, season)
                 || dataSourcePolicy.route(Dataset.TEAM, season).secondary().contains(selectedProvider));
-        boolean mappingOnlyProvider = selectedProvider == Provider.SOFA_SCORE;
-        if (season == null || (!routeAllowsCoreIngestion && !mappingOnlyProvider)) {
+        if (season == null || !routeAllowsCoreIngestion) {
             log.debug("Rejecting provider without team route: provider={}, season={}",
                     selectedProvider, season == null ? null : season.getYear());
             return;
@@ -51,9 +50,11 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
             teamsByExternalId.put(mapping.getExternalId(), mapping.getTeam());
             mappingByTeamId.put(mapping.getTeam().getId(), mapping);
         });
-        Set<Long> footballDataOwnedTeamIds = teamExternalIdRepository
-                .findAllByProvider(Provider.FOOTBALL_DATA).stream()
-                .map(mapping -> mapping.getTeam().getId()).collect(java.util.stream.Collectors.toSet());
+        Provider primaryProvider = dataSourcePolicy.route(Dataset.TEAM, season).primary();
+        Set<Long> primaryOwnedTeamIds = primaryProvider == null ? Set.of()
+                : teamExternalIdRepository.findAllByProvider(primaryProvider).stream()
+                        .map(mapping -> mapping.getTeam().getId())
+                        .collect(java.util.stream.Collectors.toSet());
 
         Map<String, List<Team>> teamsByCanonicalName = new HashMap<>();
         Map<String, List<Team>> teamsByMatchKey = new HashMap<>();
@@ -107,7 +108,8 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
             }
             if (team == null && selectedProvider != Provider.FOOTBALL_DATA
                     && selectedProvider != Provider.UNDER_STATS
-                    && selectedProvider != Provider.FOOTBALL_DATA_UK) {
+                    && selectedProvider != Provider.FOOTBALL_DATA_UK
+                    && selectedProvider != Provider.SOFA_SCORE) {
                 log.debug("Skipping unmapped team '{}' from {} (external ID {}). "
                                 + "Register its provider ID against the canonical MMO team before syncing.",
                         standardizedSource.name(), selectedProvider, standardizedSource.externalId());
@@ -116,7 +118,7 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
 
             boolean primaryOwner = dataSourcePolicy.isPrimary(selectedProvider, Dataset.TEAM, season);
             boolean primaryIdentityExists = team != null && team.getId() != null
-                    && footballDataOwnedTeamIds.contains(team.getId());
+                    && primaryOwnedTeamIds.contains(team.getId());
             boolean allowedFallback = dataSourcePolicy.mayFallbackForCore(
                     selectedProvider, Dataset.TEAM, season, primaryIdentityExists);
             boolean canWriteCore = primaryOwner || allowedFallback;
@@ -145,7 +147,8 @@ public class TeamPersistenceAdapter implements TeamPersistencePort {
 
             if (canWriteCore && (selectedProvider == Provider.FOOTBALL_DATA
                     || selectedProvider == Provider.UNDER_STATS
-                    || selectedProvider == Provider.FOOTBALL_DATA_UK)) {
+                    || selectedProvider == Provider.FOOTBALL_DATA_UK
+                    || selectedProvider == Provider.SOFA_SCORE)) {
                 if (team.getName() == null || team.getName().isBlank()) {
                     team.setName(teamIdentityResolver.canonicalName(standardizedSource.name()));
                 }
