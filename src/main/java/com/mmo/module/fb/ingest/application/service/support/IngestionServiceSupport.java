@@ -76,7 +76,7 @@ public class IngestionServiceSupport {
             if (season != null && season.getId() != null && season.getYear() != null
                     && season.getLeague() != null
                     && Boolean.TRUE.equals(season.getLeague().getIsActive())
-                    && dataSourcePolicy.isPrimary(provider, dataset, season)) {
+                    && isEligibleProviderSeason(provider, dataset, season)) {
                 mapped.putIfAbsent(season.getId(), season);
             }
         }
