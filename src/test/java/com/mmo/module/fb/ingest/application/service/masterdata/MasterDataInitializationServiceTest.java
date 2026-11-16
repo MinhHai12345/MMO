@@ -71,7 +71,7 @@ class MasterDataInitializationServiceTest {
 
         assertEquals("APPLIED", report.mode());
         assertEquals(6, report.leaguesExisting());
-        assertEquals(18, report.mappingsRegistered());
+        assertEquals(18, report.mappingsToRegister());
         verify(leagueRepository, times(6)).save(any(League.class));
         verify(externalIdMappingPort, times(18)).registerLeague(any(League.class), any(Provider.class), anyString());
         verifyNoInteractions(seasonRepository, teamRepository);
