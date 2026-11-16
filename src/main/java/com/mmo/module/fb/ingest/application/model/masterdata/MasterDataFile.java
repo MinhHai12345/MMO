@@ -18,7 +18,8 @@ public record MasterDataFile(
             Boolean active,
             BigDecimal popularityScore,
             List<SeasonEntry> seasons,
-            Map<String, String> externalMappings) { }
+            Map<String, String> externalMappings,
+            Map<String, String> externalIdentifies) { }
 
     public record SeasonEntry(
             String year,
