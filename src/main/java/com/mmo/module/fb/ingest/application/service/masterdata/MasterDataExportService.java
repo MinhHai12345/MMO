@@ -40,13 +40,19 @@ public class MasterDataExportService {
     @Transactional(readOnly = true)
     public MasterDataFile export() {
         Map<Long, Map<String, String>> leagueMappings = new HashMap<>();
+        Map<Long, Map<String, String>> leagueIdentifies = new HashMap<>();
         Map<Long, Map<String, String>> seasonMappings = new HashMap<>();
         Map<Long, Map<String, String>> teamMappings = new HashMap<>();
 
         for (Provider provider : Provider.values()) {
-            leagueExternalIdRepository.findAllByProvider(provider).forEach(mapping ->
-                    leagueMappings.computeIfAbsent(mapping.getLeague().getId(), ignored -> new LinkedHashMap<>())
-                            .put(provider.name(), mapping.getExternalId()));
+            leagueExternalIdRepository.findAllByProvider(provider).forEach(mapping -> {
+                leagueMappings.computeIfAbsent(mapping.getLeague().getId(), ignored -> new LinkedHashMap<>())
+                        .put(provider.name(), mapping.getExternalId());
+                if (mapping.getIdentify() != null && !mapping.getIdentify().isBlank()) {
+                    leagueIdentifies.computeIfAbsent(mapping.getLeague().getId(), ignored -> new LinkedHashMap<>())
+                            .put(provider.name(), mapping.getIdentify());
+                }
+            });
             seasonExternalIdRepository.findAllByProvider(provider).forEach(mapping ->
                     seasonMappings.computeIfAbsent(mapping.getSeason().getId(), ignored -> new LinkedHashMap<>())
                             .put(provider.name(), mapping.getExternalId()));
@@ -68,7 +74,7 @@ public class MasterDataExportService {
         }
 
         List<MasterDataFile.LeagueEntry> leagues = leagueRepository.findAll().stream()
-                .map(league -> toLeagueEntry(league, seasonsByLeague, leagueMappings))
+                .map(league -> toLeagueEntry(league, seasonsByLeague, leagueMappings, leagueIdentifies))
                 .sorted(Comparator.comparing(MasterDataFile.LeagueEntry::code,
                         Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
                 .toList();
@@ -85,7 +91,8 @@ public class MasterDataExportService {
     private MasterDataFile.LeagueEntry toLeagueEntry(
             League league,
             Map<Long, List<MasterDataFile.SeasonEntry>> seasonsByLeague,
-            Map<Long, Map<String, String>> mappings) {
+            Map<Long, Map<String, String>> mappings,
+            Map<Long, Map<String, String>> identifies) {
         List<MasterDataFile.SeasonEntry> seasons = seasonsByLeague
                 .getOrDefault(league.getId(), List.of()).stream()
                 .sorted(Comparator.comparing(MasterDataFile.SeasonEntry::year,
@@ -99,7 +106,8 @@ public class MasterDataExportService {
                 league.getIsActive(),
                 league.getPopularityScore(),
                 seasons,
-                immutableMappings(mappings.get(league.getId())));
+                immutableMappings(mappings.get(league.getId())),
+                immutableMappings(identifies.get(league.getId())));
     }
 
     private MasterDataFile.TeamEntry toTeamEntry(
