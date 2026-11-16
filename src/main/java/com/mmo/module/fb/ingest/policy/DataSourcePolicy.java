@@ -33,7 +33,8 @@ public class DataSourcePolicy {
                     .filter(provider -> provider != Provider.FOOTBALL_DATA_UK).toList());
         }
         if (route.secondary().contains(Provider.FOOTBALL_DATA_UK) && !isFootballDataUkLeague(season)) {
-            return new ProviderRoute(route.primary(), List.of());
+            return new ProviderRoute(route.primary(), route.secondary().stream()
+                    .filter(provider -> provider != Provider.FOOTBALL_DATA_UK).toList());
         }
         return route;
     }
@@ -140,11 +141,11 @@ public class DataSourcePolicy {
 
     private static ProviderRoute coreRoute(int startYear) {
         if (startYear >= UK_CORE_FROM && startYear < FOOTBALL_DATA_CORE_FROM) {
-            return new ProviderRoute(Provider.FOOTBALL_DATA_UK, List.of());
+            return new ProviderRoute(Provider.FOOTBALL_DATA_UK, List.of(Provider.SOFA_SCORE));
         }
         if (startYear >= FOOTBALL_DATA_CORE_FROM) {
-            return new ProviderRoute(Provider.FOOTBALL_DATA, List.of(Provider.FOOTBALL_DATA_UK));
+            return new ProviderRoute(Provider.FOOTBALL_DATA, List.of(Provider.FOOTBALL_DATA_UK, Provider.SOFA_SCORE));
         }
-        return new ProviderRoute(null, List.of());
+        return new ProviderRoute(null, List.of(Provider.SOFA_SCORE));
     }
 }
