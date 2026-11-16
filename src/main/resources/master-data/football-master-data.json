@@ -1,4 +1,119 @@
 {
-  "leagues": [],
+  "leagues": [
+    {
+      "code": "premier-league",
+      "name": "Premier League",
+      "country": "England",
+      "logoUrl": null,
+      "active": true,
+      "popularityScore": 0,
+      "seasons": [],
+      "externalMappings": {
+        "SOFA_SCORE": "17",
+        "FOOTBALL_DATA": "2021",
+        "FOOTBALL_DATA_UK": "E0"
+      },
+      "externalIdentifies": {
+        "SOFA_SCORE": "17",
+        "FOOTBALL_DATA": "PL",
+        "FOOTBALL_DATA_UK": "E0"
+      }
+    },
+    {
+      "code": "championship",
+      "name": "Championship",
+      "country": "England",
+      "logoUrl": null,
+      "active": true,
+      "popularityScore": 0,
+      "seasons": [],
+      "externalMappings": {
+        "SOFA_SCORE": "18",
+        "FOOTBALL_DATA": "2016",
+        "FOOTBALL_DATA_UK": "E1"
+      },
+      "externalIdentifies": {
+        "SOFA_SCORE": "18",
+        "FOOTBALL_DATA": "ELC",
+        "FOOTBALL_DATA_UK": "E1"
+      }
+    },
+    {
+      "code": "bundesliga",
+      "name": "Bundesliga",
+      "country": "Germany",
+      "logoUrl": null,
+      "active": true,
+      "popularityScore": 0,
+      "seasons": [],
+      "externalMappings": {
+        "SOFA_SCORE": "35",
+        "FOOTBALL_DATA": "2002",
+        "FOOTBALL_DATA_UK": "D1"
+      },
+      "externalIdentifies": {
+        "SOFA_SCORE": "35",
+        "FOOTBALL_DATA": "BL1",
+        "FOOTBALL_DATA_UK": "D1"
+      }
+    },
+    {
+      "code": "serie-a",
+      "name": "Serie A",
+      "country": "Italy",
+      "logoUrl": null,
+      "active": true,
+      "popularityScore": 0,
+      "seasons": [],
+      "externalMappings": {
+        "SOFA_SCORE": "23",
+        "FOOTBALL_DATA": "2019",
+        "FOOTBALL_DATA_UK": "I1"
+      },
+      "externalIdentifies": {
+        "SOFA_SCORE": "23",
+        "FOOTBALL_DATA": "SA",
+        "FOOTBALL_DATA_UK": "I1"
+      }
+    },
+    {
+      "code": "la-liga",
+      "name": "LaLiga",
+      "country": "Spain",
+      "logoUrl": null,
+      "active": true,
+      "popularityScore": 0,
+      "seasons": [],
+      "externalMappings": {
+        "SOFA_SCORE": "8",
+        "FOOTBALL_DATA": "2014",
+        "FOOTBALL_DATA_UK": "SP1"
+      },
+      "externalIdentifies": {
+        "SOFA_SCORE": "8",
+        "FOOTBALL_DATA": "PD",
+        "FOOTBALL_DATA_UK": "SP1"
+      }
+    },
+    {
+      "code": "ligue-1",
+      "name": "Ligue 1",
+      "country": "France",
+      "logoUrl": null,
+      "active": true,
+      "popularityScore": 0,
+      "seasons": [],
+      "externalMappings": {
+        "SOFA_SCORE": "34",
+        "FOOTBALL_DATA": "2015",
+        "FOOTBALL_DATA_UK": "F1"
+      },
+      "externalIdentifies": {
+        "SOFA_SCORE": "34",
+        "FOOTBALL_DATA": "FL1",
+        "FOOTBALL_DATA_UK": "F1"
+      }
+    }
+  ],
   "teams": []
 }
