@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mmo.module.fb.domain.league.entity.League;
 import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
 import com.mmo.module.fb.domain.league.entity.Season;
+import com.mmo.module.fb.domain.league.entity.SeasonExternalId;
 import com.mmo.module.fb.domain.league.repository.LeagueRepository;
 import com.mmo.module.fb.domain.league.repository.SeasonRepository;
 import com.mmo.module.fb.domain.team.repository.TeamRepository;
@@ -12,6 +13,7 @@ import com.mmo.module.fb.ingest.enums.Provider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
