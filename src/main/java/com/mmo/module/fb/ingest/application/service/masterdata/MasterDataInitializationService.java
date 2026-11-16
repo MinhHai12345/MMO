@@ -55,8 +55,12 @@ public class MasterDataInitializationService {
 
         for (MasterDataFile.LeagueEntry entry : safe(data.leagues())) {
             League league = resolveLeague(entry, true);
-            registerMappings(entry.externalMappings(), (provider, externalId) ->
-                    externalIdMappingPort.registerLeague(league, provider, externalId));
+            registerMappings(entry.externalMappings(), (provider, externalId) -> {
+                var mapping = externalIdMappingPort.registerLeague(league, provider, externalId);
+                if (blank(mapping.getIdentify())) {
+                    mapping.setIdentify(externalId);
+                }
+            });
 
             for (MasterDataFile.SeasonEntry seasonEntry : safe(entry.seasons())) {
                 Season season = seasonRepository.findByLeague_IdAndYear(league.getId(), seasonEntry.year())
