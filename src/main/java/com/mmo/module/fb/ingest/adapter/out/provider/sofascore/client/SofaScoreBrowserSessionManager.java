@@ -54,19 +54,19 @@ public class SofaScoreBrowserSessionManager {
             Page page = context.newPage();
             pageUses.incrementAndGet();
             activePages.incrementAndGet();
-            page.onRequest(request -> log.info(
-                    "[SOFA_SCORE][NETWORK][REQUEST] method={}, resourceType={}, url={}",
-                    request.method(), request.resourceType(), request.url()));
-            page.onResponse(response -> {
-                var request = response.request();
-                log.info("[SOFA_SCORE][NETWORK][RESPONSE] status={}, method={}, resourceType={}, url={}",
-                        response.status(), request.method(), request.resourceType(), response.url());
-            });
-            page.onRequestFailed(request -> {
-                String failure = request.failure() == null ? "unknown" : request.failure();
-                log.warn("[SOFA_SCORE][NETWORK][FAILED] method={}, resourceType={}, url={}, failure={}",
-                        request.method(), request.resourceType(), request.url(), failure);
-            });
+//            page.onRequest(request -> log.info(
+//                    "[SOFA_SCORE][NETWORK][REQUEST] method={}, resourceType={}, url={}",
+//                    request.method(), request.resourceType(), request.url()));
+//            page.onResponse(response -> {
+//                var request = response.request();
+//                log.info("[SOFA_SCORE][NETWORK][RESPONSE] status={}, method={}, resourceType={}, url={}",
+//                        response.status(), request.method(), request.resourceType(), response.url());
+//            });
+//            page.onRequestFailed(request -> {
+//                String failure = request.failure() == null ? "unknown" : request.failure();
+//                log.warn("[SOFA_SCORE][NETWORK][FAILED] method={}, resourceType={}, url={}, failure={}",
+//                        request.method(), request.resourceType(), request.url(), failure);
+//            });
             leaseTransferred = true;
             return page;
         } catch (RuntimeException exception) {
