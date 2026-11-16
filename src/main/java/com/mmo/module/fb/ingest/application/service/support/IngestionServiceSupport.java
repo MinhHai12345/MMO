@@ -55,7 +55,7 @@ public class IngestionServiceSupport {
         for (Season season : seasonQueryPort.findMappedSeasons(provider)) {
             if (season != null && season.isActive() && season.getYear() != null
                 && season.getLeague() != null && Boolean.TRUE.equals(season.getLeague().getIsActive())
-                && dataSourcePolicy.isPrimary(provider, dataset, season)) {
+                && isEligibleProviderSeason(provider, dataset, season)) {
                 mapped.putIfAbsent(season.getId(), season);
             }
         }
@@ -91,7 +91,17 @@ public class IngestionServiceSupport {
     public boolean hasAnySeasonOwnedBy(Provider provider, Dataset dataset, boolean includeHistorical) {
         return seasonQueryPort.findAllForActiveLeagues().stream()
                 .filter(season -> includeHistorical || season.isActive())
-                .anyMatch(season -> dataSourcePolicy.isPrimary(provider, dataset, season));
+                .anyMatch(season -> isEligibleProviderSeason(provider, dataset, season));
+    }
+
+
+    private boolean isEligibleProviderSeason(Provider provider, Dataset dataset, Season season) {
+        if (dataSourcePolicy.isPrimary(provider, dataset, season)) return true;
+        // SofaScore is the controlled fallback for core datasets. It may ingest only
+        // seasons for which it has a provider mapping; persistence checks whether the
+        // primary source already owns each canonical entity before writing core fields.
+        return provider == Provider.SOFA_SCORE
+                && dataSourcePolicy.route(dataset, season).secondary().contains(provider);
     }
 
     public List<Season> standingsSeasonsToSync(Provider provider) {
