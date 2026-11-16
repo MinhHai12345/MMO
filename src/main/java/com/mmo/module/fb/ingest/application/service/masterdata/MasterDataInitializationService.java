@@ -57,9 +57,9 @@ public class MasterDataInitializationService {
             League league = resolveLeague(entry, true);
             registerMappings(entry.externalMappings(), (provider, externalId) -> {
                 var mapping = externalIdMappingPort.registerLeague(league, provider, externalId);
-                if (blank(mapping.getIdentify())) {
-                    mapping.setIdentify(externalId);
-                }
+                String identify = entry.externalIdentifies() == null
+                        ? null : entry.externalIdentifies().get(provider.name());
+                mapping.setIdentify(blank(identify) ? externalId : identify.trim());
             });
 
             for (MasterDataFile.SeasonEntry seasonEntry : safe(entry.seasons())) {
