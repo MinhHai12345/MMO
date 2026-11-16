@@ -61,6 +61,7 @@ class MasterDataInitializationServiceTest {
     @Test
     void applyShouldCreateCanonicalLeaguesAndRegisterVerifiedProviderMappings() {
         when(leagueRepository.save(any(League.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(seasonRepository.save(any(Season.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(externalIdMappingPort.registerLeague(any(League.class), any(Provider.class), anyString()))
                 .thenAnswer(invocation -> LeagueExternalId.builder()
                         .league(invocation.getArgument(0))
