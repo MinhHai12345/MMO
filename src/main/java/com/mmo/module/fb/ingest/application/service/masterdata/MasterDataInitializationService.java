@@ -202,7 +202,7 @@ public class MasterDataInitializationService {
         if (blank(code)) return null;
         List<Team> matches = teamRepository.findAllBySlugIgnoreCase(code.trim());
         if (matches.size() > 1) throw new IllegalStateException("Ambiguous canonical team code: " + code);
-        return matches.isEmpty() ? null : matches.getFirst();
+        return matches.isEmpty() ? null : matches.get(0);
     }
 
     private void registerMappings(Map<String, String> mappings, MappingRegistrar registrar) {
