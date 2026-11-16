@@ -3,6 +3,7 @@ package com.mmo.module.fb.ingest.application.service.masterdata;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mmo.module.fb.domain.league.entity.League;
 import com.mmo.module.fb.domain.league.entity.LeagueExternalId;
+import com.mmo.module.fb.domain.league.entity.Season;
 import com.mmo.module.fb.domain.league.repository.LeagueRepository;
 import com.mmo.module.fb.domain.league.repository.SeasonRepository;
 import com.mmo.module.fb.domain.team.repository.TeamRepository;
@@ -47,9 +48,9 @@ class MasterDataInitializationServiceTest {
 
         assertEquals("DRY_RUN", report.mode());
         assertEquals(6, report.leaguesToCreate());
-        assertEquals(0, report.seasonsToCreate());
+        assertEquals(78, report.seasonsToCreate());
         assertEquals(0, report.teamsToCreate());
-        assertEquals(18, report.mappingsToRegister());
+        assertEquals(174, report.mappingsToRegister());
         org.junit.jupiter.api.Assertions.assertTrue(report.valid(), report.validationErrors().toString());
 
         verify(leagueRepository, never()).save(any(League.class));
@@ -71,9 +72,12 @@ class MasterDataInitializationServiceTest {
 
         assertEquals("APPLIED", report.mode());
         assertEquals(6, report.leaguesExisting());
-        assertEquals(18, report.mappingsToRegister());
+        assertEquals(78, report.seasonsExisting());
+        assertEquals(174, report.mappingsToRegister());
         verify(leagueRepository, times(6)).save(any(League.class));
         verify(externalIdMappingPort, times(18)).registerLeague(any(League.class), any(Provider.class), anyString());
-        verifyNoInteractions(seasonRepository, teamRepository);
+        verify(seasonRepository, times(78)).save(any(Season.class));
+        verify(externalIdMappingPort, times(156)).registerSeason(any(Season.class), any(Provider.class), anyString());
+        verifyNoInteractions(teamRepository);
     }
 }
