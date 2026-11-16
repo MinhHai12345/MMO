@@ -126,6 +126,9 @@ public class MasterDataInitializationService {
         if (data == null) return List.of("Master data document is empty");
         Set<String> leagueCodes = new HashSet<>();
         Set<String> teamCodes = new HashSet<>();
+        Set<String> leagueExternalIds = new HashSet<>();
+        Set<String> seasonExternalIds = new HashSet<>();
+        Set<String> teamExternalIds = new HashSet<>();
         for (MasterDataFile.LeagueEntry league : safe(data.leagues())) {
             if (blank(league.code())) errors.add("League code is required");
             else if (!leagueCodes.add(league.code().trim().toLowerCase(Locale.ROOT))) errors.add("Duplicate league code: " + league.code());
@@ -136,6 +139,7 @@ public class MasterDataInitializationService {
                 errors.add("League name already exists with a different code: " + league.name());
             }
             validateMappings(league.externalMappings(), "league " + league.code(), errors);
+            validateUniqueMappingIds(league.externalMappings(), leagueExternalIds, "league " + league.code(), errors);
             Set<String> years = new HashSet<>();
             for (MasterDataFile.SeasonEntry season : safe(league.seasons())) {
                 if (blank(season.year())) errors.add("Season year is required: " + league.code());
@@ -144,6 +148,8 @@ public class MasterDataInitializationService {
                     errors.add("Season endDate precedes startDate: " + league.code() + "/" + season.year());
                 }
                 validateMappings(season.externalMappings(), "season " + league.code() + "/" + season.year(), errors);
+                validateUniqueMappingIds(season.externalMappings(), seasonExternalIds,
+                        "season " + league.code() + "/" + season.year(), errors);
             }
         }
         for (MasterDataFile.TeamEntry team : safe(data.teams())) {
@@ -156,6 +162,7 @@ public class MasterDataInitializationService {
                 errors.add("Team name already exists with a different code: " + team.name());
             }
             validateMappings(team.externalMappings(), "team " + team.code(), errors);
+            validateUniqueMappingIds(team.externalMappings(), teamExternalIds, "team " + team.code(), errors);
         }
         validateExistingMappings(data, errors);
         return errors;
@@ -226,6 +233,20 @@ public class MasterDataInitializationService {
         } catch (RuntimeException ex) {
             return null;
         }
+    }
+
+    private void validateUniqueMappingIds(Map<String, String> mappings, Set<String> seen,
+                                          String owner, List<String> errors) {
+        if (mappings == null) return;
+        mappings.forEach((providerName, externalId) -> {
+            if (blank(providerName) || blank(externalId)) return;
+            Provider provider = parseProvider(providerName);
+            if (provider == null) return;
+            String key = provider.name() + ":" + externalId.trim();
+            if (!seen.add(key)) {
+                errors.add("Duplicate provider external ID " + key + " in " + owner);
+            }
+        });
     }
 
     private void validateMappings(Map<String, String> mappings, String owner, List<String> errors) {
