@@ -64,14 +64,32 @@ public class MasterDataInitializationService {
 
             for (MasterDataFile.SeasonEntry seasonEntry : safe(entry.seasons())) {
                 Season season = seasonRepository.findByLeague_IdAndYear(league.getId(), seasonEntry.year())
-                        .orElseGet(() -> seasonRepository.save(Season.builder()
-                                .league(league)
-                                .year(seasonEntry.year())
-                                .isCurrent(Boolean.TRUE.equals(seasonEntry.current()))
-                                .isActive(Boolean.TRUE.equals(seasonEntry.active()))
-                                .startDate(seasonEntry.startDate())
-                                .endDate(seasonEntry.endDate())
-                                .build()));
+                        .orElse(null);
+                if (season == null) {
+                    season = seasonRepository.save(Season.builder()
+                            .league(league)
+                            .year(seasonEntry.year())
+                            .isCurrent(Boolean.TRUE.equals(seasonEntry.current()))
+                            .isActive(Boolean.TRUE.equals(seasonEntry.active()))
+                            .startDate(seasonEntry.startDate())
+                            .endDate(seasonEntry.endDate())
+                            .build());
+                } else {
+                    // Bootstrap dates are defaults: backfill missing values without replacing
+                    // dates already maintained by provider synchronization or operations.
+                    boolean datesUpdated = false;
+                    if (season.getStartDate() == null && seasonEntry.startDate() != null) {
+                        season.setStartDate(seasonEntry.startDate());
+                        datesUpdated = true;
+                    }
+                    if (season.getEndDate() == null && seasonEntry.endDate() != null) {
+                        season.setEndDate(seasonEntry.endDate());
+                        datesUpdated = true;
+                    }
+                    if (datesUpdated) {
+                        season = seasonRepository.save(season);
+                    }
+                }
                 registerMappings(seasonEntry.externalMappings(), (provider, externalId) ->
                         externalIdMappingPort.registerSeason(season, provider, externalId));
             }
