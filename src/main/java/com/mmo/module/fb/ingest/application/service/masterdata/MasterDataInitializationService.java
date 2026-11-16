@@ -90,8 +90,9 @@ public class MasterDataInitializationService {
                         season = seasonRepository.save(season);
                     }
                 }
+                Season resolvedSeason = season;
                 registerMappings(seasonEntry.externalMappings(), (provider, externalId) ->
-                        externalIdMappingPort.registerSeason(season, provider, externalId));
+                        externalIdMappingPort.registerSeason(resolvedSeason, provider, externalId));
             }
         }
 
