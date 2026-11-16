@@ -46,7 +46,7 @@ class ProviderMasterDataDiscoveryServiceTest {
 
         assertThat(report.status()).isEqualTo("COMPLETED");
         assertThat(report.providers()).hasSize(1);
-        assertThat(report.providers().getFirst().leagues()).hasSize(1);
+        assertThat(report.providers().get(0).leagues()).hasSize(1);
         assertThat(report.providers().getFirst().seasons()).hasSize(1);
         assertThat(report.providers().getFirst().teams()).extracting(ProviderTeam::externalId)
                 .containsExactly("42");
