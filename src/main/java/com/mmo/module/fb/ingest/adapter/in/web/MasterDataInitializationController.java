@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Map;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/fb/master-data/initialize")
@@ -33,7 +34,7 @@ public class MasterDataInitializationController {
         if (!constantTimeEquals(configuredApiKey, suppliedApiKey)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid ingestion admin key."));
         }
-        String mode = request == null || request.mode() == null ? "DRY_RUN" : request.mode().trim().toUpperCase();
+        String mode = request == null || request.mode() == null ? "DRY_RUN" : request.mode().trim().toUpperCase(Locale.ROOT);
         if ("DRY_RUN".equals(mode)) {
             MasterDataInitializationReport report = initializationService.preview();
             return report.valid() ? ResponseEntity.ok(report) : ResponseEntity.badRequest().body(report);
