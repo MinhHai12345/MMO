@@ -140,11 +140,11 @@ public class DataSourcePolicy {
 
     private static ProviderRoute coreRoute(int startYear) {
         if (startYear >= UK_CORE_FROM && startYear < FOOTBALL_DATA_CORE_FROM) {
-            return new ProviderRoute(Provider.FOOTBALL_DATA_UK, List.of());
+            return new ProviderRoute(Provider.FOOTBALL_DATA_UK, List.of(Provider.SOFA_SCORE));
         }
         if (startYear >= FOOTBALL_DATA_CORE_FROM) {
-            return new ProviderRoute(Provider.FOOTBALL_DATA, List.of(Provider.FOOTBALL_DATA_UK));
+            return new ProviderRoute(Provider.FOOTBALL_DATA, List.of(Provider.FOOTBALL_DATA_UK, Provider.SOFA_SCORE));
         }
-        return new ProviderRoute(null, List.of());
+        return new ProviderRoute(null, List.of(Provider.SOFA_SCORE));
     }
 }
