@@ -169,7 +169,8 @@ public class MasterDataInitializationService {
                 if (mappings == null) continue;
                 mappings.forEach((providerName, externalId) -> {
                     if (blank(providerName) || blank(externalId)) return;
-                    Provider provider = Provider.valueOf(providerName.trim().toUpperCase(Locale.ROOT));
+                    Provider provider = parseProvider(providerName);
+                    if (provider == null) return;
                     Season mapped = externalIdMappingPort.findSeason(provider, externalId.trim()).orElse(null);
                     if (mapped != null && (season == null || !sameEntity(mapped, season))) {
                         errors.add("Season external ID is already assigned to another canonical season: "
@@ -184,7 +185,8 @@ public class MasterDataInitializationService {
             if (mappings == null) continue;
             mappings.forEach((providerName, externalId) -> {
                 if (blank(providerName) || blank(externalId)) return;
-                Provider provider = Provider.valueOf(providerName.trim().toUpperCase(Locale.ROOT));
+                Provider provider = parseProvider(providerName);
+                if (provider == null) return;
                 Team mapped = externalIdMappingPort.findTeam(provider, externalId.trim()).orElse(null);
                 if (mapped != null && (team == null || !sameEntity(mapped, team))) {
                     errors.add("Team external ID is already assigned to another canonical team: "
@@ -199,7 +201,8 @@ public class MasterDataInitializationService {
         if (mappings == null) return;
         mappings.forEach((providerName, externalId) -> {
             if (blank(providerName) || blank(externalId)) return;
-            Provider provider = Provider.valueOf(providerName.trim().toUpperCase(Locale.ROOT));
+            Provider provider = parseProvider(providerName);
+            if (provider == null) return;
             League mapped = externalIdMappingPort.findLeague(provider, externalId.trim()).orElse(null);
             if (mapped != null && (league == null || !sameEntity(mapped, league))) {
                 errors.add("League external ID is already assigned to another canonical league: "
@@ -212,6 +215,14 @@ public class MasterDataInitializationService {
                                com.mmo.core.entity.AbstractEntity right) {
         return left != null && right != null && left.getId() != null
                 && left.getId().equals(right.getId());
+    }
+
+    private Provider parseProvider(String providerName) {
+        try {
+            return Provider.valueOf(providerName.trim().toUpperCase(Locale.ROOT));
+        } catch (RuntimeException ex) {
+            return null;
+        }
     }
 
     private void validateMappings(Map<String, String> mappings, String owner, List<String> errors) {
