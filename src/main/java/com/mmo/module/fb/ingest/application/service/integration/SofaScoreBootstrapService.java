@@ -48,17 +48,18 @@ public class SofaScoreBootstrapService implements SofaScoreBootstrapUseCase {
         crawlerHealthStatePort.markRunning(BOOTSTRAP_STATE_NAME, Instant.now());
 
         try {
-            log.info("Starting SofaScore cold-start import: leagues/seasons -> current-season teams -> fixtures");
+            log.info("Starting SofaScore full import: leagues/seasons -> mapped-season teams -> mapped-season fixtures");
             leagueIngestionService.syncLeaguesForProvider(PROVIDER);
             requireMappings("league", mappingStatePort.countLeagues());
             requireMappings("season", mappingStatePort.countSeasons());
 
-            teamIngestionService.syncTeamsForProvider(PROVIDER);
+            teamIngestionService.syncAllSeasonsForProvider(PROVIDER);
             requireMappings("team", mappingStatePort.countTeams());
 
-            // Null date bounds intentionally import the complete current season, not just the
-            // next 14 days, so finished matches become eligible for statistics/xG ingestion.
-            fixtureIngestionService.syncFixturesForProvider(PROVIDER, null, null);
+            // Backfill every SofaScore-mapped season. The fixture persistence adapter
+            // applies primary-provider ownership per canonical match, so historical and
+            // modern seasons can be imported without overwriting an established source.
+            fixtureIngestionService.syncAllSeasonsForProvider(PROVIDER, null, null);
             long currentSeasonFixtures = countCurrentSeasonFixtures();
             requireMappings("current-season fixture", currentSeasonFixtures);
 
