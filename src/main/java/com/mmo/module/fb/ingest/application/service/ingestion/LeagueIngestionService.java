@@ -36,15 +36,10 @@ public class LeagueIngestionService implements LeagueIngestionUseCase {
         ingestionSupport.requireProviderEnabled(selectedProvider, "league");
         List<ProviderLeague> leagues;
         try {
-            // Football-Data competition IDs and SofaScore tournament IDs belong to different
-            // namespaces. Never pass the Football-Data allow-list to SofaScore: discover its
-            // tournament catalogue and let LeaguePersistencePort match canonical leagues by
-            // name/country before creating provider mappings.
-            List<Long> externalLeagueIds = selectedProvider == Provider.SOFA_SCORE
-                    || selectedProvider == Provider.UNDER_STATS
-                    ? List.of()
-                    : List.of(2000L, 2001L, 2002L, 2014L, 2015L, 2019L, 2016L, 2021L);
-            leagues = providerRegistry.league(selectedProvider).fetchLeagues(externalLeagueIds);
+            // An empty ID list means catalogue discovery for every registered provider.
+            // Provider adapters own their native discovery strategy and ID namespace;
+            // canonical matching and ownership remain the responsibility of persistence.
+            leagues = providerRegistry.league(selectedProvider).fetchLeagues(List.of());
         } catch (ProviderAccessException ex) {
             if (!ex.is(ProviderAccessException.Kind.RESOURCE_RESTRICTED)
                     || selectedProvider != Provider.FOOTBALL_DATA) throw ex;
