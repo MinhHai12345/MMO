@@ -33,7 +33,8 @@ public class DataSourcePolicy {
                     .filter(provider -> provider != Provider.FOOTBALL_DATA_UK).toList());
         }
         if (route.secondary().contains(Provider.FOOTBALL_DATA_UK) && !isFootballDataUkLeague(season)) {
-            return new ProviderRoute(route.primary(), List.of());
+            return new ProviderRoute(route.primary(), route.secondary().stream()
+                    .filter(provider -> provider != Provider.FOOTBALL_DATA_UK).toList());
         }
         return route;
     }
