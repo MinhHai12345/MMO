@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Locale;
 
 @Slf4j
 @Service
@@ -124,8 +125,13 @@ public class MasterDataInitializationService {
         Set<String> teamCodes = new HashSet<>();
         for (MasterDataFile.LeagueEntry league : safe(data.leagues())) {
             if (blank(league.code())) errors.add("League code is required");
-            else if (!leagueCodes.add(league.code().trim().toLowerCase())) errors.add("Duplicate league code: " + league.code());
-            if (blank(league.name())) errors.add("League name is required: " + league.code());
+            else if (!leagueCodes.add(league.code().trim().toLowerCase(Locale.ROOT))) errors.add("Duplicate league code: " + league.code());
+            if (blank(league.name())) {
+                errors.add("League name is required: " + league.code());
+            } else if (!blank(league.code()) && findLeague(league.code()) == null
+                    && !leagueRepository.findAllByNameIgnoreCase(league.name().trim()).isEmpty()) {
+                errors.add("League name already exists with a different code: " + league.name());
+            }
             validateMappings(league.externalMappings(), "league " + league.code(), errors);
             Set<String> years = new HashSet<>();
             for (MasterDataFile.SeasonEntry season : safe(league.seasons())) {
@@ -139,18 +145,80 @@ public class MasterDataInitializationService {
         }
         for (MasterDataFile.TeamEntry team : safe(data.teams())) {
             if (blank(team.code())) errors.add("Team code is required");
-            else if (!teamCodes.add(team.code().trim().toLowerCase())) errors.add("Duplicate team code: " + team.code());
-            if (blank(team.name())) errors.add("Team name is required: " + team.code());
+            else if (!teamCodes.add(team.code().trim().toLowerCase(Locale.ROOT))) errors.add("Duplicate team code: " + team.code());
+            if (blank(team.name())) {
+                errors.add("Team name is required: " + team.code());
+            } else if (!blank(team.code()) && findTeam(team.code()) == null
+                    && !teamRepository.findAllByNameIgnoreCase(team.name().trim()).isEmpty()) {
+                errors.add("Team name already exists with a different code: " + team.name());
+            }
             validateMappings(team.externalMappings(), "team " + team.code(), errors);
         }
+        validateExistingMappings(data, errors);
         return errors;
+    }
+
+    private void validateExistingMappings(MasterDataFile data, List<String> errors) {
+        for (MasterDataFile.LeagueEntry entry : safe(data.leagues())) {
+            League league = findLeague(entry.code());
+            validateLeagueMappings(league, entry.externalMappings(), "league " + entry.code(), errors);
+            for (MasterDataFile.SeasonEntry seasonEntry : safe(entry.seasons())) {
+                Season season = league == null ? null : seasonRepository
+                        .findByLeague_IdAndYear(league.getId(), seasonEntry.year()).orElse(null);
+                Map<String, String> mappings = seasonEntry.externalMappings();
+                if (mappings == null) continue;
+                mappings.forEach((providerName, externalId) -> {
+                    if (blank(providerName) || blank(externalId)) return;
+                    Provider provider = Provider.valueOf(providerName.trim().toUpperCase(Locale.ROOT));
+                    Season mapped = externalIdMappingPort.findSeason(provider, externalId.trim()).orElse(null);
+                    if (mapped != null && (season == null || !sameEntity(mapped, season))) {
+                        errors.add("Season external ID is already assigned to another canonical season: "
+                                + provider + "/" + externalId);
+                    }
+                });
+            }
+        }
+        for (MasterDataFile.TeamEntry entry : safe(data.teams())) {
+            Team team = findTeam(entry.code());
+            Map<String, String> mappings = entry.externalMappings();
+            if (mappings == null) continue;
+            mappings.forEach((providerName, externalId) -> {
+                if (blank(providerName) || blank(externalId)) return;
+                Provider provider = Provider.valueOf(providerName.trim().toUpperCase(Locale.ROOT));
+                Team mapped = externalIdMappingPort.findTeam(provider, externalId.trim()).orElse(null);
+                if (mapped != null && (team == null || !sameEntity(mapped, team))) {
+                    errors.add("Team external ID is already assigned to another canonical team: "
+                            + provider + "/" + externalId);
+                }
+            });
+        }
+    }
+
+    private void validateLeagueMappings(League league, Map<String, String> mappings,
+                                        String owner, List<String> errors) {
+        if (mappings == null) return;
+        mappings.forEach((providerName, externalId) -> {
+            if (blank(providerName) || blank(externalId)) return;
+            Provider provider = Provider.valueOf(providerName.trim().toUpperCase(Locale.ROOT));
+            League mapped = externalIdMappingPort.findLeague(provider, externalId.trim()).orElse(null);
+            if (mapped != null && (league == null || !sameEntity(mapped, league))) {
+                errors.add("League external ID is already assigned to another canonical league: "
+                        + provider + "/" + externalId + " in " + owner);
+            }
+        });
+    }
+
+    private boolean sameEntity(com.mmo.core.entity.AbstractEntity left,
+                               com.mmo.core.entity.AbstractEntity right) {
+        return left != null && right != null && left.getId() != null
+                && left.getId().equals(right.getId());
     }
 
     private void validateMappings(Map<String, String> mappings, String owner, List<String> errors) {
         if (mappings == null) return;
         mappings.forEach((providerName, externalId) -> {
             try {
-                Provider.valueOf(providerName.trim().toUpperCase());
+                Provider.valueOf(providerName.trim().toUpperCase(Locale.ROOT));
             } catch (RuntimeException ex) {
                 errors.add("Unknown provider '" + providerName + "' in " + owner);
             }
@@ -208,7 +276,7 @@ public class MasterDataInitializationService {
     private void registerMappings(Map<String, String> mappings, MappingRegistrar registrar) {
         if (mappings == null) return;
         mappings.forEach((providerName, externalId) ->
-                registrar.register(Provider.valueOf(providerName.trim().toUpperCase()), externalId.trim()));
+                registrar.register(Provider.valueOf(providerName.trim().toUpperCase(Locale.ROOT)), externalId.trim()));
     }
 
     private int mappingCount(Map<String, String> mappings) {
