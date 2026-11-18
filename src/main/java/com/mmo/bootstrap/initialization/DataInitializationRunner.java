@@ -1,6 +1,6 @@
 package com.mmo.bootstrap.initialization;
 
-import com.mmo.core.initialize.DataInitializer;
+
 
 import com.mmo.AppProperties;
 import lombok.RequiredArgsConstructor;
