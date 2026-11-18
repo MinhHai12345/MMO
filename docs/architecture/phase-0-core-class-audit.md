@@ -158,7 +158,16 @@ The following checks are mandatory and remain outstanding:
 5. **Batch E — Typed mapping:** replace global dynamic converter with explicit mappers in the owning modules, with mapping tests.
 6. **Batch F — Remove `com.mmo.core`:** only after all 44 files have been moved or retired and repository-wide search confirms no package references.
 
-## 7. Scope and safety
+## 7. Refactoring progress on this branch
+
+- [x] Move `TelegramConfiguration` from `com.mmo.core.configuration` to `com.mmo.infrastructure.telegram`; preserve the `telegramClient` bean name and token property binding.
+- [ ] Move global response models/handler after API contract inventory.
+- [ ] Move JPA base classes after subclass/reference inventory.
+- [ ] Converge legacy CronJob ownership with workflow scheduling after persisted job inventory.
+- [ ] Replace dynamic converter with typed module-owned mappers after consumer mapping.
+- [ ] Retire generic importer only after endpoint, Spring Batch and data-consumer checks.
+
+## 8. Scope and safety
 
 - This document adds no source-code, API, Quartz, schema or data changes.
 - No class is approved for deletion by this audit alone.
