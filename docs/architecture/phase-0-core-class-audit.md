@@ -8,7 +8,7 @@
 
 ## 1. Executive result
 
-The current `com.mmo.core` package contains **44 Java source files**. It is not a coherent business core: it combines a legacy generic importer, a dynamic mapper, a database-backed Quartz job registry, global REST response transformation, JPA base classes, bootstrap initialization and a small number of technical configurations.
+At the audit baseline, `com.mmo.core` contained **44 Java source files**. Two configuration classes have since been moved to infrastructure, leaving **42 Java source files** in `core` on this refactoring branch. It is not a coherent business core: it combines a legacy generic importer, a dynamic mapper, a database-backed Quartz job registry, global REST response transformation, JPA base classes, bootstrap initialization and a small number of technical configurations.
 
 The target architecture remains **Modular Monolith + Layered Architecture**. The target does not contain a catch-all `core` package.
 
@@ -18,7 +18,7 @@ This audit is a **class inventory and responsibility assessment**. It is not yet
 
 | Responsibility | Files | Initial assessment |
 |---|---:|---|
-| Configuration | 2 | Split by technical ownership |
+| Configuration | 2 at baseline (0 remaining) | Both moved to infrastructure |
 | Generic converter | 4 | Replace with typed module-owned mappers where active |
 | Legacy cron-job subsystem | 11 | Compare with current workflow + Quartz usage before retirement |
 | JPA base entities | 2 | Move only after inheritance and entity-scan audit |
@@ -161,6 +161,7 @@ The following checks are mandatory and remain outstanding:
 ## 7. Refactoring progress on this branch
 
 - [x] Move `TelegramConfiguration` from `com.mmo.core.configuration` to `com.mmo.infrastructure.telegram`; preserve the `telegramClient` bean name and token property binding.
+- [x] Move `SpringDataRestConfiguration` from `com.mmo.core.configuration` to `com.mmo.infrastructure.web`; preserve page/sort parameter names, JSON media type, default page size, response-on-write behavior and entity ID exposure.
 - [ ] Move global response models/handler after API contract inventory.
 - [ ] Move JPA base classes after subclass/reference inventory.
 - [ ] Converge legacy CronJob ownership with workflow scheduling after persisted job inventory.
