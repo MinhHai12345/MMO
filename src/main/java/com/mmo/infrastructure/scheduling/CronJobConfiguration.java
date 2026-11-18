@@ -1,4 +1,4 @@
-package com.mmo.core.configuration;
+package com.mmo.infrastructure.scheduling;
 
 import com.mmo.core.cronjob.job.CronJobFactory;
 import com.mmo.core.cronjob.listener.JobStateListener;

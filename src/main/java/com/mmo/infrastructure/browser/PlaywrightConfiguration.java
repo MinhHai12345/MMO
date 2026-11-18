@@ -1,4 +1,4 @@
-package com.mmo.core.configuration;
+package com.mmo.infrastructure.browser;
 
 import com.microsoft.playwright.Playwright;
 import org.springframework.context.annotation.Bean;

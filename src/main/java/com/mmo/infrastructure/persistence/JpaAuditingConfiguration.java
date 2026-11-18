@@ -1,4 +1,4 @@
-package com.mmo.core.configuration;
+package com.mmo.infrastructure.persistence;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

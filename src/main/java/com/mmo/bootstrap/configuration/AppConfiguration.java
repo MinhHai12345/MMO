@@ -1,4 +1,4 @@
-package com.mmo.core.configuration;
+package com.mmo.bootstrap.configuration;
 
 import com.mmo.core.utils.BeanUtils;
 import org.springframework.context.annotation.Bean;

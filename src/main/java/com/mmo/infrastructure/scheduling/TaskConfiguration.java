@@ -1,4 +1,4 @@
-package com.mmo.core.configuration;
+package com.mmo.infrastructure.scheduling;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.SchedulingConfigurer;
