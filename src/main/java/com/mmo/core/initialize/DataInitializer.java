@@ -1,9 +1,9 @@
 package com.mmo.core.initialize;
 
-public interface DataInitializer {
-
-    /**
-     * Setup original data for application.
-     */
-    void initialize();
+/**
+ * @deprecated Implement {@link com.mmo.bootstrap.initialization.DataInitializer}.
+ * This subtype preserves compatibility with existing initializer beans.
+ */
+@Deprecated(forRemoval = false)
+public interface DataInitializer extends com.mmo.bootstrap.initialization.DataInitializer {
 }
