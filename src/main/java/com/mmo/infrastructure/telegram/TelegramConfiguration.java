@@ -1,4 +1,4 @@
-package com.mmo.core.configuration;
+package com.mmo.infrastructure.telegram;
 
 import com.mmo.AppProperties;
 import lombok.RequiredArgsConstructor;
@@ -7,9 +7,16 @@ import org.springframework.context.annotation.Configuration;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
+/**
+ * Configures the Telegram transport client.
+ *
+ * <p>Telegram is an infrastructure integration used by publication features;
+ * its client configuration therefore lives outside the legacy shared core.</p>
+ */
 @Configuration
 @RequiredArgsConstructor
 public class TelegramConfiguration {
+
     private final AppProperties appProperties;
 
     @Bean

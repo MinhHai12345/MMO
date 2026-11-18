@@ -1,4 +1,4 @@
-package com.mmo.core.configuration;
+package com.mmo.infrastructure.web;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.metamodel.Type;
@@ -9,9 +9,14 @@ import org.springframework.data.rest.webmvc.config.RepositoryRestConfigurer;
 import org.springframework.http.MediaType;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 
+/**
+ * Preserves the existing Spring Data REST contract while repository endpoints
+ * are migrated to explicit module-owned controllers.
+ */
 @Configuration
 @RequiredArgsConstructor
 public class SpringDataRestConfiguration implements RepositoryRestConfigurer {
+
     private final EntityManager entityManager;
 
     @Override
