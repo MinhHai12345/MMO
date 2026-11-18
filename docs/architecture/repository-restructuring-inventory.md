@@ -96,3 +96,21 @@ Before source moves, the implementation must map:
 7. Remove `com.mmo.core` only when empty and verified.
 
 This inventory is a package-level baseline. It is not a claim that all 505 production classes have already undergone line-by-line consumer analysis.
+
+
+## 7. Progress on refactor/modular-layered-architecture
+
+The first low-risk configuration move has been applied on the restructuring branch:
+
+| Original class | New package |
+|---|---|
+| `AppConfiguration` | `com.mmo.bootstrap.configuration` |
+| `JpaAuditingConfiguration` | `com.mmo.infrastructure.persistence` |
+| `PlaywrightConfiguration` | `com.mmo.infrastructure.browser` |
+| `CronJobConfiguration` | `com.mmo.infrastructure.scheduling` |
+| `TaskConfiguration` | `com.mmo.infrastructure.scheduling` |
+| `ThymeleafConfig` | `com.mmo.infrastructure.web` |
+
+The restructuring branch now contains 44 main-source Java files under `com.mmo.core` (down from the 50-file main baseline). The remaining 44 files are not classified as safe to move or delete yet. In particular, the legacy importer, generic converters, cron-job persistence/services, response types and utilities need class-level consumer analysis.
+
+This first move preserves configuration bean methods and bean names. The package remains within the `com.mmo` component-scan root. A Maven build has not been run in this environment; CI/local verification is still required before merge.
