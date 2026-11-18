@@ -75,7 +75,7 @@ public class SofaScoreTeamProvider extends AbstractSofaScoreProvider implements 
 
             log.info("SofaScore teams fetched tournament={} season={} count={} source={}",
                     query.leagueId(), season.name(), teamsByExternalId.size(),
-                    groups == null || groups.isEmpty() ? "season-events" : "standings");
+                    discoveredFromStandings ? "standings" : "season-events");
             return List.copyOf(teamsByExternalId.values());
         });
     }
